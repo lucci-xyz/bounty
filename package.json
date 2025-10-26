@@ -1,0 +1,31 @@
+{
+  "name": "bountypay-github-app",
+  "version": "1.0.0",
+  "description": "BountyPay - Automated bounty payments for GitHub issues",
+  "main": "server/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch server/index.js",
+    "start": "node server/index.js",
+    "migrate": "node server/db/migrate.js",
+    "seed": "node server/db/seed.js"
+  },
+  "keywords": ["github", "bounty", "blockchain", "usdc"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1",
+    "octokit": "^3.1.2",
+    "better-sqlite3": "^9.2.2",
+    "ethers": "^6.9.2",
+    "siwe": "^2.1.4",
+    "express-session": "^1.17.3",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
+
