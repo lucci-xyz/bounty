@@ -1,0 +1,23 @@
+{
+  "name": "Bounty",
+  "url": "https://myapp.com",
+  "hook_attributes": {
+    "url": "https://myapp.com/webhooks/github"
+  },
+  "redirect_url": "https://myapp.com/oauth/callback",
+  "callback_urls": [
+    "https://myapp.com/oauth/callback"
+  ],
+  "public": false,
+  "default_permissions": {
+    "issues": "write",
+    "pull_requests": "write",
+    "metadata": "read"
+  },
+  "default_events": [
+    "issues",
+    "pull_request"
+  ],
+  "description": "Automated bounty payments for GitHub issues. Sponsors attach USDC bounties, contributors get paid automatically when PRs merge."
+}
+
