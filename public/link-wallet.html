@@ -170,7 +170,7 @@
       <p>Sign a message with your wallet to link it to your GitHub account.</p>
     </div>
 
-    <button class="btn btn-primary" id="connectWallet" disabled>Connect Wallet (SIWE)</button>
+    <button class="btn btn-primary" id="connectWallet" disabled>Connect Wallet</button>
 
     <div class="info-box" id="linkedInfo" style="display: none;">
       <strong>✅ Linked:</strong><br>
@@ -181,42 +181,86 @@
     <div class="status" id="status"></div>
   </div>
 
-  <script type="module">
-    import { ethers } from 'https://cdn.jsdelivr.net/npm/ethers@6.9.0/+esm';
-    import { SiweMessage } from 'https://cdn.jsdelivr.net/npm/siwe@2.1.4/+esm';
+  <script>
+    // Make functions available globally
+    window.authenticateGitHub = function() {
+      console.log('🔐 GitHub auth button clicked!');
+      const returnUrl = window.location.pathname + window.location.search;
+      const authUrl = `/oauth/github?returnTo=${encodeURIComponent(returnUrl)}`;
+      console.log('Redirecting to:', authUrl);
+      window.location.href = authUrl;
+    };
 
-    const CHAIN_ID = 84532; // Base Sepolia
-    let provider, signer, walletAddress;
     let githubUser = null;
 
     // Check if already authenticated with GitHub
     async function checkGitHubAuth() {
       try {
+        console.log('Checking GitHub authentication...');
         const res = await fetch('/oauth/user', {
           credentials: 'include'
         });
         
         if (res.ok) {
           githubUser = await res.json();
+          window.githubUser = githubUser; // Make available globally
+          console.log('✅ Already authenticated:', githubUser);
           document.getElementById('githubAuth').textContent = `✓ ${githubUser.githubUsername}`;
+          document.getElementById('githubAuth').disabled = true;
           document.getElementById('connectWallet').disabled = false;
-          showStatus('GitHub authenticated!', 'success');
+          window.showStatus('GitHub authenticated!', 'success');
+        } else {
+          console.log('Not authenticated with GitHub');
         }
       } catch (error) {
-        console.log('Not authenticated with GitHub');
+        console.error('Auth check error:', error);
       }
     }
 
-    checkGitHubAuth();
-
-    // GitHub OAuth
-    document.getElementById('githubAuth').addEventListener('click', () => {
-      window.location.href = '/oauth/github?returnTo=/link-wallet';
+    // Run on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('✅ Page loaded, attaching handlers');
+      
+      // Attach GitHub auth handler
+      const githubButton = document.getElementById('githubAuth');
+      if (githubButton) {
+        githubButton.onclick = window.authenticateGitHub;
+        console.log('✅ GitHub auth button handler attached');
+      } else {
+        console.error('❌ GitHub auth button not found!');
+      }
+      
+      checkGitHubAuth();
     });
 
-    // Connect wallet with SIWE
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = `status ${type}`;
+      status.style.display = 'block';
+      
+      if (type === 'error') {
+        setTimeout(() => status.style.display = 'none', 5000);
+      }
+    }
+  </script>
+
+  <script type="module">
+    import { ethers } from 'https://cdn.jsdelivr.net/npm/ethers@6.9.0/+esm';
+    import { SiweMessage } from 'https://cdn.jsdelivr.net/npm/siwe@2.1.4/+esm';
+
+    const CHAIN_ID = 84532;
+    let provider, signer, walletAddress;
+
+    // Get githubUser from window scope
+    function getGithubUser() {
+      return window.githubUser || null;
+    }
+
+    // Connect wallet handler
     document.getElementById('connectWallet').addEventListener('click', async () => {
       try {
+        const githubUser = getGithubUser();
         if (!githubUser) {
           throw new Error('Please authenticate with GitHub first');
         }
@@ -278,16 +322,18 @@
           throw new Error('Signature verification failed');
         }
 
-        showStatus('Linking wallet...', 'loading');
+        window.showStatus('Linking wallet...', 'loading');
 
+        const githubUserData = getGithubUser();
+        
         // Link wallet to GitHub account
         const linkRes = await fetch('/api/wallet/link', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({
-            githubId: githubUser.githubId,
-            githubUsername: githubUser.githubUsername,
+            githubId: githubUserData.githubId,
+            githubUsername: githubUserData.githubUsername,
             walletAddress
           })
         });
@@ -297,31 +343,20 @@
         }
 
         // Show success
-        document.getElementById('githubUsername').textContent = githubUser.githubUsername;
+        document.getElementById('githubUsername').textContent = githubUserData.githubUsername;
         document.getElementById('walletAddress').textContent = 
           walletAddress.slice(0, 6) + '...' + walletAddress.slice(-4);
         document.getElementById('linkedInfo').style.display = 'block';
         document.getElementById('connectWallet').disabled = true;
         document.getElementById('connectWallet').textContent = '✓ Wallet Linked';
         
-        showStatus('✅ Wallet linked successfully! You can now receive bounty payments.', 'success');
+        window.showStatus('✅ Wallet linked successfully! You can now receive bounty payments.', 'success');
 
       } catch (error) {
         console.error(error);
-        showStatus(error.message, 'error');
+        window.showStatus(error.message, 'error');
       }
     });
-
-    function showStatus(message, type) {
-      const status = document.getElementById('status');
-      status.textContent = message;
-      status.className = `status ${type}`;
-      status.style.display = 'block';
-      
-      if (type === 'error') {
-        setTimeout(() => status.style.display = 'none', 5000);
-      }
-    }
   </script>
 </body>
 </html>
