@@ -184,10 +184,8 @@
   <script>
     // Make functions available globally
     window.authenticateGitHub = function() {
-      console.log('🔐 GitHub auth button clicked!');
       const returnUrl = window.location.pathname + window.location.search;
       const authUrl = `/oauth/github?returnTo=${encodeURIComponent(returnUrl)}`;
-      console.log('Redirecting to:', authUrl);
       window.location.href = authUrl;
     };
 
@@ -196,7 +194,6 @@
     // Check if already authenticated with GitHub
     async function checkGitHubAuth() {
       try {
-        console.log('Checking GitHub authentication...');
         const res = await fetch('/oauth/user', {
           credentials: 'include'
         });
@@ -204,13 +201,10 @@
         if (res.ok) {
           githubUser = await res.json();
           window.githubUser = githubUser; // Make available globally
-          console.log('✅ Already authenticated:', githubUser);
           document.getElementById('githubAuth').textContent = `✓ ${githubUser.githubUsername}`;
           document.getElementById('githubAuth').disabled = true;
           document.getElementById('connectWallet').disabled = false;
           window.showStatus('GitHub authenticated!', 'success');
-        } else {
-          console.log('Not authenticated with GitHub');
         }
       } catch (error) {
         console.error('Auth check error:', error);
@@ -219,15 +213,12 @@
 
     // Run on page load
     document.addEventListener('DOMContentLoaded', function() {
-      console.log('✅ Page loaded, attaching handlers');
-      
       // Attach GitHub auth handler
       const githubButton = document.getElementById('githubAuth');
       if (githubButton) {
         githubButton.onclick = window.authenticateGitHub;
-        console.log('✅ GitHub auth button handler attached');
       } else {
-        console.error('❌ GitHub auth button not found!');
+        console.error('GitHub auth button not found');
       }
       
       checkGitHubAuth();
@@ -243,11 +234,31 @@
         setTimeout(() => status.style.display = 'none', 5000);
       }
     }
+    
+    // Make showStatus available globally for module script
+    window.showStatus = showStatus;
   </script>
 
   <script type="module">
     import { ethers } from 'https://cdn.jsdelivr.net/npm/ethers@6.9.0/+esm';
-    import { SiweMessage } from 'https://cdn.jsdelivr.net/npm/siwe@2.1.4/+esm';
+    
+    // Manually create SIWE message (library has browser compatibility issues)
+    function createSiweMessage({ domain, address, statement, uri, version, chainId, nonce }) {
+      const message = [
+        `${domain} wants you to sign in with your Ethereum account:`,
+        address,
+        '',
+        statement,
+        '',
+        `URI: ${uri}`,
+        `Version: ${version}`,
+        `Chain ID: ${chainId}`,
+        `Nonce: ${nonce}`,
+        `Issued At: ${new Date().toISOString()}`
+      ].join('\n');
+      
+      return message;
+    }
 
     const CHAIN_ID = 84532;
     let provider, signer, walletAddress;
@@ -257,33 +268,42 @@
       return window.githubUser || null;
     }
 
-    // Connect wallet handler
-    document.getElementById('connectWallet').addEventListener('click', async () => {
+    // Wait for DOM to be ready
+    function initWalletConnection() {
+      const connectButton = document.getElementById('connectWallet');
+      
+      if (!connectButton) {
+        console.error('Connect button not found');
+        return;
+      }
+      
+      connectButton.addEventListener('click', async () => {
       try {
         const githubUser = getGithubUser();
         if (!githubUser) {
           throw new Error('Please authenticate with GitHub first');
         }
 
-        showStatus('Connecting wallet...', 'loading');
+        window.showStatus('Connecting wallet...', 'loading');
 
-        // Connect to MetaMask
+        // Connect to MetaMask/Brave Wallet
         if (!window.ethereum) {
-          throw new Error('Please install MetaMask');
+          throw new Error('Please install MetaMask or enable Brave Wallet');
         }
 
         provider = new ethers.BrowserProvider(window.ethereum);
         const accounts = await provider.send('eth_requestAccounts', []);
-        walletAddress = accounts[0];
+        // Ensure address is checksummed (EIP-55 format) for SIWE compatibility
+        walletAddress = ethers.getAddress(accounts[0]);
 
         // Check network
         const network = await provider.getNetwork();
         if (Number(network.chainId) !== CHAIN_ID) {
-          showStatus('Please switch to Base Sepolia network', 'error');
+          window.showStatus('Please switch to Base Sepolia network', 'error');
           return;
         }
 
-        showStatus('Sign the message in your wallet...', 'loading');
+        window.showStatus('Sign the message in your wallet...', 'loading');
 
         // Get nonce from backend
         const nonceRes = await fetch('/api/nonce', {
@@ -292,7 +312,7 @@
         const { nonce } = await nonceRes.json();
 
         // Create SIWE message
-        const message = new SiweMessage({
+        const messageText = createSiweMessage({
           domain: window.location.host,
           address: walletAddress,
           statement: 'Link your wallet to receive BountyPay payments.',
@@ -303,9 +323,9 @@
         });
 
         signer = await provider.getSigner();
-        const signature = await signer.signMessage(message.prepareMessage());
+        const signature = await signer.signMessage(messageText);
 
-        showStatus('Verifying signature...', 'loading');
+        window.showStatus('Verifying signature...', 'loading');
 
         // Verify signature with backend
         const verifyRes = await fetch('/api/verify-wallet', {
@@ -313,7 +333,7 @@
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({
-            message: message.prepareMessage(),
+            message: messageText,
             signature
           })
         });
@@ -357,6 +377,14 @@
         window.showStatus(error.message, 'error');
       }
     });
+    }
+    
+    // Initialize when DOM is ready (module scripts are deferred by default)
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initWalletConnection);
+    } else {
+      initWalletConnection();
+    }
   </script>
 </body>
 </html>
