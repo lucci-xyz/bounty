@@ -28,7 +28,7 @@ app.use(cors({
 
 // Parse JSON for all routes EXCEPT webhooks (which needs raw body)
 app.use((req, res, next) => {
-  if (req.path === '/webhooks/github') {
+  if (req.path === '/webhooks/github' || req.path === '/github/callback') {
     next();
   } else {
     express.json()(req, res, next);
@@ -77,6 +77,34 @@ app.use('/api', apiRoutes);
 
 // OAuth routes
 app.use('/oauth', oauthRoutes);
+
+// ========= Callback Proxy (Stage/Prod) =========
+// Proxies GitHub callbacks to the appropriate target based on ENV_TARGET
+// Uses raw body to preserve signatures if required by downstream handlers
+app.post('/github/callback', express.raw({ type: '*/*' }), async (req, res) => {
+  try {
+    const target = CONFIG.envTarget === 'stage' ? CONFIG.stageCallbackUrl : CONFIG.prodCallbackUrl;
+    if (!target) {
+      return res.status(500).send('Callback target not configured');
+    }
+
+    // Forward headers, but avoid overriding Host; let fetch set it for the target
+    const headers = { ...req.headers };
+    delete headers.host;
+
+    const upstream = await fetch(target, {
+      method: 'POST',
+      headers,
+      body: req.body, // raw Buffer
+    });
+
+    const text = await upstream.text();
+    res.status(upstream.status).send(text);
+  } catch (error) {
+    console.error('Callback proxy error:', error);
+    res.status(502).send('Upstream callback proxy failed');
+  }
+});
 
 // GitHub webhook endpoint - needs raw body for signature verification
 app.post('/webhooks/github', express.json({ verify: (req, res, buf) => {
