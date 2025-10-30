@@ -215,6 +215,7 @@
     const issueNumber = urlParams.get('issue');
     const repoId = urlParams.get('repoId');
     const installationId = urlParams.get('installationId');
+    const presetAmount = urlParams.get('amount');
 
     console.log('URL Params:', { repoFullName, issueNumber, repoId, installationId });
 
@@ -223,6 +224,9 @@
       document.getElementById('repoName').textContent = repoFullName;
       document.getElementById('issueNumber').textContent = issueNumber;
       document.getElementById('issueLink').href = `https://github.com/${repoFullName}/issues/${issueNumber}`;
+      if (presetAmount) {
+        document.getElementById('amount').value = presetAmount;
+      }
     } else {
       document.getElementById('repoName').textContent = 'Error: Missing parameters';
       document.getElementById('issueNumber').textContent = '?';
@@ -411,4 +415,3 @@
   </script>
 </body>
 </html>
-
