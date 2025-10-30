@@ -17,6 +17,11 @@ const app = express();
 
 // ========== Middleware ==========
 
+// Trust upstream proxy (Railway/Render/NGINX) so secure cookies and protocol detection work
+if (CONFIG.nodeEnv === 'production') {
+  app.set('trust proxy', 1);
+}
+
 app.use(helmet({
   contentSecurityPolicy: false // Disable for frontend
 }));
@@ -44,6 +49,7 @@ app.use(session({
   cookie: {
     secure: CONFIG.nodeEnv === 'production',
     httpOnly: true,
+    sameSite: 'lax',
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));
