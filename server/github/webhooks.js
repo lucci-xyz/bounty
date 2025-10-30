@@ -9,6 +9,7 @@ const BADGE_STYLE = 'for-the-badge';
 const FRONTEND_BASE = CONFIG.frontendUrl.replace(/\/$/, '');
 const CTA_BUTTON = `${FRONTEND_BASE}/buttons/create-bounty.svg`;
 const OG_ICON = `${FRONTEND_BASE}/icons/og.png`;
+const BRAND_SIGNATURE = `> _By [BountyPay](${FRONTEND_BASE}) <img src="${OG_ICON}" alt="BountyPay Icon" width="18" height="18" />_`;
 
 const encodeBadgeSegment = (text) => encodeURIComponent(text).replace(/-/g, '--');
 
@@ -39,7 +40,7 @@ export async function handleIssueOpened(payload) {
   
   const comment = `[![Create a bounty button](${CTA_BUTTON})](${attachUrl})
 
-> _By [BountyPay](${FRONTEND_BASE}) <img src="${OG_ICON}" alt="BountyPay Icon" width="18" height="18" />_`;
+${BRAND_SIGNATURE}`;
 
   await postIssueComment(octokit, owner, repo, issue.number, comment);
 }
@@ -62,13 +63,11 @@ export async function handleBountyCreated(bountyData) {
   // Post pinned bounty summary
   const summary = `${badge('Bounty', 'Live', '6366F1')}  ${badge('Amount', `${amountFormatted} USDC`, '0B9ED9')}  ${badge('Deadline', deadlineDate, '2563EB')}
 
-> Custodied on Base via BountyPay.
+**Status:** Open · [Tx](https://sepolia.basescan.org/tx/${txHash})
 
-- Status: **Open**
-- Tx: [BaseScan](https://sepolia.basescan.org/tx/${txHash})
-- Claim it: ship a PR (\`Closes #${issueNumber}\`) + [link wallet](${FRONTEND_BASE}/link-wallet)
+**Claim it:** ship a PR (\`Closes #${issueNumber}\`) · [Link wallet](${FRONTEND_BASE}/link-wallet)
 
-–– BountyPay`;
+${BRAND_SIGNATURE}`;
 
   const comment = await postIssueComment(octokit, owner, repo, issueNumber, summary);
   
@@ -130,14 +129,20 @@ export async function handlePROpened(payload) {
     // Prompt user to link wallet
     const comment = `${badge('Wallet', 'Needed', 'F97316')}
 
-This PR trips a bounty. ${badgeLink('Link', 'Wallet', '2563EB', `${FRONTEND_BASE}/link-wallet`)} so the payout can teleport to you on merge.`;
+Link your wallet so the bounty lands automatically when this merges.  
+${badgeLink('Link', 'Wallet', '2563EB', `${FRONTEND_BASE}/link-wallet`)}
+
+${BRAND_SIGNATURE}`;
 
     await postIssueComment(octokit, owner, repo, pull_request.number, comment);
   } else {
     // User already has wallet linked
     const comment = `${badge('Bounty', 'Ready', '10B981')}
 
-Wallet on file: \`${walletMapping.wallet_address.slice(0, 6)}...${walletMapping.wallet_address.slice(-4)}\`. Merge it and the USDC zaps over.`;
+Wallet on file: \`${walletMapping.wallet_address.slice(0, 6)}...${walletMapping.wallet_address.slice(-4)}\`  
+Merge it and the USDC will auto-drop.
+
+${BRAND_SIGNATURE}`;
 
     await postIssueComment(octokit, owner, repo, pull_request.number, comment);
   }
@@ -190,7 +195,10 @@ export async function handlePRMerged(payload) {
       // No wallet linked - post reminder
       const comment = `${badge('Wallet', 'Needed', 'F97316')}
 
-@${pull_request.user.login}, merge is done—only thing missing is a wallet. ${badgeLink('Link', 'Wallet', '2563EB', `${FRONTEND_BASE}/link-wallet`)} to claim the stack.`;
+@${pull_request.user.login}, merge is done—only thing missing is a wallet.  
+${badgeLink('Link', 'Wallet', '2563EB', `${FRONTEND_BASE}/link-wallet`)}
+
+${BRAND_SIGNATURE}`;
 
       await postIssueComment(octokit, owner, repo, pull_request.number, comment);
       continue;
@@ -208,11 +216,10 @@ export async function handlePRMerged(payload) {
       const amountFormatted = formatUSDC(bounty.amount);
       const successComment = `${badge('Payment', 'Sent', '10B981')}
 
-- Recipient: @${pull_request.user.login}
-- Amount: ${amountFormatted} USDC
-- Tx: [BaseScan](https://sepolia.basescan.org/tx/${result.txHash})
+@${pull_request.user.login} just caught ${amountFormatted} USDC.  
+Tx: [BaseScan](https://sepolia.basescan.org/tx/${result.txHash})
 
-Nice ship.`;
+${BRAND_SIGNATURE}`;
 
       await postIssueComment(octokit, owner, repo, pull_request.number, successComment);
       
@@ -222,7 +229,7 @@ Nice ship.`;
 
 Settled on Base · [Tx](https://sepolia.basescan.org/tx/${result.txHash})
 
-–– BountyPay`;
+${BRAND_SIGNATURE}`;
 
         await updateComment(octokit, owner, repo, bounty.pinned_comment_id, updatedSummary);
       }
@@ -230,9 +237,10 @@ Settled on Base · [Tx](https://sepolia.basescan.org/tx/${result.txHash})
       // Payout failed
       const errorComment = `${badge('Bounty', 'Retry', 'F97316')}
 
-On-chain push bounced: ${result.error}
+On-chain push bounced: ${result.error}  
+Tap a maintainer to replay the payout.
 
-Ping the maintainers to rerun the payout.`;
+${BRAND_SIGNATURE}`;
 
       await postIssueComment(octokit, owner, repo, pull_request.number, errorComment);
       prClaimQueries.updateStatus(claim.id, 'failed');
