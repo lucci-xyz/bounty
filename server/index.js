@@ -75,14 +75,14 @@ initBlockchain();
 
 // ========== Routes ==========
 
-// Serve static frontend files
-app.use(express.static(path.join(__dirname, '../public')));
+// OAuth routes (register BEFORE static to ensure callback is handled by server)
+app.use('/oauth', oauthRoutes);
 
 // API routes
 app.use('/api', apiRoutes);
 
-// OAuth routes
-app.use('/oauth', oauthRoutes);
+// Serve static frontend files
+app.use(express.static(path.join(__dirname, '../public')));
 
 // ========= Callback Proxy (Stage/Prod) =========
 // Proxies GitHub callbacks to the appropriate target based on ENV_TARGET
