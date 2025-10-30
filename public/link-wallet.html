@@ -170,7 +170,7 @@
       <p>Sign a message with your wallet to link it to your GitHub account.</p>
     </div>
 
-    <button class="btn btn-primary" id="connectWallet" disabled>Connect Wallet (SIWE)</button>
+    <button class="btn btn-primary" id="connectWallet" disabled>Connect Wallet</button>
 
     <div class="info-box" id="linkedInfo" style="display: none;">
       <strong>✅ Linked:</strong><br>
@@ -181,12 +181,14 @@
     <div class="status" id="status"></div>
   </div>
 
-  <script type="module">
-    import { ethers } from 'https://cdn.jsdelivr.net/npm/ethers@6.9.0/+esm';
-    import { SiweMessage } from 'https://cdn.jsdelivr.net/npm/siwe@2.1.4/+esm';
+  <script>
+    // Make functions available globally
+    window.authenticateGitHub = function() {
+      const returnUrl = window.location.pathname + window.location.search;
+      const authUrl = `/oauth/github?returnTo=${encodeURIComponent(returnUrl)}`;
+      window.location.href = authUrl;
+    };
 
-    const CHAIN_ID = 84532; // Base Sepolia
-    let provider, signer, walletAddress;
     let githubUser = null;
 
     // Check if already authenticated with GitHub
@@ -198,118 +200,28 @@
         
         if (res.ok) {
           githubUser = await res.json();
+          window.githubUser = githubUser; // Make available globally
           document.getElementById('githubAuth').textContent = `✓ ${githubUser.githubUsername}`;
+          document.getElementById('githubAuth').disabled = true;
           document.getElementById('connectWallet').disabled = false;
-          showStatus('GitHub authenticated!', 'success');
+          window.showStatus('GitHub authenticated!', 'success');
         }
       } catch (error) {
-        console.log('Not authenticated with GitHub');
+        console.error('Auth check error:', error);
       }
     }
 
-    checkGitHubAuth();
-
-    // GitHub OAuth
-    document.getElementById('githubAuth').addEventListener('click', () => {
-      window.location.href = '/oauth/github?returnTo=/link-wallet';
-    });
-
-    // Connect wallet with SIWE
-    document.getElementById('connectWallet').addEventListener('click', async () => {
-      try {
-        if (!githubUser) {
-          throw new Error('Please authenticate with GitHub first');
-        }
-
-        showStatus('Connecting wallet...', 'loading');
-
-        // Connect to MetaMask
-        if (!window.ethereum) {
-          throw new Error('Please install MetaMask');
-        }
-
-        provider = new ethers.BrowserProvider(window.ethereum);
-        const accounts = await provider.send('eth_requestAccounts', []);
-        walletAddress = accounts[0];
-
-        // Check network
-        const network = await provider.getNetwork();
-        if (Number(network.chainId) !== CHAIN_ID) {
-          showStatus('Please switch to Base Sepolia network', 'error');
-          return;
-        }
-
-        showStatus('Sign the message in your wallet...', 'loading');
-
-        // Get nonce from backend
-        const nonceRes = await fetch('/api/nonce', {
-          credentials: 'include'
-        });
-        const { nonce } = await nonceRes.json();
-
-        // Create SIWE message
-        const message = new SiweMessage({
-          domain: window.location.host,
-          address: walletAddress,
-          statement: 'Link your wallet to receive BountyPay payments.',
-          uri: window.location.origin,
-          version: '1',
-          chainId: CHAIN_ID,
-          nonce
-        });
-
-        signer = await provider.getSigner();
-        const signature = await signer.signMessage(message.prepareMessage());
-
-        showStatus('Verifying signature...', 'loading');
-
-        // Verify signature with backend
-        const verifyRes = await fetch('/api/verify-wallet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            message: message.prepareMessage(),
-            signature
-          })
-        });
-
-        if (!verifyRes.ok) {
-          throw new Error('Signature verification failed');
-        }
-
-        showStatus('Linking wallet...', 'loading');
-
-        // Link wallet to GitHub account
-        const linkRes = await fetch('/api/wallet/link', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            githubId: githubUser.githubId,
-            githubUsername: githubUser.githubUsername,
-            walletAddress
-          })
-        });
-
-        if (!linkRes.ok) {
-          throw new Error('Failed to link wallet');
-        }
-
-        // Show success
-        document.getElementById('githubUsername').textContent = githubUser.githubUsername;
-        document.getElementById('walletAddress').textContent = 
-          walletAddress.slice(0, 6) + '...' + walletAddress.slice(-4);
-        document.getElementById('linkedInfo').style.display = 'block';
-        document.getElementById('connectWallet').disabled = true;
-        document.getElementById('connectWallet').textContent = '✓ Wallet Linked';
-        
-        showStatus('✅ Wallet linked successfully! You can now receive bounty payments.', 'success');
-
-      } catch (error) {
-        console.error(error);
-        showStatus(error.message, 'error');
+    // Run on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      // Attach GitHub auth handler
+      const githubButton = document.getElementById('githubAuth');
+      if (githubButton) {
+        githubButton.onclick = window.authenticateGitHub;
+      } else {
+        console.error('GitHub auth button not found');
       }
+      
+      checkGitHubAuth();
     });
 
     function showStatus(message, type) {
@@ -321,6 +233,157 @@
       if (type === 'error') {
         setTimeout(() => status.style.display = 'none', 5000);
       }
+    }
+    
+    // Make showStatus available globally for module script
+    window.showStatus = showStatus;
+  </script>
+
+  <script type="module">
+    import { ethers } from 'https://cdn.jsdelivr.net/npm/ethers@6.9.0/+esm';
+    
+    // Manually create SIWE message (library has browser compatibility issues)
+    function createSiweMessage({ domain, address, statement, uri, version, chainId, nonce }) {
+      const message = [
+        `${domain} wants you to sign in with your Ethereum account:`,
+        address,
+        '',
+        statement,
+        '',
+        `URI: ${uri}`,
+        `Version: ${version}`,
+        `Chain ID: ${chainId}`,
+        `Nonce: ${nonce}`,
+        `Issued At: ${new Date().toISOString()}`
+      ].join('\n');
+      
+      return message;
+    }
+
+    const CHAIN_ID = 84532;
+    let provider, signer, walletAddress;
+
+    // Get githubUser from window scope
+    function getGithubUser() {
+      return window.githubUser || null;
+    }
+
+    // Wait for DOM to be ready
+    function initWalletConnection() {
+      const connectButton = document.getElementById('connectWallet');
+      
+      if (!connectButton) {
+        console.error('Connect button not found');
+        return;
+      }
+      
+      connectButton.addEventListener('click', async () => {
+      try {
+        const githubUser = getGithubUser();
+        if (!githubUser) {
+          throw new Error('Please authenticate with GitHub first');
+        }
+
+        window.showStatus('Connecting wallet...', 'loading');
+
+        // Connect to MetaMask/Brave Wallet
+        if (!window.ethereum) {
+          throw new Error('Please install MetaMask or enable Brave Wallet');
+        }
+
+        provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.send('eth_requestAccounts', []);
+        // Ensure address is checksummed (EIP-55 format) for SIWE compatibility
+        walletAddress = ethers.getAddress(accounts[0]);
+
+        // Check network
+        const network = await provider.getNetwork();
+        if (Number(network.chainId) !== CHAIN_ID) {
+          window.showStatus('Please switch to Base Sepolia network', 'error');
+          return;
+        }
+
+        window.showStatus('Sign the message in your wallet...', 'loading');
+
+        // Get nonce from backend
+        const nonceRes = await fetch('/api/nonce', {
+          credentials: 'include'
+        });
+        const { nonce } = await nonceRes.json();
+
+        // Create SIWE message
+        const messageText = createSiweMessage({
+          domain: window.location.host,
+          address: walletAddress,
+          statement: 'Link your wallet to receive BountyPay payments.',
+          uri: window.location.origin,
+          version: '1',
+          chainId: CHAIN_ID,
+          nonce
+        });
+
+        signer = await provider.getSigner();
+        const signature = await signer.signMessage(messageText);
+
+        window.showStatus('Verifying signature...', 'loading');
+
+        // Verify signature with backend
+        const verifyRes = await fetch('/api/verify-wallet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            message: messageText,
+            signature
+          })
+        });
+
+        if (!verifyRes.ok) {
+          throw new Error('Signature verification failed');
+        }
+
+        window.showStatus('Linking wallet...', 'loading');
+
+        const githubUserData = getGithubUser();
+        
+        // Link wallet to GitHub account
+        const linkRes = await fetch('/api/wallet/link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            githubId: githubUserData.githubId,
+            githubUsername: githubUserData.githubUsername,
+            walletAddress
+          })
+        });
+
+        if (!linkRes.ok) {
+          throw new Error('Failed to link wallet');
+        }
+
+        // Show success
+        document.getElementById('githubUsername').textContent = githubUserData.githubUsername;
+        document.getElementById('walletAddress').textContent = 
+          walletAddress.slice(0, 6) + '...' + walletAddress.slice(-4);
+        document.getElementById('linkedInfo').style.display = 'block';
+        document.getElementById('connectWallet').disabled = true;
+        document.getElementById('connectWallet').textContent = '✓ Wallet Linked';
+        
+        window.showStatus('✅ Wallet linked successfully! You can now receive bounty payments.', 'success');
+
+      } catch (error) {
+        console.error(error);
+        window.showStatus(error.message, 'error');
+      }
+    });
+    }
+    
+    // Initialize when DOM is ready (module scripts are deferred by default)
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initWalletConnection);
+    } else {
+      initWalletConnection();
     }
   </script>
 </body>
