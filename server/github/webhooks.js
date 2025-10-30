@@ -133,20 +133,26 @@ export async function handlePROpened(payload) {
   
   if (!walletMapping) {
     // Prompt user to link wallet
-    const comment = `${badge('Wallet', 'Needed', 'F97316')}
+    const comment = `<img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> ## Bounty: Wallet Needed
 
-Link your wallet so the bounty lands automatically when this merges.  
-${badgeLink('Link', 'Wallet', '2563EB', `${FRONTEND_BASE}/link-wallet`)}
+**Status:** Awaiting wallet link  
+**Why:** Payout can’t trigger until a Base wallet is on file.
+
+1. [Link your wallet](${FRONTEND_BASE}/link-wallet)  
+2. Merge lands the bounty automatically.
 
 ${BRAND_SIGNATURE}`;
 
     await postIssueComment(octokit, owner, repo, pull_request.number, comment);
   } else {
     // User already has wallet linked
-    const comment = `${badge('Bounty', 'Ready', '10B981')}
+    const comment = `<img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> ## Bounty: Wallet Linked
 
-Wallet on file: \`${walletMapping.wallet_address.slice(0, 6)}...${walletMapping.wallet_address.slice(-4)}\`  
-Merge it and the USDC will auto-drop.
+**Status:** Ready to pay  
+Linked wallet: \`${walletMapping.wallet_address.slice(0, 6)}...${walletMapping.wallet_address.slice(-4)}\`
+
+1. Keep the wallet connected.  
+2. Merge this PR and the USDC hits instantly.
 
 ${BRAND_SIGNATURE}`;
 
@@ -199,10 +205,13 @@ export async function handlePRMerged(payload) {
     
     if (!walletMapping) {
       // No wallet linked - post reminder
-      const comment = `${badge('Wallet', 'Needed', 'F97316')}
+      const comment = `<img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> ## Bounty: Wallet Missing
 
-@${pull_request.user.login}, merge is done—only thing missing is a wallet.  
-${badgeLink('Link', 'Wallet', '2563EB', `${FRONTEND_BASE}/link-wallet`)}
+**Status:** Waiting on wallet  
+@${pull_request.user.login}, merge is done—only thing missing is a wallet.
+
+1. [Link your wallet](${FRONTEND_BASE}/link-wallet)  
+2. Ping us once it’s connected; we’ll replay the payout.
 
 ${BRAND_SIGNATURE}`;
 
@@ -220,10 +229,10 @@ ${BRAND_SIGNATURE}`;
       
       // Post success comment on PR
       const amountFormatted = formatUSDC(bounty.amount);
-      const successComment = `${badge('Payment', 'Sent', '10B981')}
+      const successComment = `<img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> ## Bounty: Paid
 
-@${pull_request.user.login} just caught ${amountFormatted} USDC.  
-Tx: [BaseScan](https://sepolia.basescan.org/tx/${result.txHash})
+@${pull_request.user.login} just collected ${amountFormatted} USDC.  
+Transaction: [BaseScan](https://sepolia.basescan.org/tx/${result.txHash})
 
 ${BRAND_SIGNATURE}`;
 
@@ -231,9 +240,10 @@ ${BRAND_SIGNATURE}`;
       
       // Update original issue's bounty comment
       if (bounty.pinned_comment_id) {
-        const updatedSummary = `${badge('Bounty', 'Closed', '10B981')}  ${badge('Amount', `${amountFormatted} USDC`, '0B9ED9')}  ${badge('Paid', `@${pull_request.user.login}`, '10B981')}
+        const updatedSummary = `<img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> ## Bounty: Closed
 
-Settled on Base · [Tx](https://sepolia.basescan.org/tx/${result.txHash})
+**Paid:** ${amountFormatted} USDC to @${pull_request.user.login}  
+**Tx:** [BaseScan](https://sepolia.basescan.org/tx/${result.txHash})
 
 ${BRAND_SIGNATURE}`;
 
@@ -241,10 +251,10 @@ ${BRAND_SIGNATURE}`;
       }
     } else {
       // Payout failed
-      const errorComment = `${badge('Bounty', 'Retry', 'F97316')}
+      const errorComment = `<img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> ## Bounty: Retry Needed
 
-On-chain push bounced: ${result.error}  
-Tap a maintainer to replay the payout.
+On-chain push bounced with: ${result.error}  
+Tag a maintainer to replay the payout once the issue is resolved.
 
 ${BRAND_SIGNATURE}`;
 
