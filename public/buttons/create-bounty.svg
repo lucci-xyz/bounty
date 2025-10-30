@@ -2,25 +2,25 @@
   <defs>
     <style>
       .pill {
-        fill: #39beb7;
+        fill: #39BEB7;
+        <!-- stroke: #00827B;
+        stroke-width: 2; -->
       }
       .label {
-        font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
-        font-size: 16px;
-        font-weight: 600;
-        fill: #83eee8;
+        font-family: 'Roboto Mono', 'Inter', 'Helvetica Neue', Arial, sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        fill: #83EEE8;
         letter-spacing: 0.08em;
         text-transform: uppercase;
       }
-      .arrow {
-        stroke: #83eee8;
-        stroke-width: 2;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        fill: none;
-      }
     </style>
   </defs>
-  <rect class="pill" x="1" y="1" width="198" height="50" rx="25" />
+  <g transform="translate(100 26)">
+    <g>
+      <animateTransform attributeName="transform" type="scale" values="1;1.04;1" begin="0s" dur="3s" repeatCount="indefinite" />
+      <rect class="pill" x="-90" y="-21" width="180" height="42" rx="21" />
+    </g>
+  </g>
   <text class="label" x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Create a bounty</text>
 </svg>

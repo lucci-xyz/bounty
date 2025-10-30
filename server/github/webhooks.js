@@ -39,9 +39,7 @@ export async function handleIssueOpened(payload) {
   
   const comment = `[![Create a bounty button](${CTA_BUTTON})](${attachUrl})
 
-By [BountyPay](${FRONTEND_BASE}) <img src="${OG_ICON}" alt="BountyPay Icon" width="16" height="16" />
-
-Need a refresher? [Wallet guide](${FRONTEND_BASE}/link-wallet)`;
+By [BountyPay](${FRONTEND_BASE}) <img src="${OG_ICON}" alt="BountyPay Icon" width="18" height="18" />`;
 
   await postIssueComment(octokit, owner, repo, issue.number, comment);
 }
