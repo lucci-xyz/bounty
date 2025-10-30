@@ -9,6 +9,9 @@ export const CONFIG = {
   nodeEnv: process.env.NODE_ENV || 'development',
   sessionSecret: process.env.SESSION_SECRET,
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+  envTarget: process.env.ENV_TARGET || 'stage',
+  stageCallbackUrl: process.env.STAGE_CALLBACK_URL,
+  prodCallbackUrl: process.env.PROD_CALLBACK_URL,
 
   // GitHub
   github: {
@@ -44,6 +47,8 @@ const required = [
   'github.clientSecret',
   'blockchain.escrowContract',
   'blockchain.resolverPrivateKey',
+  // For callback proxying (optional in local dev, required in hosted envs)
+  // Note: Only enforce one based on ENV_TARGET
 ];
 
 for (const key of required) {
@@ -56,5 +61,15 @@ for (const key of required) {
     console.error(`❌ Missing required config: ${key}`);
     process.exit(1);
   }
+}
+
+// Validate callback targets conditionally
+if (CONFIG.envTarget === 'stage' && !CONFIG.stageCallbackUrl) {
+  console.error('❌ Missing required config: stageCallbackUrl (STAGE_CALLBACK_URL)');
+  process.exit(1);
+}
+if (CONFIG.envTarget === 'prod' && !CONFIG.prodCallbackUrl) {
+  console.error('❌ Missing required config: prodCallbackUrl (PROD_CALLBACK_URL)');
+  process.exit(1);
 }
 
