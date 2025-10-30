@@ -7,6 +7,8 @@ const BADGE_BASE = 'https://img.shields.io/badge';
 const BADGE_LABEL_COLOR = '111827';
 const BADGE_STYLE = 'for-the-badge';
 const FRONTEND_BASE = CONFIG.frontendUrl.replace(/\/$/, '');
+const CTA_BUTTON = `${FRONTEND_BASE}/buttons/create-bounty.svg`;
+const OG_ICON = `${FRONTEND_BASE}/icons/og.png`;
 
 const encodeBadgeSegment = (text) => encodeURIComponent(text).replace(/-/g, '--');
 
@@ -35,11 +37,9 @@ export async function handleIssueOpened(payload) {
   // Post "Attach Bounty" button comment
   const attachUrl = `${FRONTEND_BASE}/attach-bounty?repo=${encodeURIComponent(repository.full_name)}&issue=${issue.number}&repoId=${repository.id}&installationId=${installation.id}`;
   
-  const comment = `${badge('BountyPay', 'Add a bounty')}
+  const comment = `[![Create a bounty button](${CTA_BUTTON})](${attachUrl})
 
-> Spin up a USDC bounty in under a minute.
-
-${badgeLink('Launch', 'Bounty Console', '7C3AED', attachUrl)}
+By [BountyPay](${FRONTEND_BASE}) <img src="${OG_ICON}" alt="BountyPay Icon" width="16" height="16" />
 
 Need a refresher? [Wallet guide](${FRONTEND_BASE}/link-wallet)`;
 
