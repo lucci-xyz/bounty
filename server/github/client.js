@@ -88,6 +88,39 @@ export async function addLabels(octokit, owner, repo, issueNumber, labels) {
   });
 }
 
+export async function ensureLabel(octokit, owner, repo, name, color, description = '') {
+  const normalizedColor = color.replace('#', '').toLowerCase();
+  try {
+    const { data: existing } = await octokit.rest.issues.getLabel({
+      owner,
+      repo,
+      name
+    });
+
+    if (existing.color?.toLowerCase() !== normalizedColor || (description && existing.description !== description)) {
+      await octokit.rest.issues.updateLabel({
+        owner,
+        repo,
+        name,
+        color: normalizedColor,
+        description
+      });
+    }
+  } catch (error) {
+    if (error.status !== 404) {
+      throw error;
+    }
+
+    await octokit.rest.issues.createLabel({
+      owner,
+      repo,
+      name,
+      color: normalizedColor,
+      description
+    });
+  }
+}
+
 /**
  * Get PR details
  */
@@ -124,4 +157,3 @@ export async function getUser(octokit, username) {
 }
 
 export { githubApp };
-

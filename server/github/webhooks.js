@@ -1,4 +1,4 @@
-import { getGitHubApp, getOctokit, postIssueComment, updateComment, addLabels, extractClosedIssues } from './client.js';
+import { getGitHubApp, getOctokit, postIssueComment, updateComment, addLabels, ensureLabel, extractClosedIssues } from './client.js';
 import { bountyQueries, walletQueries, prClaimQueries } from '../db/index.js';
 import { resolveBounty, formatUSDC } from '../blockchain/contract.js';
 import { CONFIG } from '../config.js';
@@ -37,7 +37,9 @@ export async function handleIssueOpened(payload) {
   // Post "Attach Bounty" button comment
   const attachUrl = `${FRONTEND_BASE}/attach-bounty?repo=${encodeURIComponent(repository.full_name)}&issue=${issue.number}&repoId=${repository.id}&installationId=${installation.id}`;
   
-  const comment = `[![Create a bounty button](${CTA_BUTTON})](${attachUrl}) · By [BountyPay](${FRONTEND_BASE}) <img src="${OG_ICON}" alt="BountyPay Icon" width="18" height="18" />`;
+  const comment = `[![Create a bounty button](${CTA_BUTTON})](${attachUrl})
+
+> _By [BountyPay](${FRONTEND_BASE}) <img src="${OG_ICON}" alt="BountyPay Icon" width="18" height="18" />_`;
 
   await postIssueComment(octokit, owner, repo, issue.number, comment);
 }
@@ -73,6 +75,14 @@ export async function handleBountyCreated(bountyData) {
   // Add label
   const labelName = `bounty:$${Math.floor(parseFloat(amountFormatted))}`;
   try {
+    await ensureLabel(
+      octokit,
+      owner,
+      repo,
+      labelName,
+      '83EEE8',
+      'Active bounty amount'
+    );
     await addLabels(octokit, owner, repo, issueNumber, [labelName]);
   } catch (error) {
     console.error('Error adding label:', error.message);
