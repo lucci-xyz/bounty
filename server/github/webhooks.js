@@ -62,7 +62,7 @@ export async function handleBountyCreated(bountyData) {
   
   // Post pinned bounty summary
   const truncatedTx = txHash ? `${txHash.slice(0, 10)}...` : 'transaction';
-  const summary = `<img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> ##  Bounty: ${amountFormatted} USDC on Base
+  const summary = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: ${amountFormatted} USDC on Base
 
 **Deadline:** ${deadlineDate}  
 **Status:** Open  
@@ -133,7 +133,7 @@ export async function handlePROpened(payload) {
   
   if (!walletMapping) {
     // Prompt user to link wallet
-    const comment = `<img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> ## Bounty: Wallet Needed
+    const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Wallet Needed
 
 **Status:** Awaiting wallet link  
 **Why:** Payout can’t trigger until a Base wallet is on file.
@@ -146,7 +146,7 @@ ${BRAND_SIGNATURE}`;
     await postIssueComment(octokit, owner, repo, pull_request.number, comment);
   } else {
     // User already has wallet linked
-    const comment = `<img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> ## Bounty: Wallet Linked
+    const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Wallet Linked
 
 **Status:** Ready to pay  
 Linked wallet: \`${walletMapping.wallet_address.slice(0, 6)}...${walletMapping.wallet_address.slice(-4)}\`
@@ -205,7 +205,7 @@ export async function handlePRMerged(payload) {
     
     if (!walletMapping) {
       // No wallet linked - post reminder
-      const comment = `<img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> ## Bounty: Wallet Missing
+      const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Wallet Missing
 
 **Status:** Waiting on wallet  
 @${pull_request.user.login}, merge is done—only thing missing is a wallet.
@@ -229,7 +229,7 @@ ${BRAND_SIGNATURE}`;
       
       // Post success comment on PR
       const amountFormatted = formatUSDC(bounty.amount);
-      const successComment = `<img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> ## Bounty: Paid
+      const successComment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Paid
 
 @${pull_request.user.login} just collected ${amountFormatted} USDC.  
 Transaction: [BaseScan](https://sepolia.basescan.org/tx/${result.txHash})
@@ -240,7 +240,7 @@ ${BRAND_SIGNATURE}`;
       
       // Update original issue's bounty comment
       if (bounty.pinned_comment_id) {
-        const updatedSummary = `<img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> ## Bounty: Closed
+        const updatedSummary = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Closed
 
 **Paid:** ${amountFormatted} USDC to @${pull_request.user.login}  
 **Tx:** [BaseScan](https://sepolia.basescan.org/tx/${result.txHash})
@@ -251,7 +251,7 @@ ${BRAND_SIGNATURE}`;
       }
     } else {
       // Payout failed
-      const errorComment = `<img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> ## Bounty: Retry Needed
+      const errorComment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Retry Needed
 
 On-chain push bounced with: ${result.error}  
 Tag a maintainer to replay the payout once the issue is resolved.
