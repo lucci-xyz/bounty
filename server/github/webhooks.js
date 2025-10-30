@@ -61,11 +61,17 @@ export async function handleBountyCreated(bountyData) {
   const amountFormatted = formatUSDC(amount);
   
   // Post pinned bounty summary
-  const summary = `${badge('Bounty', 'Live', '6366F1')}  ${badge('Amount', `${amountFormatted} USDC`, '0B9ED9')}  ${badge('Deadline', deadlineDate, '2563EB')}
+  const truncatedTx = txHash ? `${txHash.slice(0, 10)}...` : 'transaction';
+  const summary = `<img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> ##  Bounty: ${amountFormatted} USDC on Base
 
-**Status:** Open · [Tx](https://sepolia.basescan.org/tx/${txHash})
+**Deadline:** ${deadlineDate}  
+**Status:** Open  
+**Tx:** [\`${truncatedTx}\`](https://sepolia.basescan.org/tx/${txHash})
 
-**Claim it:** ship a PR (\`Closes #${issueNumber}\`) · [Link wallet](${FRONTEND_BASE}/link-wallet)
+### To Claim:
+1. Open a PR that closes this issue (use \`Closes #${issueNumber}\` in PR description)
+2. [Link your wallet](${FRONTEND_BASE}/link-wallet) to be eligible for payout
+3. When your PR is merged, you'll automatically receive the bounty!
 
 ${BRAND_SIGNATURE}`;
 
