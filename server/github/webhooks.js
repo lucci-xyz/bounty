@@ -1,7 +1,28 @@
-import { getGitHubApp, getOctokit, postIssueComment, updateComment, addLabels, getPR, extractClosedIssues } from './client.js';
+import { getGitHubApp, getOctokit, postIssueComment, updateComment, addLabels, ensureLabel, extractClosedIssues } from './client.js';
 import { bountyQueries, walletQueries, prClaimQueries } from '../db/index.js';
 import { resolveBounty, formatUSDC } from '../blockchain/contract.js';
 import { CONFIG } from '../config.js';
+
+const BADGE_BASE = 'https://img.shields.io/badge';
+const BADGE_LABEL_COLOR = '111827';
+const BADGE_STYLE = 'for-the-badge';
+const FRONTEND_BASE = CONFIG.frontendUrl.replace(/\/$/, '');
+const CTA_BUTTON = `${FRONTEND_BASE}/buttons/create-bounty.svg`;
+const OG_ICON = `${FRONTEND_BASE}/icons/og.png`;
+const BRAND_SIGNATURE = `> _By [BountyPay](${FRONTEND_BASE}) <img src="${OG_ICON}" alt="BountyPay Icon" width="18" height="18" />_`;
+
+const encodeBadgeSegment = (text) => encodeURIComponent(text).replace(/-/g, '--');
+
+function badge(label, value, color = '0B9ED9', extraQuery = '') {
+  const labelEncoded = encodeBadgeSegment(label);
+  const valueEncoded = encodeBadgeSegment(value);
+  const query = `style=${BADGE_STYLE}&labelColor=${BADGE_LABEL_COLOR}${extraQuery ? `&${extraQuery}` : ''}`;
+  return `![${label} ${value}](${BADGE_BASE}/${labelEncoded}-${valueEncoded}-${color}?${query})`;
+}
+
+function badgeLink(label, value, color, href, extraQuery = '') {
+  return `[${badge(label, value, color, extraQuery)}](${href})`;
+}
 
 /**
  * Handle 'issues.opened' webhook
@@ -15,15 +36,11 @@ export async function handleIssueOpened(payload) {
   const [owner, repo] = repository.full_name.split('/');
   
   // Post "Attach Bounty" button comment
-  const attachUrl = `${CONFIG.frontendUrl}/attach-bounty?repo=${encodeURIComponent(repository.full_name)}&issue=${issue.number}&repoId=${repository.id}&installationId=${installation.id}`;
+  const attachUrl = `${FRONTEND_BASE}/attach-bounty?repo=${encodeURIComponent(repository.full_name)}&issue=${issue.number}&repoId=${repository.id}&installationId=${installation.id}`;
   
-  const comment = `## 💰 Attach a Bounty
+  const comment = `[![Create a bounty button](${CTA_BUTTON})](${attachUrl})
 
-Would you like to incentivize this issue with a bounty?
-
-<a href="${attachUrl}" target="_blank"><strong>🚀 Attach Bounty</strong></a>
-
-Connect your wallet and fund this issue with USDC on Base. Contributors who solve this issue will be automatically paid when their PR is merged.`;
+${BRAND_SIGNATURE}`;
 
   await postIssueComment(octokit, owner, repo, issue.number, comment);
 }
@@ -44,26 +61,33 @@ export async function handleBountyCreated(bountyData) {
   const amountFormatted = formatUSDC(amount);
   
   // Post pinned bounty summary
-  const summary = `## 💰 Bounty: ${amountFormatted} USDC on Base
+  const truncatedTx = txHash ? `${txHash.slice(0, 10)}...` : 'transaction';
+  const summary = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: ${amountFormatted} USDC on Base
 
-⏳ **Deadline:** ${deadlineDate}  
-📜 **Status:** Open  
-🔗 **Chain:** Base Sepolia  
-📝 **Tx:** [\`${txHash.slice(0, 10)}...\`](https://sepolia.basescan.org/tx/${txHash})
+**Deadline:** ${deadlineDate}  
+**Status:** Open  
+**Tx:** [\`${truncatedTx}\`](https://sepolia.basescan.org/tx/${txHash})
 
 ### To Claim:
 1. Open a PR that closes this issue (use \`Closes #${issueNumber}\` in PR description)
-2. [Link your wallet](${CONFIG.frontendUrl}/link-wallet) to be eligible for payout
+2. [Link your wallet](${FRONTEND_BASE}/link-wallet) to be eligible for payout
 3. When your PR is merged, you'll automatically receive the bounty!
 
----
-*Powered by BountyPay on Base*`;
+${BRAND_SIGNATURE}`;
 
   const comment = await postIssueComment(octokit, owner, repo, issueNumber, summary);
   
   // Add label
   const labelName = `bounty:$${Math.floor(parseFloat(amountFormatted))}`;
   try {
+    await ensureLabel(
+      octokit,
+      owner,
+      repo,
+      labelName,
+      '83EEE8',
+      'Active bounty amount'
+    );
     await addLabels(octokit, owner, repo, issueNumber, [labelName]);
   } catch (error) {
     console.error('Error adding label:', error.message);
@@ -109,20 +133,28 @@ export async function handlePROpened(payload) {
   
   if (!walletMapping) {
     // Prompt user to link wallet
-    const comment = `## 🎉 This PR is eligible for a bounty!
+    const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Wallet Needed
 
-This issue has an active bounty. To receive payment when your PR is merged, you need to link your wallet:
+**Status:** Awaiting wallet link  
+**Why:** Payout can’t trigger until a Base wallet is on file.
 
-[**Link Your Wallet**](${CONFIG.frontendUrl}/link-wallet)
+1. [Link your wallet](${FRONTEND_BASE}/link-wallet)  
+2. Merge lands the bounty automatically.
 
-This is a one-time setup. Once linked, you'll automatically receive bounty payments for all future contributions!`;
+${BRAND_SIGNATURE}`;
 
     await postIssueComment(octokit, owner, repo, pull_request.number, comment);
   } else {
     // User already has wallet linked
-    const comment = `## ✅ Bounty eligible
+    const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Wallet Linked
 
-Your wallet (\`${walletMapping.wallet_address.slice(0, 6)}...${walletMapping.wallet_address.slice(-4)}\`) is linked. If this PR is merged, you'll automatically receive the bounty!`;
+**Status:** Ready to pay  
+Linked wallet: \`${walletMapping.wallet_address.slice(0, 6)}...${walletMapping.wallet_address.slice(-4)}\`
+
+1. Keep the wallet connected.  
+2. Merge this PR and the USDC hits instantly.
+
+${BRAND_SIGNATURE}`;
 
     await postIssueComment(octokit, owner, repo, pull_request.number, comment);
   }
@@ -173,13 +205,15 @@ export async function handlePRMerged(payload) {
     
     if (!walletMapping) {
       // No wallet linked - post reminder
-      const comment = `## ⏳ Bounty payout pending
+      const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Wallet Missing
 
-@${pull_request.user.login} Your PR has been merged! To receive the bounty payment, please link your wallet:
+**Status:** Waiting on wallet  
+@${pull_request.user.login}, merge is done—only thing missing is a wallet.
 
-[**Link Your Wallet**](${CONFIG.frontendUrl}/link-wallet)
+1. [Link your wallet](${FRONTEND_BASE}/link-wallet)  
+2. Ping us once it’s connected; we’ll replay the payout.
 
-The bounty will be sent as soon as your wallet is linked.`;
+${BRAND_SIGNATURE}`;
 
       await postIssueComment(octokit, owner, repo, pull_request.number, comment);
       continue;
@@ -195,39 +229,34 @@ The bounty will be sent as soon as your wallet is linked.`;
       
       // Post success comment on PR
       const amountFormatted = formatUSDC(bounty.amount);
-      const successComment = `## ✅ Bounty Paid!
+      const successComment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Paid
 
-Congratulations @${pull_request.user.login}! 
+@${pull_request.user.login} just collected ${amountFormatted} USDC.  
+Transaction: [BaseScan](https://sepolia.basescan.org/tx/${result.txHash})
 
-💰 **${amountFormatted} USDC** has been sent to your wallet.
-
-**Recipient:** \`${walletMapping.wallet_address}\`  
-**Transaction:** [\`${result.txHash}\`](https://sepolia.basescan.org/tx/${result.txHash})
-
-Thank you for your contribution!`;
+${BRAND_SIGNATURE}`;
 
       await postIssueComment(octokit, owner, repo, pull_request.number, successComment);
       
       // Update original issue's bounty comment
       if (bounty.pinned_comment_id) {
-        const updatedSummary = `## 💰 Bounty: ${amountFormatted} USDC on Base
+        const updatedSummary = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Closed
 
-📜 **Status:** ✅ Resolved  
-👤 **Paid to:** @${pull_request.user.login}  
-🔗 **Transaction:** [\`${result.txHash}\`](https://sepolia.basescan.org/tx/${result.txHash})
+**Paid:** ${amountFormatted} USDC to @${pull_request.user.login}  
+**Tx:** [BaseScan](https://sepolia.basescan.org/tx/${result.txHash})
 
----
-*Bounty successfully paid via BountyPay on Base*`;
+${BRAND_SIGNATURE}`;
 
         await updateComment(octokit, owner, repo, bounty.pinned_comment_id, updatedSummary);
       }
     } else {
       // Payout failed
-      const errorComment = `## ❌ Bounty payout failed
+      const errorComment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Retry Needed
 
-There was an error processing the bounty payment. Error: ${result.error}
+On-chain push bounced with: ${result.error}  
+Tag a maintainer to replay the payout once the issue is resolved.
 
-Please contact support or try again later.`;
+${BRAND_SIGNATURE}`;
 
       await postIssueComment(octokit, owner, repo, pull_request.number, errorComment);
       prClaimQueries.updateStatus(claim.id, 'failed');
@@ -270,7 +299,7 @@ export async function handleWebhook(event, payload) {
       case 'installation_repositories':
         console.log(`✅ GitHub App ${action || 'event'} - installation successful!`);
         break;
-        
+
       default:
         console.log(`Unhandled event: ${event}`);
     }
@@ -279,4 +308,3 @@ export async function handleWebhook(event, payload) {
     throw error;
   }
 }
-

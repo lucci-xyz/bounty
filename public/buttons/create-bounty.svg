@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="35" viewBox="0 0 180 42">
+  <defs>
+    <style>
+      .pill { fill: #83EEE8; }
+      .label {
+        font-family: 'Roboto Mono', 'Inter', 'Helvetica Neue', Arial, sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        fill: #00827B;
+        letter-spacing: 0.08em;
+      }
+      .arrow {
+        stroke: #00827B;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        fill: none;
+      }
+    </style>
+  </defs>
+  <rect class="pill" x="1" y="1" width="178" height="40" rx="20" />
+  <text class="label" x="84" y="21" dominant-baseline="middle" text-anchor="middle">Create a Bounty</text>
+  <path class="arrow" d="M152 23 L158 17 M158 17 L158 23 M158 17 L152 17" />
+</svg>

@@ -1,65 +1,43 @@
-# BountyPay
+# <img src="public/icons/og.png" alt="BountyPay logo" width="50" style="vertical-align:middle;" /> BountyPay
 
-Automated bounty payments for GitHub issues using USDC on Base.
-
-## Overview
-
-BountyPay connects GitHub issues with blockchain bounties. Sponsors fund issues with USDC, contributors solve them, and payments happen automatically when pull requests are merged.
-
-**Live on Base Sepolia testnet**
-
----
-
-## Features
-
-- 💰 **Attach Bounties** - Fund GitHub issues with USDC
-- 🔗 **Wallet Linking** - Connect GitHub accounts to crypto wallets
-- ⚡ **Auto Payments** - Instant payouts when PRs merge
-- 🤖 **GitHub Integration** - Bot automation via webhooks
-- 🔐 **Secure** - Smart contract escrow on Base
-
----
-
-## Tech Stack
-
-- **Backend**: Node.js + Express + SQLite
-- **Frontend**: HTML + ethers.js
-- **Blockchain**: Base Sepolia + USDC
-- **Auth**: GitHub OAuth + SIWE
-
----
+_Automated, trust-minimised bounty payouts for open-source contributions. Fund with USDC on Base and let BountyPay handle the rest._
 
 
-## Documentation
 
-- **[GitHub App Setup](./docs/github-app-setup.md)** - Create and configure your GitHub App
-- **[Local Development](./docs/local-development.md)** - Run locally with ngrok
-- **[Deployment](./docs/deployment.md)** - Deploy to Railway or other platforms
-- **[Architecture](./docs/architecture.md)** - System design and data flows
+## Get Started in Minutes
 
----
+1. **Install the GitHub App**  
+   👉 [Download BountyPay](https://github.com/apps/bountypay)
 
-## Project Structure
+2. **Open a New Issue** and click the ``` Create a bounty ``` button from the BountyPay bot.
 
-```
-bounty/
-├── server/              # Backend application
-│   ├── db/             # Database and queries
-│   ├── github/         # GitHub integration
-│   ├── blockchain/     # Smart contract interaction
-│   ├── auth/           # SIWE authentication
-│   └── routes/         # API endpoints
-├── public/             # Frontend pages
-├── contracts/          # Smart contracts (deployed)
-├── docs/              # Documentation
-└── package.json
-```
+3. **Fund with USDC on Base** Funds sit safely in escrow.
+
+4. **Merge the winning PR** — BountyPay automatically pays the contributor once the PR closes the issue.
+
+That’s it. No invoices, no manual transfers, no spreadsheets.
+
+## Contributing
+
+We love hearing from builders and maintainers.
+
+- Open ideas or bugs via [Issues](https://github.com/lucci-xyz/bounty/issues)  
+- Join discussions on new workflows or integrations  
+- Submit PRs — we’ll review quickly and shout you out in the release notes
+
+### High-Impact Ideas
+
+- **Anti-griefing guardrails** – Prevent sponsors from copying the flow and cancelling bounties after seeing the code. Ideas welcomed: reputation, deposits, social recovery.  
+- **Multi-asset support** – Accept deposits in any token, on any Base or L2 network, and settle in the contributor’s preferred asset.  
+- **Proof-of-work collectibles** – Mint contribution NFTs as on-chain receipts for completed bounties.  
+- **Security & audits** – Help us continuously audit contracts, bot logic, and wallet flows.  
+- **New bounty mechanics** – Milestone-based unlocks, recurring grants, or team-based rewards. Surprise us.
 
 ---
 
 ## Smart Contracts
 
-**Network**: Base Sepolia (Chain ID: 84532)
+Deployed on **Base Sepolia (Chain ID 84532)**.
 
 | Contract | Address |
 |----------|---------|
@@ -67,29 +45,10 @@ bounty/
 | FeeVault | `0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3` |
 | USDC (Test) | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` |
 
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+Audit reports and deployment history are coming soon.
 
 ---
 
-## License
+Built with ❤️ using Base.
 
-MIT
-
----
-
-## Support
-
-- **Documentation**: See [docs/](./docs/)
-- **Issues**: Open a GitHub issue
-- **Contract**: [View on BaseScan](https://sepolia.basescan.org/address/0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD)
-
----
-
-Built with ❤️ using Base
+_**Use at your own risk.** BountyPay is provided “as is” without warranties. You are responsible for the funds you deposit and the security practices you follow._
