@@ -1,32 +1,55 @@
-## Using sqlite3 CLI (recommended)
+# Working with the Local SQLite DB
 
-### Open the DB:
-``` sqlite3
-sqlite3 /Users/nataliehill/Developer/Github/lucci/bounty/server/db/bounty.db
+Need to inspect what the bot stored? Grab the SQLite CLI and follow this quick tour.
+
+---
+
+## 1. Open the database
+
+```bash
+sqlite3 server/db/bounty.db
 ```
 
-### Inside the prompt, list tables and schema:
-- ``` sqlite3 .tables.schema ```
-- ``` sqlite3 bounties.schema ```
-- ``` sqlite3 wallet_mappings.schema ```
-- ``` sqlite3 pr_claims ```
+> Tip: add the path to an alias if you hop in frequently.
 
-### View rows:
-``` sqlite3
+---
+
+## 2. Inspect schema & tables
+
+Inside the SQLite prompt, run:
+
+```sql
+.tables
+.schema bounties
+.schema wallet_mappings
+.schema pr_claims
+```
+
+---
+
+## 3. Explore recent activity
+
+```sql
 SELECT * FROM bounties ORDER BY created_at DESC LIMIT 20;
-``` 
-``` sqlite3
-SELECT * FROM bounties ORDER BY created_at DESC LIMIT 20;SELECT * FROM wallet_mappings ORDER BY created_at DESC LIMIT 20;
-```
-``` sqlite3
+SELECT * FROM wallet_mappings ORDER BY created_at DESC LIMIT 20;
 SELECT * FROM pr_claims ORDER BY created_at DESC LIMIT 20;
 ```
-### Optional checks:
-``` sqlite3
-PRAGMA journal_mode;         -- should show walSELECT COUNT(*) FROM bounties;.quit
+
+---
+
+## 4. Quick health checks
+
+```sql
+PRAGMA journal_mode; -- expect "wal"
+SELECT COUNT(*) FROM bounties;
 ```
 
-### Dump everything to a file:
-``` sqlite3
-sqlite3 /Users/nataliehill/Developer/Github/lucci/bounty/server/db/bounty.db ".dump" > /tmp/bountypay_dump.sql
+---
+
+## 5. Dump everything to a file
+
+```bash
+sqlite3 server/db/bounty.db ".dump" > /tmp/bountypay_dump.sql
 ```
+
+Keep the dump handy for migrations, support requests, or reproducible bug reports.
