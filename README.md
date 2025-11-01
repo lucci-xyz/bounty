@@ -47,14 +47,27 @@ That's it. No invoices, no manual transfers, no spreadsheets.
 
 ## Documentation
 
+### Strategic
+
+- **[Mezo Integration](docs/mezo-integration.md)** - MUSD integration strategy and roadmap
+- **[Hackathon Requirements](docs/hackathon-requirements.md)** - Mezo hackathon checklist and guidelines
+
+### Technical
+
 - **[Architecture](docs/architecture.md)** - System design and technical overview
+- **[Smart Contracts](docs/smart-contracts.md)** - Contract functions and integration
+- **[API Documentation](docs/api.md)** - Complete API reference
+
+### Development
+
 - **[Local Development](docs/local-development.md)** - Setup guide for local development
 - **[GitHub App Setup](docs/github-app-setup.md)** - Configuring the GitHub App
 - **[Deployment](docs/deployment.md)** - Deploying to production
-- **[API Documentation](docs/api.md)** - Complete API reference
-- **[Smart Contracts](docs/smart-contracts.md)** - Contract functions and integration
 - **[Testing Environments](docs/testing-environments.md)** - Staging and production setup
 - **[Local Database](docs/local-db.md)** - Working with SQLite database
+
+### Support
+
 - **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
 - **[FAQ](docs/faq.md)** - Frequently asked questions
 
