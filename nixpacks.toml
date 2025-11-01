@@ -1,5 +1,4 @@
+providers = ["node"]
+
 [variables]
 NIXPACKS_NODE_VERSION = "20.19.1"
-
-[providers.node]
-version = "20.19.1"
