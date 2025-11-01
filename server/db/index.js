@@ -179,7 +179,6 @@ export const prClaimQueries = {
 export const statsQueries = {
   getAll: (limit = 20) => {
     const db = getDB();
-
     // Single query for token aggregates with TVL
     const tokenStats = db.prepare(`
       SELECT 
