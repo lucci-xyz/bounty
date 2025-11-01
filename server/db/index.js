@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { SCHEMA } from './schema.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { CONFIG } from '../config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, 'bounty.db');
@@ -207,9 +208,20 @@ export const statsQueries = {
     `).all(limit);
 
     // Calculate overall stats from aggregates
+    // Normalize TVL values to human-readable USD format before summing
+    const total_tvl = tokenStats.reduce((sum, t) => {
+      const tokenAddress = t.token.toLowerCase();
+      // Case-insensitive lookup: find token config by comparing lowercase addresses
+      const tokenConfig = CONFIG.tokens[tokenAddress] || 
+        CONFIG.tokens[Object.keys(CONFIG.tokens).find(key => key.toLowerCase() === tokenAddress)];
+      const decimals = tokenConfig?.decimals ?? 18;
+      const normalizedTvl = Number(t.tvl) / Math.pow(10, decimals);
+      return sum + normalizedTvl;
+    }, 0);
+
     const overall = {
       total_bounties: tokenStats.reduce((sum, t) => sum + t.count, 0),
-      total_tvl: tokenStats.reduce((sum, t) => sum + t.tvl, 0),
+      total_tvl,
       resolved_count: tokenStats.reduce((sum, t) => sum + t.resolved_count, 0)
     };
 

@@ -1,6 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import Database from 'better-sqlite3';
+import { CONFIG } from '../server/config.js';
 
 describe('Stats Database Queries', () => {
   let db;
@@ -66,9 +67,20 @@ describe('Stats Database Queries', () => {
           LIMIT ?
         `).all(limit);
 
+        // Normalize TVL values to human-readable USD format before summing
+        const total_tvl = tokenStats.reduce((sum, t) => {
+          const tokenAddress = t.token.toLowerCase();
+          // Case-insensitive lookup: find token config by comparing lowercase addresses
+          const tokenConfig = CONFIG.tokens[tokenAddress] || 
+            CONFIG.tokens[Object.keys(CONFIG.tokens).find(key => key.toLowerCase() === tokenAddress)];
+          const decimals = tokenConfig?.decimals ?? 18;
+          const normalizedTvl = Number(t.tvl) / Math.pow(10, decimals);
+          return sum + normalizedTvl;
+        }, 0);
+
         const overall = {
           total_bounties: tokenStats.reduce((sum, t) => sum + t.count, 0),
-          total_tvl: tokenStats.reduce((sum, t) => sum + t.tvl, 0),
+          total_tvl,
           resolved_count: tokenStats.reduce((sum, t) => sum + t.resolved_count, 0)
         };
 
@@ -148,9 +160,9 @@ describe('Stats Database Queries', () => {
     assert.strictEqual(result.overall.total_bounties, 8, 'Total bounties should be 8');
     assert.strictEqual(result.overall.resolved_count, 5, 'Resolved count should be 5');
     
-    // TVL: 9000000 (USDC) + 10000000000000000000 (MUSD)
-    const expectedTVL = 9000000 + 10000000000000000000;
-    assert.strictEqual(result.overall.total_tvl, expectedTVL, 'Total TVL should be sum of all open');
+    // TVL normalized: 9000000 / 10^6 (USDC) + 10000000000000000000 / 10^18 (MUSD) = 9.0 + 10.0 = 19.0
+    const expectedTVL = 19.0;
+    assert.strictEqual(result.overall.total_tvl, expectedTVL, 'Total TVL should be normalized sum of all open');
   });
 
   it('should return recent activity', () => {
