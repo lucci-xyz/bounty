@@ -30,13 +30,14 @@ For GitHub-related operations:
 
 ## Endpoints
 
-### Authentication
+### Authentication Endpoints
 
 #### GET /api/nonce
 
 Generate a SIWE nonce for wallet authentication.
 
 **Response:**
+
 ```json
 {
   "nonce": "random-string-here"
@@ -44,6 +45,7 @@ Generate a SIWE nonce for wallet authentication.
 ```
 
 **Example:**
+
 ```bash
 curl https://your-domain.com/api/nonce
 ```
@@ -55,6 +57,7 @@ curl https://your-domain.com/api/nonce
 Verify SIWE signature and store wallet in session.
 
 **Request Body:**
+
 ```json
 {
   "message": "string (SIWE message)",
@@ -63,6 +66,7 @@ Verify SIWE signature and store wallet in session.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -71,10 +75,12 @@ Verify SIWE signature and store wallet in session.
 ```
 
 **Errors:**
+
 - `400` - Missing message or signature
 - `401` - Invalid signature
 
 **Example:**
+
 ```bash
 curl -X POST https://your-domain.com/api/verify-wallet \
   -H "Content-Type: application/json" \
@@ -93,6 +99,7 @@ curl -X POST https://your-domain.com/api/verify-wallet \
 Record bounty creation after blockchain transaction. Called by frontend after successful `createBounty()` transaction.
 
 **Request Body:**
+
 ```json
 {
   "repoFullName": "owner/repo",
@@ -107,6 +114,7 @@ Record bounty creation after blockchain transaction. Called by frontend after su
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -115,10 +123,12 @@ Record bounty creation after blockchain transaction. Called by frontend after su
 ```
 
 **Errors:**
+
 - `400` - Missing required fields
 - `500` - Server error
 
 **Example:**
+
 ```bash
 curl -X POST https://your-domain.com/api/bounty/create \
   -H "Content-Type: application/json" \
@@ -141,9 +151,11 @@ curl -X POST https://your-domain.com/api/bounty/create \
 Get bounty details from database.
 
 **Parameters:**
+
 - `bountyId` (path) - Bounty ID (bytes32 hex string)
 
 **Response:**
+
 ```json
 {
   "id": 1,
@@ -164,9 +176,11 @@ Get bounty details from database.
 ```
 
 **Errors:**
+
 - `404` - Bounty not found
 
 **Example:**
+
 ```bash
 curl https://your-domain.com/api/bounty/0x1234...
 ```
@@ -178,10 +192,12 @@ curl https://your-domain.com/api/bounty/0x1234...
 Get all bounties for a specific issue.
 
 **Parameters:**
+
 - `repoId` (path) - Repository ID (integer)
 - `issueNumber` (path) - Issue number (integer)
 
 **Response:**
+
 ```json
 {
   "bounties": [
@@ -202,6 +218,7 @@ Get all bounties for a specific issue.
 ```
 
 **Example:**
+
 ```bash
 curl https://your-domain.com/api/issue/123456789/42
 ```
@@ -213,9 +230,11 @@ curl https://your-domain.com/api/issue/123456789/42
 Get bounty details directly from blockchain contract.
 
 **Parameters:**
+
 - `bountyId` (path) - Bounty ID (bytes32 hex string)
 
 **Response:**
+
 ```json
 {
   "repoIdHash": "0x...",
@@ -229,6 +248,7 @@ Get bounty details directly from blockchain contract.
 ```
 
 **Status Values:**
+
 - `0` - None
 - `1` - Open
 - `2` - Resolved
@@ -236,6 +256,7 @@ Get bounty details directly from blockchain contract.
 - `4` - Canceled
 
 **Example:**
+
 ```bash
 curl https://your-domain.com/api/contract/bounty/0x1234...
 ```
@@ -249,6 +270,7 @@ curl https://your-domain.com/api/contract/bounty/0x1234...
 Link GitHub account to wallet address. Requires both GitHub OAuth and SIWE authentication.
 
 **Request Body:**
+
 ```json
 {
   "githubId": 12345,
@@ -258,6 +280,7 @@ Link GitHub account to wallet address. Requires both GitHub OAuth and SIWE authe
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -266,10 +289,12 @@ Link GitHub account to wallet address. Requires both GitHub OAuth and SIWE authe
 ```
 
 **Errors:**
+
 - `400` - Missing required fields
 - `401` - Wallet not authenticated (SIWE not completed)
 
 **Example:**
+
 ```bash
 curl -X POST https://your-domain.com/api/wallet/link \
   -H "Content-Type: application/json" \
@@ -287,9 +312,11 @@ curl -X POST https://your-domain.com/api/wallet/link \
 Get wallet address for a GitHub user.
 
 **Parameters:**
+
 - `githubId` (path) - GitHub user ID (integer)
 
 **Response:**
+
 ```json
 {
   "id": 1,
@@ -302,9 +329,11 @@ Get wallet address for a GitHub user.
 ```
 
 **Errors:**
+
 - `404` - Wallet not found
 
 **Example:**
+
 ```bash
 curl https://your-domain.com/api/wallet/12345
 ```
@@ -318,13 +347,15 @@ curl https://your-domain.com/api/wallet/12345
 Initiate GitHub OAuth flow.
 
 **Query Parameters:**
+
 - `returnTo` (optional) - URL to redirect to after OAuth
 
 **Response:**
 Redirects to GitHub OAuth page.
 
 **Example:**
-```
+
+```plaintext
 https://your-domain.com/oauth/github?returnTo=/link-wallet
 ```
 
@@ -335,6 +366,7 @@ https://your-domain.com/oauth/github?returnTo=/link-wallet
 GitHub OAuth callback endpoint. Handled automatically by GitHub redirect.
 
 **Query Parameters:**
+
 - `code` - Authorization code from GitHub
 - `state` - CSRF protection token
 
@@ -348,6 +380,7 @@ Redirects to return URL or `/link-wallet`.
 Get current authenticated GitHub user.
 
 **Response:**
+
 ```json
 {
   "githubId": 12345,
@@ -356,9 +389,11 @@ Get current authenticated GitHub user.
 ```
 
 **Errors:**
+
 - `401` - Not authenticated
 
 **Example:**
+
 ```bash
 curl https://your-domain.com/oauth/user
 ```
@@ -370,6 +405,7 @@ curl https://your-domain.com/oauth/user
 Logout and clear session.
 
 **Response:**
+
 ```json
 {
   "success": true
@@ -377,6 +413,7 @@ Logout and clear session.
 ```
 
 **Example:**
+
 ```bash
 curl -X POST https://your-domain.com/oauth/logout
 ```
@@ -390,6 +427,7 @@ curl -X POST https://your-domain.com/oauth/logout
 GitHub webhook endpoint. Receives events from GitHub.
 
 **Headers:**
+
 - `X-Hub-Signature-256` - HMAC signature
 - `X-Github-Event` - Event type
 - `X-Github-Delivery` - Delivery ID
@@ -398,6 +436,7 @@ GitHub webhook endpoint. Receives events from GitHub.
 GitHub webhook payload (varies by event type).
 
 **Response:**
+
 ```json
 {
   "success": true
@@ -405,6 +444,7 @@ GitHub webhook payload (varies by event type).
 ```
 
 **Errors:**
+
 - `401` - Invalid signature
 - `500` - Processing failed
 
@@ -419,6 +459,7 @@ GitHub webhook payload (varies by event type).
 Health check endpoint for monitoring.
 
 **Response:**
+
 ```json
 {
   "status": "ok",
@@ -429,6 +470,7 @@ Health check endpoint for monitoring.
 ```
 
 **Example:**
+
 ```bash
 curl https://your-domain.com/health
 ```
@@ -446,6 +488,7 @@ All errors follow this format:
 ```
 
 **Common Status Codes:**
+
 - `200` - Success
 - `400` - Bad request (missing/invalid parameters)
 - `401` - Unauthorized (authentication required)
@@ -469,6 +512,7 @@ CORS is configured to allow requests from `FRONTEND_URL`. Ensure the frontend UR
 ## Session Management
 
 Sessions are stored in httpOnly cookies with:
+
 - `secure: true` (HTTPS only in production)
 - `sameSite: 'lax'`
 - `maxAge: 24 hours`
@@ -544,4 +588,3 @@ const createRes = await fetch('/api/bounty/create', {
 - [Architecture](architecture.md) - System design overview
 - [Smart Contracts](smart-contracts.md) - Contract integration
 - [Troubleshooting](troubleshooting.md) - Common issues
-

@@ -6,7 +6,7 @@ Technical overview of BountyPay's system design and data flows.
 
 ## System Overview
 
-```
+```plaintext
 ┌─────────────┐
 │   GitHub    │
 │   Issues    │
@@ -41,11 +41,13 @@ Technical overview of BountyPay's system design and data flows.
 ## Components
 
 ### 1. GitHub App
+
 - Receives webhook events
 - Posts comments on issues/PRs
 - Handles OAuth authentication
 
 **Events:**
+
 - `issues.opened` → Post "Attach Bounty" comment
 - `pull_request.opened` → Check eligibility
 - `pull_request.closed` → Trigger payout
@@ -53,6 +55,7 @@ Technical overview of BountyPay's system design and data flows.
 ### 2. Express Server
 
 **Routes:**
+
 - `/webhooks/github` - GitHub webhook endpoint
 - `/api/*` - REST API for frontend
 - `/oauth/*` - GitHub OAuth flow
@@ -60,6 +63,7 @@ Technical overview of BountyPay's system design and data flows.
 - `/link-wallet` - Wallet linking page
 
 **Key Files:**
+
 - `server/index.js` - Main server
 - `server/github/webhooks.js` - Webhook handlers
 - `server/blockchain/contract.js` - Smart contract interface
@@ -136,7 +140,8 @@ receive() external payable
 ```
 
 **State Machine:**
-```
+
+```plaintext
 None → Open → Resolved
           ↓       ↓
       Canceled  Refunded (after deadline)
@@ -145,12 +150,14 @@ None → Open → Resolved
 ### 5. Frontend
 
 **Pages:**
+
 - `public/index.html` - Landing page
 - `public/attach-bounty.html` - Bounty funding
 - `public/link-wallet.html` - Wallet connection
 - `public/refund.html` - Refund expired bounties
 
 **Tech:**
+
 - Vanilla JavaScript + ethers.js
 - Direct wallet connection (MetaMask, etc.)
 - SIWE for authentication
@@ -161,7 +168,7 @@ None → Open → Resolved
 
 ### Flow 1: Sponsor Attaches Bounty
 
-```
+```plaintext
 1. User opens GitHub issue
    ↓
 2. GitHub → Webhook → Server
@@ -189,7 +196,7 @@ None → Open → Resolved
 
 ### Flow 2: Contributor Links Wallet
 
-```
+```plaintext
 1. User visits /link-wallet
    ↓
 2. User authenticates with GitHub OAuth
@@ -203,7 +210,7 @@ None → Open → Resolved
 
 ### Flow 3: PR Merged → Payout
 
-```
+```plaintext
 1. PR merged → GitHub webhook
    ↓
 2. Server checks if PR closes bounty issue
@@ -224,22 +231,26 @@ None → Open → Resolved
 ## Security
 
 ### Authentication
+
 - **GitHub OAuth**: Standard OAuth 2.0 flow
 - **SIWE**: Sign-In With Ethereum for wallet verification
 - **Sessions**: Secure httpOnly cookies
 
 ### Webhook Verification
+
 - HMAC signature verification
 - Raw body preservation for signing
 - Replay attack prevention via timestamps
 
 ### Smart Contract
+
 - OpenZeppelin audited contracts
 - ReentrancyGuard on all functions
 - Only resolver can call resolve()
 - Sponsor-only refunds
 
 ### Private Keys
+
 - Never committed to git
 - Stored in environment variables
 - Resolver wallet has minimal balance
@@ -249,7 +260,8 @@ None → Open → Resolved
 ## API Endpoints
 
 ### Webhooks
-```
+
+```plaintext
 POST /webhooks/github
 - Receives GitHub events
 - Verifies signature
@@ -257,7 +269,8 @@ POST /webhooks/github
 ```
 
 ### Bounties
-```
+
+```plaintext
 GET  /api/nonce
 POST /api/verify-wallet
 POST /api/bounty/create
@@ -267,13 +280,15 @@ GET  /api/contract/bounty/:bountyId
 ```
 
 ### Wallets
-```
+
+```plaintext
 POST /api/wallet/link
 GET  /api/wallet/:githubId
 ```
 
 ### OAuth
-```
+
+```plaintext
 GET  /oauth/github
 GET  /oauth/callback
 GET  /oauth/user
@@ -281,7 +296,8 @@ POST /oauth/logout
 ```
 
 ### Other
-```
+
+```plaintext
 GET  /health - Health check endpoint
 ```
 
@@ -292,6 +308,7 @@ GET  /health - Health check endpoint
 ## Database Schema
 
 ### Indexes
+
 ```sql
 CREATE INDEX idx_bounties_repo ON bounties(repo_id, issue_number);
 CREATE INDEX idx_bounties_status ON bounties(status);
@@ -300,6 +317,7 @@ CREATE INDEX idx_wallet_github ON wallet_mappings(github_id);
 ```
 
 ### Relationships
+
 - `bounties.bounty_id` → Unique contract identifier
 - `pr_claims.bounty_id` → FOREIGN KEY to `bounties.bounty_id`
 - `wallet_mappings.github_id` → Used to find recipient address
@@ -311,6 +329,7 @@ CREATE INDEX idx_wallet_github ON wallet_mappings(github_id);
 ### Contract Functions Used
 
 **From Frontend (User-initiated):**
+
 - `createBounty()` - Sponsor creates and funds bounty
 - `fund()` - Sponsor tops up existing bounty
 - `cancel()` - Sponsor cancels bounty before deadline
@@ -318,15 +337,18 @@ CREATE INDEX idx_wallet_github ON wallet_mappings(github_id);
 - `getBounty()` - Read bounty state from contract
 
 **From Backend (Automated):**
+
 - `resolve()` - Resolver pays out bounty to recipient
 - `computeBountyId()` - Generate deterministic bounty ID
 - `getBounty()` - Query bounty state for validation
 
 **FeeVault (Owner only):**
+
 - `withdraw()` - Withdraw collected protocol fees (ERC-20)
 - `sweepNative()` - Sweep collected ETH fees
 
 ### Transaction Flow
+
 1. Frontend calls contract with ethers.js
 2. User signs transaction in MetaMask
 3. Transaction sent to Base Sepolia
@@ -339,6 +361,7 @@ CREATE INDEX idx_wallet_github ON wallet_mappings(github_id);
 ## Environment Variables
 
 ### Required
+
 ```bash
 GITHUB_APP_ID
 GITHUB_PRIVATE_KEY_PATH
@@ -351,6 +374,7 @@ FRONTEND_URL
 ```
 
 ### Pre-configured
+
 ```bash
 CHAIN_ID=84532
 RPC_URL=https://sepolia.base.org
@@ -363,16 +387,19 @@ USDC_CONTRACT=0x036CbD53842c5426634e7929541eC2318f3dCF7e
 ## Error Handling
 
 ### Webhook Failures
+
 - Invalid signature → 401 response
 - Unhandled event → Log and 200 response
 - Processing error → Log, 500 response, don't retry
 
 ### Blockchain Failures
+
 - Transaction reverted → Log error, notify user
 - Out of gas → Check resolver balance
 - Network timeout → Retry with exponential backoff
 
 ### Database Failures
+
 - Constraint violation → Check for duplicates
 - Connection lost → Auto-reconnect (WAL mode)
 
@@ -381,16 +408,19 @@ USDC_CONTRACT=0x036CbD53842c5426634e7929541eC2318f3dCF7e
 ## Performance Considerations
 
 ### Database
+
 - WAL mode for better concurrency
 - Indexed queries for fast lookups
 - Prepared statements for security
 
 ### Blockchain
+
 - Batch read operations where possible
 - Cache contract ABI
 - Use events for historical data
 
 ### Scalability
+
 - Current: Handles 100+ repos easily
 - For scale: Switch to PostgreSQL, add Redis, queue blockchain calls
 
@@ -411,24 +441,28 @@ USDC_CONTRACT=0x036CbD53842c5426634e7929541eC2318f3dCF7e
 ## Tech Decisions
 
 ### Why SQLite?
+
 - Zero configuration
 - Fast for read-heavy workload
 - Sufficient for most use cases
 - Easy to backup and migrate
 
 ### Why ethers.js v6?
+
 - Industry standard
 - Great TypeScript support
 - Comprehensive documentation
 - Active maintenance
 
 ### Why SIWE?
+
 - Decentralized authentication
 - No backend signature verification needed
 - Standard protocol
 - Works with any wallet
 
 ### Why Base Sepolia?
+
 - Low gas fees
 - Fast block times (2 seconds)
 - Good developer tools
@@ -441,16 +475,19 @@ USDC_CONTRACT=0x036CbD53842c5426634e7929541eC2318f3dCF7e
 ### BountyEscrow Architecture
 
 **State Management:**
+
 - Each bounty has a unique `bountyId` computed as `keccak256(sponsor, repoIdHash, issueNumber)`
 - Bounty status transitions: `None → Open → (Resolved | Refunded | Canceled)`
 - Terminal states are final (no state changes after)
 
 **Access Control:**
+
 - `createBounty()`: Anyone can create (becomes sponsor)
 - `fund()` / `cancel()` / `refundExpired()`: Only sponsor
 - `resolve()`: Only designated resolver (set at creation)
 
 **Fee Mechanism:**
+
 - Protocol fee calculated on resolution: `fee = amount * feeBps / 10000`
 - Net payout to recipient: `amount - fee`
 - Fee sent to `FeeVault` contract
@@ -459,11 +496,13 @@ USDC_CONTRACT=0x036CbD53842c5426634e7929541eC2318f3dCF7e
 ### FeeVault Architecture
 
 **Purpose:**
+
 - Receives protocol fees from BountyEscrow resolutions
 - Owner-controlled withdrawals for fee collection
 - Supports both ERC-20 tokens and native ETH
 
 **Security:**
+
 - Only owner can withdraw
 - Non-reentrant guards
 - Generic vault (accepts any ERC-20)
@@ -479,4 +518,3 @@ USDC_CONTRACT=0x036CbD53842c5426634e7929541eC2318f3dCF7e
 - [ ] Analytics dashboard
 - [ ] Mainnet deployment
 - [ ] Multi-network support (optimism, arbitrum)
-

@@ -29,6 +29,7 @@ That's it. No invoices, no manual transfers, no spreadsheets.
 ## Example Workflow
 
 ### As a Sponsor
+
 1. Open an issue describing the work needed
 2. Click "Create a bounty" in the bot comment
 3. Connect your wallet and approve USDC spending
@@ -37,6 +38,7 @@ That's it. No invoices, no manual transfers, no spreadsheets.
 6. Wait for contributors to submit PRs
 
 ### As a Contributor
+
 1. Find an issue with a bounty attached
 2. Link your GitHub account to your wallet at `/link-wallet`
 3. Submit a PR that addresses the issue
@@ -91,16 +93,19 @@ Audit reports and deployment history are coming soon.
 ## Quick Troubleshooting
 
 ### Wallet Connection Issues
+
 - **Wallet not connecting**: Ensure you're on Base Sepolia network (Chain ID 84532)
 - **Transaction fails**: Check you have enough Base ETH for gas fees
 - **USDC approval fails**: Verify you have sufficient USDC balance
 
 ### Payment Not Received
+
 - **PR merged but no payment**: Verify you've linked your GitHub account to your wallet
 - **Check wallet link**: Visit `/link-wallet` and ensure your GitHub account is connected
 - **Verify PR closes issue**: The PR must close the issue (not just reference it)
 
 ### GitHub App Issues
+
 - **Bot not responding**: Check the GitHub App is installed and has correct permissions
 - **No "Create bounty" button**: Ensure the bot has write access to issues
 - **Webhook errors**: Verify webhook URL is correctly configured in GitHub App settings

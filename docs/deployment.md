@@ -7,6 +7,7 @@ Complete guide for deploying BountyPay to production environments.
 ## Overview
 
 BountyPay can be deployed to various platforms. This guide covers:
+
 - Railway (currently used)
 - Render
 - General deployment considerations
@@ -39,6 +40,7 @@ Railway is the current deployment platform for BountyPay.
 In Railway dashboard, go to **Variables** and add:
 
 **Required:**
+
 ```bash
 NODE_ENV=production
 PORT=3000
@@ -59,6 +61,7 @@ RESOLVER_PRIVATE_KEY=your_resolver_private_key
 ```
 
 **Note:** For `GITHUB_PRIVATE_KEY`, you can either:
+
 - Paste the full PEM file content (with `\n` for newlines)
 - Or use a secret reference if stored in Railway secrets
 
@@ -75,6 +78,7 @@ RESOLVER_PRIVATE_KEY=your_resolver_private_key
 Railway automatically deploys when you push to the connected branch (usually `main`).
 
 The `railway.json` configuration handles:
+
 - Build command: Automatically detected (Nixpacks)
 - Start command: `npm run migrate && npm start`
 - Restart policy: On failure with max 10 retries
@@ -109,6 +113,7 @@ Render provides similar functionality to Railway with a slightly different inter
 The `render.yaml` file provides default configuration. In Render dashboard:
 
 **Build & Deploy:**
+
 - **Environment**: Node
 - **Build Command**: `npm install` (from render.yaml)
 - **Start Command**: `npm run migrate && npm start` (from render.yaml)
@@ -119,6 +124,7 @@ The `render.yaml` file provides default configuration. In Render dashboard:
 Add all required environment variables in Render dashboard under **Environment**.
 
 Render will auto-generate `SESSION_SECRET` if configured in `render.yaml`, but you still need to set:
+
 - `GITHUB_APP_ID`
 - `GITHUB_PRIVATE_KEY`
 - `GITHUB_WEBHOOK_SECRET`
@@ -209,6 +215,7 @@ docker run -d \
 ```
 
 **Docker Platforms:**
+
 - AWS ECS/Fargate
 - Google Cloud Run
 - Azure Container Instances
@@ -224,12 +231,14 @@ docker run -d \
 All these must be set in your deployment environment:
 
 **Server:**
+
 - [ ] `NODE_ENV=production`
 - [ ] `PORT=3000` (or platform default)
 - [ ] `SESSION_SECRET` (strong random string)
 - [ ] `FRONTEND_URL` (full URL with https)
 
 **GitHub:**
+
 - [ ] `GITHUB_APP_ID`
 - [ ] `GITHUB_PRIVATE_KEY` or `GITHUB_PRIVATE_KEY_PATH`
 - [ ] `GITHUB_WEBHOOK_SECRET`
@@ -237,6 +246,7 @@ All these must be set in your deployment environment:
 - [ ] `GITHUB_CLIENT_SECRET`
 
 **Blockchain:**
+
 - [ ] `CHAIN_ID=84532`
 - [ ] `RPC_URL=https://sepolia.base.org`
 - [ ] `ESCROW_CONTRACT=0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD`
@@ -244,6 +254,7 @@ All these must be set in your deployment environment:
 - [ ] `RESOLVER_PRIVATE_KEY`
 
 **Database:**
+
 - [ ] `DATABASE_PATH` (if using file-based SQLite)
 - Or configure managed database connection
 
@@ -254,16 +265,19 @@ All these must be set in your deployment environment:
 ### SQLite (Current)
 
 **Pros:**
+
 - Simple, no setup required
 - Works for development and small-scale production
 - Easy backups (just copy the file)
 
 **Cons:**
+
 - Not ideal for high concurrency
 - Single file = single point of failure
 - Limited scalability
 
 **For Production:**
+
 - Use persistent volume/storage
 - Set up regular backups
 - Monitor file size and performance
@@ -278,10 +292,12 @@ For production at scale, consider migrating to PostgreSQL:
 4. Update environment variables
 
 **Railway PostgreSQL:**
+
 - Railway offers managed PostgreSQL
 - Connect via connection string in environment
 
 **Render PostgreSQL:**
+
 - Render offers managed PostgreSQL
 - Auto-generates connection string
 
@@ -289,7 +305,7 @@ For production at scale, consider migrating to PostgreSQL:
 
 ## Security Best Practices
 
-### Environment Variables
+### Environment Variable Security
 
 - **Never commit** `.env` files to git
 - Use platform secret management
@@ -328,6 +344,7 @@ curl https://your-app.com/health
 ```
 
 Response:
+
 ```json
 {
   "status": "ok",
@@ -400,6 +417,7 @@ Set up a separate staging environment:
 4. Test all flows before production
 
 **Environment Variables:**
+
 ```bash
 ENV_TARGET=stage
 STAGE_CALLBACK_URL=https://stage-app.com/oauth/callback
@@ -455,6 +473,7 @@ See [Troubleshooting Guide](troubleshooting.md) for more issues.
 ### Database Backups
 
 **SQLite:**
+
 ```bash
 # Manual backup
 cp server/db/bounty.db backup/bounty-$(date +%Y%m%d).db
@@ -463,6 +482,7 @@ cp server/db/bounty.db backup/bounty-$(date +%Y%m%d).db
 ```
 
 **PostgreSQL:**
+
 - Use platform backup features (Railway, Render)
 - Or set up automated pg_dump
 
@@ -498,4 +518,3 @@ cp server/db/bounty.db backup/bounty-$(date +%Y%m%d).db
 - [Testing Environments](testing-environments.md) - Set up staging
 - [Architecture](architecture.md) - Understand system design
 - [Troubleshooting](troubleshooting.md) - Common issues and solutions
-

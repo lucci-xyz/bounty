@@ -21,6 +21,7 @@ BountyPay is an automated bounty payment system for GitHub issues. Sponsors can 
 ### Is it free to use?
 
 The platform itself is free. However:
+
 - Sponsors pay gas fees for creating bounties
 - Contributors receive the full bounty amount (minus protocol fee)
 - Protocol fees go to maintain the platform
@@ -87,6 +88,7 @@ Your PR must actually close the issue (not just reference it). If it doesn't clo
 ### When do I get paid?
 
 Payment happens automatically when:
+
 1. Your PR is merged
 2. The PR closes the bounty issue
 3. Your wallet is linked to your GitHub account
@@ -108,6 +110,7 @@ Base Sepolia is the testnet for Base, a Layer 2 blockchain built on Ethereum. It
 ### How do I get test USDC?
 
 Test USDC is available on Base Sepolia. You may need to:
+
 - Use a faucet to get test tokens
 - Bridge from Ethereum Sepolia
 - Request from the team
@@ -115,6 +118,7 @@ Test USDC is available on Base Sepolia. You may need to:
 ### What wallets are supported?
 
 Any wallet that supports Ethereum and can connect to Base Sepolia:
+
 - MetaMask (recommended)
 - WalletConnect
 - Coinbase Wallet
@@ -146,6 +150,7 @@ When you link your wallet, the mapping between your GitHub account and wallet ad
 ### What if the resolver wallet is compromised?
 
 The resolver is controlled by the BountyPay backend. If compromised:
+
 - Only open bounties could be resolved (not closed ones)
 - Sponsors could still cancel/refund
 - We monitor resolver wallet activity
@@ -153,6 +158,7 @@ The resolver is controlled by the BountyPay backend. If compromised:
 ### Can bounties be stolen?
 
 No. Once a bounty is created, only:
+
 - The sponsor can cancel/refund
 - The designated resolver can pay out (to the PR author)
 
@@ -169,6 +175,7 @@ We use OpenZeppelin's battle-tested contracts. Before mainnet, we'll conduct ful
 ### My transaction failed
 
 Common causes:
+
 - Insufficient gas (need Base Sepolia ETH)
 - Insufficient USDC balance
 - USDC not approved
@@ -179,6 +186,7 @@ See [Troubleshooting Guide](troubleshooting.md) for more help.
 ### Payment didn't arrive
 
 Check:
+
 1. Is your wallet linked? Visit `/link-wallet`
 2. Did your PR actually close the issue?
 3. Was your PR merged?
@@ -268,6 +276,7 @@ See [Architecture](architecture.md#future-enhancements) for the full roadmap.
 ### How do I report a bug?
 
 Open an issue on GitHub with:
+
 - Description of the bug
 - Steps to reproduce
 - Expected vs actual behavior
@@ -284,6 +293,7 @@ Open a discussion or issue on GitHub. We love hearing new ideas!
 ### Is this legal?
 
 BountyPay is a tool for facilitating payments. Users are responsible for:
+
 - Compliance with local laws
 - Tax obligations
 - Validating contributors' work
@@ -300,4 +310,3 @@ Use at your own risk. See the disclaimer in the README.
 - [Local Development](local-development.md) - Set up your environment
 - [Troubleshooting](troubleshooting.md) - Solve common issues
 - [Architecture](architecture.md) - Understand the system
-

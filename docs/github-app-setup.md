@@ -7,6 +7,7 @@ Complete guide for setting up the BountyPay GitHub App for development or produc
 ## Overview
 
 The BountyPay GitHub App integrates with GitHub to:
+
 - Receive webhook events for issues and pull requests
 - Post comments and labels on issues/PRs
 - Handle OAuth authentication for wallet linking
@@ -40,23 +41,27 @@ This method is fastest for development and testing.
 After creation, update the following:
 
 **General Settings:**
+
 - **Webhook URL**: Set to `https://your-domain.com/webhooks/github`
 - **Webhook secret**: Generate a secure random string and save it
 - **Callback URL**: Set to `https://your-domain.com/oauth/callback`
 
 **Permissions:**
 The manifest already sets these, but verify:
+
 - **Issues**: Read and write (to post comments and labels)
 - **Pull requests**: Read and write (to check PR status)
 - **Metadata**: Read-only (required by GitHub)
 
 **Subscribe to events:**
+
 - ✅ **Issues** (required for bounty attachment)
 - ✅ **Pull request** (required for automatic payouts)
 
 ### Step 3: Save Configuration Values
 
 From the app settings page, save:
+
 - **App ID**: Found in the "About" section
 - **Client ID**: Found under "OAuth credentials"
 - **Generate a private key**: Click "Generate a private key" and download the `.pem` file
@@ -80,20 +85,24 @@ For production deployments, you may want more control over the setup process.
 
 **Homepage URL**: Your application URL
 
-**User authorization callback URL**: 
-```
+**User authorization callback URL**:
+
+```plaintext
 https://your-domain.com/oauth/callback
 ```
 
 **Webhook:**
+
 - ✅ **Active**: Check this
 - **Webhook URL**: `https://your-domain.com/webhooks/github`
 - **Webhook secret**: Generate using:
+
   ```bash
   openssl rand -hex 32
   ```
 
 **Where can this GitHub App be installed?**
+
 - Choose based on your needs:
   - **Only on this account**: Single organization/user
   - **Any account**: Public app (requires approval)
@@ -109,10 +118,12 @@ https://your-domain.com/oauth/callback
 | Metadata | Read-only | Required by GitHub |
 
 **Subscribe to events:**
+
 - ✅ **Issues**
 - ✅ **Pull request**
 
 **Optional but recommended:**
+
 - ✅ **Installation** (for tracking app installations)
 
 ### Step 4: Save App Credentials
@@ -147,11 +158,13 @@ GITHUB_CLIENT_SECRET=your_client_secret
 You can provide the private key in two ways:
 
 **Option 1: File path** (Recommended)
+
 ```bash
 GITHUB_PRIVATE_KEY_PATH=/path/to/private-key.pem
 ```
 
 **Option 2: Inline** (for containerized deployments)
+
 ```bash
 GITHUB_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----"
 ```
@@ -182,11 +195,12 @@ After installation, note the **Installation ID** (you may need this for multi-in
 
 ### Webhook URL Format
 
-```
+```plaintext
 https://your-domain.com/webhooks/github
 ```
 
 **Important:**
+
 - Must use HTTPS
 - Must be publicly accessible
 - GitHub will send events to this endpoint
@@ -194,6 +208,7 @@ https://your-domain.com/webhooks/github
 ### Webhook Secret
 
 Generate a secure random string:
+
 ```bash
 openssl rand -hex 32
 ```
@@ -213,7 +228,8 @@ Save this as `GITHUB_WEBHOOK_SECRET` in your environment.
 ### Callback URL
 
 Set in your GitHub App settings:
-```
+
+```plaintext
 https://your-domain.com/oauth/callback
 ```
 
@@ -241,24 +257,30 @@ For local development, you'll need to expose your local server to GitHub:
 
 ### Using ngrok
 
-1. Install ngrok: https://ngrok.com/download
+1. Install ngrok: <https://ngrok.com/download>
 2. Start your local server: `npm run dev`
 3. In another terminal, expose it:
+
    ```bash
    ngrok http 3000
    ```
+
 4. Use the ngrok HTTPS URL in your GitHub App webhook settings:
-   ```
+
+   ```plaintext
    https://your-subdomain.ngrok.io/webhooks/github
    ```
+
 5. Update OAuth callback URL:
-   ```
+
+   ```plaintext
    https://your-subdomain.ngrok.io/oauth/callback
    ```
 
 ### Using ngrok.yml (for persistent URLs)
 
 Create `ngrok.yml` in project root:
+
 ```yaml
 version: "2"
 authtoken: your_ngrok_token
@@ -269,6 +291,7 @@ tunnels:
 ```
 
 Then run:
+
 ```bash
 ngrok start --all
 ```
@@ -283,9 +306,11 @@ ngrok start --all
 
 1. Create a test issue in a repository where the app is installed
 2. Check server logs for webhook delivery:
-   ```
+
+   ```plaintext
    📬 Webhook received: issues (delivery-id)
    ```
+
 3. Verify a comment is posted on the issue
 
 ### Test OAuth Flow
@@ -299,17 +324,20 @@ ngrok start --all
 ### Common Issues
 
 **Webhook not received:**
+
 - Verify webhook URL is publicly accessible
 - Check SSL certificate is valid
 - Verify webhook secret matches in app settings
 - Check server logs for signature verification errors
 
 **OAuth callback fails:**
+
 - Verify callback URL exactly matches GitHub App settings
 - Check OAuth client ID and secret are correct
 - Ensure session cookies are working (check SameSite settings)
 
 **Permissions denied:**
+
 - Verify app has "Issues: write" permission
 - Check app is installed on the repository
 - Verify installation has access to the repository
@@ -343,4 +371,3 @@ See [Troubleshooting Guide](troubleshooting.md) for detailed solutions to common
 - [Local Development Setup](local-development.md) - Set up your local environment
 - [Deployment Guide](deployment.md) - Deploy to production
 - [Architecture Overview](architecture.md) - Understand the system design
-

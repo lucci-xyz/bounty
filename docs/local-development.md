@@ -68,22 +68,26 @@ DATABASE_PATH=./server/db/bounty.db
 ### Generating Required Values
 
 **SESSION_SECRET:**
+
 ```bash
 openssl rand -hex 32
 ```
 
 **GITHUB_WEBHOOK_SECRET:**
+
 ```bash
 openssl rand -hex 32
 ```
 
 **GitHub App Setup:**
 See [GitHub App Setup Guide](github-app-setup.md) for detailed instructions on obtaining:
+
 - `GITHUB_APP_ID`
 - `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`
 - Private key file path
 
 **RESOLVER_PRIVATE_KEY:**
+
 - Create a new wallet for the resolver (use a test account)
 - Export the private key (without `0x` prefix or with it, both work)
 - This wallet needs Base Sepolia ETH for gas fees
@@ -103,6 +107,7 @@ This creates the SQLite database at `server/db/bounty.db` (or your configured `D
 ### Database Schema
 
 The database includes three main tables:
+
 - `bounties` - Stores all bounty information
 - `wallet_mappings` - Links GitHub users to wallet addresses
 - `pr_claims` - Tracks PR claims on bounties
@@ -122,6 +127,7 @@ Follow the [GitHub App Setup Guide](github-app-setup.md) to create and configure
 Since GitHub requires a publicly accessible webhook URL, use ngrok for local development:
 
 **Install ngrok:**
+
 ```bash
 # macOS
 brew install ngrok
@@ -130,6 +136,7 @@ brew install ngrok
 ```
 
 **Start ngrok:**
+
 ```bash
 # In a separate terminal
 ngrok http 3000
@@ -138,16 +145,19 @@ ngrok http 3000
 You'll get a URL like `https://abc123.ngrok.io`. Use this for:
 
 1. **GitHub App Webhook URL:**
-   ```
+
+   ```plaintext
    https://abc123.ngrok.io/webhooks/github
    ```
 
 2. **OAuth Callback URL:**
-   ```
+
+   ```plaintext
    https://abc123.ngrok.io/oauth/callback
    ```
 
 **Note:** Free ngrok URLs change on restart. For stable URLs during development, consider:
+
 - Using ngrok.yml with an authtoken (see `ngrok.yml` in repo root)
 - Getting a paid ngrok plan
 - Using a service like Cloudflare Tunnel or localtunnel
@@ -169,12 +179,14 @@ npm run dev
 ```
 
 The server will:
+
 - Initialize the database (if needed)
 - Start on `http://localhost:3000`
 - Enable file watching for automatic restarts
 
 You should see:
-```
+
+```plaintext
 🚀 Starting BountyPay GitHub App...
 ✅ Database ready
 ✅ GitHub App initialized
@@ -193,14 +205,17 @@ You should see:
 2. Install your GitHub App on the repository
 3. Create a new issue in the repository
 4. Check server logs - you should see:
-   ```
+
+   ```plaintext
    📬 Webhook received: issues (delivery-id)
    ```
+
 5. Verify a comment was posted on the issue
 
 ### 2. Test Frontend Pages
 
 Visit these URLs:
+
 - `http://localhost:3000` - Landing page
 - `http://localhost:3000/attach-bounty?repo=owner/repo&issue=1` - Bounty attachment page
 - `http://localhost:3000/link-wallet` - Wallet linking page
@@ -229,7 +244,7 @@ Visit these URLs:
 
 ### File Structure
 
-```
+```plaintext
 server/
 ├── index.js           # Main server entry
 ├── config.js          # Configuration
@@ -256,17 +271,20 @@ The `npm run dev` command uses Node's `--watch` flag for automatic restarts on f
 ### Debugging
 
 **Enable debug logging:**
+
 ```bash
 DEBUG=* npm run dev
 ```
 
 **Check database:**
+
 ```bash
 sqlite3 server/db/bounty.db
 # Then run SQL queries
 ```
 
 **View webhook deliveries:**
+
 - Check GitHub App settings → Advanced → Webhook deliveries
 - Check server logs for webhook processing
 
@@ -277,7 +295,7 @@ sqlite3 server/db/bounty.db
 ### Test with Base Sepolia
 
 1. Get Base Sepolia ETH:
-   - Use a faucet: https://www.coinbase.com/faucets/base-ethereum-goerli-faucet
+   - Use a faucet: <https://www.coinbase.com/faucets/base-ethereum-goerli-faucet>
    - Bridge from Ethereum Sepolia
 
 2. Get Test USDC:
@@ -378,6 +396,7 @@ npm run seed
 ### VS Code
 
 Recommended extensions:
+
 - ESLint
 - Prettier
 - SQLite Viewer
@@ -385,6 +404,7 @@ Recommended extensions:
 ### Debug Configuration
 
 Create `.vscode/launch.json`:
+
 ```json
 {
   "version": "0.2.0",
@@ -408,4 +428,3 @@ Create `.vscode/launch.json`:
 - [Base Sepolia Network Info](https://docs.base.org/base-camp/docs/networks/base-sepolia)
 - [ethers.js Documentation](https://docs.ethers.org/)
 - [GitHub Apps Documentation](https://docs.github.com/en/apps)
-

@@ -23,7 +23,7 @@ Main escrow contract for holding and managing bounty funds.
 
 ### State Machine
 
-```
+```plaintext
 None → Open → Resolved
           ↓
       Canceled (before deadline)
@@ -52,6 +52,7 @@ function createBounty(
 ```
 
 **Parameters:**
+
 - `resolver` - Address authorized to resolve this bounty
 - `repoIdHash` - Hash of repository identifier
 - `issueNumber` - GitHub issue number
@@ -59,9 +60,11 @@ function createBounty(
 - `amount` - USDC amount to escrow (in token units, e.g., 1000000 = 1 USDC if 6 decimals)
 
 **Returns:**
+
 - `bountyId` - Deterministic bounty ID: `keccak256(msg.sender, repoIdHash, issueNumber)`
 
 **Requirements:**
+
 - `resolver` must not be zero address
 - `repoIdHash` must not be zero
 - `issueNumber` must not be zero
@@ -71,9 +74,11 @@ function createBounty(
 - Caller must have approved USDC spending for this contract
 
 **Events:**
+
 - `BountyCreated(bytes32 indexed bountyId, address indexed sponsor, bytes32 indexed repoIdHash, uint64 issueNumber, uint64 deadline, address resolver, uint256 amount)`
 
 **Example:**
+
 ```javascript
 const tx = await escrowContract.createBounty(
   resolverAddress,
@@ -95,19 +100,23 @@ function fund(bytes32 bountyId, uint256 amount) external nonReentrant whenNotPau
 ```
 
 **Parameters:**
+
 - `bountyId` - ID of the bounty to fund
 - `amount` - Additional USDC amount to add
 
 **Requirements:**
+
 - Bounty must exist and be in `Open` status
 - Caller must be the bounty sponsor
 - `amount` must be greater than zero
 - New total amount must not overflow `uint96`
 
 **Events:**
+
 - `Funded(bytes32 indexed bountyId, uint256 newAmount)`
 
 **Example:**
+
 ```javascript
 const tx = await escrowContract.fund(
   bountyId,
@@ -126,17 +135,21 @@ function cancel(bytes32 bountyId) external nonReentrant whenNotPaused
 ```
 
 **Parameters:**
+
 - `bountyId` - ID of the bounty to cancel
 
 **Requirements:**
+
 - Bounty must exist and be in `Open` status
 - Caller must be the bounty sponsor
 - Must be called before deadline
 
 **Events:**
+
 - `Canceled(bytes32 indexed bountyId, address indexed sponsor, uint256 amount)`
 
 **Example:**
+
 ```javascript
 const tx = await escrowContract.cancel(bountyId);
 ```
@@ -152,24 +165,29 @@ function resolve(bytes32 bountyId, address recipient) external nonReentrant when
 ```
 
 **Parameters:**
+
 - `bountyId` - ID of the bounty to resolve
 - `recipient` - Address to receive the net payout
 
 **Requirements:**
+
 - Bounty must exist and be in `Open` status
 - Caller must be the designated resolver
 - `recipient` must not be zero address
 
 **Effects:**
+
 - Calculates protocol fee: `fee = amount * feeBps / 10000`
 - Pays net amount to recipient: `amount - fee`
 - Pays fee to FeeVault
 - Sets bounty status to `Resolved`
 
 **Events:**
+
 - `Resolved(bytes32 indexed bountyId, address indexed recipient, uint256 net, uint256 fee)`
 
 **Example:**
+
 ```javascript
 const tx = await escrowContract.resolve(bountyId, recipientAddress);
 ```
@@ -187,17 +205,21 @@ function refundExpired(bytes32 bountyId) external nonReentrant whenNotPaused
 ```
 
 **Parameters:**
+
 - `bountyId` - ID of the bounty to refund
 
 **Requirements:**
+
 - Bounty must exist and be in `Open` status
 - Caller must be the bounty sponsor
 - Current timestamp must be >= deadline
 
 **Events:**
+
 - `Refunded(bytes32 indexed bountyId, address indexed sponsor, uint256 amount)`
 
 **Example:**
+
 ```javascript
 const tx = await escrowContract.refundExpired(bountyId);
 ```
@@ -215,6 +237,7 @@ function getBounty(bytes32 bountyId) external view returns (Bounty memory)
 ```
 
 **Returns:**
+
 ```solidity
 struct Bounty {
   bytes32 repoIdHash;
@@ -228,6 +251,7 @@ struct Bounty {
 ```
 
 **Status Enum:**
+
 - `0` - None
 - `1` - Open
 - `2` - Resolved
@@ -235,6 +259,7 @@ struct Bounty {
 - `4` - Canceled
 
 **Example:**
+
 ```javascript
 const bounty = await escrowContract.getBounty(bountyId);
 console.log(bounty.amount); // BigNumber
@@ -256,9 +281,11 @@ function computeBountyId(
 ```
 
 **Returns:**
+
 - `keccak256(abi.encodePacked(sponsor, repoIdHash, issueNumber))`
 
 **Example:**
+
 ```javascript
 const bountyId = await escrowContract.computeBountyId(
   sponsorAddress,
@@ -311,14 +338,17 @@ function setFeeParams(uint16 _feeBps, address _feeVault) external onlyOwner
 ```
 
 **Parameters:**
+
 - `_feeBps` - New fee in basis points (max 1000 = 10%)
 - `_feeVault` - New fee vault address
 
 **Requirements:**
+
 - `_feeBps` must be <= `MAX_FEE_BPS` (1000)
 - `_feeVault` must not be zero address
 
 **Events:**
+
 - `FeeParamsUpdated(uint16 feeBps, address feeVault)`
 
 ---
@@ -327,7 +357,7 @@ function setFeeParams(uint16 _feeBps, address _feeVault) external onlyOwner
 
 Protocol fee collection vault. Receives fees from BountyEscrow resolutions.
 
-### Functions
+### FeeVault Functions
 
 #### withdraw
 
@@ -338,18 +368,22 @@ function withdraw(address token, address to, uint256 amount) external onlyOwner 
 ```
 
 **Parameters:**
+
 - `token` - ERC-20 token address
 - `to` - Recipient address
 - `amount` - Amount to withdraw
 
 **Requirements:**
+
 - `token` and `to` must not be zero addresses
 - `amount` must be greater than zero
 
 **Events:**
+
 - `Withdraw(address indexed token, address indexed to, uint256 amount)`
 
 **Example:**
+
 ```javascript
 const tx = await feeVault.withdraw(
   usdcAddress,
@@ -369,16 +403,20 @@ function sweepNative(address payable to) external onlyOwner nonReentrant
 ```
 
 **Parameters:**
+
 - `to` - Recipient address
 
 **Requirements:**
+
 - `to` must not be zero address
 - Contract must have non-zero ETH balance
 
 **Events:**
+
 - `SweepNative(address indexed to, uint256 amount)`
 
 **Example:**
+
 ```javascript
 const tx = await feeVault.sweepNative(ownerAddress);
 ```
@@ -394,6 +432,7 @@ receive() external payable
 ```
 
 **Events:**
+
 - `DepositNative(address indexed from, uint256 amount)`
 
 ---
@@ -625,4 +664,3 @@ Contracts are deployed on Base Sepolia for testing. Use test USDC from the fauce
 - [API Documentation](api.md) - Backend API integration
 - [Architecture](architecture.md) - System design overview
 - [Local Development](local-development.md) - Set up local environment
-

@@ -15,3 +15,7 @@ build/
 backups/
 private-key.pem
 private-key-stage.pem
+
+#Ignore cursor AI rules
+.cursor/rules/codacy.mdc
+.codacy/
