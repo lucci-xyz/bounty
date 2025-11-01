@@ -24,28 +24,6 @@ const TOKEN_CONFIG = {
   })
 };
 
-// Token config matching server/config.js (without importing CONFIG to avoid env validation)
-const TOKEN_CONFIG = {
-  '0x036cbd53842c5426634e7929541ec2318f3dcf7e': {
-    symbol: 'USDC',
-    name: 'USD Coin',
-    decimals: 6
-  },
-  ...(process.env.MUSD_CONTRACT ? {
-    [process.env.MUSD_CONTRACT]: {
-      symbol: 'MUSD',
-      name: 'Mezo USD',
-      decimals: 18
-    }
-  } : {
-    '0xmusdaddress000000000000000000000000000': {
-      symbol: 'MUSD',
-      name: 'Mezo USD',
-      decimals: 18
-    }
-  })
-};
-
 describe('Stats Database Queries', () => {
   let db;
   let statsQueries;
