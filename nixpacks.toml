@@ -1,0 +1,8 @@
+[variables]
+NIXPACKS_NODE_VERSION = "20.19.1"
+
+[phases.start]
+cmds = [
+  "npm run migrate",
+  "npm start"
+]
