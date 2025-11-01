@@ -1,17 +1,37 @@
+# Dependencies
 node_modules/
+package-lock.json
+
+# Environment
 .env
+.env.local
+.env.production
+
+# Database
 *.db
-*.db-journal
 *.db-shm
 *.db-wal
-private-key.pem
-.DS_Store
-*.log
+
+# Build outputs
+public/dist/
+client/dist/
 dist/
-build/
-.cache/
-.railway
-.vercel
-backups/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Private keys
+*.pem
 private-key.pem
-private-key-stage.pem
