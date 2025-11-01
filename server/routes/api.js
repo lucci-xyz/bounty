@@ -1,5 +1,5 @@
 import express from 'express';
-import { bountyQueries, walletQueries } from '../db/index.js';
+import { bountyQueries, walletQueries, statsQueries } from '../db/index.js';
 import { generateNonce, verifySIWE, createSIWEMessage } from '../auth/siwe.js';
 import { handleBountyCreated } from '../github/webhooks.js';
 import { getOctokit } from '../github/client.js';
@@ -7,6 +7,17 @@ import { CONFIG } from '../config.js';
 import { computeBountyId, createRepoIdHash, getBountyFromContract } from '../blockchain/contract.js';
 
 const router = express.Router();
+
+/**
+ * Map network name to chain ID
+ */
+function getChainIdFromNetwork(network) {
+  const networkMap = {
+    'BASE_SEPOLIA': 84532,
+    'MEZO_TESTNET': 31611
+  };
+  return networkMap[network] || 84532;
+}
 
 /**
  * GET /api/nonce
@@ -25,25 +36,25 @@ router.get('/nonce', (req, res) => {
 router.post('/verify-wallet', async (req, res) => {
   try {
     const { message, signature } = req.body;
-    
+
     if (!message || !signature) {
       return res.status(400).json({ error: 'Missing message or signature' });
     }
-    
+
     // Verify the signature
     const result = await verifySIWE(message, signature);
-    
+
     if (!result.success) {
       return res.status(401).json({ error: 'Invalid signature' });
     }
-    
+
     // Store wallet in session
     req.session.walletAddress = result.address;
     req.session.chainId = result.chainId;
-    
-    res.json({ 
-      success: true, 
-      address: result.address 
+
+    res.json({
+      success: true,
+      address: result.address
     });
   } catch (error) {
     console.error('Error verifying wallet:', error);
@@ -57,23 +68,27 @@ router.post('/verify-wallet', async (req, res) => {
  */
 router.post('/bounty/create', async (req, res) => {
   try {
-    const { 
-      repoFullName, 
-      repoId, 
-      issueNumber, 
-      sponsorAddress, 
-      amount, 
-      deadline, 
+    const {
+      repoFullName,
+      repoId,
+      issueNumber,
+      sponsorAddress,
+      token,
+      amount,
+      deadline,
       txHash,
       installationId,
       network = 'BASE_SEPOLIA',
       tokenSymbol = 'USDC'
     } = req.body;
-    
+
     // Compute bountyId
     const repoIdHash = createRepoIdHash(repoId);
     const bountyId = await computeBountyId(sponsorAddress, repoIdHash, issueNumber);
-    
+
+    // Derive chainId from network
+    const chainId = getChainIdFromNetwork(network);
+
     // Store in database
     bountyQueries.create({
       bountyId,
@@ -82,14 +97,16 @@ router.post('/bounty/create', async (req, res) => {
       issueNumber,
       sponsorAddress,
       sponsorGithubId: req.session.githubId || null,
+      token: token || CONFIG.blockchain.usdcContract,
       amount,
       deadline,
       status: 'open',
       txHash,
       network,
+      chainId,
       tokenSymbol
     });
-    
+
     // Post GitHub comment
     await handleBountyCreated({
       repoFullName,
@@ -103,10 +120,10 @@ router.post('/bounty/create', async (req, res) => {
       network,
       tokenSymbol
     });
-    
-    res.json({ 
-      success: true, 
-      bountyId 
+
+    res.json({
+      success: true,
+      bountyId
     });
   } catch (error) {
     console.error('Error creating bounty:', error);
@@ -121,11 +138,11 @@ router.post('/bounty/create', async (req, res) => {
 router.get('/bounty/:bountyId', async (req, res) => {
   try {
     const bounty = bountyQueries.findById(req.params.bountyId);
-    
+
     if (!bounty) {
       return res.status(404).json({ error: 'Bounty not found' });
     }
-    
+
     res.json(bounty);
   } catch (error) {
     console.error('Error fetching bounty:', error);
@@ -141,7 +158,7 @@ router.get('/issue/:repoId/:issueNumber', async (req, res) => {
   try {
     const { repoId, issueNumber } = req.params;
     const bounties = bountyQueries.findByIssue(parseInt(repoId), parseInt(issueNumber));
-    
+
     res.json({ bounties });
   } catch (error) {
     console.error('Error fetching issue bounties:', error);
@@ -156,22 +173,22 @@ router.get('/issue/:repoId/:issueNumber', async (req, res) => {
 router.post('/wallet/link', async (req, res) => {
   try {
     const { githubId, githubUsername, walletAddress } = req.body;
-    
+
     if (!githubId || !githubUsername || !walletAddress) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    
+
     // Verify wallet is authenticated in session
     if (req.session.walletAddress?.toLowerCase() !== walletAddress.toLowerCase()) {
       return res.status(401).json({ error: 'Wallet not authenticated' });
     }
-    
+
     // Store mapping
     walletQueries.create(githubId, githubUsername, walletAddress);
-    
-    res.json({ 
-      success: true, 
-      message: 'Wallet linked successfully' 
+
+    res.json({
+      success: true,
+      message: 'Wallet linked successfully'
     });
   } catch (error) {
     console.error('Error linking wallet:', error);
@@ -186,11 +203,11 @@ router.post('/wallet/link', async (req, res) => {
 router.get('/wallet/:githubId', async (req, res) => {
   try {
     const mapping = walletQueries.findByGithubId(parseInt(req.params.githubId));
-    
+
     if (!mapping) {
       return res.status(404).json({ error: 'Wallet not found' });
     }
-    
+
     res.json(mapping);
   } catch (error) {
     console.error('Error fetching wallet:', error);
@@ -209,6 +226,60 @@ router.get('/contract/bounty/:bountyId', async (req, res) => {
   } catch (error) {
     console.error('Error fetching contract bounty:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/tokens
+ * Get token metadata configuration
+ */
+router.get('/tokens', (req, res) => {
+  res.json(CONFIG.tokens);
+});
+
+/**
+ * GET /api/stats
+ * Get platform analytics and token comparison metrics
+ */
+router.get('/stats', async (req, res) => {
+  try {
+    const { tokenStats, recent, overall } = statsQueries.getAll(20);
+
+    // Build token comparison object
+    const byToken = {};
+    tokenStats.forEach(token => {
+      const tokenAddress = token.token.toLowerCase();
+      const tokenKey = Object.keys(CONFIG.tokens).find(key => key.toLowerCase() === tokenAddress);
+      const tokenConfig = tokenKey ? CONFIG.tokens[tokenKey] : undefined;
+      const decimals = tokenConfig?.decimals ?? 18;
+      
+      byToken[tokenAddress] = {
+        count: token.count,
+        totalValue: Number(token.total_value) / Math.pow(10, decimals),
+        tvl: Number(token.tvl) / Math.pow(10, decimals),
+        avgAmount: Number(token.avg_amount) / Math.pow(10, decimals),
+        successRate: token.count > 0 ? (token.resolved_count / token.count) * 100 : 0
+      };
+    });
+
+    // Calculate overall metrics
+    const overallMetrics = {
+      totalBounties: overall.total_bounties,
+      totalTVL: overall.total_tvl,
+      avgResolutionRate: overall.total_bounties > 0
+        ? (overall.resolved_count / overall.total_bounties) * 100
+        : 0
+    };
+
+    res.json({
+      byToken,
+      overall: overallMetrics,
+      recent,
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    console.error('Error generating stats:', error);
+    res.status(500).json({ error: 'Failed to generate stats' });
   }
 });
 

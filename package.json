@@ -10,7 +10,8 @@
     "start": "node server/index.js",
     "build": "vite build",
     "migrate": "node server/db/migrate.js",
-    "seed": "node server/db/seed.js"
+    "seed": "node server/db/seed.js",
+    "test": "node --test tests/"
   },
   "keywords": [
     "github",
@@ -40,6 +41,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.0",
+    "markdownlint-cli": "^0.45.0",
     "nodemon": "^3.0.2",
     "vite": "^7.1.12"
   }

@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { SCHEMA } from './schema.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { CONFIG } from '../config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, 'bounty.db');
@@ -13,13 +14,13 @@ let db = null;
  */
 export function initDB() {
   if (db) return db;
-  
+
   db = new Database(DB_PATH);
   db.pragma('journal_mode = WAL');
-  
+
   // Create tables
   db.exec(SCHEMA);
-  
+
   console.log('✅ Database initialized');
   return db;
 }
@@ -50,9 +51,9 @@ export const bountyQueries = {
     const stmt = getDB().prepare(`
       INSERT INTO bounties (
         bounty_id, repo_full_name, repo_id, issue_number, 
-        sponsor_address, sponsor_github_id, amount, deadline, 
-        status, tx_hash, network, token_symbol, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        sponsor_address, sponsor_github_id, token, amount, deadline, 
+        status, tx_hash, network, chain_id, token_symbol, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     return stmt.run(
       bountyData.bountyId,
@@ -61,11 +62,13 @@ export const bountyQueries = {
       bountyData.issueNumber,
       bountyData.sponsorAddress,
       bountyData.sponsorGithubId,
+      bountyData.token,
       bountyData.amount,
       bountyData.deadline,
       bountyData.status,
       bountyData.txHash,
       bountyData.network || 'BASE_SEPOLIA',
+      bountyData.chainId || 84532,
       bountyData.tokenSymbol || 'USDC',
       Date.now(),
       Date.now()
@@ -169,6 +172,61 @@ export const prClaimQueries = {
       WHERE id = ?
     `);
     return stmt.run(status, txHash, resolvedAt, id);
+  }
+};
+
+// Stats queries for analytics
+export const statsQueries = {
+  getAll: (limit = 20) => {
+    const db = getDB();
+
+    // Single query for token aggregates with TVL
+    const tokenStats = db.prepare(`
+      SELECT 
+        token,
+        COUNT(*) as count,
+        SUM(CAST(amount AS REAL)) as total_value,
+        AVG(CAST(amount AS REAL)) as avg_amount,
+        SUM(CASE WHEN status = 'open' THEN CAST(amount AS REAL) ELSE 0 END) as tvl,
+        SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) as resolved_count
+      FROM bounties
+      GROUP BY token
+    `).all();
+
+    // Recent activity
+    const recent = db.prepare(`
+      SELECT 
+        bounty_id,
+        token,
+        amount,
+        status,
+        created_at,
+        repo_full_name,
+        issue_number
+      FROM bounties
+      ORDER BY created_at DESC
+      LIMIT ?
+    `).all(limit);
+
+    // Calculate overall stats from aggregates
+    // Normalize TVL values to human-readable USD format before summing
+    const total_tvl = tokenStats.reduce((sum, t) => {
+      const tokenAddress = t.token.toLowerCase();
+      // Case-insensitive lookup: find token config by comparing lowercase addresses
+      const tokenKey = Object.keys(CONFIG.tokens).find(key => key.toLowerCase() === tokenAddress);
+      const tokenConfig = tokenKey ? CONFIG.tokens[tokenKey] : undefined;
+      const decimals = tokenConfig?.decimals ?? 18;
+      const normalizedTvl = Number(t.tvl) / Math.pow(10, decimals);
+      return sum + normalizedTvl;
+    }, 0);
+
+    const overall = {
+      total_bounties: tokenStats.reduce((sum, t) => sum + t.count, 0),
+      total_tvl,
+      resolved_count: tokenStats.reduce((sum, t) => sum + t.resolved_count, 0)
+    };
+
+    return { tokenStats, recent, overall };
   }
 };
 

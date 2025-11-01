@@ -12,11 +12,13 @@ CREATE TABLE IF NOT EXISTS bounties (
   issue_number INTEGER NOT NULL,
   sponsor_address TEXT NOT NULL,
   sponsor_github_id INTEGER,
+  token TEXT NOT NULL,                      -- ERC-20 token address (USDC or MUSD)
   amount TEXT NOT NULL,                     -- Store as string to handle big numbers
   deadline INTEGER NOT NULL,                -- Unix timestamp
   status TEXT NOT NULL DEFAULT 'open',      -- open, resolved, refunded, canceled
   tx_hash TEXT,                             -- Transaction hash for creation
   network TEXT NOT NULL DEFAULT 'BASE_SEPOLIA',  -- Network: BASE_SEPOLIA or MEZO_TESTNET
+  chain_id INTEGER NOT NULL DEFAULT 84532,  -- Chain ID
   token_symbol TEXT NOT NULL DEFAULT 'USDC',     -- Token: USDC or MUSD
   created_at INTEGER NOT NULL,              -- Unix timestamp
   updated_at INTEGER NOT NULL,              -- Unix timestamp
@@ -51,6 +53,8 @@ CREATE TABLE IF NOT EXISTS pr_claims (
 -- Indexes for efficient queries
 CREATE INDEX IF NOT EXISTS idx_bounties_repo ON bounties(repo_id, issue_number);
 CREATE INDEX IF NOT EXISTS idx_bounties_status ON bounties(status);
+CREATE INDEX IF NOT EXISTS idx_bounties_token ON bounties(token);
+CREATE INDEX IF NOT EXISTS idx_bounties_token_status ON bounties(token, status);
 CREATE INDEX IF NOT EXISTS idx_pr_claims_bounty ON pr_claims(bounty_id);
 CREATE INDEX IF NOT EXISTS idx_wallet_github ON wallet_mappings(github_id);
 `;
