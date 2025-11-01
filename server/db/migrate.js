@@ -50,6 +50,7 @@ try {
   } else {
     console.log('✓ Chain ID column already exists');
   }
+
   console.log('\n✅ All migrations completed successfully!\n');
   console.log('Database ready at:', process.env.DATABASE_PATH || './server/db/bounty.db');
 

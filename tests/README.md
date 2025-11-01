@@ -32,10 +32,6 @@ node --test --experimental-test-coverage tests/
 - **Consistency check** - Verifies sum of `byToken` TVLs matches `overall.total_tvl`
 - **Raw value prevention** - Ensures raw database values are never returned in `byToken`
 - **Unknown token handling** - Tests default 18 decimals for unknown tokens
-- `/api/stats` endpoint structure
-- Success rate calculations
-- JSON serialization
-- Response format validation
 
 ### Configuration (`api-tokens.test.js`)
 - Token metadata availability
