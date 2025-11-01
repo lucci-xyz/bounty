@@ -35,3 +35,8 @@ npm-debug.log*
 # Private keys
 *.pem
 private-key.pem
+private-key-stage.pem
+
+#Ignore cursor AI rules
+.cursor/rules/codacy.mdc
+.codacy/
