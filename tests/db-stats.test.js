@@ -1,6 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import Database from 'better-sqlite3';
+import { CONFIG } from '../server/config.js';
 
 // Token config matching server/config.js (without importing CONFIG to avoid env validation)
 const TOKEN_CONFIG = {
