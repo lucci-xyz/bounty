@@ -23,7 +23,7 @@ _Automated, trust-minimised bounty payouts for open-source contributions. Fund w
 3. **Choose Your Network & Fund**
    - **Base Sepolia**: Fund with USDC (EVM standard)
    - **Mezo Testnet**: Fund with MUSD (Bitcoin L2)
-   
+
    Funds sit safely in escrow.
 
 4. **Merge the winning PR** — BountyPay automatically pays the contributor once the PR closes the issue.
@@ -100,6 +100,7 @@ BountyPay supports multiple networks. You can choose your preferred network when
 ### Base Sepolia Testnet
 
 **Network Details:**
+
 - Chain ID: `84532`
 - Native Currency: ETH
 - RPC URL: `https://sepolia.base.org`
@@ -116,6 +117,7 @@ BountyPay supports multiple networks. You can choose your preferred network when
 ### Mezo Testnet
 
 **Network Details:**
+
 - Chain ID: `31611`
 - Native Currency: BTC (Bitcoin)
 - RPC URL: `https://mezo-testnet.drpc.org` (dRPC - reliable)
