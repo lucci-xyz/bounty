@@ -1,24 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ethers } from 'ethers';
-
-const ESCROW_ADDRESS = '0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD';
-const USDC_ADDRESS = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
-const CHAIN_ID = 84532;
-const CHAIN_NAME = 'Base Sepolia';
-const RPC_URL = 'https://sepolia.base.org';
-
-const ESCROW_ABI = [
-  'function createBounty(address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) external returns (bytes32)',
-];
-
-const ERC20_ABI = [
-  'function approve(address spender, uint256 amount) external returns (bool)',
-  'function allowance(address owner, address spender) external view returns (uint256)'
-];
+import { NETWORKS, CONTRACTS, ESCROW_ABI, ERC20_ABI, getNetworkConfig } from '../config/networks';
 
 function AttachBounty() {
   const [searchParams] = useSearchParams();
+  const [selectedNetwork, setSelectedNetwork] = useState('BASE_SEPOLIA');
   const [walletAddress, setWalletAddress] = useState('');
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
@@ -32,6 +19,9 @@ function AttachBounty() {
   const repoId = searchParams.get('repoId');
   const installationId = searchParams.get('installationId');
   const presetAmount = searchParams.get('amount');
+
+  const networkConfig = NETWORKS[selectedNetwork];
+  const contractConfig = CONTRACTS[selectedNetwork];
 
   useEffect(() => {
     if (presetAmount) {
@@ -62,38 +52,38 @@ function AttachBounty() {
 
       const network = await newProvider.getNetwork();
 
-      if (Number(network.chainId) !== CHAIN_ID) {
-        showStatus('Switching to Base Sepolia...', 'loading');
+      if (Number(network.chainId) !== networkConfig.chainId) {
+        showStatus(`Switching to ${networkConfig.name}...`, 'loading');
         try {
           await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
-            params: [{ chainId: `0x${CHAIN_ID.toString(16)}` }],
+            params: [{ chainId: networkConfig.chainIdHex }],
           });
         } catch (switchError) {
           if (switchError.code === 4902) {
             await window.ethereum.request({
               method: 'wallet_addEthereumChain',
               params: [{
-                chainId: `0x${CHAIN_ID.toString(16)}`,
-                chainName: CHAIN_NAME,
-                nativeCurrency: {
-                  name: 'ETH',
-                  symbol: 'ETH',
-                  decimals: 18
-                },
-                rpcUrls: [RPC_URL],
-                blockExplorerUrls: ['https://sepolia.basescan.org']
+                chainId: networkConfig.chainIdHex,
+                chainName: networkConfig.name,
+                nativeCurrency: networkConfig.nativeCurrency,
+                rpcUrls: [networkConfig.rpcUrl],
+                blockExplorerUrls: [networkConfig.blockExplorerUrl]
               }],
             });
           } else {
             throw switchError;
           }
         }
+        // Reconnect after network switch
+        const updatedProvider = new ethers.BrowserProvider(window.ethereum);
+        setProvider(updatedProvider);
+        setSigner(await updatedProvider.getSigner());
+      } else {
+        setProvider(newProvider);
+        setSigner(await newProvider.getSigner());
       }
 
-      const newSigner = await newProvider.getSigner();
-      setProvider(newProvider);
-      setSigner(newSigner);
       setWalletAddress(address);
       setShowForm(true);
       showStatus('Wallet connected!', 'success');
@@ -118,17 +108,17 @@ function AttachBounty() {
       }
 
       const deadlineTimestamp = Math.floor(new Date(deadline).getTime() / 1000);
-      const amountWei = ethers.parseUnits(amount, 6);
+      const amountWei = ethers.parseUnits(amount, contractConfig.tokenDecimals);
 
-      showStatus('Approving USDC...', 'loading');
+      showStatus(`Approving ${contractConfig.tokenSymbol}...`, 'loading');
 
-      const usdc = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, signer);
-      const approveTx = await usdc.approve(ESCROW_ADDRESS, amountWei);
+      const token = new ethers.Contract(contractConfig.token, ERC20_ABI, signer);
+      const approveTx = await token.approve(contractConfig.escrow, amountWei);
       await approveTx.wait();
 
       showStatus('Creating bounty on-chain...', 'loading');
 
-      const escrow = new ethers.Contract(ESCROW_ADDRESS, ESCROW_ABI, signer);
+      const escrow = new ethers.Contract(contractConfig.escrow, ESCROW_ABI, signer);
       const repoIdHash = '0x' + parseInt(repoId).toString(16).padStart(64, '0');
 
       const tx = await escrow.createBounty(
@@ -154,7 +144,9 @@ function AttachBounty() {
           amount: amountWei.toString(),
           deadline: deadlineTimestamp,
           txHash: receipt.hash,
-          installationId: parseInt(installationId) || 0
+          installationId: parseInt(installationId) || 0,
+          network: selectedNetwork,
+          tokenSymbol: contractConfig.tokenSymbol
         })
       });
 
@@ -178,7 +170,7 @@ function AttachBounty() {
     <div className="container" style={{ maxWidth: '500px', padding: '40px' }}>
       <h1 style={{ fontSize: '28px' }}>💰 Attach Bounty</h1>
       <p className="subtitle" style={{ marginBottom: '30px', fontSize: '14px' }}>
-        Fund this issue with USDC on Base
+        Fund this issue with crypto on your preferred network
       </p>
 
       <div className="info-box">
@@ -195,27 +187,44 @@ function AttachBounty() {
       </div>
 
       {!showForm && (
-        <div>
+        <>
+          <div style={{ marginBottom: '20px' }}>
+            <label htmlFor="network">Select Network</label>
+            <select
+              id="network"
+              value={selectedNetwork}
+              onChange={(e) => setSelectedNetwork(e.target.value)}
+              style={{ width: '100%' }}
+            >
+              <option value="BASE_SEPOLIA">Base Sepolia (USDC)</option>
+              <option value="MEZO_TESTNET">Mezo Testnet (MUSD)</option>
+            </select>
+            <p style={{ fontSize: '12px', color: '#718096', marginTop: '8px' }}>
+              {networkConfig.name} • Chain ID: {networkConfig.chainId}
+            </p>
+          </div>
+
           <button className="btn btn-primary" onClick={connectWallet} style={{ width: '100%' }}>
             Connect Wallet
           </button>
-        </div>
+        </>
       )}
 
       {showForm && (
         <>
           <div className="wallet-info">
-            <strong>Connected:</strong> {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+            <strong>Connected:</strong> {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}<br />
+            <strong>Network:</strong> {networkConfig.name} ({contractConfig.tokenSymbol})
           </div>
 
           <div>
-            <label htmlFor="amount">Bounty Amount (USDC)</label>
+            <label htmlFor="amount">Bounty Amount ({contractConfig.tokenSymbol})</label>
             <input
               type="number"
               id="amount"
               placeholder="500"
               min="1"
-              step="0.01"
+              step={contractConfig.tokenDecimals === 18 ? "0.0001" : "0.01"}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
@@ -234,6 +243,19 @@ function AttachBounty() {
           <button className="btn btn-primary" onClick={fundBounty} style={{ width: '100%' }}>
             Fund Bounty
           </button>
+
+          <button 
+            className="btn btn-secondary" 
+            onClick={() => {
+              setShowForm(false);
+              setWalletAddress('');
+              setProvider(null);
+              setSigner(null);
+            }} 
+            style={{ width: '100%', marginTop: '10px' }}
+          >
+            Change Network
+          </button>
         </>
       )}
 
@@ -247,4 +269,3 @@ function AttachBounty() {
 }
 
 export default AttachBounty;
-

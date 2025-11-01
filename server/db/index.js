@@ -51,7 +51,7 @@ export const bountyQueries = {
       INSERT INTO bounties (
         bounty_id, repo_full_name, repo_id, issue_number, 
         sponsor_address, sponsor_github_id, amount, deadline, 
-        status, tx_hash, network, chain_id, created_at, updated_at
+        status, tx_hash, network, token_symbol, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     return stmt.run(
@@ -65,8 +65,8 @@ export const bountyQueries = {
       bountyData.deadline,
       bountyData.status,
       bountyData.txHash,
-      bountyData.network || 'base',
-      bountyData.chainId || 84532,
+      bountyData.network || 'BASE_SEPOLIA',
+      bountyData.tokenSymbol || 'USDC',
       Date.now(),
       Date.now()
     );
