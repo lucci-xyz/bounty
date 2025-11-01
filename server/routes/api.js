@@ -1,5 +1,5 @@
 import express from 'express';
-import { bountyQueries, walletQueries } from '../db/index.js';
+import { bountyQueries, walletQueries, statsQueries } from '../db/index.js';
 import { generateNonce, verifySIWE, createSIWEMessage } from '../auth/siwe.js';
 import { handleBountyCreated } from '../github/webhooks.js';
 import { getOctokit } from '../github/client.js';
@@ -62,6 +62,7 @@ router.post('/bounty/create', async (req, res) => {
       repoId, 
       issueNumber, 
       sponsorAddress, 
+      token,
       amount, 
       deadline, 
       txHash,
@@ -80,6 +81,7 @@ router.post('/bounty/create', async (req, res) => {
       issueNumber,
       sponsorAddress,
       sponsorGithubId: req.session.githubId || null,
+      token: token || CONFIG.blockchain.usdcContract,
       amount,
       deadline,
       status: 'open',
@@ -203,6 +205,55 @@ router.get('/contract/bounty/:bountyId', async (req, res) => {
   } catch (error) {
     console.error('Error fetching contract bounty:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/tokens
+ * Get token metadata configuration
+ */
+router.get('/tokens', (req, res) => {
+  res.json(CONFIG.tokens);
+});
+
+/**
+ * GET /api/stats
+ * Get platform analytics and token comparison metrics
+ */
+router.get('/stats', async (req, res) => {
+  try {
+    const { tokenStats, recent, overall } = statsQueries.getAll(20);
+
+    // Build token comparison object
+    const byToken = {};
+    tokenStats.forEach(token => {
+      byToken[token.token] = {
+        count: token.count,
+        totalValue: token.total_value,
+        tvl: token.tvl,
+        avgAmount: token.avg_amount,
+        successRate: token.count > 0 ? (token.resolved_count / token.count) * 100 : 0
+      };
+    });
+
+    // Calculate overall metrics
+    const overallMetrics = {
+      totalBounties: overall.total_bounties,
+      totalTVL: overall.total_tvl,
+      avgResolutionRate: overall.total_bounties > 0 
+        ? (overall.resolved_count / overall.total_bounties) * 100 
+        : 0
+    };
+
+    res.json({
+      byToken,
+      overall: overallMetrics,
+      recent,
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    console.error('Error generating stats:', error);
+    res.status(500).json({ error: 'Failed to generate stats' });
   }
 });
 

@@ -1,4 +1,4 @@
-# <img src="public/icons/og.png" alt="BountyPay logo" width="50" style="vertical-align:middle;" /> BountyPay
+# ![BountyPay logo](public/icons/og.png) BountyPay
 
 _Automated, trust-minimised bounty payouts for open-source contributions. Fund with USDC on Base and let BountyPay handle the rest._
 

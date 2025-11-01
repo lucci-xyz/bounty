@@ -30,7 +30,24 @@ export const CONFIG = {
     rpcUrl: process.env.RPC_URL || 'https://sepolia.base.org',
     escrowContract: process.env.ESCROW_CONTRACT,
     usdcContract: process.env.USDC_CONTRACT || '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+    musdContract: process.env.MUSD_CONTRACT,
     resolverPrivateKey: process.env.RESOLVER_PRIVATE_KEY,
+  },
+
+  // Token metadata for display
+  tokens: {
+    '0x036CbD53842c5426634e7929541eC2318f3dCF7e': {
+      symbol: 'USDC',
+      name: 'USD Coin',
+      decimals: 6
+    },
+    ...(process.env.MUSD_CONTRACT ? {
+      [process.env.MUSD_CONTRACT]: {
+        symbol: 'MUSD',
+        name: 'Mezo USD',
+        decimals: 18
+      }
+    } : {})
   },
 
   // Database

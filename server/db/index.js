@@ -50,9 +50,9 @@ export const bountyQueries = {
     const stmt = getDB().prepare(`
       INSERT INTO bounties (
         bounty_id, repo_full_name, repo_id, issue_number, 
-        sponsor_address, sponsor_github_id, amount, deadline, 
+        sponsor_address, sponsor_github_id, token, amount, deadline, 
         status, tx_hash, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     return stmt.run(
       bountyData.bountyId,
@@ -61,6 +61,7 @@ export const bountyQueries = {
       bountyData.issueNumber,
       bountyData.sponsorAddress,
       bountyData.sponsorGithubId,
+      bountyData.token,
       bountyData.amount,
       bountyData.deadline,
       bountyData.status,
@@ -167,6 +168,50 @@ export const prClaimQueries = {
       WHERE id = ?
     `);
     return stmt.run(status, txHash, resolvedAt, id);
+  }
+};
+
+// Stats queries for analytics
+export const statsQueries = {
+  getAll: (limit = 20) => {
+    const db = getDB();
+    
+    // Single query for token aggregates with TVL
+    const tokenStats = db.prepare(`
+      SELECT 
+        token,
+        COUNT(*) as count,
+        SUM(CAST(amount AS REAL)) as total_value,
+        AVG(CAST(amount AS REAL)) as avg_amount,
+        SUM(CASE WHEN status = 'open' THEN CAST(amount AS REAL) ELSE 0 END) as tvl,
+        SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) as resolved_count
+      FROM bounties
+      GROUP BY token
+    `).all();
+
+    // Recent activity
+    const recent = db.prepare(`
+      SELECT 
+        bounty_id,
+        token,
+        amount,
+        status,
+        created_at,
+        repo_full_name,
+        issue_number
+      FROM bounties
+      ORDER BY created_at DESC
+      LIMIT ?
+    `).all(limit);
+
+    // Calculate overall stats from aggregates
+    const overall = {
+      total_bounties: tokenStats.reduce((sum, t) => sum + t.count, 0),
+      total_tvl: tokenStats.reduce((sum, t) => sum + t.tvl, 0),
+      resolved_count: tokenStats.reduce((sum, t) => sum + t.resolved_count, 0)
+    };
+
+    return { tokenStats, recent, overall };
   }
 };
 
