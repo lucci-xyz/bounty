@@ -26,7 +26,6 @@ node --test --experimental-test-coverage tests/
 - Recent activity ordering
 - Empty database handling
 
-
 ### API Layer (`api-stats.test.js`)
 
 - **TVL normalization** - Verifies `byToken[token].tvl` values are normalized by token decimals
@@ -35,7 +34,6 @@ node --test --experimental-test-coverage tests/
 - **Consistency check** - Verifies sum of `byToken` TVLs matches `overall.total_tvl`
 - **Raw value prevention** - Ensures raw database values are never returned in `byToken`
 - **Unknown token handling** - Tests default 18 decimals for unknown tokens
-
 
 ### Configuration (`api-tokens.test.js`)
 
@@ -67,7 +65,6 @@ This matches the acceptance criteria test data from the original issue.
 
 Following Apple engineering standards:
 
-
 - ✅ **Essential tests only** - No fluff, high-value coverage
 - ✅ **Fast execution** - In-memory databases, no external dependencies
 - ✅ **Self-contained** - Each test creates its own isolated environment
@@ -75,7 +72,6 @@ Following Apple engineering standards:
 - ✅ **Zero dependencies** - Uses Node's built-in test runner
 
 ## CI/CD Integration
-
 
 Add to `package.json`:
 
