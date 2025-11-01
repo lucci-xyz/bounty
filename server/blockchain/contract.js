@@ -21,25 +21,40 @@ let resolverWallet;
 let escrowContract;
 let usdcContract;
 
+// Network-aware configuration for server-side actions
+const NETWORK_CONFIG = {
+  BASE_SEPOLIA: {
+    rpcUrl: CONFIG.blockchain.rpcUrl,
+    escrow: CONFIG.blockchain.escrowContract,
+    token: CONFIG.blockchain.usdcContract,
+    tokenDecimals: 6,
+  },
+  MEZO_TESTNET: {
+    rpcUrl: process.env.MEZO_RPC_URL || 'https://mezo-testnet.drpc.org',
+    escrow: process.env.MEZO_ESCROW_CONTRACT || '0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3',
+    token: CONFIG.blockchain.musdContract || '0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503',
+    tokenDecimals: 18,
+  }
+};
+
+function getNetworkClients(network = 'BASE_SEPOLIA') {
+  const net = NETWORK_CONFIG[network] || NETWORK_CONFIG.BASE_SEPOLIA;
+  const netProvider = new ethers.JsonRpcProvider(net.rpcUrl);
+  const netWallet = new ethers.Wallet(CONFIG.blockchain.resolverPrivateKey, netProvider);
+  const netEscrow = new ethers.Contract(net.escrow, ESCROW_ABI, netWallet);
+  const netToken = new ethers.Contract(net.token, ERC20_ABI, netProvider);
+  return { net, netProvider, netWallet, netEscrow, netToken };
+}
+
 /**
  * Initialize blockchain connection
  */
 export function initBlockchain() {
+  // Initialize defaults for backward compatibility (Base Sepolia)
   provider = new ethers.JsonRpcProvider(CONFIG.blockchain.rpcUrl);
   resolverWallet = new ethers.Wallet(CONFIG.blockchain.resolverPrivateKey, provider);
-  
-  escrowContract = new ethers.Contract(
-    CONFIG.blockchain.escrowContract,
-    ESCROW_ABI,
-    resolverWallet
-  );
-
-  usdcContract = new ethers.Contract(
-    CONFIG.blockchain.usdcContract,
-    ERC20_ABI,
-    provider
-  );
-
+  escrowContract = new ethers.Contract(CONFIG.blockchain.escrowContract, ESCROW_ABI, resolverWallet);
+  usdcContract = new ethers.Contract(CONFIG.blockchain.usdcContract, ERC20_ABI, provider);
   console.log('✅ Blockchain initialized');
   console.log(`   Resolver address: ${resolverWallet.address}`);
 }
@@ -56,18 +71,20 @@ export function getProvider() {
  * Compute bountyId from contract parameters
  */
 export async function computeBountyId(sponsorAddress, repoIdHash, issueNumber) {
-  return await escrowContract.computeBountyId(
-    sponsorAddress,
-    repoIdHash,
-    issueNumber
-  );
+  return await escrowContract.computeBountyId(sponsorAddress, repoIdHash, issueNumber);
+}
+
+export async function computeBountyIdOnNetwork(sponsorAddress, repoIdHash, issueNumber, network = 'BASE_SEPOLIA') {
+  const { netEscrow } = getNetworkClients(network);
+  return await netEscrow.computeBountyId(sponsorAddress, repoIdHash, issueNumber);
 }
 
 /**
  * Get bounty details from contract
  */
-export async function getBountyFromContract(bountyId) {
-  const bounty = await escrowContract.getBounty(bountyId);
+export async function getBountyFromContract(bountyId, network = 'BASE_SEPOLIA') {
+  const { netEscrow } = getNetworkClients(network);
+  const bounty = await netEscrow.getBounty(bountyId);
   return {
     repoIdHash: bounty.repoIdHash,
     sponsor: bounty.sponsor,
@@ -109,6 +126,21 @@ export async function resolveBounty(bountyId, recipientAddress) {
       success: false,
       error: error.message
     };
+  }
+}
+
+export async function resolveBountyOnNetwork(bountyId, recipientAddress, network = 'BASE_SEPOLIA') {
+  try {
+    const { netEscrow } = getNetworkClients(network);
+    console.log(`🔄 Resolving bounty ${bountyId} to ${recipientAddress} on ${network}`);
+    const tx = await netEscrow.resolve(bountyId, recipientAddress);
+    console.log(`   Transaction sent: ${tx.hash}`);
+    const receipt = await tx.wait();
+    console.log(`✅ Bounty resolved on ${network}! Gas used: ${receipt.gasUsed.toString()}`);
+    return { success: true, txHash: receipt.hash, blockNumber: receipt.blockNumber, gasUsed: receipt.gasUsed.toString() };
+  } catch (error) {
+    console.error(`❌ Error resolving bounty on ${network}:`, error);
+    return { success: false, error: error.message };
   }
 }
 
