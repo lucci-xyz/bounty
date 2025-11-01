@@ -18,6 +18,7 @@ node --test --experimental-test-coverage tests/
 ## Test Coverage
 
 ### Database Layer (`db-stats.test.js`)
+
 - Token aggregation queries
 - TVL calculation (open bounties only)
 - Average amount calculation
@@ -26,6 +27,7 @@ node --test --experimental-test-coverage tests/
 - Empty database handling
 
 ### API Layer (`api-stats.test.js`)
+
 - **TVL normalization** - Verifies `byToken[token].tvl` values are normalized by token decimals
 - **totalValue normalization** - Verifies `byToken[token].totalValue` values are normalized
 - **avgAmount normalization** - Verifies `byToken[token].avgAmount` values are normalized
@@ -34,12 +36,14 @@ node --test --experimental-test-coverage tests/
 - **Unknown token handling** - Tests default 18 decimals for unknown tokens
 
 ### Configuration (`api-tokens.test.js`)
+
 - Token metadata availability
 - USDC configuration validation
 - Address format validation
 - Required fields validation
 
 ### Frontend Logic (`frontend-token-lookup.test.js`)
+
 - Case-insensitive address lookups
 - Checksummed address handling
 - Uppercase address handling
@@ -50,6 +54,7 @@ node --test --experimental-test-coverage tests/
 ## Test Data
 
 Tests use in-memory SQLite databases with the following test scenario:
+
 - **USDC**: 5 bounties (3 resolved, 2 open)
 - **MUSD**: 3 bounties (2 resolved, 1 open)
 - **Total**: 8 bounties, 62.5% resolution rate
@@ -59,6 +64,7 @@ This matches the acceptance criteria test data from the original issue.
 ## Design Principles
 
 Following Apple engineering standards:
+
 - ✅ **Essential tests only** - No fluff, high-value coverage
 - ✅ **Fast execution** - In-memory databases, no external dependencies
 - ✅ **Self-contained** - Each test creates its own isolated environment
@@ -68,6 +74,7 @@ Following Apple engineering standards:
 ## CI/CD Integration
 
 Add to `package.json`:
+
 ```json
 {
   "scripts": {
@@ -77,4 +84,3 @@ Add to `package.json`:
 ```
 
 Then run: `npm test`
-
