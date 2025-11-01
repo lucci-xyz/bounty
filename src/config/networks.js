@@ -23,9 +23,9 @@ export const NETWORKS = {
   },
   MEZO_TESTNET: {
     chainId: 31611,
-    chainIdHex: '0x7b6b',
+    chainIdHex: '0x7b7b',
     name: 'Mezo Testnet',
-    rpcUrl: 'https://rpc.test.mezo.org' || 'https://mezo-testnet.drpc.org',
+    rpcUrl: (import.meta.env && import.meta.env.VITE_MEZO_RPC_URL) || 'https://mezo-testnet.drpc.org' || 'https://rpc.test.mezo.org' ,
     blockExplorerUrl: 'https://explorer.test.mezo.org',
     nativeCurrency: {
       name: 'Bitcoin',
