@@ -739,4 +739,4 @@ Contracts are deployed on Base Sepolia for testing. Use test USDC from the fauce
 
 - [API Documentation](api.md) - Backend API integration
 - [Architecture](architecture.md) - System design overview
-- [Local Development](local-development.md) - Set up local environment
+- [Local Development](../development/local-development.md) - Set up local environment

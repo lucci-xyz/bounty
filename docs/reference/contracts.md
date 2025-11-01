@@ -103,5 +103,5 @@ Audit reports and deployment history are coming soon.
 ## Next Steps
 
 - **[Smart Contracts Documentation](smart-contracts.md)** - Complete technical reference
-- **[Getting Started](getting-started.md)** - User guide for creating bounties
+- **[Getting Started](../guides/getting-started.md)** - User guide for creating bounties
 - **[API Documentation](api.md)** - Backend integration

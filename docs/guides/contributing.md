@@ -113,7 +113,7 @@ Looking for something impactful to work on? Here are some areas we'd love help w
 
 ## Development Setup
 
-See our [Local Development Guide](local-development.md) for detailed setup instructions.
+See our [Local Development Guide](../development/local-development.md) for detailed setup instructions.
 
 Quick start:
 
@@ -268,7 +268,7 @@ Contributors who submit merged PRs will be:
 ## Questions?
 
 - 💬 Open a discussion on GitHub
-- 📖 Read the [FAQ](faq.md)
+- 📖 Read the [FAQ](../support/faq.md)
 - 🐛 Report issues on [GitHub Issues](https://github.com/lucci-xyz/bounty/issues)
 
 ---

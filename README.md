@@ -54,26 +54,26 @@ That's it. No invoices, no manual transfers, no spreadsheets.
 
 ### Quick Links
 
-- **[Getting Started](docs/getting-started.md)** - Complete guide for sponsors and contributors
-- **[Smart Contract Addresses](docs/contracts.md)** - Deployed contracts on Base and Mezo
-- **[Contributing](docs/contributing.md)** - How to contribute to BountyPay
-- **[FAQ](docs/faq.md)** - Frequently asked questions
-- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
+- **[Getting Started](docs/guides/getting-started.md)** - Complete guide for sponsors and contributors
+- **[Smart Contract Addresses](docs/reference/contracts.md)** - Deployed contracts on Base and Mezo
+- **[Contributing](docs/guides/contributing.md)** - How to contribute to BountyPay
+- **[FAQ](docs/support/faq.md)** - Frequently asked questions
+- **[Troubleshooting](docs/support/troubleshooting.md)** - Common issues and solutions
 
 ### For Developers
 
-- **[Smart Contracts Reference](docs/smart-contracts.md)** - Technical documentation for contracts
-- **[Architecture](docs/architecture.md)** - System design and technical overview
-- **[API Documentation](docs/api.md)** - Complete API reference
-- **[Local Development](docs/local-development.md)** - Setup guide for local development
-- **[Deployment](docs/deployment.md)** - Deploying to production
-- **[GitHub App Setup](docs/github-app-setup.md)** - Configuring the GitHub App
+- **[Smart Contracts Reference](docs/reference/smart-contracts.md)** - Technical documentation for contracts
+- **[Architecture](docs/reference/architecture.md)** - System design and technical overview
+- **[API Documentation](docs/reference/api.md)** - Complete API reference
+- **[Local Development](docs/development/local-development.md)** - Setup guide for local development
+- **[Deployment](docs/deployment/deployment.md)** - Deploying to production
+- **[GitHub App Setup](docs/development/github-app-setup.md)** - Configuring the GitHub App
 
 ---
 
 ## Need Help?
 
-- 📖 Read the [Getting Started Guide](docs/getting-started.md) or [FAQ](docs/faq.md)
+- 📖 Read the [Getting Started Guide](docs/guides/getting-started.md) or [FAQ](docs/support/faq.md)
 - 💬 Join discussions about features and integrations
 - 🐛 Report issues on [GitHub Issues](https://github.com/lucci-xyz/bounty/issues)
 

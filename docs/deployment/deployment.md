@@ -17,7 +17,7 @@ BountyPay can be deployed to various platforms. This guide covers:
 ## Prerequisites
 
 - GitHub repository with the codebase
-- GitHub App configured (see [GitHub App Setup](github-app-setup.md))
+- GitHub App configured (see [GitHub App Setup](../development/github-app-setup.md))
 - All environment variables ready
 - Domain name (optional, but recommended)
 
@@ -443,7 +443,7 @@ ENV_TARGET=prod
 PROD_CALLBACK_URL=https://prod-app.com/oauth/callback
 ```
 
-See [Testing Environments](testing-environments.md) for more details.
+See [Testing Environments](../development/testing-environments.md) for more details.
 
 ---
 
@@ -477,7 +477,7 @@ See [Testing Environments](testing-environments.md) for more details.
 - Ensure HTTPS is used
 - Check session cookie settings
 
-See [Troubleshooting Guide](troubleshooting.md) for more issues.
+See [Troubleshooting Guide](../support/troubleshooting.md) for more issues.
 
 ---
 
@@ -527,7 +527,7 @@ cp server/db/bounty.db backup/bounty-$(date +%Y%m%d).db
 
 ## Next Steps
 
-- [GitHub App Setup](github-app-setup.md) - Configure GitHub App for production
-- [Testing Environments](testing-environments.md) - Set up staging
-- [Architecture](architecture.md) - Understand system design
-- [Troubleshooting](troubleshooting.md) - Common issues and solutions
+- [GitHub App Setup](../development/github-app-setup.md) - Configure GitHub App for production
+- [Testing Environments](../development/testing-environments.md) - Set up staging
+- [Architecture](../reference/architecture.md) - Understand system design
+- [Troubleshooting](../support/troubleshooting.md) - Common issues and solutions

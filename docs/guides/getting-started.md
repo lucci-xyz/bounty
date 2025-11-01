@@ -237,13 +237,13 @@ If no PR resolves the issue by the deadline:
 - View transaction on block explorer
 - Contact support if issue persists
 
-For more detailed troubleshooting, see the [Troubleshooting Guide](troubleshooting.md).
+For more detailed troubleshooting, see the [Troubleshooting Guide](../support/troubleshooting.md).
 
 ---
 
 ## Next Steps
 
-- **[Smart Contracts](smart-contracts.md)** - Technical details about the contracts
-- **[API Documentation](api.md)** - Integration reference
-- **[FAQ](faq.md)** - Frequently asked questions
-- **[Troubleshooting](troubleshooting.md)** - Common issues and solutions
+- **[Smart Contracts](../reference/smart-contracts.md)** - Technical details about the contracts
+- **[API Documentation](../reference/api.md)** - Integration reference
+- **[FAQ](../support/faq.md)** - Frequently asked questions
+- **[Troubleshooting](../support/troubleshooting.md)** - Common issues and solutions
