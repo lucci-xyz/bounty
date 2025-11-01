@@ -14,7 +14,7 @@
     "test": "node --test tests/"
   },
   "engines": {
-    "node": "20.19.1"
+    "node": ">=20.19.1"
   },
   "keywords": [
     "github",
