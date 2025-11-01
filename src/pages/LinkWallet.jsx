@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount, useSignMessage } from 'wagmi';
 import { NETWORKS } from '../config/networks';
 
 function createSiweMessage({ domain, address, statement, uri, version, chainId, nonce }) {
@@ -20,6 +22,8 @@ function createSiweMessage({ domain, address, statement, uri, version, chainId, 
 }
 
 function LinkWallet() {
+  const { address: connectedAddress, isConnected } = useAccount();
+  const { signMessageAsync } = useSignMessage();
   const [selectedNetwork, setSelectedNetwork] = useState('BASE_SEPOLIA');
   const [githubUser, setGithubUser] = useState(null);
   const [walletAddress, setWalletAddress] = useState('');
@@ -162,6 +166,61 @@ function LinkWallet() {
     }
   };
 
+  // Passport flow: use existing connected wallet via RainbowKit
+  const linkWithPassport = async () => {
+    try {
+      if (!githubUser) {
+        throw new Error('Please authenticate with GitHub first');
+      }
+      if (!isConnected || !connectedAddress) {
+        throw new Error('Please connect a wallet first');
+      }
+
+      showStatus('Preparing SIWE...', 'loading');
+
+      const nonceRes = await fetch('/api/nonce', { credentials: 'include' });
+      const { nonce } = await nonceRes.json();
+
+      const messageText = createSiweMessage({
+        domain: window.location.host,
+        address: connectedAddress,
+        statement: 'Link your wallet to receive BountyPay payments.',
+        uri: window.location.origin,
+        version: '1',
+        chainId: NETWORKS[selectedNetwork].chainId,
+        nonce
+      });
+
+      const signature = await signMessageAsync({ message: messageText });
+
+      const verifyRes = await fetch('/api/verify-wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ message: messageText, signature })
+      });
+      if (!verifyRes.ok) throw new Error('Signature verification failed');
+
+      const linkRes = await fetch('/api/wallet/link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          githubId: githubUser.githubId,
+          githubUsername: githubUser.githubUsername,
+          walletAddress: connectedAddress
+        })
+      });
+      if (!linkRes.ok) throw new Error('Failed to link wallet');
+
+      setWalletAddress(connectedAddress);
+      setLinked(true);
+      showStatus('✅ Wallet linked via Passport!', 'success');
+    } catch (err) {
+      showStatus(err.message || 'Failed to link via Passport', 'error');
+    }
+  };
+
   return (
     <div className="container" style={{ maxWidth: '500px', padding: '40px', textAlign: 'center' }}>
       <h1 style={{ fontSize: '28px' }}>🔗 Link Your Wallet</h1>
@@ -221,6 +280,11 @@ function LinkWallet() {
         </p>
       </div>
 
+      {/* Passport Connect */}
+      <div style={{ marginBottom: '10px' }}>
+        <ConnectButton label="Connect via Mezo Passport" />
+      </div>
+
       {!linked && (
         <div style={{ marginBottom: '20px' }}>
           <label htmlFor="network">Select Network</label>
@@ -240,6 +304,7 @@ function LinkWallet() {
         </div>
       )}
 
+      {/* Legacy injected flow (MetaMask/Brave) */}
       <button
         className="btn btn-primary"
         onClick={connectWallet}
@@ -248,6 +313,17 @@ function LinkWallet() {
       >
         {linked ? '✓ Wallet Linked' : 'Connect Wallet'}
       </button>
+
+      {/* Passport linking action when already connected via RainbowKit */}
+      {!linked && isConnected && (
+        <button
+          className="btn btn-secondary"
+          onClick={linkWithPassport}
+          style={{ width: '100%', marginTop: '10px' }}
+        >
+          Link Using Connected Wallet (Passport)
+        </button>
+      )}
 
       {linked && (
         <div className="wallet-info" style={{ display: 'block', marginTop: '20px' }}>

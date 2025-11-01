@@ -67,9 +67,8 @@ function Home() {
         <a href="https://github.com/apps/bountypay" className="btn btn-primary">
           Install GitHub App
         </a>
-        <Link to="/link-wallet" className="btn btn-secondary">
-          Link Your Wallet
-        </Link>
+        <Link to="/link-wallet" className="btn btn-secondary">Link Your Wallet</Link>
+        <Link to="/wallet" className="btn btn-secondary">Open BTC Wallet (Mezo Testnet)</Link>
       </div>
 
       <div style={{

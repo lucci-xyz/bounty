@@ -51,6 +51,15 @@ try {
     console.log('✓ Chain ID column already exists');
   }
 
+  console.log('📝 Checking for token_symbol column...');
+  if (!columns.includes('token_symbol')) {
+    console.log('➕ Adding token_symbol column to bounties table...');
+    db.exec("ALTER TABLE bounties ADD COLUMN token_symbol TEXT NOT NULL DEFAULT 'USDC'");
+    console.log('✅ token_symbol column added successfully');
+  } else {
+    console.log('✓ token_symbol column already exists');
+  }
+
   console.log('\n✅ All migrations completed successfully!\n');
   console.log('Database ready at:', process.env.DATABASE_PATH || './server/db/bounty.db');
 

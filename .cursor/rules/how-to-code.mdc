@@ -1,4 +1,4 @@
 ---
 alwaysApply: true
 ---
-Do not do anything other than what you are tasked with. Code stright to the point of what you were asked to do. Don't add features you were not instructed to and don't add excessive documentation.
+Do not do anything other than what you are tasked with. Code stright to the point of what you were asked to do. Don't add features you were not instructed to and don't add excessive documentation. Use specific naming conventions based on network, currency, and anything else that is specific to a varaible. 

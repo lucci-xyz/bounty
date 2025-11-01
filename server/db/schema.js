@@ -53,8 +53,6 @@ CREATE TABLE IF NOT EXISTS pr_claims (
 -- Indexes for efficient queries
 CREATE INDEX IF NOT EXISTS idx_bounties_repo ON bounties(repo_id, issue_number);
 CREATE INDEX IF NOT EXISTS idx_bounties_status ON bounties(status);
-CREATE INDEX IF NOT EXISTS idx_bounties_token ON bounties(token);
-CREATE INDEX IF NOT EXISTS idx_bounties_token_status ON bounties(token, status);
 CREATE INDEX IF NOT EXISTS idx_pr_claims_bounty ON pr_claims(bounty_id);
 CREATE INDEX IF NOT EXISTS idx_wallet_github ON wallet_mappings(github_id);
 `;
