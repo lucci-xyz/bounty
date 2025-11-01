@@ -28,6 +28,10 @@ node --test --experimental-test-coverage tests/
 
 ### API Layer (`api-stats.test.js`)
 
+- `/api/stats` endpoint structure
+- Success rate calculations
+- JSON serialization
+- Response format validation
 - **TVL normalization** - Verifies `byToken[token].tvl` values are normalized by token decimals
 - **totalValue normalization** - Verifies `byToken[token].totalValue` values are normalized
 - **avgAmount normalization** - Verifies `byToken[token].avgAmount` values are normalized
@@ -64,7 +68,6 @@ This matches the acceptance criteria test data from the original issue.
 ## Design Principles
 
 Following Apple engineering standards:
-
 - ✅ **Essential tests only** - No fluff, high-value coverage
 - ✅ **Fast execution** - In-memory databases, no external dependencies
 - ✅ **Self-contained** - Each test creates its own isolated environment

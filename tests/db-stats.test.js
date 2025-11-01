@@ -24,28 +24,6 @@ const TOKEN_CONFIG = {
   })
 };
 
-// Token config matching server/config.js (without importing CONFIG to avoid env validation)
-const TOKEN_CONFIG = {
-  '0x036cbd53842c5426634e7929541ec2318f3dcf7e': {
-    symbol: 'USDC',
-    name: 'USD Coin',
-    decimals: 6
-  },
-  ...(process.env.MUSD_CONTRACT ? {
-    [process.env.MUSD_CONTRACT]: {
-      symbol: 'MUSD',
-      name: 'Mezo USD',
-      decimals: 18
-    }
-  } : {
-    '0xmusdaddress000000000000000000000000000': {
-      symbol: 'MUSD',
-      name: 'Mezo USD',
-      decimals: 18
-    }
-  })
-};
-
 describe('Stats Database Queries', () => {
   let db;
   let statsQueries;
@@ -152,9 +130,9 @@ describe('Stats Database Queries', () => {
     insert.run('bounty5', 'owner/repo', 1, 5, '0xsponsor', USDC, '2000000', now + 86400, 'open', 'base', 84532, now - 5000, now);
 
     // MUSD bounties: 2 resolved, 1 open
-    insert.run('bounty6', 'owner/repo', 1, 6, '0xsponsor', MUSD, '15000000000000000000', now + 86400, 'resolved', 'mezo', 2016, now - 6000, now);
-    insert.run('bounty7', 'owner/repo', 1, 7, '0xsponsor', MUSD, '25000000000000000000', now + 86400, 'resolved', 'mezo', 2016, now - 7000, now);
-    insert.run('bounty8', 'owner/repo', 1, 8, '0xsponsor', MUSD, '10000000000000000000', now + 86400, 'open', 'mezo', 2016, now - 8000, now);
+    insert.run('bounty6', 'owner/repo', 1, 6, '0xsponsor', MUSD, '15000000000000000000', now + 86400, 'resolved', 'mezo', 31611, now - 6000, now);
+    insert.run('bounty7', 'owner/repo', 1, 7, '0xsponsor', MUSD, '25000000000000000000', now + 86400, 'resolved', 'mezo', 31611, now - 7000, now);
+    insert.run('bounty8', 'owner/repo', 1, 8, '0xsponsor', MUSD, '10000000000000000000', now + 86400, 'open', 'mezo', 31611, now - 8000, now);
   });
 
   after(() => {
