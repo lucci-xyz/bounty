@@ -17,12 +17,13 @@ CREATE TABLE IF NOT EXISTS bounties (
   deadline INTEGER NOT NULL,                -- Unix timestamp
   status TEXT NOT NULL DEFAULT 'open',      -- open, resolved, refunded, canceled
   tx_hash TEXT,                             -- Transaction hash for creation
-  network TEXT NOT NULL DEFAULT 'base',    -- Network name (base, mezo)
+  network TEXT NOT NULL DEFAULT 'BASE_SEPOLIA',  -- Network: BASE_SEPOLIA or MEZO_TESTNET
   chain_id INTEGER NOT NULL DEFAULT 84532,  -- Chain ID
+  token_symbol TEXT NOT NULL DEFAULT 'USDC',     -- Token: USDC or MUSD
   created_at INTEGER NOT NULL,              -- Unix timestamp
   updated_at INTEGER NOT NULL,              -- Unix timestamp
   pinned_comment_id INTEGER,                -- GitHub comment ID for pinned summary
-  UNIQUE(repo_id, issue_number, sponsor_address)
+  UNIQUE(repo_id, issue_number, sponsor_address, network)
 );
 
 -- Wallet mappings: links GitHub users to their wallet addresses
