@@ -18,9 +18,9 @@ _Automated, trust-minimised bounty payouts for open-source contributions. Fund w
 1. **Install the GitHub App**  
    👉 [Download BountyPay](https://github.com/apps/bountypay)
 
-2. **Open a New Issue** and click the ``` Create a bounty ``` button from the BountyPay bot.
+2. **Open a New Issue** and click the `Create a bounty` button from the BountyPay bot.
 
-3. **Fund with USDC on Base** Funds sit safely in escrow.
+3. **Fund with USDC on Base** — Funds sit safely in escrow.
 
 4. **Merge the winning PR** — BountyPay automatically pays the contributor once the PR closes the issue.
 
