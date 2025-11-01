@@ -1,5 +1,12 @@
 // Network and token configuration for BountyPay
 // Supports Base Sepolia (USDC) and Mezo Testnet (MUSD)
+//
+// Available Mezo Testnet RPC endpoints (Chain ID 31611):
+// - https://rpc.test.mezo.org (Official, may have reliability issues)
+// - https://mezo-testnet.drpc.org (dRPC - default, reliable)
+// - https://testnet-rpc.lavenderfive.com:443/mezo/ (Lavender.Five alternative)
+//
+// Note: Boar Network (https://rpc-http.mezo.boar.network) is ONLY for Mainnet (31612)
 
 export const NETWORKS = {
   BASE_SEPOLIA: {
@@ -18,7 +25,7 @@ export const NETWORKS = {
     chainId: 31611,
     chainIdHex: '0x7b6b',
     name: 'Mezo Testnet',
-    rpcUrl: import.meta.env.VITE_MEZO_RPC_URL || 'https://rpc-http.mezo.boar.network',
+    rpcUrl: import.meta.env.VITE_MEZO_RPC_URL || 'https://mezo-testnet.drpc.org',
     blockExplorerUrl: 'https://explorer.test.mezo.org',
     nativeCurrency: {
       name: 'Bitcoin',
