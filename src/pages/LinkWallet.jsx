@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-
-const CHAIN_ID = 84532;
+import { NETWORKS } from '../config/networks';
 
 function createSiweMessage({ domain, address, statement, uri, version, chainId, nonce }) {
   const message = [
@@ -21,10 +20,13 @@ function createSiweMessage({ domain, address, statement, uri, version, chainId, 
 }
 
 function LinkWallet() {
+  const [selectedNetwork, setSelectedNetwork] = useState('BASE_SEPOLIA');
   const [githubUser, setGithubUser] = useState(null);
   const [walletAddress, setWalletAddress] = useState('');
   const [linked, setLinked] = useState(false);
   const [status, setStatus] = useState({ message: '', type: '' });
+
+  const networkConfig = NETWORKS[selectedNetwork];
 
   useEffect(() => {
     checkGitHubAuth();
@@ -73,9 +75,29 @@ function LinkWallet() {
       const address = ethers.getAddress(accounts[0]);
 
       const network = await provider.getNetwork();
-      if (Number(network.chainId) !== CHAIN_ID) {
-        showStatus('Please switch to Base Sepolia network', 'error');
-        return;
+      if (Number(network.chainId) !== networkConfig.chainId) {
+        showStatus(`Please switch to ${networkConfig.name}`, 'error');
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: networkConfig.chainIdHex }],
+          });
+        } catch (switchError) {
+          if (switchError.code === 4902) {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: networkConfig.chainIdHex,
+                chainName: networkConfig.name,
+                nativeCurrency: networkConfig.nativeCurrency,
+                rpcUrls: [networkConfig.rpcUrl],
+                blockExplorerUrls: [networkConfig.blockExplorerUrl]
+              }],
+            });
+          } else {
+            throw switchError;
+          }
+        }
       }
 
       showStatus('Sign the message in your wallet...', 'loading');
@@ -91,7 +113,7 @@ function LinkWallet() {
         statement: 'Link your wallet to receive BountyPay payments.',
         uri: window.location.origin,
         version: '1',
-        chainId: CHAIN_ID,
+        chainId: networkConfig.chainId,
         nonce
       });
 
@@ -199,6 +221,25 @@ function LinkWallet() {
         </p>
       </div>
 
+      {!linked && (
+        <div style={{ marginBottom: '20px' }}>
+          <label htmlFor="network">Select Network</label>
+          <select
+            id="network"
+            value={selectedNetwork}
+            onChange={(e) => setSelectedNetwork(e.target.value)}
+            style={{ width: '100%', marginBottom: '10px' }}
+            disabled={!githubUser}
+          >
+            <option value="BASE_SEPOLIA">Base Sepolia</option>
+            <option value="MEZO_TESTNET">Mezo Testnet</option>
+          </select>
+          <p style={{ fontSize: '12px', color: '#718096', marginBottom: '10px' }}>
+            {networkConfig.name} • Chain ID: {networkConfig.chainId}
+          </p>
+        </div>
+      )}
+
       <button
         className="btn btn-primary"
         onClick={connectWallet}
@@ -212,7 +253,8 @@ function LinkWallet() {
         <div className="wallet-info" style={{ display: 'block', marginTop: '20px' }}>
           <strong>✅ Linked:</strong><br />
           GitHub: {githubUser?.githubUsername}<br />
-          Wallet: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+          Wallet: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}<br />
+          Network: {networkConfig.name}
         </div>
       )}
 
@@ -226,4 +268,3 @@ function LinkWallet() {
 }
 
 export default LinkWallet;
-

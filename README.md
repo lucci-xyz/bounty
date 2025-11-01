@@ -95,24 +95,46 @@ We love hearing from builders and maintainers.
 
 ## Smart Contracts
 
-Deployed on **Base Sepolia (Chain ID 84532)**.
+BountyPay supports multiple networks. You can choose your preferred network when creating a bounty.
+
+### Base Sepolia Testnet
+
+**Network Details:**
+- Chain ID: `84532`
+- Native Currency: ETH
+- RPC URL: `https://sepolia.base.org`
+- Block Explorer: [`https://sepolia.basescan.org`](https://sepolia.basescan.org)
+
+**Deployed Contracts:**
 
 | Contract | Address | Description |
 |----------|---------|-------------|
 | BountyEscrow | [`0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD`](https://sepolia.basescan.org/address/0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD) | Main escrow contract for bounty funds |
 | FeeVault | [`0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3`](https://sepolia.basescan.org/address/0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3) | Protocol fee collection vault |
-| USDC (Test) | [`0x036CbD53842c5426634e7929541eC2318f3dCF7e`](https://sepolia.basescan.org/address/0x036CbD53842c5426634e7929541eC2318f3dCF7e) | Test USDC token for Base Sepolia |
+| USDC (Test) | [`0x036CbD53842c5426634e7929541eC2318f3dCF7e`](https://sepolia.basescan.org/address/0x036CbD53842c5426634e7929541eC2318f3dCF7e) | Test USDC token (6 decimals) |
 
-> See [Smart Contracts Documentation](docs/smart-contracts.md) for detailed function reference and integration guide.
+### Mezo Testnet
 
-Deployed on **Mezo Testnet (Chain ID 31611)**.
+**Network Details:**
+- Chain ID: `31611`
+- Native Currency: BTC (Bitcoin)
+- RPC URL: `https://mezo-testnet.drpc.org` (dRPC - reliable)
+- Alternative RPCs:
+  - `https://rpc.test.mezo.org` (Official, may have connectivity issues)
+  - `https://testnet-rpc.lavenderfive.com:443/mezo/` (Lavender.Five)
+- Block Explorer: [`https://explorer.test.mezo.org`](https://explorer.test.mezo.org)
 
-| Contract | Address |
-|----------|---------|
-| BountyEscrow | `0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3` |
-| FeeVault | `0xa8Fc9DC3383E9E64FF9F7552a5A6B25885e5b094` |
-| MUSDC (Test) | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` |
+> **Note:** Boar Network (`rpc-http.mezo.boar.network`) is only available for Mezo **Mainnet** (Chain ID 31612), not testnet. You can customize the testnet RPC by setting `VITE_MEZO_RPC_URL` in your environment variables.
 
+**Deployed Contracts:**
+
+| Contract | Address | Description |
+|----------|---------|-------------|
+| BountyEscrow | [`0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3`](https://explorer.test.mezo.org/address/0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3) | Main escrow contract for bounty funds |
+| FeeVault | [`0xa8Fc9DC3383E9E64FF9F7552a5A6B25885e5b094`](https://explorer.test.mezo.org/address/0xa8Fc9DC3383E9E64FF9F7552a5A6B25885e5b094) | Protocol fee collection vault |
+| MUSD (Test) | [`0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503`](https://explorer.test.mezo.org/address/0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503) | Mezo USD stablecoin (18 decimals) |
+
+> **Note:** Each network operates independently. Bounties created on Base Sepolia use USDC, while bounties on Mezo Testnet use MUSD. There is no bridging between networks.
 
 Audit reports and deployment history are coming soon.
 
@@ -120,9 +142,13 @@ Audit reports and deployment history are coming soon.
 
 ### Wallet Connection Issues
 
-- **Wallet not connecting**: Ensure you're on Base Sepolia network (Chain ID 84532)
-- **Transaction fails**: Check you have enough Base ETH for gas fees
-- **USDC approval fails**: Verify you have sufficient USDC balance
+- **Wallet not connecting**: Ensure you're on the correct network:
+  - Base Sepolia (Chain ID: 84532) for USDC bounties
+  - Mezo Testnet (Chain ID: 31611) for MUSD bounties
+- **Transaction fails**: Check you have enough native currency for gas fees:
+  - Base Sepolia requires ETH
+  - Mezo Testnet requires BTC
+- **Token approval fails**: Verify you have sufficient token balance (USDC on Base or MUSD on Mezo)
 
 ### Payment Not Received
 

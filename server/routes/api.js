@@ -65,7 +65,9 @@ router.post('/bounty/create', async (req, res) => {
       amount, 
       deadline, 
       txHash,
-      installationId 
+      installationId,
+      network = 'BASE_SEPOLIA',
+      tokenSymbol = 'USDC'
     } = req.body;
     
     // Compute bountyId
@@ -83,7 +85,9 @@ router.post('/bounty/create', async (req, res) => {
       amount,
       deadline,
       status: 'open',
-      txHash
+      txHash,
+      network,
+      tokenSymbol
     });
     
     // Post GitHub comment
@@ -95,7 +99,9 @@ router.post('/bounty/create', async (req, res) => {
       deadline,
       sponsorAddress,
       txHash,
-      installationId
+      installationId,
+      network,
+      tokenSymbol
     });
     
     res.json({ 
