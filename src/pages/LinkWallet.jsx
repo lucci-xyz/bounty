@@ -52,7 +52,7 @@ function LinkWallet() {
         showStatus('GitHub authenticated!', 'success');
       }
     } catch (error) {
-      console.error('Auth check error:', error);
+      // Silent fail - user not authenticated yet
     }
   };
 
@@ -161,7 +161,6 @@ function LinkWallet() {
       setLinked(true);
       showStatus('✅ Wallet linked successfully! You can now receive bounty payments.', 'success');
     } catch (error) {
-      console.error(error);
       showStatus(error.message, 'error');
     }
   };

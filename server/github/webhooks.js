@@ -116,7 +116,7 @@ ${BRAND_SIGNATURE}`;
     );
     await addLabels(octokit, owner, repo, issueNumber, [labelName]);
   } catch (error) {
-    console.error('Error adding label:', error.message);
+    console.error('Label addition failed:', error.message);
   }
   
   // Update DB with comment ID
@@ -336,7 +336,7 @@ export async function handleWebhook(event, payload) {
         console.log(`Unhandled event: ${event}`);
     }
   } catch (error) {
-    console.error(`Error handling webhook ${event}:`, error);
+    console.error(`Webhook ${event} processing failed:`, error.message);
     throw error;
   }
 }

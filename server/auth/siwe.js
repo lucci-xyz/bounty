@@ -23,7 +23,7 @@ export async function verifySIWE(message, signature) {
       chainId: fields.data.chainId
     };
   } catch (error) {
-    console.error('SIWE verification failed:', error);
+    console.error('SIWE verification failed');
     return {
       success: false,
       error: error.message

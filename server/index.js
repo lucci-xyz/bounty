@@ -63,7 +63,7 @@ try {
   initDB();
   console.log('✅ Database ready\n');
 } catch (error) {
-  console.error('❌ Database initialization failed:', error);
+  console.error('❌ Database initialization failed');
   process.exit(1);
 }
 
@@ -107,7 +107,7 @@ app.post('/github/callback', express.raw({ type: '*/*' }), async (req, res) => {
     const text = await upstream.text();
     res.status(upstream.status).send(text);
   } catch (error) {
-    console.error('Callback proxy error:', error);
+    console.error('Callback proxy failed:', error.message);
     res.status(502).send('Upstream callback proxy failed');
   }
 });
@@ -132,13 +132,13 @@ app.post('/webhooks/github', express.json({ verify: (req, res, buf) => {
 
     res.status(200).json({ success: true });
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('Webhook processing failed:', error.message);
     
     if (error.message && error.message.includes('signature')) {
       return res.status(401).json({ error: 'Invalid signature' });
     }
     
-    res.status(500).json({ error: 'Webhook processing failed', details: error.message });
+    res.status(500).json({ error: 'Webhook processing failed' });
   }
 });
 
@@ -159,7 +159,7 @@ app.get('*', (req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
+  console.error('Server error:', err.message);
   res.status(500).json({ error: 'Internal server error' });
 });
 

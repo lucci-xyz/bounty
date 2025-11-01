@@ -71,7 +71,7 @@ export async function pinComment(octokit, owner, repo, commentId) {
     // For now, we'll just mark it in our DB
     return true;
   } catch (error) {
-    console.error('Error pinning comment:', error);
+    console.error('Comment pinning failed:', error.message);
     return false;
   }
 }

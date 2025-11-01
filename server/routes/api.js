@@ -57,7 +57,7 @@ router.post('/verify-wallet', async (req, res) => {
       address: result.address
     });
   } catch (error) {
-    console.error('Error verifying wallet:', error);
+    console.error('Wallet verification failed:', error.message);
     res.status(500).json({ error: 'Verification failed' });
   }
 });
@@ -126,7 +126,7 @@ router.post('/bounty/create', async (req, res) => {
       bountyId
     });
   } catch (error) {
-    console.error('Error creating bounty:', error);
+    console.error('Bounty creation failed:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -145,7 +145,7 @@ router.get('/bounty/:bountyId', async (req, res) => {
 
     res.json(bounty);
   } catch (error) {
-    console.error('Error fetching bounty:', error);
+    console.error('Bounty fetch failed:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -161,7 +161,7 @@ router.get('/issue/:repoId/:issueNumber', async (req, res) => {
 
     res.json({ bounties });
   } catch (error) {
-    console.error('Error fetching issue bounties:', error);
+    console.error('Issue bounties fetch failed:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -191,7 +191,7 @@ router.post('/wallet/link', async (req, res) => {
       message: 'Wallet linked successfully'
     });
   } catch (error) {
-    console.error('Error linking wallet:', error);
+    console.error('Wallet linking failed:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -210,7 +210,7 @@ router.get('/wallet/:githubId', async (req, res) => {
 
     res.json(mapping);
   } catch (error) {
-    console.error('Error fetching wallet:', error);
+    console.error('Wallet fetch failed:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -227,7 +227,7 @@ router.get('/contract/bounty/:bountyId', async (req, res) => {
     const bounty = await getBountyFromContract(req.params.bountyId, network);
     res.json(bounty);
   } catch (error) {
-    console.error('Error fetching contract bounty:', error);
+    console.error('Contract bounty fetch failed:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -281,7 +281,7 @@ router.get('/stats', async (req, res) => {
       timestamp: Date.now()
     });
   } catch (error) {
-    console.error('Error generating stats:', error);
+    console.error('Stats generation failed:', error.message);
     res.status(500).json({ error: 'Failed to generate stats' });
   }
 });

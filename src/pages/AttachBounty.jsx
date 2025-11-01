@@ -88,7 +88,6 @@ function AttachBounty() {
       setShowForm(true);
       showStatus('Wallet connected!', 'success');
     } catch (error) {
-      console.error('Wallet connection error:', error);
       showStatus(error.message || 'Failed to connect wallet', 'error');
     }
   };
@@ -161,7 +160,6 @@ function AttachBounty() {
         window.open(`https://github.com/${repoFullName}/issues/${issueNumber}`, '_self');
       }, 2000);
     } catch (error) {
-      console.error('Bounty creation error:', error);
       showStatus(error.message || 'Failed to create bounty', 'error');
     }
   };

@@ -71,7 +71,6 @@ function Refund() {
       setConnected(true);
       showStatus('Wallet connected!', 'success');
     } catch (error) {
-      console.error('Connection error:', error);
       showStatus(error.message, 'error');
     }
   };
@@ -119,7 +118,6 @@ function Refund() {
       setCurrentBounty({ bountyId, ...bounty });
       showStatus('✓ Eligible for refund', 'success');
     } catch (error) {
-      console.error(error);
       showStatus(error.message, 'error');
       setBountyInfo(null);
       setCurrentBounty(null);
@@ -143,7 +141,6 @@ function Refund() {
       showStatus(`✅ Refund successful! TX: ${receipt.hash}`, 'success');
       setRefunded(true);
     } catch (error) {
-      console.error(error);
       showStatus(error.message || 'Refund failed', 'error');
     }
   };

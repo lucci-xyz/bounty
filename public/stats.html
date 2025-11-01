@@ -373,7 +373,7 @@
           }
         }
       } catch (error) {
-        console.error('Failed to load token metadata:', error);
+        console.error('Failed to load token metadata');
       }
     }
     
@@ -450,7 +450,7 @@
         }
         
       } catch (error) {
-        console.error('Failed to load stats:', error);
+        console.error('Failed to load stats');
         document.getElementById('token-comparison').innerHTML = 
           '<tr><td colspan="6" class="empty-state">Failed to load data</td></tr>';
         document.getElementById('recent-bounties').innerHTML = 

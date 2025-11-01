@@ -56,7 +56,6 @@ export function initBlockchain() {
   escrowContract = new ethers.Contract(CONFIG.blockchain.escrowContract, ESCROW_ABI, resolverWallet);
   usdcContract = new ethers.Contract(CONFIG.blockchain.usdcContract, ERC20_ABI, provider);
   console.log('✅ Blockchain initialized');
-  console.log(`   Resolver address: ${resolverWallet.address}`);
 }
 
 /**
@@ -104,15 +103,9 @@ export async function getBountyFromContract(bountyId, network = 'BASE_SEPOLIA') 
  */
 export async function resolveBounty(bountyId, recipientAddress) {
   try {
-    console.log(`🔄 Resolving bounty ${bountyId} to ${recipientAddress}`);
-    
-    // Call resolve function
     const tx = await escrowContract.resolve(bountyId, recipientAddress);
-    console.log(`   Transaction sent: ${tx.hash}`);
-    
-    // Wait for confirmation
     const receipt = await tx.wait();
-    console.log(`✅ Bounty resolved! Gas used: ${receipt.gasUsed.toString()}`);
+    console.log(`Bounty resolved: ${bountyId.slice(0, 10)}...`);
     
     return {
       success: true,
@@ -121,7 +114,7 @@ export async function resolveBounty(bountyId, recipientAddress) {
       gasUsed: receipt.gasUsed.toString()
     };
   } catch (error) {
-    console.error('❌ Error resolving bounty:', error);
+    console.error('Bounty resolution failed:', error.message);
     return {
       success: false,
       error: error.message
@@ -132,14 +125,12 @@ export async function resolveBounty(bountyId, recipientAddress) {
 export async function resolveBountyOnNetwork(bountyId, recipientAddress, network = 'BASE_SEPOLIA') {
   try {
     const { netEscrow } = getNetworkClients(network);
-    console.log(`🔄 Resolving bounty ${bountyId} to ${recipientAddress} on ${network}`);
     const tx = await netEscrow.resolve(bountyId, recipientAddress);
-    console.log(`   Transaction sent: ${tx.hash}`);
     const receipt = await tx.wait();
-    console.log(`✅ Bounty resolved on ${network}! Gas used: ${receipt.gasUsed.toString()}`);
+    console.log(`Bounty resolved on ${network}: ${bountyId.slice(0, 10)}...`);
     return { success: true, txHash: receipt.hash, blockNumber: receipt.blockNumber, gasUsed: receipt.gasUsed.toString() };
   } catch (error) {
-    console.error(`❌ Error resolving bounty on ${network}:`, error);
+    console.error(`Bounty resolution failed on ${network}:`, error.message);
     return { success: false, error: error.message };
   }
 }
