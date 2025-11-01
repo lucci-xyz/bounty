@@ -118,8 +118,10 @@ BountyPay supports multiple networks. You can choose your preferred network when
 **Network Details:**
 - Chain ID: `31611`
 - Native Currency: BTC (Bitcoin)
-- RPC URL: `https://rpc.test.mezo.org`
+- RPC URL: `https://rpc-http.mezo.boar.network` (Boar Network - reliable alternative)
 - Block Explorer: [`https://explorer.test.mezo.org`](https://explorer.test.mezo.org)
+
+> **Note:** The default RPC uses Boar Network for better reliability. You can customize this by setting `VITE_MEZO_RPC_URL` in your environment variables.
 
 **Deployed Contracts:**
 
