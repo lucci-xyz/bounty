@@ -63,30 +63,6 @@ Audit reports and deployment history are coming soon.
 
 ---
 
-## Documentation
-
-- **[React Quick Start](REACT_QUICKSTART.md)** ⭐ – Get started with the new React frontend
-- **[React Migration Guide](docs/REACT_MIGRATION_GUIDE.md)** – Complete migration documentation
-- **[Mezo Integration Guide](docs/MEZO_INTEGRATION.md)** – Complete guide to dual-network support
-- **[Deployment Checklist](docs/DEPLOYMENT_CHECKLIST.md)** – Step-by-step deployment instructions
-- **[Mezo Documentation](docs/mezo/)** – Mezo network and MUSD resources
-
-## Quick Start (Development)
-
-```bash
-# Install dependencies
-npm install --legacy-peer-deps
-
-# Start development (backend + frontend)
-npm run dev
-
-# Open browser
-# Frontend: http://localhost:5173
-# Backend API: http://localhost:3000
-```
-
----
-
 Built with ❤️ using Base and Mezo.
 
 _**Use at your own risk.** BountyPay is provided "as is" without warranties. You are responsible for the funds you deposit and the security practices you follow._
