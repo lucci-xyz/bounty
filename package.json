@@ -8,10 +8,13 @@
     "dev": "node --watch server/index.js",
     "dev:client": "vite",
     "start": "node server/index.js",
-    "build": "vite build",
+    "build": "NODE_OPTIONS='--max-old-space-size=2048' vite build",
     "migrate": "node server/db/migrate.js",
     "seed": "node server/db/seed.js",
     "test": "node --test tests/"
+  },
+  "engines": {
+    "node": ">=20.19.1"
   },
   "keywords": [
     "github",
