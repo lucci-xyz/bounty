@@ -14,13 +14,13 @@ let db = null;
  */
 export function initDB() {
   if (db) return db;
-  
+
   db = new Database(DB_PATH);
   db.pragma('journal_mode = WAL');
-  
+
   // Create tables
   db.exec(SCHEMA);
-  
+
   console.log('✅ Database initialized');
   return db;
 }
@@ -179,7 +179,7 @@ export const prClaimQueries = {
 export const statsQueries = {
   getAll: (limit = 20) => {
     const db = getDB();
-    
+
     // Single query for token aggregates with TVL
     const tokenStats = db.prepare(`
       SELECT 
@@ -213,8 +213,8 @@ export const statsQueries = {
     const total_tvl = tokenStats.reduce((sum, t) => {
       const tokenAddress = t.token.toLowerCase();
       // Case-insensitive lookup: find token config by comparing lowercase addresses
-      const tokenConfig = CONFIG.tokens[tokenAddress] || 
-        CONFIG.tokens[Object.keys(CONFIG.tokens).find(key => key.toLowerCase() === tokenAddress)];
+      const tokenKey = Object.keys(CONFIG.tokens).find(key => key.toLowerCase() === tokenAddress);
+      const tokenConfig = tokenKey ? CONFIG.tokens[tokenKey] : undefined;
       const decimals = tokenConfig?.decimals ?? 18;
       const normalizedTvl = Number(t.tvl) / Math.pow(10, decimals);
       return sum + normalizedTvl;

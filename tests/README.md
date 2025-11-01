@@ -26,10 +26,12 @@ node --test --experimental-test-coverage tests/
 - Empty database handling
 
 ### API Layer (`api-stats.test.js`)
-- `/api/stats` endpoint structure
-- Success rate calculations
-- JSON serialization
-- Response format validation
+- **TVL normalization** - Verifies `byToken[token].tvl` values are normalized by token decimals
+- **totalValue normalization** - Verifies `byToken[token].totalValue` values are normalized
+- **avgAmount normalization** - Verifies `byToken[token].avgAmount` values are normalized
+- **Consistency check** - Verifies sum of `byToken` TVLs matches `overall.total_tvl`
+- **Raw value prevention** - Ensures raw database values are never returned in `byToken`
+- **Unknown token handling** - Tests default 18 decimals for unknown tokens
 
 ### Configuration (`api-tokens.test.js`)
 - Token metadata availability
