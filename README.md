@@ -1,6 +1,6 @@
 # ![BountyPay logo](public/icons/og.png) BountyPay
 
-_Automated, trust-minimised bounty payouts for open-source contributions. Fund with USDC on Base and let BountyPay handle the rest._
+_Automated, trust-minimised bounty payouts for open-source contributions. Fund with USDC on Base or MUSD on Mezo and let BountyPay handle the rest._
 
 ## Features
 
@@ -20,7 +20,11 @@ _Automated, trust-minimised bounty payouts for open-source contributions. Fund w
 
 2. **Open a New Issue** and click the `Create a bounty` button from the BountyPay bot.
 
-3. **Fund with USDC on Base** — Funds sit safely in escrow.
+3. **Choose Your Network & Fund**
+   - **Base Sepolia**: Fund with USDC (EVM standard)
+   - **Mezo Testnet**: Fund with MUSD (Bitcoin L2)
+   
+   Funds sit safely in escrow.
 
 4. **Merge the winning PR** — BountyPay automatically pays the contributor once the PR closes the issue.
 
@@ -81,7 +85,8 @@ We love hearing from builders and maintainers.
 ### High-Impact Ideas
 
 - **Anti-griefing guardrails** – Prevent sponsors from copying the flow and cancelling bounties after seeing the code. Ideas welcomed: reputation, deposits, social recovery.  
-- **Multi-asset support** – Accept deposits in any token, on any Base or L2 network, and settle in the contributor’s preferred asset.  
+- **Mezo Passport Integration** – Add native Bitcoin wallet support (Unisat, Leather) alongside EVM wallets for Mezo bounties.  
+- **Multi-asset support** – Accept deposits in any token, on any Base or L2 network, and settle in the contributor's preferred asset.  
 - **Proof-of-work collectibles** – Mint contribution NFTs as on-chain receipts for completed bounties.  
 - **Security & audits** – Help us continuously audit contracts, bot logic, and wallet flows.  
 - **New bounty mechanics** – Milestone-based unlocks, recurring grants, or team-based rewards. Surprise us.
@@ -99,6 +104,15 @@ Deployed on **Base Sepolia (Chain ID 84532)**.
 | USDC (Test) | [`0x036CbD53842c5426634e7929541eC2318f3dCF7e`](https://sepolia.basescan.org/address/0x036CbD53842c5426634e7929541eC2318f3dCF7e) | Test USDC token for Base Sepolia |
 
 > See [Smart Contracts Documentation](docs/smart-contracts.md) for detailed function reference and integration guide.
+
+Deployed on **Mezo Testnet (Chain ID 31611)**.
+
+| Contract | Address |
+|----------|---------|
+| BountyEscrow | `0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3` |
+| FeeVault | `0xa8Fc9DC3383E9E64FF9F7552a5A6B25885e5b094` |
+| MUSDC (Test) | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` |
+
 
 Audit reports and deployment history are coming soon.
 
@@ -132,6 +146,6 @@ For more detailed troubleshooting, see the [Troubleshooting Guide](docs/troubles
 
 ---
 
-Built with ❤️ using Base.
+Built with ❤️ using Base and Mezo.
 
 _**Use at your own risk.** BountyPay is provided "as is" without warranties. You are responsible for the funds you deposit and the security practices you follow._

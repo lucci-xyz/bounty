@@ -26,6 +26,8 @@ describe('Stats Database Queries', () => {
         deadline INTEGER NOT NULL,
         status TEXT NOT NULL DEFAULT 'open',
         tx_hash TEXT,
+        network TEXT NOT NULL DEFAULT 'base',
+        chain_id INTEGER NOT NULL DEFAULT 84532,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         pinned_comment_id INTEGER
@@ -79,8 +81,8 @@ describe('Stats Database Queries', () => {
       INSERT INTO bounties (
         bounty_id, repo_full_name, repo_id, issue_number,
         sponsor_address, token, amount, deadline, status,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        network, chain_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const now = Date.now();
@@ -88,16 +90,16 @@ describe('Stats Database Queries', () => {
     const MUSD = '0xmusdaddress000000000000000000000000000';
 
     // USDC bounties: 3 resolved, 2 open
-    insert.run('bounty1', 'owner/repo', 1, 1, '0xsponsor', USDC, '5000000', now + 86400, 'resolved', now - 1000, now);
-    insert.run('bounty2', 'owner/repo', 1, 2, '0xsponsor', USDC, '10000000', now + 86400, 'resolved', now - 2000, now);
-    insert.run('bounty3', 'owner/repo', 1, 3, '0xsponsor', USDC, '3000000', now + 86400, 'resolved', now - 3000, now);
-    insert.run('bounty4', 'owner/repo', 1, 4, '0xsponsor', USDC, '7000000', now + 86400, 'open', now - 4000, now);
-    insert.run('bounty5', 'owner/repo', 1, 5, '0xsponsor', USDC, '2000000', now + 86400, 'open', now - 5000, now);
+    insert.run('bounty1', 'owner/repo', 1, 1, '0xsponsor', USDC, '5000000', now + 86400, 'resolved', 'base', 84532, now - 1000, now);
+    insert.run('bounty2', 'owner/repo', 1, 2, '0xsponsor', USDC, '10000000', now + 86400, 'resolved', 'base', 84532, now - 2000, now);
+    insert.run('bounty3', 'owner/repo', 1, 3, '0xsponsor', USDC, '3000000', now + 86400, 'resolved', 'base', 84532, now - 3000, now);
+    insert.run('bounty4', 'owner/repo', 1, 4, '0xsponsor', USDC, '7000000', now + 86400, 'open', 'base', 84532, now - 4000, now);
+    insert.run('bounty5', 'owner/repo', 1, 5, '0xsponsor', USDC, '2000000', now + 86400, 'open', 'base', 84532, now - 5000, now);
 
     // MUSD bounties: 2 resolved, 1 open
-    insert.run('bounty6', 'owner/repo', 1, 6, '0xsponsor', MUSD, '15000000000000000000', now + 86400, 'resolved', now - 6000, now);
-    insert.run('bounty7', 'owner/repo', 1, 7, '0xsponsor', MUSD, '25000000000000000000', now + 86400, 'resolved', now - 7000, now);
-    insert.run('bounty8', 'owner/repo', 1, 8, '0xsponsor', MUSD, '10000000000000000000', now + 86400, 'open', now - 8000, now);
+    insert.run('bounty6', 'owner/repo', 1, 6, '0xsponsor', MUSD, '15000000000000000000', now + 86400, 'resolved', 'mezo', 2016, now - 6000, now);
+    insert.run('bounty7', 'owner/repo', 1, 7, '0xsponsor', MUSD, '25000000000000000000', now + 86400, 'resolved', 'mezo', 2016, now - 7000, now);
+    insert.run('bounty8', 'owner/repo', 1, 8, '0xsponsor', MUSD, '10000000000000000000', now + 86400, 'open', 'mezo', 2016, now - 8000, now);
   });
 
   after(() => {

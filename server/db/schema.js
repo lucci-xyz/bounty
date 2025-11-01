@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS bounties (
   deadline INTEGER NOT NULL,                -- Unix timestamp
   status TEXT NOT NULL DEFAULT 'open',      -- open, resolved, refunded, canceled
   tx_hash TEXT,                             -- Transaction hash for creation
+  network TEXT NOT NULL DEFAULT 'base',    -- Network name (base, mezo)
+  chain_id INTEGER NOT NULL DEFAULT 84532,  -- Chain ID
   created_at INTEGER NOT NULL,              -- Unix timestamp
   updated_at INTEGER NOT NULL,              -- Unix timestamp
   pinned_comment_id INTEGER,                -- GitHub comment ID for pinned summary
