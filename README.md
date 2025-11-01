@@ -50,7 +50,6 @@ That's it. No invoices, no manual transfers, no spreadsheets.
 ### Strategic
 
 - **[Mezo Integration](docs/mezo-integration.md)** - MUSD integration strategy and roadmap
-- **[Hackathon Requirements](docs/hackathon-requirements.md)** - Mezo hackathon checklist and guidelines
 
 ### Technical
 
