@@ -210,11 +210,11 @@ Yes! We welcome contributions. See the [Contributing](README.md#contributing) se
 
 ### How do I set up local development?
 
-See the [Local Development Guide](local-development.md) for complete setup instructions.
+See the [Local Development Guide](../development/local-development.md) for complete setup instructions.
 
 ### Can I deploy my own instance?
 
-Yes, the code is open source. See the [Deployment Guide](deployment.md) for instructions.
+Yes, the code is open source. See the [Deployment Guide](../deployment/deployment.md) for instructions.
 
 ### What's the tech stack?
 
@@ -260,7 +260,7 @@ The fee is deducted from the bounty amount before payout. The contributor receiv
 - Dispute resolution
 - Team bounties
 
-See [Architecture](architecture.md#future-enhancements) for the full roadmap.
+See [Architecture](../reference/architecture.md#future-enhancements) for the full roadmap.
 
 ---
 
@@ -307,6 +307,6 @@ Use at your own risk. See the disclaimer in the README.
 ## Next Steps
 
 - [Getting Started](README.md#get-started-in-minutes) - Quick start guide
-- [Local Development](local-development.md) - Set up your environment
+- [Local Development](../development/local-development.md) - Set up your environment
 - [Troubleshooting](troubleshooting.md) - Solve common issues
-- [Architecture](architecture.md) - Understand the system
+- [Architecture](../reference/architecture.md) - Understand the system

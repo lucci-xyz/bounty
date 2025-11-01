@@ -736,5 +736,5 @@ If you can't resolve an issue:
 ## Next Steps
 
 - [FAQ](faq.md) - Frequently asked questions
-- [Local Development](local-development.md) - Setup guide
-- [API Documentation](api.md) - API reference
+- [Local Development](../development/local-development.md) - Setup guide
+- [API Documentation](../reference/api.md) - API reference
