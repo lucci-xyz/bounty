@@ -54,39 +54,56 @@ export const CONFIG = {
   databasePath: process.env.DATABASE_PATH,
 };
 
-// Validate required config
-const required = [
-  'sessionSecret',
-  'github.appId',
-  'github.privateKey',
-  'github.webhookSecret',
-  'github.clientId',
-  'github.clientSecret',
-  'blockchain.escrowContract',
-  'blockchain.resolverPrivateKey',
-  // For callback proxying (optional in local dev, required in hosted envs)
-  // Note: Only enforce one based on ENV_TARGET
-];
+// ===== Runtime validation helpers (do not exit on import) =====
+export function getMissingRequiredKeys() {
+  const required = [
+    'sessionSecret',
+    'github.appId',
+    'github.privateKey',
+    'github.webhookSecret',
+    'github.clientId',
+    'github.clientSecret',
+    'blockchain.escrowContract',
+    'blockchain.resolverPrivateKey',
+  ];
 
-for (const key of required) {
-  const keys = key.split('.');
-  let value = CONFIG;
-  for (const k of keys) {
-    value = value?.[k];
+  const missing = [];
+  for (const key of required) {
+    const keys = key.split('.');
+    let value = CONFIG;
+    for (const k of keys) {
+      value = value?.[k];
+    }
+    if (!value) {
+      missing.push(key);
+    }
   }
-  if (!value) {
-    console.error(`Missing required config: ${key}`);
-    process.exit(1);
+
+  if (CONFIG.envTarget === 'stage' && !CONFIG.stageCallbackUrl) {
+    missing.push('stageCallbackUrl');
   }
+  if (CONFIG.envTarget === 'prod' && !CONFIG.prodCallbackUrl) {
+    missing.push('prodCallbackUrl');
+  }
+
+  return missing;
 }
 
-// Validate callback targets conditionally
-if (CONFIG.envTarget === 'stage' && !CONFIG.stageCallbackUrl) {
-  console.error('Missing required config: STAGE_CALLBACK_URL');
-  process.exit(1);
+export function isGithubConfigured() {
+  return Boolean(
+    CONFIG.github?.appId &&
+    CONFIG.github?.privateKey &&
+    CONFIG.github?.webhookSecret &&
+    CONFIG.github?.clientId &&
+    CONFIG.github?.clientSecret
+  );
 }
-if (CONFIG.envTarget === 'prod' && !CONFIG.prodCallbackUrl) {
-  console.error('Missing required config: PROD_CALLBACK_URL');
-  process.exit(1);
+
+export function isBlockchainConfigured() {
+  return Boolean(
+    CONFIG.blockchain?.escrowContract &&
+    CONFIG.blockchain?.resolverPrivateKey &&
+    CONFIG.blockchain?.rpcUrl
+  );
 }
 

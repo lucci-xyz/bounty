@@ -6,7 +6,7 @@ import { initDB } from './db/index.js';
 import { initGitHubApp, getGitHubApp } from './github/client.js';
 import { initBlockchain } from './blockchain/contract.js';
 import { handleWebhook } from './github/webhooks.js';
-import { CONFIG } from './config.js';
+import { CONFIG, getMissingRequiredKeys, isGithubConfigured, isBlockchainConfigured } from './config.js';
 import apiRoutes from './routes/api.js';
 import oauthRoutes from './routes/oauth.js';
 import path from 'path';
@@ -58,6 +58,12 @@ app.use(session({
 
 console.log('🚀 Starting BountyPay GitHub App...\n');
 
+// Log configuration status without exiting to allow healthchecks to pass
+const missingKeys = getMissingRequiredKeys();
+if (missingKeys.length > 0) {
+  console.warn('⚠️  Missing configuration keys:', missingKeys.join(', '));
+}
+
 // Initialize database (auto-creates tables if they don't exist)
 try {
   initDB();
@@ -67,11 +73,19 @@ try {
   process.exit(1);
 }
 
-// Initialize GitHub App
-initGitHubApp();
+// Initialize GitHub App if fully configured
+if (isGithubConfigured()) {
+  initGitHubApp();
+} else {
+  console.warn('⚠️  GitHub App disabled: missing configuration');
+}
 
-// Initialize blockchain connection
-initBlockchain();
+// Initialize blockchain connection if configured
+if (isBlockchainConfigured()) {
+  initBlockchain();
+} else {
+  console.warn('⚠️  Blockchain disabled: missing configuration');
+}
 
 // ========== Routes ==========
 
