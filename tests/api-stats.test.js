@@ -121,14 +121,59 @@ describe('API Stats Endpoint Normalization', () => {
     if (db) db.close();
   });
 
+  it('should return stats with correct structure', () => {
+    const { tokenStats, overall } = getStatsFromDB(db);
+    const byToken = buildByTokenObject(tokenStats);
+
+    assert.ok(byToken, 'Should have byToken object');
+    assert.ok(overall, 'Should have overall object');
+
+    assert.ok(typeof overall.total_bounties === 'number', 'total_bounties should be number');
+    assert.ok(typeof overall.total_tvl === 'number', 'total_tvl should be number');
+    assert.ok(typeof overall.resolved_count === 'number', 'resolved_count should be number');
+
+    Object.entries(byToken).forEach(([address, stats]) => {
+      assert.ok(typeof stats.count === 'number', 'count should be number');
+      assert.ok(typeof stats.totalValue === 'number', 'totalValue should be number');
+      assert.ok(typeof stats.tvl === 'number', 'tvl should be number');
+      assert.ok(typeof stats.avgAmount === 'number', 'avgAmount should be number');
+      assert.ok(typeof stats.successRate === 'number', 'successRate should be number');
+    });
+  });
+
+  it('should calculate success rates correctly', () => {
+    const { tokenStats } = getStatsFromDB(db);
+    const byToken = buildByTokenObject(tokenStats);
+
+    const usdcAddr = Object.keys(byToken).find(addr => addr.includes('036cbd'));
+    const usdc = byToken[usdcAddr];
+
+    // USDC: 1 resolved out of 3 total = 33.33%
+    assert.ok(Math.abs(usdc.successRate - 33.333333333333336) < 0.01, 'Success rate should be calculated correctly');
+  });
+
+  it('should return valid JSON structure', () => {
+    const { tokenStats, overall } = getStatsFromDB(db);
+    const byToken = buildByTokenObject(tokenStats);
+
+    const result = {
+      byToken,
+      overall,
+      timestamp: Date.now()
+    };
+
+    assert.doesNotThrow(() => JSON.stringify(result), 'Should be valid JSON');
+    
+    const json = JSON.stringify(result);
+    const parsed = JSON.parse(json);
+    assert.ok(parsed.byToken, 'Should have byToken after parse');
+    assert.ok(parsed.overall, 'Should have overall after parse');
+  });
+
   it('should normalize TVL values in byToken by token decimals', () => {
     const { tokenStats } = getStatsFromDB(db);
     const byToken = buildByTokenObject(tokenStats);
 
-    const usdcToken = Object.values(byToken).find(t => {
-      const tokenAddr = Object.keys(byToken).find(addr => addr.includes('036cbd'));
-      return byToken[tokenAddr] === t;
-    });
     const usdcAddr = Object.keys(byToken).find(addr => addr.includes('036cbd'));
     const usdc = byToken[usdcAddr];
 

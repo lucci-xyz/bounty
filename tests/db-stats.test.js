@@ -130,9 +130,9 @@ describe('Stats Database Queries', () => {
     insert.run('bounty5', 'owner/repo', 1, 5, '0xsponsor', USDC, '2000000', now + 86400, 'open', 'base', 84532, now - 5000, now);
 
     // MUSD bounties: 2 resolved, 1 open
-    insert.run('bounty6', 'owner/repo', 1, 6, '0xsponsor', MUSD, '15000000000000000000', now + 86400, 'resolved', 'mezo', 2016, now - 6000, now);
-    insert.run('bounty7', 'owner/repo', 1, 7, '0xsponsor', MUSD, '25000000000000000000', now + 86400, 'resolved', 'mezo', 2016, now - 7000, now);
-    insert.run('bounty8', 'owner/repo', 1, 8, '0xsponsor', MUSD, '10000000000000000000', now + 86400, 'open', 'mezo', 2016, now - 8000, now);
+    insert.run('bounty6', 'owner/repo', 1, 6, '0xsponsor', MUSD, '15000000000000000000', now + 86400, 'resolved', 'mezo', 31611, now - 6000, now);
+    insert.run('bounty7', 'owner/repo', 1, 7, '0xsponsor', MUSD, '25000000000000000000', now + 86400, 'resolved', 'mezo', 31611, now - 7000, now);
+    insert.run('bounty8', 'owner/repo', 1, 8, '0xsponsor', MUSD, '10000000000000000000', now + 86400, 'open', 'mezo', 31611, now - 8000, now);
   });
 
   after(() => {
@@ -209,4 +209,3 @@ describe('Stats Database Queries', () => {
     assert.strictEqual(result.recent.length, 0, 'Should have no recent activity');
   });
 });
-
