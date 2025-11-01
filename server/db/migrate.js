@@ -12,7 +12,7 @@ console.log('🔄 Running database migrations...\n');
 
 try {
   const db = initDB();
-  
+
   // Migration: Add token column to bounties table
   console.log('📝 Checking for token column...');
   const tableInfo = db.pragma('table_info(bounties)');
@@ -21,12 +21,12 @@ try {
   if (!hasTokenColumn) {
     console.log('➕ Adding token column to bounties table...');
     db.exec(`ALTER TABLE bounties ADD COLUMN token TEXT NOT NULL DEFAULT '${USDC_ADDRESS}'`);
-    
+
     // Create indexes for token
     console.log('📊 Creating token indexes...');
     db.exec('CREATE INDEX IF NOT EXISTS idx_bounties_token ON bounties(token)');
     db.exec('CREATE INDEX IF NOT EXISTS idx_bounties_token_status ON bounties(token, status)');
-    
+
     console.log('✅ Token column added successfully');
   } else {
     console.log('✓ Token column already exists');

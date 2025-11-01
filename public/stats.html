@@ -402,9 +402,9 @@
         } else {
           tbody.innerHTML = tokens.map(([address, stats]) => {
             const token = getTokenInfo(address);
-            const totalValue = formatAmount(stats.totalValue, token.decimals);
-            const tvl = formatAmount(stats.tvl, token.decimals);
-            const avgAmount = formatAmount(stats.avgAmount, token.decimals);
+            const totalValue = Number(stats.totalValue).toFixed(2);
+            const tvl = Number(stats.tvl).toFixed(2);
+            const avgAmount = Number(stats.avgAmount).toFixed(2);
             
             return `
               <tr>
