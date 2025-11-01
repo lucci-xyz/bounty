@@ -93,24 +93,53 @@ pr_claims
 
 ### 4. Smart Contracts
 
-**BountyEscrow.sol**
+**BountyEscrow.sol** - Main escrow contract for holding bounty funds.
+
 ```solidity
+// Create and fund a new bounty
 function createBounty(
   address resolver,
   bytes32 repoIdHash,
   uint64 issueNumber,
   uint64 deadline,
   uint256 amount
-) external returns (bytes32)
+) external returns (bytes32 bountyId)
 
-function resolve(
-  bytes32 bountyId,
-  address recipient
-) external
+// Top up an existing bounty
+function fund(bytes32 bountyId, uint256 amount) external
 
-function refundExpired(
-  bytes32 bountyId
-) external
+// Cancel an open bounty (before deadline)
+function cancel(bytes32 bountyId) external
+
+// Resolve bounty and pay recipient (only resolver)
+function resolve(bytes32 bountyId, address recipient) external
+
+// Refund expired bounty (only sponsor, after deadline)
+function refundExpired(bytes32 bountyId) external
+
+// View functions
+function getBounty(bytes32 bountyId) external view returns (Bounty memory)
+function computeBountyId(address sponsor, bytes32 repoIdHash, uint64 issueNumber) external pure returns (bytes32)
+```
+
+**FeeVault.sol** - Protocol fee collection vault.
+
+```solidity
+// Withdraw ERC-20 tokens (owner only)
+function withdraw(address token, address to, uint256 amount) external
+
+// Sweep native ETH (owner only)
+function sweepNative(address payable to) external
+
+// Receive native ETH
+receive() external payable
+```
+
+**State Machine:**
+```
+None → Open → Resolved
+          ↓       ↓
+      Canceled  Refunded (after deadline)
 ```
 
 ### 5. Frontend
@@ -234,6 +263,7 @@ POST /api/verify-wallet
 POST /api/bounty/create
 GET  /api/bounty/:bountyId
 GET  /api/issue/:repoId/:issueNumber
+GET  /api/contract/bounty/:bountyId
 ```
 
 ### Wallets
@@ -249,6 +279,13 @@ GET  /oauth/callback
 GET  /oauth/user
 POST /oauth/logout
 ```
+
+### Other
+```
+GET  /health - Health check endpoint
+```
+
+> See [API Documentation](api.md) for detailed endpoint reference with request/response examples.
 
 ---
 
@@ -273,14 +310,21 @@ CREATE INDEX idx_wallet_github ON wallet_mappings(github_id);
 
 ### Contract Functions Used
 
-**From Frontend:**
-- `createBounty()` - Sponsor creates bounty
-- `refundExpired()` - Sponsor refunds after deadline
+**From Frontend (User-initiated):**
+- `createBounty()` - Sponsor creates and funds bounty
+- `fund()` - Sponsor tops up existing bounty
+- `cancel()` - Sponsor cancels bounty before deadline
+- `refundExpired()` - Sponsor refunds expired bounty
+- `getBounty()` - Read bounty state from contract
 
-**From Backend:**
-- `resolve()` - Pay out bounty to solver
-- `getBounty()` - Read bounty state
-- `computeBountyId()` - Generate deterministic ID
+**From Backend (Automated):**
+- `resolve()` - Resolver pays out bounty to recipient
+- `computeBountyId()` - Generate deterministic bounty ID
+- `getBounty()` - Query bounty state for validation
+
+**FeeVault (Owner only):**
+- `withdraw()` - Withdraw collected protocol fees (ERC-20)
+- `sweepNative()` - Sweep collected ETH fees
 
 ### Transaction Flow
 1. Frontend calls contract with ethers.js
@@ -392,6 +436,40 @@ USDC_CONTRACT=0x036CbD53842c5426634e7929541eC2318f3dCF7e
 
 ---
 
+## Smart Contract Details
+
+### BountyEscrow Architecture
+
+**State Management:**
+- Each bounty has a unique `bountyId` computed as `keccak256(sponsor, repoIdHash, issueNumber)`
+- Bounty status transitions: `None → Open → (Resolved | Refunded | Canceled)`
+- Terminal states are final (no state changes after)
+
+**Access Control:**
+- `createBounty()`: Anyone can create (becomes sponsor)
+- `fund()` / `cancel()` / `refundExpired()`: Only sponsor
+- `resolve()`: Only designated resolver (set at creation)
+
+**Fee Mechanism:**
+- Protocol fee calculated on resolution: `fee = amount * feeBps / 10000`
+- Net payout to recipient: `amount - fee`
+- Fee sent to `FeeVault` contract
+- Maximum fee capped at 10% (1000 bps)
+
+### FeeVault Architecture
+
+**Purpose:**
+- Receives protocol fees from BountyEscrow resolutions
+- Owner-controlled withdrawals for fee collection
+- Supports both ERC-20 tokens and native ETH
+
+**Security:**
+- Only owner can withdraw
+- Non-reentrant guards
+- Generic vault (accepts any ERC-20)
+
+---
+
 ## Future Enhancements
 
 - [ ] Multi-token support (DAI, USDT)
@@ -400,4 +478,5 @@ USDC_CONTRACT=0x036CbD53842c5426634e7929541eC2318f3dCF7e
 - [ ] Email notifications
 - [ ] Analytics dashboard
 - [ ] Mainnet deployment
+- [ ] Multi-network support (optimism, arbitrum)
 
