@@ -21,6 +21,75 @@ _Automated, trust-minimised bounty payouts for open-source contributions. Fund w
 
 That's it. No invoices, no manual transfers, no spreadsheets.
 
+## Development
+
+### Prerequisites
+- Node.js 18+
+- npm or yarn
+
+### Setup
+
+1. **Install dependencies**
+```bash
+npm install
+```
+
+2. **Configure environment**
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+3. **Run database migrations**
+```bash
+npm run migrate
+```
+
+### Running Locally
+
+**Development mode (separate processes):**
+
+1. Start the backend server:
+```bash
+npm run dev
+```
+
+2. In another terminal, start the React dev server:
+```bash
+npm run dev:client
+```
+
+The React app will run on `http://localhost:5173` and proxy API requests to the backend on port 3000.
+
+**Production mode:**
+
+1. Build the React app:
+```bash
+npm run build
+```
+
+2. Start the server (serves built React app):
+```bash
+npm start
+```
+
+### Project Structure
+
+```
+bounty/
+├── src/                  # React frontend
+│   ├── pages/           # React page components
+│   ├── App.jsx          # Main app component with routing
+│   └── main.jsx         # React entry point
+├── server/              # Express backend
+│   ├── routes/          # API routes
+│   ├── db/              # Database layer
+│   ├── github/          # GitHub integration
+│   └── blockchain/      # Smart contract interactions
+├── contracts/           # Solidity smart contracts
+└── dist/                # Built React app (production)
+```
+
 ## Contributing
 
 We love hearing from builders and maintainers.

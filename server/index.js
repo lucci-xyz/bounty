@@ -81,8 +81,8 @@ app.use('/oauth', oauthRoutes);
 // API routes
 app.use('/api', apiRoutes);
 
-// Serve static frontend files
-app.use(express.static(path.join(__dirname, '../public')));
+// Serve React frontend (production build)
+app.use(express.static(path.join(__dirname, '../dist')));
 
 // ========= Callback Proxy (Stage/Prod) =========
 // Proxies GitHub callbacks to the appropriate target based on ENV_TARGET
@@ -152,22 +152,9 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Frontend routes (SPA fallback)
-app.get('/attach-bounty', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/attach-bounty.html'));
-});
-
-app.get('/link-wallet', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/link-wallet.html'));
-});
-
-app.get('/refund', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/refund.html'));
-});
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Not found' });
+// SPA fallback - serve React app for all non-API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
 // Error handler
