@@ -8,7 +8,8 @@
     "dev": "node --watch server/index.js",
     "start": "node server/index.js",
     "migrate": "node server/db/migrate.js",
-    "seed": "node server/db/seed.js"
+    "seed": "node server/db/seed.js",
+    "test": "node --test tests/"
   },
   "keywords": [
     "github",
