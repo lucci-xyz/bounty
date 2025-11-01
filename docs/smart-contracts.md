@@ -1,10 +1,12 @@
 # Smart Contracts Documentation
 
-Complete reference for BountyPay smart contracts deployed on Base Sepolia.
+Complete reference for BountyPay smart contracts deployed on Base Sepolia and Mezo Testnet.
 
 ---
 
 ## Contract Addresses
+
+### Base Sepolia Testnet
 
 | Contract | Address | Network |
 |----------|---------|---------|
@@ -13,7 +15,27 @@ Complete reference for BountyPay smart contracts deployed on Base Sepolia.
 | USDC (Test) | [`0x036CbD53842c5426634e7929541eC2318f3dCF7e`](https://sepolia.basescan.org/address/0x036CbD53842c5426634e7929541eC2318f3dCF7e) | Base Sepolia |
 
 **Chain ID:** 84532  
-**RPC URL:** `https://sepolia.base.org`
+**RPC URL:** `https://sepolia.base.org`  
+**Block Explorer:** [`https://sepolia.basescan.org`](https://sepolia.basescan.org)
+
+### Mezo Testnet
+
+| Contract | Address | Network |
+|----------|---------|---------|
+| BountyEscrow | [`0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3`](https://explorer.test.mezo.org/address/0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3) | Mezo Testnet |
+| FeeVault | [`0xa8Fc9DC3383E9E64FF9F7552a5A6B25885e5b094`](https://explorer.test.mezo.org/address/0xa8Fc9DC3383E9E64FF9F7552a5A6B25885e5b094) | Mezo Testnet |
+| MUSD (Test) | [`0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503`](https://explorer.test.mezo.org/address/0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503) | Mezo Testnet |
+
+**Chain ID:** 31611  
+**Native Currency:** BTC (Bitcoin)  
+**RPC URL:** `https://mezo-testnet.drpc.org` (dRPC - reliable)  
+**Alternative RPCs:**
+- `https://rpc.test.mezo.org` (Official, may have connectivity issues)
+- `https://testnet-rpc.lavenderfive.com:443/mezo/` (Lavender.Five)
+
+**Block Explorer:** [`https://explorer.test.mezo.org`](https://explorer.test.mezo.org)
+
+> **Note:** Each network operates independently. Bounties created on Base Sepolia use USDC (6 decimals), while bounties on Mezo Testnet use MUSD (18 decimals). There is no bridging between networks.
 
 ---
 
@@ -57,7 +79,7 @@ function createBounty(
 - `repoIdHash` - Hash of repository identifier
 - `issueNumber` - GitHub issue number
 - `deadline` - Unix timestamp (must be in future)
-- `amount` - USDC amount to escrow (in token units, e.g., 1000000 = 1 USDC if 6 decimals)
+- `amount` - Token amount to escrow (in token units, e.g., 1000000 = 1 USDC for 6 decimals, 1000000000000000000 = 1 MUSD for 18 decimals)
 
 **Returns:**
 
@@ -71,13 +93,13 @@ function createBounty(
 - `deadline` must be in the future
 - `amount` must be greater than zero
 - Bounty with same `(sponsor, repoIdHash, issueNumber)` must not already exist
-- Caller must have approved USDC spending for this contract
+- Caller must have approved token spending for this contract
 
 **Events:**
 
 - `BountyCreated(bytes32 indexed bountyId, address indexed sponsor, bytes32 indexed repoIdHash, uint64 issueNumber, uint64 deadline, address resolver, uint256 amount)`
 
-**Example:**
+**Example (Base Sepolia with USDC):**
 
 ```javascript
 const tx = await escrowContract.createBounty(
@@ -85,7 +107,19 @@ const tx = await escrowContract.createBounty(
   repoIdHash,
   42, // issue number
   Math.floor(Date.now() / 1000) + 86400 * 30, // 30 days from now
-  ethers.parseUnits("100", 6) // 100 USDC (assuming 6 decimals)
+  ethers.parseUnits("100", 6) // 100 USDC (6 decimals)
+);
+```
+
+**Example (Mezo Testnet with MUSD):**
+
+```javascript
+const tx = await escrowContract.createBounty(
+  resolverAddress,
+  repoIdHash,
+  42, // issue number
+  Math.floor(Date.now() / 1000) + 86400 * 30, // 30 days from now
+  ethers.parseUnits("100", 18) // 100 MUSD (18 decimals)
 );
 ```
 
@@ -102,7 +136,7 @@ function fund(bytes32 bountyId, uint256 amount) external nonReentrant whenNotPau
 **Parameters:**
 
 - `bountyId` - ID of the bounty to fund
-- `amount` - Additional USDC amount to add
+- `amount` - Additional token amount to add
 
 **Requirements:**
 
@@ -298,17 +332,19 @@ const bountyId = await escrowContract.computeBountyId(
 
 #### usdc
 
-Get the USDC token contract address.
+Get the token contract address (USDC on Base Sepolia, MUSD on Mezo Testnet).
 
 ```solidity
 function usdc() external view returns (IERC20)
 ```
 
+> **Note:** Despite the function name, this returns the appropriate token address for the network (USDC on Base, MUSD on Mezo).
+
 ---
 
 #### usdcDecimals
 
-Get cached USDC decimals (defaults to 6 if token doesn't implement metadata).
+Get cached token decimals (6 for USDC on Base, 18 for MUSD on Mezo).
 
 ```solidity
 function usdcDecimals() external view returns (uint8)
@@ -439,7 +475,7 @@ receive() external payable
 
 ## Integration Examples
 
-### Creating a Bounty (Frontend)
+### Creating a Bounty on Base Sepolia (Frontend)
 
 ```javascript
 import { ethers } from 'ethers';
@@ -455,8 +491,47 @@ const escrowContract = new ethers.Contract(escrowAddress, EscrowABI, signer);
 const usdcAddress = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
 const usdcContract = new ethers.Contract(usdcAddress, USDC_ABI, signer);
 
-const amount = ethers.parseUnits("100", 6); // 100 USDC
+const amount = ethers.parseUnits("100", 6); // 100 USDC (6 decimals)
 await usdcContract.approve(escrowAddress, amount);
+
+// Compute repo ID hash
+const repoIdHash = ethers.keccak256(ethers.toUtf8Bytes('owner/repo'));
+
+// Create bounty
+const resolverAddress = '0x...'; // Backend resolver wallet
+const issueNumber = 42;
+const deadline = Math.floor(Date.now() / 1000) + 86400 * 30; // 30 days
+
+const tx = await escrowContract.createBounty(
+  resolverAddress,
+  repoIdHash,
+  issueNumber,
+  deadline,
+  amount
+);
+
+const receipt = await tx.wait();
+console.log('Bounty created:', receipt.transactionHash);
+```
+
+### Creating a Bounty on Mezo Testnet (Frontend)
+
+```javascript
+import { ethers } from 'ethers';
+import EscrowABI from './abis/BountyEscrow.json';
+
+const provider = new ethers.BrowserProvider(window.ethereum);
+const signer = await provider.getSigner();
+
+const escrowAddress = '0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3';
+const escrowContract = new ethers.Contract(escrowAddress, EscrowABI, signer);
+
+// First, approve MUSD spending
+const musdAddress = '0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503';
+const musdContract = new ethers.Contract(musdAddress, MUSD_ABI, signer);
+
+const amount = ethers.parseUnits("100", 18); // 100 MUSD (18 decimals)
+await musdContract.approve(escrowAddress, amount);
 
 // Compute repo ID hash
 const repoIdHash = ethers.keccak256(ethers.toUtf8Bytes('owner/repo'));
@@ -502,9 +577,10 @@ console.log('Bounty resolved:', receipt.transactionHash);
 
 ```javascript
 const bounty = await escrowContract.getBounty(bountyId);
+const decimals = await escrowContract.usdcDecimals(); // 6 for USDC, 18 for MUSD
 
 console.log('Status:', bounty.status); // 1 = Open
-console.log('Amount:', ethers.formatUnits(bounty.amount, 6)); // USDC
+console.log('Amount:', ethers.formatUnits(bounty.amount, decimals));
 console.log('Sponsor:', bounty.sponsor);
 console.log('Resolver:', bounty.resolver);
 console.log('Deadline:', new Date(Number(bounty.deadline) * 1000));
