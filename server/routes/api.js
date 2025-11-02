@@ -4,7 +4,7 @@ import { generateNonce, verifySIWE, createSIWEMessage } from '../auth/siwe.js';
 import { handleBountyCreated } from '../github/webhooks.js';
 import { getOctokit } from '../github/client.js';
 import { CONFIG } from '../config.js';
-import { computeBountyId, createRepoIdHash, getBountyFromContract } from '../blockchain/contract.js';
+import { computeBountyIdOnNetwork, createRepoIdHash, getBountyFromContract } from '../blockchain/contract.js';
 
 const router = express.Router();
 
@@ -84,7 +84,7 @@ router.post('/bounty/create', async (req, res) => {
 
     // Compute bountyId
     const repoIdHash = createRepoIdHash(repoId);
-    const bountyId = await computeBountyId(sponsorAddress, repoIdHash, issueNumber);
+    const bountyId = await computeBountyIdOnNetwork(sponsorAddress, repoIdHash, issueNumber, network);
 
     // Derive chainId from network
     const chainId = getChainIdFromNetwork(network);
@@ -221,7 +221,10 @@ router.get('/wallet/:githubId', async (req, res) => {
  */
 router.get('/contract/bounty/:bountyId', async (req, res) => {
   try {
-    const bounty = await getBountyFromContract(req.params.bountyId);
+    // Determine network from DB
+    const row = bountyQueries.findById(req.params.bountyId);
+    const network = row?.network || 'BASE_SEPOLIA';
+    const bounty = await getBountyFromContract(req.params.bountyId, network);
     res.json(bounty);
   } catch (error) {
     console.error('Error fetching contract bounty:', error);

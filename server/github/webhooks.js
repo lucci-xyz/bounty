@@ -1,6 +1,7 @@
 import { getGitHubApp, getOctokit, postIssueComment, updateComment, addLabels, ensureLabel, extractClosedIssues } from './client.js';
 import { bountyQueries, walletQueries, prClaimQueries } from '../db/index.js';
-import { resolveBounty, formatUSDC } from '../blockchain/contract.js';
+import { resolveBountyOnNetwork } from '../blockchain/contract.js';
+import { ethers } from 'ethers';
 import { CONFIG } from '../config.js';
 
 const BADGE_BASE = 'https://img.shields.io/badge';
@@ -22,6 +23,30 @@ function badge(label, value, color = '0B9ED9', extraQuery = '') {
 
 function badgeLink(label, value, color, href, extraQuery = '') {
   return `[${badge(label, value, color, extraQuery)}](${href})`;
+}
+
+function networkMeta(networkKey) {
+  // Map network key used in DB/API to human/explorer info
+  if (networkKey === 'MEZO_TESTNET') {
+    return {
+      name: 'Mezo Testnet',
+      explorerTx: (hash) => `https://explorer.test.mezo.org/tx/${hash}`,
+    };
+  }
+  // Default to Base Sepolia
+  return {
+    name: 'Base Sepolia',
+    explorerTx: (hash) => `https://sepolia.basescan.org/tx/${hash}`,
+  };
+}
+
+function formatAmountByToken(amount, tokenSymbol) {
+  const decimals = tokenSymbol === 'MUSD' ? 18 : 6; // default USDC 6
+  try {
+    return ethers.formatUnits(amount, decimals);
+  } catch {
+    return amount; // fallback raw
+  }
 }
 
 /**
@@ -49,7 +74,7 @@ ${BRAND_SIGNATURE}`;
  * Handle bounty creation (called from frontend after funding)
  */
 export async function handleBountyCreated(bountyData) {
-  const { repoFullName, issueNumber, bountyId, amount, deadline, sponsorAddress, txHash, installationId } = bountyData;
+  const { repoFullName, issueNumber, bountyId, amount, deadline, sponsorAddress, txHash, installationId, network = 'BASE_SEPOLIA', tokenSymbol = 'USDC' } = bountyData;
   
   console.log(`💰 Bounty created: ${repoFullName}#${issueNumber}`);
   
@@ -58,15 +83,16 @@ export async function handleBountyCreated(bountyData) {
   
   // Format deadline
   const deadlineDate = new Date(deadline * 1000).toISOString().split('T')[0];
-  const amountFormatted = formatUSDC(amount);
+  const amountFormatted = formatAmountByToken(amount, tokenSymbol);
+  const net = networkMeta(network);
   
   // Post pinned bounty summary
   const truncatedTx = txHash ? `${txHash.slice(0, 10)}...` : 'transaction';
-  const summary = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: ${amountFormatted} USDC on Base
+  const summary = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: ${amountFormatted} ${tokenSymbol} on ${net.name}
 
 **Deadline:** ${deadlineDate}  
 **Status:** Open  
-**Tx:** [\`${truncatedTx}\`](https://sepolia.basescan.org/tx/${txHash})
+**Tx:** [\`${truncatedTx}\`](${net.explorerTx(txHash)})
 
 ### To Claim:
 1. Open a PR that closes this issue (use \`Closes #${issueNumber}\` in PR description)
@@ -136,7 +162,7 @@ export async function handlePROpened(payload) {
     const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Wallet Needed
 
 **Status:** Awaiting wallet link  
-**Why:** Payout can’t trigger until a Base wallet is on file.
+**Why:** Payout can’t trigger until a wallet is on file.
 
 1. [Link your wallet](${FRONTEND_BASE}/link-wallet)  
 2. Merge lands the bounty automatically.
@@ -152,7 +178,7 @@ ${BRAND_SIGNATURE}`;
 Linked wallet: \`${walletMapping.wallet_address.slice(0, 6)}...${walletMapping.wallet_address.slice(-4)}\`
 
 1. Keep the wallet connected.  
-2. Merge this PR and the USDC hits instantly.
+2. Merge this PR and the payout triggers automatically.
 
 ${BRAND_SIGNATURE}`;
 
@@ -219,8 +245,12 @@ ${BRAND_SIGNATURE}`;
       continue;
     }
     
-    // Resolve bounty on-chain
-    const result = await resolveBounty(bounty.bounty_id, walletMapping.wallet_address);
+    // Resolve bounty on-chain on the correct network
+    const result = await resolveBountyOnNetwork(
+      bounty.bounty_id,
+      walletMapping.wallet_address,
+      bounty.network || 'BASE_SEPOLIA'
+    );
     
     if (result.success) {
       // Update DB
@@ -228,11 +258,13 @@ ${BRAND_SIGNATURE}`;
       prClaimQueries.updateStatus(claim.id, 'paid', result.txHash, Date.now());
       
       // Post success comment on PR
-      const amountFormatted = formatUSDC(bounty.amount);
+      const tokenSymbol = bounty.token_symbol || 'USDC';
+      const amountFormatted = formatAmountByToken(bounty.amount, tokenSymbol);
+      const net = networkMeta(bounty.network || 'BASE_SEPOLIA');
       const successComment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Paid
 
-@${pull_request.user.login} just collected ${amountFormatted} USDC.  
-Transaction: [BaseScan](https://sepolia.basescan.org/tx/${result.txHash})
+@${pull_request.user.login} just collected ${amountFormatted} ${tokenSymbol}.  
+Transaction: [View Tx](${net.explorerTx(result.txHash)})
 
 ${BRAND_SIGNATURE}`;
 
@@ -242,8 +274,8 @@ ${BRAND_SIGNATURE}`;
       if (bounty.pinned_comment_id) {
         const updatedSummary = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Closed
 
-**Paid:** ${amountFormatted} USDC to @${pull_request.user.login}  
-**Tx:** [BaseScan](https://sepolia.basescan.org/tx/${result.txHash})
+**Paid:** ${amountFormatted} ${tokenSymbol} to @${pull_request.user.login}  
+**Tx:** [View Tx](${net.explorerTx(result.txHash)})
 
 ${BRAND_SIGNATURE}`;
 
