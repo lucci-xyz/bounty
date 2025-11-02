@@ -587,4 +587,4 @@ const createRes = await fetch('/api/bounty/create', {
 
 - [Architecture](architecture.md) - System design overview
 - [Smart Contracts](smart-contracts.md) - Contract integration
-- [Troubleshooting](troubleshooting.md) - Common issues
+- [Troubleshooting](../support/troubleshooting.md) - Common issues

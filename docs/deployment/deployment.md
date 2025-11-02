@@ -17,7 +17,7 @@ BountyPay can be deployed to various platforms. This guide covers:
 ## Prerequisites
 
 - GitHub repository with the codebase
-- GitHub App configured (see [GitHub App Setup](github-app-setup.md))
+- GitHub App configured (see [GitHub App Setup](../development/github-app-setup.md))
 - All environment variables ready
 - Domain name (optional, but recommended)
 
@@ -53,10 +53,17 @@ GITHUB_WEBHOOK_SECRET=your_webhook_secret
 GITHUB_CLIENT_ID=your_client_id
 GITHUB_CLIENT_SECRET=your_client_secret
 
+# Base Sepolia (default)
 CHAIN_ID=84532
 RPC_URL=https://sepolia.base.org
 ESCROW_CONTRACT=0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD
 USDC_CONTRACT=0x036CbD53842c5426634e7929541eC2318f3dCF7e
+
+# Mezo Testnet (optional, for MUSD support)
+VITE_MEZO_RPC_URL=https://mezo-testnet.drpc.org
+VITE_MEZO_ESCROW_CONTRACT=0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3
+VITE_MEZO_MUSD_CONTRACT=0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503
+
 RESOLVER_PRIVATE_KEY=your_resolver_private_key
 ```
 
@@ -245,13 +252,19 @@ All these must be set in your deployment environment:
 - [ ] `GITHUB_CLIENT_ID`
 - [ ] `GITHUB_CLIENT_SECRET`
 
-**Blockchain:**
+**Blockchain (Base Sepolia):**
 
 - [ ] `CHAIN_ID=84532`
 - [ ] `RPC_URL=https://sepolia.base.org`
 - [ ] `ESCROW_CONTRACT=0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD`
 - [ ] `USDC_CONTRACT=0x036CbD53842c5426634e7929541eC2318f3dCF7e`
 - [ ] `RESOLVER_PRIVATE_KEY`
+
+**Blockchain (Mezo Testnet - Optional for MUSD):**
+
+- [ ] `VITE_MEZO_RPC_URL=https://mezo-testnet.drpc.org`
+- [ ] `VITE_MEZO_ESCROW_CONTRACT=0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3`
+- [ ] `VITE_MEZO_MUSD_CONTRACT=0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503`
 
 **Database:**
 
@@ -430,7 +443,7 @@ ENV_TARGET=prod
 PROD_CALLBACK_URL=https://prod-app.com/oauth/callback
 ```
 
-See [Testing Environments](testing-environments.md) for more details.
+See [Testing Environments](../development/testing-environments.md) for more details.
 
 ---
 
@@ -464,7 +477,7 @@ See [Testing Environments](testing-environments.md) for more details.
 - Ensure HTTPS is used
 - Check session cookie settings
 
-See [Troubleshooting Guide](troubleshooting.md) for more issues.
+See [Troubleshooting Guide](../support/troubleshooting.md) for more issues.
 
 ---
 
@@ -514,7 +527,7 @@ cp server/db/bounty.db backup/bounty-$(date +%Y%m%d).db
 
 ## Next Steps
 
-- [GitHub App Setup](github-app-setup.md) - Configure GitHub App for production
-- [Testing Environments](testing-environments.md) - Set up staging
-- [Architecture](architecture.md) - Understand system design
-- [Troubleshooting](troubleshooting.md) - Common issues and solutions
+- [GitHub App Setup](../development/github-app-setup.md) - Configure GitHub App for production
+- [Testing Environments](../development/testing-environments.md) - Set up staging
+- [Architecture](../reference/architecture.md) - Understand system design
+- [Troubleshooting](../support/troubleshooting.md) - Common issues and solutions

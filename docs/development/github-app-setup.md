@@ -362,12 +362,12 @@ Before deploying to production:
 
 ## Troubleshooting
 
-See [Troubleshooting Guide](troubleshooting.md) for detailed solutions to common issues.
+See [Troubleshooting Guide](../support/troubleshooting.md) for detailed solutions to common issues.
 
 ---
 
 ## Next Steps
 
 - [Local Development Setup](local-development.md) - Set up your local environment
-- [Deployment Guide](deployment.md) - Deploy to production
-- [Architecture Overview](architecture.md) - Understand the system design
+- [Deployment Guide](../deployment/deployment.md) - Deploy to production
+- [Architecture Overview](../reference/architecture.md) - Understand the system design

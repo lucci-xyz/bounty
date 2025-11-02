@@ -367,9 +367,9 @@ npm run migrate
 ## Next Steps
 
 - [GitHub App Setup](github-app-setup.md) - Detailed GitHub App configuration
-- [Architecture](architecture.md) - Understand system design
-- [API Documentation](api.md) - API endpoint reference
-- [Troubleshooting](troubleshooting.md) - Solutions to common issues
+- [Architecture](../reference/architecture.md) - Understand system design
+- [API Documentation](../reference/api.md) - API endpoint reference
+- [Troubleshooting](../support/troubleshooting.md) - Solutions to common issues
 
 ---
 
