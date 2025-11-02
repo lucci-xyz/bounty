@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ethers } from 'ethers';
 import { NETWORKS, CONTRACTS, ESCROW_ABI, ERC20_ABI, getNetworkConfig } from '../config/networks';
+import { MoneyIcon, WalletIcon } from '../components/Icons';
 
 function AttachBounty() {
   const [searchParams] = useSearchParams();
@@ -167,44 +168,64 @@ function AttachBounty() {
   };
 
   return (
-    <div className="container" style={{ maxWidth: '500px', padding: '40px' }}>
-      <h1 style={{ fontSize: '28px' }}>💰 Attach Bounty</h1>
-      <p className="subtitle" style={{ marginBottom: '30px', fontSize: '14px' }}>
-        Fund this issue with crypto on your preferred network
-      </p>
+    <div className="container" style={{ maxWidth: '600px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          gap: '12px',
+          marginBottom: '16px'
+        }}>
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '16px',
+            background: 'rgba(131, 238, 232, 0.15)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <MoneyIcon size={32} color="var(--color-primary)" />
+          </div>
+        </div>
+        <h1 style={{ fontSize: '40px' }}>Attach Bounty</h1>
+        <p className="subtitle" style={{ fontSize: '16px', marginBottom: '0' }}>
+          Fund this issue with crypto. Payment triggers automatically when PR merges.
+        </p>
+      </div>
 
-      <div className="info-box">
+      <div className="info-box" style={{ marginBottom: '32px' }}>
         <p><strong>Repository:</strong> {repoFullName || 'Loading...'}</p>
         <p><strong>Issue:</strong> #{issueNumber || '-'}</p>
-        <p>
-          <strong>Link:</strong>{' '}
-          {repoFullName && issueNumber && (
+        {repoFullName && issueNumber && (
+          <p>
             <a href={`https://github.com/${repoFullName}/issues/${issueNumber}`} target="_blank" rel="noopener noreferrer">
-              View on GitHub
+              View on GitHub →
             </a>
-          )}
-        </p>
+          </p>
+        )}
       </div>
 
       {!showForm && (
         <>
-          <div style={{ marginBottom: '20px' }}>
-            <label htmlFor="network">Select Network</label>
+          <div style={{ marginBottom: '24px' }}>
+            <label htmlFor="network">Network</label>
             <select
               id="network"
               value={selectedNetwork}
               onChange={(e) => setSelectedNetwork(e.target.value)}
-              style={{ width: '100%' }}
             >
               <option value="BASE_SEPOLIA">Base Sepolia (USDC)</option>
               <option value="MEZO_TESTNET">Mezo Testnet (MUSD)</option>
             </select>
-            <p style={{ fontSize: '12px', color: '#718096', marginTop: '8px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '8px', marginBottom: '0' }}>
               {networkConfig.name} • Chain ID: {networkConfig.chainId}
             </p>
           </div>
 
-          <button className="btn btn-primary" onClick={connectWallet} style={{ width: '100%' }}>
+          <button className="btn btn-primary btn-full" onClick={connectWallet}>
+            <WalletIcon size={20} color="white" />
             Connect Wallet
           </button>
         </>
@@ -212,12 +233,12 @@ function AttachBounty() {
 
       {showForm && (
         <>
-          <div className="wallet-info">
-            <strong>Connected:</strong> {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}<br />
-            <strong>Network:</strong> {networkConfig.name} ({contractConfig.tokenSymbol})
+          <div className="wallet-info" style={{ marginBottom: '32px' }}>
+            <div><strong>Connected:</strong> {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</div>
+            <div><strong>Network:</strong> {networkConfig.name} ({contractConfig.tokenSymbol})</div>
           </div>
 
-          <div>
+          <div style={{ marginBottom: '24px' }}>
             <label htmlFor="amount">Bounty Amount ({contractConfig.tokenSymbol})</label>
             <input
               type="number"
@@ -230,7 +251,7 @@ function AttachBounty() {
             />
           </div>
 
-          <div>
+          <div style={{ marginBottom: '32px' }}>
             <label htmlFor="deadline">Deadline</label>
             <input
               type="date"
@@ -240,19 +261,18 @@ function AttachBounty() {
             />
           </div>
 
-          <button className="btn btn-primary" onClick={fundBounty} style={{ width: '100%' }}>
+          <button className="btn btn-primary btn-full" onClick={fundBounty}>
             Fund Bounty
           </button>
 
           <button 
-            className="btn btn-secondary" 
+            className="btn btn-secondary btn-full" 
             onClick={() => {
               setShowForm(false);
               setWalletAddress('');
               setProvider(null);
               setSigner(null);
-            }} 
-            style={{ width: '100%', marginTop: '10px' }}
+            }}
           >
             Change Network
           </button>

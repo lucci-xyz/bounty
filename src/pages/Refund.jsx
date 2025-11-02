@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ethers } from 'ethers';
 import { NETWORKS, CONTRACTS, getNetworkConfig } from '../config/networks';
+import { RefreshIcon, WalletIcon, AlertIcon } from '../components/Icons';
 
 const ESCROW_ABI = [
   'function refundExpired(bytes32 bountyId) external',
@@ -149,35 +150,62 @@ function Refund() {
   };
 
   return (
-    <div className="container" style={{ maxWidth: '500px', padding: '40px' }}>
-      <h1 style={{ fontSize: '28px' }}>🔄 Refund Bounty</h1>
-      <p className="subtitle" style={{ marginBottom: '30px', fontSize: '14px' }}>
-        Request a refund for an expired bounty
-      </p>
+    <div className="container" style={{ maxWidth: '600px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          gap: '12px',
+          marginBottom: '16px'
+        }}>
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '16px',
+            background: 'rgba(131, 238, 232, 0.15)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <RefreshIcon size={32} color="var(--color-primary)" />
+          </div>
+        </div>
+        <h1 style={{ fontSize: '40px' }}>Refund Bounty</h1>
+        <p className="subtitle" style={{ fontSize: '16px', marginBottom: '0' }}>
+          Request refund for expired bounties that were never resolved
+        </p>
+      </div>
 
-      <div className="warning">
-        <strong>⚠️ Warning:</strong> Refunds are only available for bounties that have passed their deadline without being resolved.
+      <div className="warning" style={{ marginBottom: '32px' }}>
+        <AlertIcon size={20} color="#B87D00" />
+        <div>
+          <strong>Eligibility Requirements</strong>
+          <div style={{ marginTop: '8px', fontSize: '13px' }}>
+            Refunds are only available for bounties that have passed their deadline without being resolved. You must be the original sponsor.
+          </div>
+        </div>
       </div>
 
       {!connected && (
         <>
-          <div style={{ marginBottom: '20px' }}>
-            <label htmlFor="network">Select Network</label>
+          <div style={{ marginBottom: '24px' }}>
+            <label htmlFor="network">Network</label>
             <select
               id="network"
               value={selectedNetwork}
               onChange={(e) => setSelectedNetwork(e.target.value)}
-              style={{ width: '100%' }}
             >
               <option value="BASE_SEPOLIA">Base Sepolia (USDC)</option>
               <option value="MEZO_TESTNET">Mezo Testnet (MUSD)</option>
             </select>
-            <p style={{ fontSize: '12px', color: '#718096', marginTop: '8px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '8px', marginBottom: '0' }}>
               {networkConfig.name} • Chain ID: {networkConfig.chainId}
             </p>
           </div>
 
-          <button className="btn btn-primary" onClick={connectWallet} style={{ width: '100%', marginBottom: '20px' }}>
+          <button className="btn btn-primary btn-full" onClick={connectWallet}>
+            <WalletIcon size={20} color="white" />
             Connect Wallet
           </button>
         </>
@@ -185,11 +213,11 @@ function Refund() {
 
       {connected && (
         <>
-          <div className="wallet-info" style={{ marginBottom: '20px' }}>
+          <div className="wallet-info" style={{ marginBottom: '32px' }}>
             <strong>Network:</strong> {networkConfig.name} ({contractConfig.tokenSymbol})
           </div>
 
-          <div>
+          <div style={{ marginBottom: '24px' }}>
             <label htmlFor="bountyId">Bounty ID</label>
             <input
               type="text"
@@ -200,25 +228,24 @@ function Refund() {
             />
           </div>
 
-          <button className="btn btn-danger" onClick={checkBounty} style={{ width: '100%', marginBottom: '10px' }}>
+          <button className="btn btn-secondary btn-full" onClick={checkBounty} style={{ marginBottom: '24px' }}>
             Check Bounty Status
           </button>
 
           {bountyInfo && (
-            <div className="info-box">
+            <div className="info-box" style={{ marginBottom: '24px' }}>
               <p><strong>Amount:</strong> {bountyInfo.amount} {contractConfig.tokenSymbol}</p>
               <p><strong>Deadline:</strong> {bountyInfo.deadline}</p>
               <p><strong>Status:</strong> {bountyInfo.status}</p>
-              <p><strong>Sponsor:</strong> {bountyInfo.sponsor}</p>
+              <p><strong>Sponsor:</strong> <code>{bountyInfo.sponsor}</code></p>
             </div>
           )}
 
           {currentBounty && (
             <button
-              className="btn btn-danger"
+              className="btn btn-danger btn-full"
               onClick={requestRefund}
               disabled={refunded}
-              style={{ width: '100%' }}
             >
               {refunded ? '✓ Refunded' : 'Request Refund'}
             </button>
