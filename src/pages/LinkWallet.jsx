@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { NETWORKS } from '../config/networks';
+import { LinkIcon, GitHubIcon, WalletIcon, CheckCircleIcon } from '../components/Icons';
 
 function createSiweMessage({ domain, address, statement, uri, version, chainId, nonce }) {
   const message = [
@@ -163,98 +164,151 @@ function LinkWallet() {
   };
 
   return (
-    <div className="container" style={{ maxWidth: '500px', padding: '40px', textAlign: 'center' }}>
-      <h1 style={{ fontSize: '28px' }}>🔗 Link Your Wallet</h1>
-      <p className="subtitle" style={{ marginBottom: '30px', fontSize: '14px' }}>
-        Connect your GitHub account with your wallet to receive bounty payments
-      </p>
-
-      <div style={{
-        background: '#f7fafc',
-        border: '1px solid #e2e8f0',
-        borderRadius: '8px',
-        padding: '20px',
-        marginBottom: '20px',
-        textAlign: 'left'
-      }}>
-        <h3 style={{ fontSize: '16px', color: '#2d3748', marginBottom: '10px' }}>
-          Step 1: Authenticate with GitHub
-        </h3>
-        <p style={{ fontSize: '14px', color: '#4a5568', lineHeight: '1.6' }}>
-          We need to verify your GitHub account.
-        </p>
-      </div>
-
-      <button
-        className="btn btn-secondary"
-        onClick={authenticateGitHub}
-        disabled={githubUser !== null}
-        style={{ width: '100%', marginBottom: '10px' }}
-      >
-        {githubUser ? `✓ ${githubUser.githubUsername}` : 'Authenticate with GitHub'}
-      </button>
-
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        margin: '20px 0',
-        color: '#cbd5e0'
-      }}>
-        <div style={{ flex: 1, borderBottom: '1px solid #e2e8f0' }} />
-        <span style={{ padding: '0 10px', fontSize: '12px', fontWeight: 600 }}>THEN</span>
-        <div style={{ flex: 1, borderBottom: '1px solid #e2e8f0' }} />
-      </div>
-
-      <div style={{
-        background: '#f7fafc',
-        border: '1px solid #e2e8f0',
-        borderRadius: '8px',
-        padding: '20px',
-        marginBottom: '20px',
-        textAlign: 'left'
-      }}>
-        <h3 style={{ fontSize: '16px', color: '#2d3748', marginBottom: '10px' }}>
-          Step 2: Connect Your Wallet
-        </h3>
-        <p style={{ fontSize: '14px', color: '#4a5568', lineHeight: '1.6' }}>
-          Sign a message with your wallet to link it to your GitHub account.
-        </p>
-      </div>
-
-      {!linked && (
-        <div style={{ marginBottom: '20px' }}>
-          <label htmlFor="network">Select Network</label>
-          <select
-            id="network"
-            value={selectedNetwork}
-            onChange={(e) => setSelectedNetwork(e.target.value)}
-            style={{ width: '100%', marginBottom: '10px' }}
-            disabled={!githubUser}
-          >
-            <option value="BASE_SEPOLIA">Base Sepolia</option>
-            <option value="MEZO_TESTNET">Mezo Testnet</option>
-          </select>
-          <p style={{ fontSize: '12px', color: '#718096', marginBottom: '10px' }}>
-            {networkConfig.name} • Chain ID: {networkConfig.chainId}
-          </p>
+    <div className="container" style={{ maxWidth: '600px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          gap: '12px',
+          marginBottom: '16px'
+        }}>
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '16px',
+            background: 'rgba(131, 238, 232, 0.15)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <LinkIcon size={32} color="var(--color-primary)" />
+          </div>
         </div>
-      )}
+        <h1 style={{ fontSize: '40px' }}>Link Your Wallet</h1>
+        <p className="subtitle" style={{ fontSize: '16px', marginBottom: '0' }}>
+          Connect GitHub and wallet to receive automatic bounty payments
+        </p>
+      </div>
 
-      <button
-        className="btn btn-primary"
-        onClick={connectWallet}
-        disabled={!githubUser || linked}
-        style={{ width: '100%' }}
-      >
-        {linked ? '✓ Wallet Linked' : 'Connect Wallet'}
-      </button>
+      <div className="card" style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px' }}>
+          <div style={{
+            minWidth: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            background: githubUser ? 'var(--color-primary)' : 'var(--color-border)',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 600,
+            fontSize: '14px',
+            transition: 'all 0.2s',
+            flexShrink: 0
+          }}>
+            {githubUser ? <CheckCircleIcon size={20} color="white" /> : <span>1</span>}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{ marginBottom: '8px' }}>Authenticate with GitHub</h3>
+            <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginBottom: '16px', lineHeight: '1.5' }}>
+              Verify your GitHub account to enable automatic bounty matching
+            </p>
+            <button
+              className={githubUser ? "btn btn-secondary" : "btn btn-primary"}
+              onClick={authenticateGitHub}
+              disabled={githubUser !== null}
+              style={{ width: '100%', margin: 0 }}
+            >
+              {githubUser ? (
+                <>
+                  <CheckCircleIcon size={18} />
+                  Connected as {githubUser.githubUsername}
+                </>
+              ) : (
+                <>
+                  <GitHubIcon size={18} />
+                  Connect GitHub
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="divider">
+        <span>Then</span>
+      </div>
+
+      <div className="card" style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px' }}>
+          <div style={{
+            minWidth: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            background: linked ? 'var(--color-primary)' : (!githubUser ? 'var(--color-border)' : 'var(--color-primary-light)'),
+            color: linked || !githubUser ? 'white' : 'var(--color-text-primary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 600,
+            fontSize: '14px',
+            transition: 'all 0.2s',
+            flexShrink: 0
+          }}>
+            {linked ? <CheckCircleIcon size={20} color="white" /> : <span>2</span>}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{ marginBottom: '8px' }}>Connect Your Wallet</h3>
+            <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginBottom: '16px', lineHeight: '1.5' }}>
+              Sign a message to securely link your wallet to your GitHub account
+            </p>
+            
+            {!linked && (
+              <div style={{ marginBottom: '16px' }}>
+                <label htmlFor="network">Network</label>
+                <select
+                  id="network"
+                  value={selectedNetwork}
+                  onChange={(e) => setSelectedNetwork(e.target.value)}
+                  disabled={!githubUser}
+                >
+                  <option value="BASE_SEPOLIA">Base Sepolia</option>
+                  <option value="MEZO_TESTNET">Mezo Testnet</option>
+                </select>
+                <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '8px', marginBottom: '0' }}>
+                  {networkConfig.name} • Chain ID: {networkConfig.chainId}
+                </p>
+              </div>
+            )}
+
+            <button
+              className={linked ? "btn btn-secondary" : "btn btn-primary"}
+              onClick={connectWallet}
+              disabled={!githubUser || linked}
+              style={{ width: '100%', margin: 0 }}
+            >
+              {linked ? (
+                <>
+                  <CheckCircleIcon size={18} />
+                  Wallet Linked
+                </>
+              ) : (
+                <>
+                  <WalletIcon size={18} color="white" />
+                  Connect Wallet
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
 
       {linked && (
-        <div className="wallet-info" style={{ display: 'block', marginTop: '20px' }}>
-          <strong>✅ Linked:</strong><br />
-          GitHub: {githubUser?.githubUsername}<br />
-          Wallet: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}<br />
-          Network: {networkConfig.name}
+        <div className="wallet-info">
+          <div><strong>GitHub:</strong> {githubUser?.githubUsername}</div>
+          <div><strong>Wallet:</strong> {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</div>
+          <div><strong>Network:</strong> {networkConfig.name}</div>
         </div>
       )}
 
