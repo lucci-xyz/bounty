@@ -14,11 +14,11 @@ try {
   const db = initDB();
 
   const tableInfo = db.pragma('table_info(bounties)');
-  const columns = tableInfo.map(col => col.name);
+  const columns = new Set(tableInfo.map(col => col.name));
 
   // Migration: Add token column to bounties table
   console.log('📝 Checking for token column...');
-  if (!columns.includes('token')) {
+  if (!columns.has('token')) {
     console.log('➕ Adding token column to bounties table...');
     db.exec(`ALTER TABLE bounties ADD COLUMN token TEXT NOT NULL DEFAULT '${USDC_ADDRESS}'`);
 
@@ -32,9 +32,9 @@ try {
     console.log('✓ Token column already exists');
   }
 
-  // Migration: Add network and chain_id columns (from main branch)
+  // Migration: Add network and chain_id columns
   console.log('📝 Checking for network column...');
-  if (!columns.includes('network')) {
+  if (!columns.has('network')) {
     console.log('➕ Adding network column to bounties table...');
     db.exec('ALTER TABLE bounties ADD COLUMN network TEXT NOT NULL DEFAULT \'BASE_SEPOLIA\'');
     console.log('✅ Network column added successfully');
@@ -43,7 +43,7 @@ try {
   }
 
   console.log('📝 Checking for chain_id column...');
-  if (!columns.includes('chain_id')) {
+  if (!columns.has('chain_id')) {
     console.log('➕ Adding chain_id column to bounties table...');
     db.exec('ALTER TABLE bounties ADD COLUMN chain_id INTEGER NOT NULL DEFAULT 84532');
     console.log('✅ Chain ID column added successfully');
@@ -59,4 +59,3 @@ try {
   console.error('❌ Migration failed:', error);
   process.exit(1);
 }
-

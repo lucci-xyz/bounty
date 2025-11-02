@@ -23,7 +23,7 @@ _Automated, trust-minimised bounty payouts for open-source contributions. Fund w
 3. **Choose Your Network & Fund**
    - **Base Sepolia**: Fund with USDC (EVM standard)
    - **Mezo Testnet**: Fund with MUSD (Bitcoin L2)
-   
+
    Funds sit safely in escrow.
 
 4. **Merge the winning PR** — BountyPay automatically pays the contributor once the PR closes the issue.
@@ -70,6 +70,79 @@ That's it. No invoices, no manual transfers, no spreadsheets.
 - **[GitHub App Setup](docs/development/github-app-setup.md)** - Configuring the GitHub App
 
 ---
+
+## Smart Contracts
+
+BountyPay supports multiple networks. You can choose your preferred network when creating a bounty.
+
+### Base Sepolia Testnet
+
+**Network Details:**
+
+- Chain ID: `84532`
+- Native Currency: ETH
+- RPC URL: `https://sepolia.base.org`
+- Block Explorer: [`https://sepolia.basescan.org`](https://sepolia.basescan.org)
+
+**Deployed Contracts:**
+
+| Contract | Address | Description |
+|----------|---------|-------------|
+| BountyEscrow | [`0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD`](https://sepolia.basescan.org/address/0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD) | Main escrow contract for bounty funds |
+| FeeVault | [`0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3`](https://sepolia.basescan.org/address/0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3) | Protocol fee collection vault |
+| USDC (Test) | [`0x036CbD53842c5426634e7929541eC2318f3dCF7e`](https://sepolia.basescan.org/address/0x036CbD53842c5426634e7929541eC2318f3dCF7e) | Test USDC token (6 decimals) |
+
+### Mezo Testnet
+
+**Network Details:**
+
+- Chain ID: `31611`
+- Native Currency: BTC (Bitcoin)
+- RPC URL: `https://mezo-testnet.drpc.org` (dRPC - reliable)
+- Alternative RPCs:
+  - `https://rpc.test.mezo.org` (Official, may have connectivity issues)
+  - `https://testnet-rpc.lavenderfive.com:443/mezo/` (Lavender.Five)
+- Block Explorer: [`https://explorer.test.mezo.org`](https://explorer.test.mezo.org)
+
+> **Note:** Boar Network (`rpc-http.mezo.boar.network`) is only available for Mezo **Mainnet** (Chain ID 31612), not testnet. You can customize the testnet RPC by setting `VITE_MEZO_RPC_URL` in your environment variables.
+
+**Deployed Contracts:**
+
+| Contract | Address | Description |
+|----------|---------|-------------|
+| BountyEscrow | [`0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3`](https://explorer.test.mezo.org/address/0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3) | Main escrow contract for bounty funds |
+| FeeVault | [`0xa8Fc9DC3383E9E64FF9F7552a5A6B25885e5b094`](https://explorer.test.mezo.org/address/0xa8Fc9DC3383E9E64FF9F7552a5A6B25885e5b094) | Protocol fee collection vault |
+| MUSD (Test) | [`0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503`](https://explorer.test.mezo.org/address/0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503) | Mezo USD stablecoin (18 decimals) |
+
+> **Note:** Each network operates independently. Bounties created on Base Sepolia use USDC, while bounties on Mezo Testnet use MUSD. There is no bridging between networks.
+
+Audit reports and deployment history are coming soon.
+
+## Quick Troubleshooting
+
+### Wallet Connection Issues
+
+- **Wallet not connecting**: Ensure you're on the correct network:
+  - Base Sepolia (Chain ID: 84532) for USDC bounties
+  - Mezo Testnet (Chain ID: 31611) for MUSD bounties
+- **Transaction fails**: Check you have enough native currency for gas fees:
+  - Base Sepolia requires ETH
+  - Mezo Testnet requires BTC
+- **Token approval fails**: Verify you have sufficient token balance (USDC on Base or MUSD on Mezo)
+
+### Payment Not Received
+
+- **PR merged but no payment**: Verify you've linked your GitHub account to your wallet
+- **Check wallet link**: Visit `/link-wallet` and ensure your GitHub account is connected
+- **Verify PR closes issue**: The PR must close the issue (not just reference it)
+
+### GitHub App Issues
+
+- **Bot not responding**: Check the GitHub App is installed and has correct permissions
+- **No "Create bounty" button**: Ensure the bot has write access to issues
+- **Webhook errors**: Verify webhook URL is correctly configured in GitHub App settings
+
+For more detailed troubleshooting, see the [Troubleshooting Guide](docs/troubleshooting.md).
 
 ## Need Help?
 
