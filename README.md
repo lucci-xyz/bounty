@@ -49,47 +49,25 @@ That's it. No invoices, no manual transfers, no spreadsheets.
 4. When your PR is merged and closes the issue, payment is automatic
 5. Funds are sent to your linked wallet address
 
+
 ## Documentation
 
-### Strategic
+### Quick Links
 
-- **[Mezo Integration](docs/mezo-integration.md)** - MUSD integration strategy and roadmap
+- **[Getting Started](docs/guides/getting-started.md)** - Complete guide for sponsors and contributors
+- **[Smart Contract Addresses](docs/reference/contracts.md)** - Deployed contracts on Base and Mezo
+- **[Contributing](docs/guides/contributing.md)** - How to contribute to BountyPay
+- **[FAQ](docs/support/faq.md)** - Frequently asked questions
+- **[Troubleshooting](docs/support/troubleshooting.md)** - Common issues and solutions
 
-### Technical
+### For Developers
 
-- **[Architecture](docs/architecture.md)** - System design and technical overview
-- **[Smart Contracts](docs/smart-contracts.md)** - Contract functions and integration
-- **[API Documentation](docs/api.md)** - Complete API reference
-
-### Development
-
-- **[Local Development](docs/local-development.md)** - Setup guide for local development
-- **[GitHub App Setup](docs/github-app-setup.md)** - Configuring the GitHub App
-- **[Deployment](docs/deployment.md)** - Deploying to production
-- **[Testing Environments](docs/testing-environments.md)** - Staging and production setup
-- **[Local Database](docs/local-db.md)** - Working with SQLite database
-
-### Support
-
-- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
-- **[FAQ](docs/faq.md)** - Frequently asked questions
-
-## Contributing
-
-We love hearing from builders and maintainers.
-
-- Open ideas or bugs via [Issues](https://github.com/lucci-xyz/bounty/issues)  
-- Join discussions on new workflows or integrations  
-- Submit PRs — we’ll review quickly and shout you out in the release notes
-
-### High-Impact Ideas
-
-- **Anti-griefing guardrails** – Prevent sponsors from copying the flow and cancelling bounties after seeing the code. Ideas welcomed: reputation, deposits, social recovery.  
-- **Mezo Passport Integration** – Add native Bitcoin wallet support (Unisat, Leather) alongside EVM wallets for Mezo bounties.  
-- **Multi-asset support** – Accept deposits in any token, on any Base or L2 network, and settle in the contributor's preferred asset.  
-- **Proof-of-work collectibles** – Mint contribution NFTs as on-chain receipts for completed bounties.  
-- **Security & audits** – Help us continuously audit contracts, bot logic, and wallet flows.  
-- **New bounty mechanics** – Milestone-based unlocks, recurring grants, or team-based rewards. Surprise us.
+- **[Smart Contracts Reference](docs/reference/smart-contracts.md)** - Technical documentation for contracts
+- **[Architecture](docs/reference/architecture.md)** - System design and technical overview
+- **[API Documentation](docs/reference/api.md)** - Complete API reference
+- **[Local Development](docs/development/local-development.md)** - Setup guide for local development
+- **[Deployment](docs/deployment/deployment.md)** - Deploying to production
+- **[GitHub App Setup](docs/development/github-app-setup.md)** - Configuring the GitHub App
 
 ---
 
@@ -168,9 +146,9 @@ For more detailed troubleshooting, see the [Troubleshooting Guide](docs/troubles
 
 ## Need Help?
 
-- 📖 Read the [FAQ](docs/faq.md) for common questions
-- 🐛 Report issues on [GitHub Issues](https://github.com/lucci-xyz/bounty/issues)
+- 📖 Read the [Getting Started Guide](docs/guides/getting-started.md) or [FAQ](docs/support/faq.md)
 - 💬 Join discussions about features and integrations
+- 🐛 Report issues on [GitHub Issues](https://github.com/lucci-xyz/bounty/issues)
 
 ---
 
