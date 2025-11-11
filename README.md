@@ -1,6 +1,7 @@
 # ![BountyPay logo](public/icons/og.png) BountyPay
 
 _Automated, trust-minimised bounty payouts for open-source contributions. Fund with USDC on Base or MUSD on Mezo and let BountyPay handle the rest._
+**[Quick Demo Here](https://www.youtube.com/watch?v=fm-Y88apoTg)**
 
 ## Features
 
