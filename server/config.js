@@ -1,7 +1,23 @@
 import { config } from 'dotenv';
 import { readFileSync } from 'fs';
 
-config();
+// Load .env file (only in development)
+if (process.env.NODE_ENV !== 'production') {
+  config();
+}
+
+// Lazy-load private key to avoid build-time file access
+function getPrivateKey() {
+  if (process.env.GITHUB_PRIVATE_KEY_PATH) {
+    try {
+      return readFileSync(process.env.GITHUB_PRIVATE_KEY_PATH, 'utf8');
+    } catch (error) {
+      // If file doesn't exist, fall back to env var
+      return process.env.GITHUB_PRIVATE_KEY;
+    }
+  }
+  return process.env.GITHUB_PRIVATE_KEY;
+}
 
 export const CONFIG = {
   // Server
@@ -13,12 +29,12 @@ export const CONFIG = {
   stageCallbackUrl: process.env.STAGE_CALLBACK_URL,
   prodCallbackUrl: process.env.PROD_CALLBACK_URL,
 
-  // GitHub
+  // GitHub - lazy load private key
   github: {
     appId: process.env.GITHUB_APP_ID,
-    privateKey: process.env.GITHUB_PRIVATE_KEY_PATH 
-      ? readFileSync(process.env.GITHUB_PRIVATE_KEY_PATH, 'utf8')
-      : process.env.GITHUB_PRIVATE_KEY,
+    get privateKey() {
+      return getPrivateKey();
+    },
     webhookSecret: process.env.GITHUB_WEBHOOK_SECRET,
     clientId: process.env.GITHUB_CLIENT_ID,
     clientSecret: process.env.GITHUB_CLIENT_SECRET,
@@ -54,39 +70,41 @@ export const CONFIG = {
   databasePath: process.env.DATABASE_PATH,
 };
 
-// Validate required config
-const required = [
-  'sessionSecret',
-  'github.appId',
-  'github.privateKey',
-  'github.webhookSecret',
-  'github.clientId',
-  'github.clientSecret',
-  'blockchain.escrowContract',
-  'blockchain.resolverPrivateKey',
-  // For callback proxying (optional in local dev, required in hosted envs)
-  // Note: Only enforce one based on ENV_TARGET
-];
+// Validation function (called at runtime, not at build time)
+export function validateConfig() {
+  const required = [
+    'sessionSecret',
+    'github.appId',
+    'github.privateKey',
+    'github.webhookSecret',
+    'github.clientId',
+    'github.clientSecret',
+    'blockchain.escrowContract',
+    'blockchain.resolverPrivateKey',
+  ];
 
-for (const key of required) {
-  const keys = key.split('.');
-  let value = CONFIG;
-  for (const k of keys) {
-    value = value?.[k];
+  for (const key of required) {
+    const keys = key.split('.');
+    let value = CONFIG;
+    for (const k of keys) {
+      value = value?.[k];
+    }
+    if (!value) {
+      console.error(`❌ Missing required config: ${key}`);
+      return false;
+    }
   }
-  if (!value) {
-    console.error(`❌ Missing required config: ${key}`);
-    process.exit(1);
-  }
-}
 
-// Validate callback targets conditionally
-if (CONFIG.envTarget === 'stage' && !CONFIG.stageCallbackUrl) {
-  console.error('❌ Missing required config: stageCallbackUrl (STAGE_CALLBACK_URL)');
-  process.exit(1);
-}
-if (CONFIG.envTarget === 'prod' && !CONFIG.prodCallbackUrl) {
-  console.error('❌ Missing required config: prodCallbackUrl (PROD_CALLBACK_URL)');
-  process.exit(1);
+  // Validate callback targets conditionally
+  if (CONFIG.envTarget === 'stage' && !CONFIG.stageCallbackUrl) {
+    console.error('❌ Missing required config: stageCallbackUrl (STAGE_CALLBACK_URL)');
+    return false;
+  }
+  if (CONFIG.envTarget === 'prod' && !CONFIG.prodCallbackUrl) {
+    console.error('❌ Missing required config: prodCallbackUrl (PROD_CALLBACK_URL)');
+    return false;
+  }
+
+  return true;
 }
 

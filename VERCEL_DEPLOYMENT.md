@@ -358,6 +358,15 @@ git commit -m "Add missing dependencies"
 git push
 ```
 
+**Error**: `ENOENT: no such file or directory, open './private-key.pem'`
+
+**Cause**: Code is trying to read files during build phase.
+
+**Solution**: Ensure all file system operations are lazy-loaded (deferred until runtime):
+- Use getter functions for environment variables that reference files
+- Don't execute initialization code at module import time
+- The codebase now uses lazy-loading for GitHub private keys
+
 ### Environment Variables Not Working
 
 **Error**: `undefined` when accessing env vars
