@@ -1,5 +1,5 @@
 import { getSession } from '@/lib/session';
-import { bountyQueries } from '@/server/db/postgres';
+import { bountyQueries } from '@/server/db/prisma';
 import { handleBountyCreated } from '@/server/github/webhooks';
 import { computeBountyIdOnNetwork, createRepoIdHash } from '@/server/blockchain/contract';
 import { CONFIG } from '@/server/config';

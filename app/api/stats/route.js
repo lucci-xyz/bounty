@@ -1,4 +1,4 @@
-import { statsQueries } from '@/server/db/postgres';
+import { statsQueries } from '@/server/db/prisma';
 import { CONFIG } from '@/server/config';
 
 export async function GET() {

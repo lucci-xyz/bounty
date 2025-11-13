@@ -1,4 +1,4 @@
-import { bountyQueries } from '@/server/db/postgres';
+import { bountyQueries } from '@/server/db/prisma';
 
 export async function GET(request, { params }) {
   try {

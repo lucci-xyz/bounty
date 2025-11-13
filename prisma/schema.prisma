@@ -1,0 +1,69 @@
+// Prisma schema for BountyPay
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+model Bounty {
+  id                Int       @id @default(autoincrement())
+  bountyId          String    @unique @map("bounty_id")
+  repoFullName      String    @map("repo_full_name")
+  repoId            BigInt    @map("repo_id")
+  issueNumber       Int       @map("issue_number")
+  sponsorAddress    String    @map("sponsor_address")
+  sponsorGithubId   BigInt?   @map("sponsor_github_id")
+  token             String
+  amount            String
+  deadline          BigInt
+  status            String    @default("open")
+  txHash            String?   @map("tx_hash")
+  network           String    @default("BASE_SEPOLIA")
+  chainId           Int       @default(84532) @map("chain_id")
+  tokenSymbol       String    @default("USDC") @map("token_symbol")
+  environment       String    @default("stage")
+  createdAt         BigInt    @map("created_at")
+  updatedAt         BigInt    @map("updated_at")
+  pinnedCommentId   BigInt?   @map("pinned_comment_id")
+
+  @@unique([repoId, issueNumber, sponsorAddress, network, environment])
+  @@index([repoId, issueNumber], name: "idx_bounties_repo")
+  @@index([status], name: "idx_bounties_status")
+  @@index([token], name: "idx_bounties_token")
+  @@index([token, status], name: "idx_bounties_token_status")
+  @@index([environment], name: "idx_bounties_environment")
+  @@map("bounties")
+}
+
+model WalletMapping {
+  id             Int     @id @default(autoincrement())
+  githubId       BigInt  @unique @map("github_id")
+  githubUsername String  @map("github_username")
+  walletAddress  String  @map("wallet_address")
+  verifiedAt     BigInt  @map("verified_at")
+  createdAt      BigInt  @map("created_at")
+
+  @@index([githubId], name: "idx_wallet_github")
+  @@map("wallet_mappings")
+}
+
+model PrClaim {
+  id                 Int     @id @default(autoincrement())
+  bountyId           String  @map("bounty_id")
+  prNumber           Int     @map("pr_number")
+  prAuthorGithubId   BigInt  @map("pr_author_github_id")
+  repoFullName       String  @map("repo_full_name")
+  status             String  @default("pending")
+  createdAt          BigInt  @map("created_at")
+  resolvedAt         BigInt? @map("resolved_at")
+  txHash             String? @map("tx_hash")
+
+  @@index([bountyId], name: "idx_pr_claims_bounty")
+  @@map("pr_claims")
+}
+

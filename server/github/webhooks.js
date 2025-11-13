@@ -1,5 +1,5 @@
 import { getGitHubApp, getOctokit, postIssueComment, updateComment, addLabels, ensureLabel, extractClosedIssues } from './client.js';
-import { bountyQueries, walletQueries, prClaimQueries } from '../db/postgres.js';
+import { bountyQueries, walletQueries, prClaimQueries } from '../db/prisma.js';
 import { resolveBountyOnNetwork } from '../blockchain/contract.js';
 import { ethers } from 'ethers';
 import { CONFIG } from '../config.js';

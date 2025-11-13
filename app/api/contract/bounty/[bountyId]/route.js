@@ -1,4 +1,4 @@
-import { bountyQueries } from '@/server/db/postgres';
+import { bountyQueries } from '@/server/db/prisma';
 import { getBountyFromContract } from '@/server/blockchain/contract';
 
 export async function GET(request, { params }) {

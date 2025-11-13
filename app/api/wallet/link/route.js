@@ -1,5 +1,5 @@
 import { getSession } from '@/lib/session';
-import { walletQueries } from '@/server/db/postgres';
+import { walletQueries } from '@/server/db/prisma';
 
 export async function POST(request) {
   try {
