@@ -1,32 +1,43 @@
-import { createPool } from '@vercel/postgres';
+import { sql as vercelSql, createClient } from '@vercel/postgres';
 import { CONFIG } from '../config.js';
 
-// Get the pooled connection string from environment
-function getConnectionString() {
-  // Priority order: Use pooled/Prisma URLs first (optimized for serverless)
-  const connectionString = 
-    process.env.POSTGRES_URL || 
+// Return a sql tagged template function that works with pooled or direct URLs
+let cachedSql = null;
+let clientConnectPromise = null;
+function getSQL() {
+  if (cachedSql) return cachedSql;
+  
+  // Prefer pooled URLs (recommended for serverless)
+  const pooled =
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
     process.env.BOUNTY_PRISMA_DATABASE_URL ||
-    process.env.BOUNTY_DATABASE_URL ||
+    process.env.BOUNTY_DATABASE_URL;
+  
+  if (pooled) {
+    cachedSql = vercelSql;
+    return cachedSql;
+  }
+  
+  // Fallback to direct URL using a client with on-demand connect
+  const direct =
+    process.env.POSTGRES_URL_NON_POOLING ||
     process.env.BOUNTY_POSTGRES_URL;
   
-  if (!connectionString) {
-    throw new Error('No Postgres connection string found. Please set POSTGRES_URL or BOUNTY_* environment variables.');
+  if (direct) {
+    const client = createClient({ connectionString: direct });
+    cachedSql = async (strings, ...values) => {
+      if (!clientConnectPromise) {
+        clientConnectPromise = client.connect();
+      }
+      await clientConnectPromise;
+      // @ts-ignore - use as tagged template
+      return client.sql(strings, ...values);
+    };
+    return cachedSql;
   }
   
-  return connectionString;
-}
-
-// Create pool instance
-let pool = null;
-
-function getSQL() {
-  if (!pool) {
-    pool = createPool({
-      connectionString: getConnectionString(),
-    });
-  }
-  return pool.sql;
+  throw new Error('No Postgres connection string found. Set POSTGRES_URL (pooled) or POSTGRES_URL_NON_POOLING/BOUNTY_POSTGRES_URL (direct).');
 }
 
 /**
