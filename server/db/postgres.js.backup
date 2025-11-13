@@ -1,30 +1,44 @@
-import { createPool } from '@vercel/postgres';
+import { sql as vercelSql, createClient } from '@vercel/postgres';
 import { CONFIG } from '../config.js';
 
-// Create pool instance with explicit connection string
-let pool = null;
-
+// Return a sql tagged template function that works with pooled or direct URLs
+let cachedSql = null;
+let clientConnectPromise = null;
 function getSQL() {
-  if (pool) return pool.sql;
+  if (cachedSql) return cachedSql;
   
-  // Priority: Use pooled connection string (BOUNTY_PRISMA_DATABASE_URL is pooled)
-  const connectionString = 
-    process.env.POSTGRES_URL ||  // Standard Vercel variable
-    process.env.BOUNTY_PRISMA_DATABASE_URL ||  // Your pooled connection
-    process.env.BOUNTY_DATABASE_URL ||
-    process.env.BOUNTY_POSTGRES_URL;  // Direct connection (last resort)
-    
-  if (!connectionString) {
-    throw new Error('No database connection string found. Please set POSTGRES_URL or BOUNTY_PRISMA_DATABASE_URL environment variable.');
+  // Prefer pooled URLs (recommended for serverless)
+  const pooled =
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.BOUNTY_PRISMA_DATABASE_URL ||
+    process.env.BOUNTY_DATABASE_URL;
+  
+  if (pooled) {
+    cachedSql = vercelSql;
+    return cachedSql;
   }
   
-  // Create pool with explicit connection string
-  pool = createPool({ connectionString });
-  console.log('✅ Postgres connection pool created');
+  // Fallback to direct URL using a client with on-demand connect
+  const direct =
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.BOUNTY_POSTGRES_URL;
   
-  return pool.sql;
+  if (direct) {
+    const client = createClient({ connectionString: direct });
+    cachedSql = async (strings, ...values) => {
+      if (!clientConnectPromise) {
+        clientConnectPromise = client.connect();
+      }
+      await clientConnectPromise;
+      // @ts-ignore - use as tagged template
+      return client.sql(strings, ...values);
+    };
+    return cachedSql;
+  }
+  
+  throw new Error('No Postgres connection string found. Set POSTGRES_URL (pooled) or POSTGRES_URL_NON_POOLING/BOUNTY_POSTGRES_URL (direct).');
 }
-
 
 /**
  * Initialize Postgres database tables
