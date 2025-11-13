@@ -1,9 +1,9 @@
-import { bountyQueries } from '@/server/db/index';
+import { bountyQueries } from '@/server/db/postgres';
 
 export async function GET(request, { params }) {
   try {
     const { repoId, issueNumber } = await params;
-    const bounties = bountyQueries.findByIssue(parseInt(repoId), parseInt(issueNumber));
+    const bounties = await bountyQueries.findByIssue(parseInt(repoId), parseInt(issueNumber));
 
     return Response.json({ bounties });
   } catch (error) {

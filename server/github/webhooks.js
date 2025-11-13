@@ -1,5 +1,5 @@
 import { getGitHubApp, getOctokit, postIssueComment, updateComment, addLabels, ensureLabel, extractClosedIssues } from './client.js';
-import { bountyQueries, walletQueries, prClaimQueries } from '../db/index.js';
+import { bountyQueries, walletQueries, prClaimQueries } from '../db/postgres.js';
 import { resolveBountyOnNetwork } from '../blockchain/contract.js';
 import { ethers } from 'ethers';
 import { CONFIG } from '../config.js';
@@ -120,7 +120,7 @@ ${BRAND_SIGNATURE}`;
   }
   
   // Update DB with comment ID
-  bountyQueries.updatePinnedComment(bountyId, comment.id);
+  await bountyQueries.updatePinnedComment(bountyId, comment.id);
   
   return comment;
 }
@@ -143,7 +143,7 @@ export async function handlePROpened(payload) {
   // Check if any of these issues have bounties
   const bounties = [];
   for (const issueNumber of closedIssues) {
-    const issueBounties = bountyQueries.findByIssue(repository.id, issueNumber);
+    const issueBounties = await bountyQueries.findByIssue(repository.id, issueNumber);
     bounties.push(...issueBounties);
   }
   
@@ -155,7 +155,7 @@ export async function handlePROpened(payload) {
   const [owner, repo] = repository.full_name.split('/');
   
   // Check if user has linked wallet
-  const walletMapping = walletQueries.findByGithubId(pull_request.user.id);
+  const walletMapping = await walletQueries.findByGithubId(pull_request.user.id);
   
   if (!walletMapping) {
     // Prompt user to link wallet
@@ -187,7 +187,7 @@ ${BRAND_SIGNATURE}`;
   
   // Record PR claims
   for (const bounty of bounties) {
-    prClaimQueries.create(
+    await prClaimQueries.create(
       bounty.bounty_id,
       pull_request.number,
       pull_request.user.id,
@@ -209,7 +209,7 @@ export async function handlePRMerged(payload) {
   console.log(`✅ PR merged: ${repository.full_name}#${pull_request.number}`);
   
   // Find PR claims
-  const claims = prClaimQueries.findByPR(repository.full_name, pull_request.number);
+  const claims = await prClaimQueries.findByPR(repository.full_name, pull_request.number);
   
   if (claims.length === 0) {
     return; // No bounty claims for this PR
@@ -220,14 +220,14 @@ export async function handlePRMerged(payload) {
   
   // Process each claim
   for (const claim of claims) {
-    const bounty = bountyQueries.findById(claim.bounty_id);
+    const bounty = await bountyQueries.findById(claim.bounty_id);
     
     if (!bounty || bounty.status !== 'open') {
       continue; // Bounty doesn't exist or not open
     }
     
     // Get solver's wallet
-    const walletMapping = walletQueries.findByGithubId(claim.pr_author_github_id);
+    const walletMapping = await walletQueries.findByGithubId(claim.pr_author_github_id);
     
     if (!walletMapping) {
       // No wallet linked - post reminder
@@ -254,8 +254,8 @@ ${BRAND_SIGNATURE}`;
     
     if (result.success) {
       // Update DB
-      bountyQueries.updateStatus(bounty.bounty_id, 'resolved', result.txHash);
-      prClaimQueries.updateStatus(claim.id, 'paid', result.txHash, Date.now());
+      await bountyQueries.updateStatus(bounty.bounty_id, 'resolved', result.txHash);
+      await prClaimQueries.updateStatus(claim.id, 'paid', result.txHash, Date.now());
       
       // Post success comment on PR
       const tokenSymbol = bounty.token_symbol || 'USDC';
@@ -291,7 +291,7 @@ Tag a maintainer to replay the payout once the issue is resolved.
 ${BRAND_SIGNATURE}`;
 
       await postIssueComment(octokit, owner, repo, pull_request.number, errorComment);
-      prClaimQueries.updateStatus(claim.id, 'failed');
+      await prClaimQueries.updateStatus(claim.id, 'failed');
     }
   }
 }

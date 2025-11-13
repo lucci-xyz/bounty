@@ -7,8 +7,6 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "migrate": "node server/db/migrate.js",
-    "seed": "node server/db/seed.js",
     "test": "node --test tests/"
   },
   "keywords": [
@@ -22,7 +20,7 @@
   "dependencies": {
     "@rainbow-me/rainbowkit": "^2.2.9",
     "@tanstack/react-query": "^5.90.5",
-    "better-sqlite3": "^9.2.2",
+    "@vercel/postgres": "^0.10.0",
     "dotenv": "^16.3.1",
     "ethers": "^6.15.0",
     "iron-session": "^8.0.3",

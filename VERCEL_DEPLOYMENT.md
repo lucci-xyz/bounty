@@ -37,6 +37,7 @@ In Vercel Dashboard → Settings → Environment Variables:
 ```bash
 # Required
 SESSION_SECRET=your-random-32-char-string
+ENV_TARGET=stage
 GITHUB_APP_ID=123456
 GITHUB_PRIVATE_KEY=-----BEGIN RSA PRIVATE KEY-----...
 GITHUB_WEBHOOK_SECRET=your-webhook-secret
@@ -56,7 +57,38 @@ Click **"Deploy"** - Done! 🎉
 
 Your app will be live at `https://your-app.vercel.app`
 
-### 4. Update GitHub App
+### 4. Create Vercel Postgres Database
+
+**CRITICAL:** The app requires a Postgres database for persistent storage.
+
+1. In Vercel Dashboard → **Storage** tab
+2. Click **"Create Database"** → **"Postgres"**
+3. Name it `bountypay-db`
+4. Click **"Create"**
+
+Vercel will automatically add these environment variables:
+- `POSTGRES_URL`
+- `POSTGRES_PRISMA_URL`
+- `POSTGRES_URL_NON_POOLING`
+- And others...
+
+**Note:** Database tables are automatically created on first use.
+
+### 5. Set ENV_TARGET (Important!)
+
+Add this environment variable to distinguish stage from production:
+
+```bash
+# For staging
+ENV_TARGET=stage
+
+# For production
+ENV_TARGET=prod
+```
+
+This ensures bounties created in staging don't interfere with production (since they use separate GitHub Apps).
+
+### 6. Update GitHub App
 
 Update your GitHub App settings:
 - Webhook URL: `https://your-app.vercel.app/api/webhooks/github`
@@ -71,6 +103,7 @@ Update your GitHub App settings:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `SESSION_SECRET` | ✅ | Random string for session encryption (32+ chars) |
+| `ENV_TARGET` | ✅ | Environment identifier: `stage` or `prod` |
 | `FRONTEND_URL` | ✅ | Your Vercel deployment URL |
 | `NODE_ENV` | Auto | Set to `production` automatically |
 

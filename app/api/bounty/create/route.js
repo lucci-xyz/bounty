@@ -1,5 +1,5 @@
 import { getSession } from '@/lib/session';
-import { bountyQueries } from '@/server/db/index';
+import { bountyQueries } from '@/server/db/postgres';
 import { handleBountyCreated } from '@/server/github/webhooks';
 import { computeBountyIdOnNetwork, createRepoIdHash } from '@/server/blockchain/contract';
 import { CONFIG } from '@/server/config';
@@ -40,7 +40,7 @@ export async function POST(request) {
     const chainId = getChainIdFromNetwork(network);
 
     // Store in database
-    bountyQueries.create({
+    await bountyQueries.create({
       bountyId,
       repoFullName,
       repoId,

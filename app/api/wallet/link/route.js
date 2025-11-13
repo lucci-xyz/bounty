@@ -1,5 +1,5 @@
 import { getSession } from '@/lib/session';
-import { walletQueries } from '@/server/db/index';
+import { walletQueries } from '@/server/db/postgres';
 
 export async function POST(request) {
   try {
@@ -16,7 +16,7 @@ export async function POST(request) {
     }
 
     // Store mapping
-    walletQueries.create(githubId, githubUsername, walletAddress);
+    await walletQueries.create(githubId, githubUsername, walletAddress);
 
     return Response.json({
       success: true,

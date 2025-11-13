@@ -1,9 +1,9 @@
-import { walletQueries } from '@/server/db/index';
+import { walletQueries } from '@/server/db/postgres';
 
 export async function GET(request, { params }) {
   try {
     const { githubId } = await params;
-    const mapping = walletQueries.findByGithubId(parseInt(githubId));
+    const mapping = await walletQueries.findByGithubId(parseInt(githubId));
 
     if (!mapping) {
       return Response.json({ error: 'Wallet not found' }, { status: 404 });

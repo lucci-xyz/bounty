@@ -1,9 +1,9 @@
-import { bountyQueries } from '@/server/db/index';
+import { bountyQueries } from '@/server/db/postgres';
 
 export async function GET(request, { params }) {
   try {
     const { bountyId } = await params;
-    const bounty = bountyQueries.findById(bountyId);
+    const bounty = await bountyQueries.findById(bountyId);
 
     if (!bounty) {
       return Response.json({ error: 'Bounty not found' }, { status: 404 });

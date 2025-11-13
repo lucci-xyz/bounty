@@ -1,9 +1,9 @@
-import { statsQueries } from '@/server/db/index';
+import { statsQueries } from '@/server/db/postgres';
 import { CONFIG } from '@/server/config';
 
 export async function GET() {
   try {
-    const { tokenStats, recent, overall } = statsQueries.getAll(20);
+    const { tokenStats, recent, overall } = await statsQueries.getAll(20);
 
     // Build token comparison object
     const byToken = {};
