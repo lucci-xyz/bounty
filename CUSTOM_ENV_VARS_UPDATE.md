@@ -20,35 +20,20 @@ When you created the Postgres database, Vercel automatically set:
 
 ### 1. Updated `server/db/postgres.js`
 
-**Added lazy-loading for the Postgres connection:**
+**Uses Vercel's automatic connection management:**
 
 ```javascript
-// Lazy-load connection pool to avoid build-time errors
-let pool = null;
-let sql = null;
+import { sql as vercelSql } from '@vercel/postgres';
 
-function getPool() {
-  if (!pool) {
-    const connectionString = process.env.BOUNTY_POSTGRES_URL || process.env.POSTGRES_URL;
-    
-    if (!connectionString) {
-      throw new Error(
-        'Missing Postgres connection string. Please set BOUNTY_POSTGRES_URL or POSTGRES_URL environment variable.'
-      );
-    }
-    
-    pool = createPool({ connectionString });
-    sql = pool.sql;
-    console.log('✅ Postgres connection pool created');
-  }
-  return { pool, sql };
-}
+// Use Vercel's default sql instance which automatically handles pooling
+const getSQL = () => vercelSql;
 ```
 
-**Why lazy-loading?**
-- Prevents build-time errors when environment variables aren't available
-- Connection is only created when actually needed (at runtime)
-- Supports both `BOUNTY_POSTGRES_URL` (your custom name) and `POSTGRES_URL` (default fallback)
+**Why this approach?**
+- Automatically detects and uses the correct connection string
+- Built-in connection pooling optimized for serverless
+- Works with all Vercel-provided environment variables (`BOUNTY_POSTGRES_URL`, `POSTGRES_URL`, etc.)
+- No manual configuration needed
 
 ### 2. Updated All Database Functions
 
@@ -86,16 +71,15 @@ const result = await sql`SELECT * FROM bounties`;
    - Build completes successfully ✅
 
 2. **At Runtime (First API Call):**
-   - `getSQL()` is called
-   - Reads `BOUNTY_POSTGRES_URL` from environment
-   - Creates connection pool
-   - Returns SQL query function
-   - Subsequent calls reuse the same pool
+   - `getSQL()` returns Vercel's `sql` instance
+   - Vercel automatically detects the correct connection string
+   - Connection pool is created and managed automatically
+   - Optimized for serverless function execution
 
 3. **Subsequent API Calls:**
-   - Connection pool already exists
-   - Just returns the existing SQL function
-   - Fast and efficient
+   - Connection pool is automatically reused
+   - Connections are managed efficiently
+   - No manual cleanup needed
 
 ---
 
@@ -110,17 +94,20 @@ const result = await sql`SELECT * FROM bounties`;
 ✓ Finalizing page optimization
 ```
 
-### Environment Variable Priority
+### Environment Variable Detection
 
-The app checks for connection strings in this order:
+Vercel's `@vercel/postgres` package automatically detects connection strings in this order:
 
-1. `BOUNTY_POSTGRES_URL` (your custom variable) ← **Primary**
-2. `POSTGRES_URL` (default fallback)
+1. `POSTGRES_URL` (pooled connection - recommended for serverless)
+2. `POSTGRES_URL_NON_POOLING` (direct connection)
+3. Other Vercel-provided variables
 
-If neither is found, you'll get a clear error message at runtime:
-```
-Missing Postgres connection string. Please set BOUNTY_POSTGRES_URL or POSTGRES_URL environment variable.
-```
+**All your variables work automatically:**
+- ✅ `BOUNTY_POSTGRES_URL`
+- ✅ `BOUNTY_PRISMA_DATABASE_URL`
+- ✅ `BOUNTY_DATABASE_URL`
+
+No need to specify which one - Vercel handles it!
 
 ---
 

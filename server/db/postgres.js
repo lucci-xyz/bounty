@@ -1,31 +1,9 @@
-import { createPool } from '@vercel/postgres';
+import { sql as vercelSql } from '@vercel/postgres';
 import { CONFIG } from '../config.js';
 
-// Lazy-load connection pool to avoid build-time errors
-let pool = null;
-let sql = null;
-
-function getPool() {
-  if (!pool) {
-    const connectionString = process.env.BOUNTY_POSTGRES_URL || process.env.POSTGRES_URL;
-    
-    if (!connectionString) {
-      throw new Error(
-        'Missing Postgres connection string. Please set BOUNTY_POSTGRES_URL or POSTGRES_URL environment variable.'
-      );
-    }
-    
-    pool = createPool({ connectionString });
-    sql = pool.sql;
-    console.log('✅ Postgres connection pool created');
-  }
-  return { pool, sql };
-}
-
-// Get sql function (lazy-loaded)
-function getSQL() {
-  return getPool().sql;
-}
+// Use Vercel's default sql instance which automatically handles pooling
+// and connection string detection from environment variables
+const getSQL = () => vercelSql;
 
 /**
  * Initialize Postgres database tables
