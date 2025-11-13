@@ -2,13 +2,11 @@
   "name": "bountypay-github-app",
   "version": "1.0.0",
   "description": "BountyPay - Automated bounty payments for GitHub issues",
-  "main": "server/index.js",
   "type": "module",
   "scripts": {
-    "dev": "node --watch server/index.js",
-    "dev:client": "vite",
-    "start": "node server/index.js",
-    "build": "vite build",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "migrate": "node server/db/migrate.js",
     "seed": "node server/db/seed.js",
     "test": "node --test tests/"
@@ -25,25 +23,22 @@
     "@rainbow-me/rainbowkit": "^2.2.9",
     "@tanstack/react-query": "^5.90.5",
     "better-sqlite3": "^9.2.2",
-    "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "ethers": "^6.15.0",
-    "express": "^4.18.2",
-    "express-session": "^1.17.3",
-    "helmet": "^7.1.0",
+    "iron-session": "^8.0.3",
+    "next": "^15.1.6",
     "octokit": "^3.1.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router-dom": "^7.9.5",
     "siwe": "^2.1.4",
     "viem": "^2.38.5",
     "wagmi": "^2.19.2"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^5.1.0",
-    "markdownlint-cli": "^0.45.0",
-    "nodemon": "^3.0.2",
-    "vite": "^7.1.12"
+    "@types/node": "^20.11.5",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.1",
+    "markdownlint-cli": "^0.45.0"
   },
   "overrides": {
     "@walletconnect/logger": "^3.0.0"

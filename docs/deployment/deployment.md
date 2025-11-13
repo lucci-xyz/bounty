@@ -1,16 +1,12 @@
 # Deployment Guide
 
-Complete guide for deploying BountyPay to production environments.
+Complete guide for deploying BountyPay to Vercel.
 
 ---
 
 ## Overview
 
-BountyPay can be deployed to various platforms. This guide covers:
-
-- Railway (currently used)
-- Render
-- General deployment considerations
+BountyPay is a Next.js application optimized for deployment on Vercel. This guide covers the complete deployment process from setup to production.
 
 ---
 
@@ -19,515 +15,400 @@ BountyPay can be deployed to various platforms. This guide covers:
 - GitHub repository with the codebase
 - GitHub App configured (see [GitHub App Setup](../development/github-app-setup.md))
 - All environment variables ready
-- Domain name (optional, but recommended)
+- Vercel account (free tier works great)
 
 ---
 
-## Deployment Options
+## Deploying to Vercel
 
-### Option 1: Railway
+### Step 1: Connect Repository
 
-Railway is the current deployment platform for BountyPay.
+1. Sign up at [vercel.com](https://vercel.com)
+2. Click **"Add New Project"**
+3. Import your GitHub repository
+4. Vercel will automatically detect Next.js and configure build settings
 
-#### Step 1: Create Railway Project
+### Step 2: Configure Environment Variables
 
-1. Sign up at [railway.app](https://railway.app)
-2. Create a new project
-3. Connect your GitHub repository
+In the Vercel dashboard, go to **Settings** → **Environment Variables** and add:
 
-#### Step 2: Configure Environment Variables
-
-In Railway dashboard, go to **Variables** and add:
-
-**Required:**
+**Required Variables:**
 
 ```bash
-NODE_ENV=production
-PORT=3000
-SESSION_SECRET=your-secret-here
-FRONTEND_URL=https://your-app.railway.app
+# Session
+SESSION_SECRET=your-random-secret-string-here
 
+# GitHub App
 GITHUB_APP_ID=your_app_id
 GITHUB_PRIVATE_KEY=your_private_key_content
 GITHUB_WEBHOOK_SECRET=your_webhook_secret
 GITHUB_CLIENT_ID=your_client_id
 GITHUB_CLIENT_SECRET=your_client_secret
 
-# Base Sepolia (default)
+# Blockchain - Base Sepolia (default)
 CHAIN_ID=84532
 RPC_URL=https://sepolia.base.org
 ESCROW_CONTRACT=0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD
 USDC_CONTRACT=0x036CbD53842c5426634e7929541eC2318f3dCF7e
 
-# Mezo Testnet (optional, for MUSD support)
-VITE_MEZO_RPC_URL=https://mezo-testnet.drpc.org
-VITE_MEZO_ESCROW_CONTRACT=0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3
-VITE_MEZO_MUSD_CONTRACT=0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503
-
+# Resolver Wallet
 RESOLVER_PRIVATE_KEY=your_resolver_private_key
+
+# Frontend URL (set after first deployment)
+FRONTEND_URL=https://your-app.vercel.app
 ```
 
-**Note:** For `GITHUB_PRIVATE_KEY`, you can either:
-
-- Paste the full PEM file content (with `\n` for newlines)
-- Or use a secret reference if stored in Railway secrets
-
-#### Step 3: Configure GitHub App Webhooks
-
-1. Get your Railway deployment URL: `https://your-app.railway.app`
-2. Update GitHub App settings:
-   - **Webhook URL**: `https://your-app.railway.app/webhooks/github`
-   - **OAuth Callback URL**: `https://your-app.railway.app/oauth/callback`
-3. Update `FRONTEND_URL` environment variable to match
-
-#### Step 4: Deploy
-
-Railway automatically deploys when you push to the connected branch (usually `main`).
-
-The `railway.json` configuration handles:
-
-- Build command: Automatically detected (Nixpacks)
-- Start command: `npm run migrate && npm start`
-- Restart policy: On failure with max 10 retries
-
-#### Step 5: Custom Domain (Optional)
-
-1. In Railway dashboard, go to **Settings** → **Networking**
-2. Add a custom domain
-3. Update `FRONTEND_URL` and GitHub App URLs accordingly
-
-#### Railway-Specific Tips
-
-- **Database**: Railway offers PostgreSQL. For production, consider migrating from SQLite
-- **Logs**: View real-time logs in Railway dashboard
-- **Metrics**: Monitor resource usage in dashboard
-- **Secrets**: Use Railway's secret management for sensitive values
-
----
-
-### Option 2: Render
-
-Render provides similar functionality to Railway with a slightly different interface.
-
-#### Step 1: Create Render Service
-
-1. Sign up at [render.com](https://render.com)
-2. Create a new **Web Service**
-3. Connect your GitHub repository
-
-#### Step 2: Configure Service
-
-The `render.yaml` file provides default configuration. In Render dashboard:
-
-**Build & Deploy:**
-
-- **Environment**: Node
-- **Build Command**: `npm install` (from render.yaml)
-- **Start Command**: `npm run migrate && npm start` (from render.yaml)
-- **Health Check Path**: `/health` (from render.yaml)
-
-#### Step 3: Environment Variables
-
-Add all required environment variables in Render dashboard under **Environment**.
-
-Render will auto-generate `SESSION_SECRET` if configured in `render.yaml`, but you still need to set:
-
-- `GITHUB_APP_ID`
-- `GITHUB_PRIVATE_KEY`
-- `GITHUB_WEBHOOK_SECRET`
-- `GITHUB_CLIENT_ID`
-- `GITHUB_CLIENT_SECRET`
-- `RESOLVER_PRIVATE_KEY`
-- `ESCROW_CONTRACT`
-- Other blockchain variables
-
-#### Step 4: Update GitHub App
-
-1. Get Render deployment URL: `https://your-service.onrender.com`
-2. Update GitHub App webhook and callback URLs
-3. Update `FRONTEND_URL` environment variable
-
-#### Step 5: Deploy
-
-Render automatically deploys when you push to the connected branch.
-
-#### Render-Specific Notes
-
-- **Free tier**: Services spin down after inactivity. Use paid plan for always-on
-- **Database**: Render offers PostgreSQL. Consider migrating for production
-- **Custom domains**: Free tier supports custom domains
-
----
-
-### Option 3: Docker Deployment
-
-For maximum control, you can deploy using Docker.
-
-#### Dockerfile Example
-
-```dockerfile
-FROM node:18-alpine
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy application code
-COPY . .
-
-# Expose port
-EXPOSE 3000
-
-# Run migrations and start
-CMD ["sh", "-c", "npm run migrate && npm start"]
-```
-
-#### Docker Compose Example
-
-```yaml
-version: '3.8'
-
-services:
-  app:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
-    env_file:
-      - .env
-    volumes:
-      - ./server/db:/app/server/db
-    restart: unless-stopped
-```
-
-#### Deploy with Docker
+**Optional Variables:**
 
 ```bash
-# Build image
-docker build -t bountypay .
+# Mezo Testnet Support (for MUSD)
+NEXT_PUBLIC_MEZO_RPC_URL=https://mezo-testnet.drpc.org
 
-# Run container
-docker run -d \
-  --name bountypay \
-  -p 3000:3000 \
-  --env-file .env \
-  -v $(pwd)/server/db:/app/server/db \
-  bountypay
+# Custom RPC endpoints
+RPC_URL=your-custom-rpc-url
+
+# Database (if using custom path)
+DATABASE_PATH=/tmp/bounty.db
 ```
 
-**Docker Platforms:**
+**Important Notes:**
 
-- AWS ECS/Fargate
-- Google Cloud Run
-- Azure Container Instances
-- Fly.io
-- DigitalOcean App Platform
+- For `GITHUB_PRIVATE_KEY`, paste the full PEM file content (Vercel handles multi-line values)
+- `SESSION_SECRET` should be a random string (at least 32 characters)
+- `FRONTEND_URL` should match your deployment URL (update after first deploy)
+- Environment variables with `NEXT_PUBLIC_` prefix are available in the browser
 
----
+### Step 3: Configure GitHub App Webhooks
 
-## Environment Variables
+After your first deployment, update your GitHub App settings:
 
-### Production Checklist
+1. Get your Vercel deployment URL: `https://your-app.vercel.app`
+2. Go to your GitHub App settings
+3. Update these URLs:
+   - **Webhook URL**: `https://your-app.vercel.app/api/webhooks/github`
+   - **OAuth Callback URL**: `https://your-app.vercel.app/api/oauth/callback`
+4. Update `FRONTEND_URL` environment variable in Vercel to match
 
-All these must be set in your deployment environment:
+### Step 4: Deploy
 
-**Server:**
+Click **"Deploy"** in Vercel. The deployment process will:
 
-- [ ] `NODE_ENV=production`
-- [ ] `PORT=3000` (or platform default)
-- [ ] `SESSION_SECRET` (strong random string)
-- [ ] `FRONTEND_URL` (full URL with https)
+1. Install dependencies (`npm install`)
+2. Build the Next.js app (`npm run build`)
+3. Deploy to serverless functions
+4. Provide you with a live URL
 
-**GitHub:**
+**Build Configuration (Automatic):**
+- Build Command: `next build`
+- Output Directory: `.next`
+- Install Command: `npm install`
+- Node Version: 18.x or higher
 
-- [ ] `GITHUB_APP_ID`
-- [ ] `GITHUB_PRIVATE_KEY` or `GITHUB_PRIVATE_KEY_PATH`
-- [ ] `GITHUB_WEBHOOK_SECRET`
-- [ ] `GITHUB_CLIENT_ID`
-- [ ] `GITHUB_CLIENT_SECRET`
+### Step 5: Database Initialization
 
-**Blockchain (Base Sepolia):**
+**Important:** On first deployment, you need to initialize the database:
 
-- [ ] `CHAIN_ID=84532`
-- [ ] `RPC_URL=https://sepolia.base.org`
-- [ ] `ESCROW_CONTRACT=0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD`
-- [ ] `USDC_CONTRACT=0x036CbD53842c5426634e7929541eC2318f3dCF7e`
-- [ ] `RESOLVER_PRIVATE_KEY`
+1. Go to your Vercel deployment
+2. Navigate to **Settings** → **Functions**
+3. You can either:
+   - Use Vercel's serverless PostgreSQL (recommended for production)
+   - Use SQLite with persistent storage (requires Vercel Pro for persistent /tmp)
+   - Use an external database service (like PlanetScale, Supabase, or Neon)
 
-**Blockchain (Mezo Testnet - Optional for MUSD):**
+**For SQLite (Simple Setup):**
+The app will auto-create the SQLite database on first run, but note that Vercel's serverless environment may lose the database between deployments. For production, consider using a managed database.
 
-- [ ] `VITE_MEZO_RPC_URL=https://mezo-testnet.drpc.org`
-- [ ] `VITE_MEZO_ESCROW_CONTRACT=0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3`
-- [ ] `VITE_MEZO_MUSD_CONTRACT=0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503`
-
-**Database:**
-
-- [ ] `DATABASE_PATH` (if using file-based SQLite)
-- Or configure managed database connection
-
----
-
-## Database Considerations
-
-### SQLite (Current)
-
-**Pros:**
-
-- Simple, no setup required
-- Works for development and small-scale production
-- Easy backups (just copy the file)
-
-**Cons:**
-
-- Not ideal for high concurrency
-- Single file = single point of failure
-- Limited scalability
-
-**For Production:**
-
-- Use persistent volume/storage
-- Set up regular backups
-- Monitor file size and performance
-
-### PostgreSQL (Recommended for Scale)
-
-For production at scale, consider migrating to PostgreSQL:
-
-1. Install PostgreSQL on your platform
-2. Update database connection code
-3. Run migrations against PostgreSQL
-4. Update environment variables
-
-**Railway PostgreSQL:**
-
-- Railway offers managed PostgreSQL
-- Connect via connection string in environment
-
-**Render PostgreSQL:**
-
-- Render offers managed PostgreSQL
-- Auto-generates connection string
-
----
-
-## Security Best Practices
-
-### Environment Variable Security
-
-- **Never commit** `.env` files to git
-- Use platform secret management
-- Rotate secrets regularly
-- Use different secrets for staging/production
-
-### GitHub App Private Key
-
-- Store as platform secret, not in code
-- Use file path if platform supports volume mounts
-- Or inline with proper escaping
-
-### Resolver Private Key
-
-- Use a dedicated wallet for resolver
-- Keep minimal ETH balance (just enough for gas)
-- Monitor balance and top up as needed
-- Never use mainnet keys in test deployments
-
-### SSL/HTTPS
-
-- Always use HTTPS in production
-- Configure SSL certificates (usually automatic on platforms)
-- Update GitHub App URLs to use HTTPS
-
----
-
-## Monitoring and Logging
-
-### Health Check Endpoint
-
-The app provides a health check at `/health`:
+**For Production Database:**
+Consider using Vercel Postgres or another managed database:
 
 ```bash
-curl https://your-app.com/health
+# Vercel Postgres
+npm i @vercel/postgres
+
+# Update server/db/index.js to use PostgreSQL instead of SQLite
 ```
 
-Response:
+### Step 6: Custom Domain (Optional)
 
-```json
-{
-  "status": "ok",
-  "service": "bountypay-github-app",
-  "version": "1.0.0",
-  "timestamp": "2024-01-01T00:00:00.000Z"
-}
-```
-
-### Logging
-
-- **Platform logs**: Use built-in logging (Railway, Render dashboards)
-- **Application logs**: Check console output for webhook events and errors
-- **External logging**: Consider services like Logtail, Datadog, or Sentry
-
-### Monitoring Points
-
-- Webhook delivery success rate
-- Bounty creation rate
-- Payout success rate
-- Resolver wallet balance
-- Database size
-- API response times
-- Error rates
+1. In Vercel dashboard, go to **Settings** → **Domains**
+2. Add your custom domain
+3. Follow Vercel's instructions to update DNS records
+4. Update `FRONTEND_URL` and GitHub App URLs to use your custom domain
 
 ---
 
-## Post-Deployment Verification
+## Vercel-Specific Features
 
-### 1. Health Check
+### Automatic Deployments
 
-```bash
-curl https://your-app.com/health
-```
+- **Main Branch**: Automatically deploys to production
+- **Pull Requests**: Creates preview deployments
+- **Branch Deploys**: Each branch gets its own URL
 
-Should return `200 OK` with status JSON.
+### Environment Variables by Environment
 
-### 2. Test Webhook
+You can set different values for:
+- **Production**: Live production site
+- **Preview**: Pull request previews
+- **Development**: Local development
 
-1. Create a test issue in a repository
-2. Check GitHub App → Advanced → Webhook deliveries
-3. Verify delivery was successful (200 response)
-4. Check server logs for processing
+### Edge Functions
 
-### 3. Test OAuth
+Vercel runs API routes as serverless functions by default. For even better performance, you can opt into Edge Functions for specific routes.
 
-1. Visit `https://your-app.com/link-wallet`
-2. Click "Connect GitHub"
-3. Verify redirect and authentication work
-4. Check session is created
+### Monitoring
 
-### 4. Test Bounty Flow
-
-1. Create issue → Attach bounty → Fund
-2. Verify database entry
-3. Submit PR → Merge
-4. Verify payout transaction
+Vercel provides built-in:
+- Real-time logs
+- Function metrics
+- Performance analytics
+- Error tracking
 
 ---
 
-## Staging vs Production
+## Post-Deployment Checklist
 
-### Staging Environment
-
-Set up a separate staging environment:
-
-1. Create separate GitHub App (e.g., "BountyPay-STAGE")
-2. Deploy to separate service (or use environment variables)
-3. Use separate database
-4. Test all flows before production
-
-**Environment Variables:**
-
-```bash
-ENV_TARGET=stage
-STAGE_CALLBACK_URL=https://stage-app.com/oauth/callback
-```
-
-### Production Environment
-
-```bash
-ENV_TARGET=prod
-PROD_CALLBACK_URL=https://prod-app.com/oauth/callback
-```
-
-See [Testing Environments](../development/testing-environments.md) for more details.
+- [ ] Application loads at your Vercel URL
+- [ ] GitHub OAuth login works
+- [ ] Wallet connection works
+- [ ] Bounty creation saves to database
+- [ ] GitHub webhooks are processed
+- [ ] API routes respond correctly (test `/api/health`)
+- [ ] Environment variables are all set correctly
+- [ ] Custom domain configured (if using)
+- [ ] SSL certificate active (automatic with Vercel)
 
 ---
 
 ## Troubleshooting
 
-### Deployment Fails
+### Build Fails
 
-- Check build logs for errors
-- Verify all environment variables are set
-- Ensure Node.js version is 18+
-- Check start command is correct
-
-### Webhooks Not Working
-
-- Verify webhook URL is publicly accessible
-- Check SSL certificate is valid
-- Verify webhook secret matches
-- Check server logs for signature errors
-
-### Database Issues
-
-- Ensure persistent storage is configured
-- Check file permissions
-- Verify database path is correct
-- Consider migrating to managed database
-
-### OAuth Callback Fails
-
-- Verify callback URL in GitHub App matches deployment URL
-- Check `FRONTEND_URL` environment variable
-- Ensure HTTPS is used
-- Check session cookie settings
-
-See [Troubleshooting Guide](../support/troubleshooting.md) for more issues.
-
----
-
-## Backup Strategy
-
-### Database Backups
-
-**SQLite:**
-
+**Issue**: Build fails with module errors
+**Solution**: 
 ```bash
-# Manual backup
-cp server/db/bounty.db backup/bounty-$(date +%Y%m%d).db
+# Locally test the build
+npm run build
 
-# Automated (add to cron or scheduled job)
+# Check for missing dependencies
+npm install
 ```
 
-**PostgreSQL:**
+### Environment Variables Not Working
 
-- Use platform backup features (Railway, Render)
-- Or set up automated pg_dump
+**Issue**: App can't access environment variables
+**Solution**:
+- Ensure variables are set in Vercel dashboard
+- Redeploy after adding variables
+- Check that client-side variables use `NEXT_PUBLIC_` prefix
 
-### Backup Frequency
+### Database Errors
 
-- **Development**: Before major changes
-- **Staging**: Daily
-- **Production**: Multiple times daily
+**Issue**: SQLite database not persisting
+**Solution**: Vercel's serverless functions have ephemeral storage. Consider:
+- Using Vercel Postgres
+- Connecting to external database (PlanetScale, Supabase)
+- For development only, accept that SQLite will reset
+
+### Webhook Signature Verification Fails
+
+**Issue**: GitHub webhooks return 401
+**Solution**:
+- Verify `GITHUB_WEBHOOK_SECRET` is set correctly
+- Check that webhook URL in GitHub App settings is correct
+- Ensure the secret matches between GitHub and Vercel
+
+### Session Issues
+
+**Issue**: Users get logged out frequently
+**Solution**:
+- Check `SESSION_SECRET` is set
+- Ensure cookies are not blocked
+- Verify `FRONTEND_URL` matches your actual domain
 
 ---
 
-## Scaling Considerations
+## Performance Optimization
 
-### Current Architecture
+### Enable Edge Caching
 
-- Single server instance
-- SQLite database
-- In-memory sessions
+Add to `next.config.js`:
 
-### Scaling Path
+```javascript
+export const runtime = 'edge';
+```
 
-1. **Load Balancing**: Multiple instances behind load balancer
-2. **Database**: Migrate to PostgreSQL with connection pooling
-3. **Sessions**: Use Redis for shared sessions
-4. **Caching**: Add Redis for frequently accessed data
-5. **Queue**: Add job queue for blockchain transactions (Bull, etc.)
+For static assets and API routes that can be cached.
+
+### Database Connection Pooling
+
+If using external database:
+
+```javascript
+// Use connection pooling for better performance
+import { Pool } from 'pg';
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 20,
+});
+```
+
+### Static Generation
+
+Pages that don't need real-time data are automatically statically generated:
+- Home page (`/`)
+- Info pages
+
+Dynamic pages are server-rendered:
+- Bounty pages (with URL params)
+- OAuth callbacks
+
+---
+
+## Security Considerations
+
+### Environment Variables
+
+- ✅ Never commit secrets to repository
+- ✅ Use Vercel's encrypted environment variables
+- ✅ Rotate `SESSION_SECRET` periodically
+- ✅ Keep `GITHUB_PRIVATE_KEY` and `RESOLVER_PRIVATE_KEY` secure
+
+### HTTPS
+
+- ✅ Vercel provides SSL automatically
+- ✅ All traffic is encrypted
+- ✅ Automatic certificate renewal
+
+### Rate Limiting
+
+Consider adding rate limiting for API routes:
+
+```javascript
+// middleware.js
+import { Ratelimit } from "@upstash/ratelimit";
+
+export async function middleware(request) {
+  // Implement rate limiting
+}
+```
+
+---
+
+## Scaling
+
+Vercel automatically scales your application:
+
+- **Serverless Functions**: Scale to zero when not used
+- **Global CDN**: Content delivered from nearest edge location
+- **Automatic Scaling**: Handles traffic spikes automatically
+
+**No configuration needed** - Vercel handles it all!
+
+---
+
+## Monitoring & Debugging
+
+### View Logs
+
+1. Go to Vercel dashboard
+2. Select your deployment
+3. Click **"Logs"** to view real-time logs
+
+### Check Function Performance
+
+1. Go to **Analytics** in Vercel dashboard
+2. View function execution times
+3. Monitor error rates
+
+### Error Tracking
+
+Consider integrating error tracking:
+
+- **Sentry**: Error tracking and performance monitoring
+- **LogRocket**: Session replay and debugging
+- **Vercel Analytics**: Built-in web analytics
+
+---
+
+## Production Best Practices
+
+1. **Use Production Build Locally**: Test with `npm run build && npm start`
+2. **Monitor Performance**: Use Vercel Analytics to track performance
+3. **Set Up Alerts**: Configure Slack/email notifications for errors
+4. **Regular Backups**: If using database, set up regular backups
+5. **Test Webhooks**: Use GitHub's webhook test feature to verify
+6. **Document Changes**: Keep deployment notes for major updates
+
+---
+
+## Cost Considerations
+
+**Vercel Free Tier Includes:**
+- Unlimited deployments
+- 100GB bandwidth per month
+- Serverless function executions
+- Automatic SSL
+- Preview deployments
+
+**Vercel Pro ($20/month) Adds:**
+- More bandwidth
+- Faster builds
+- Team features
+- Advanced analytics
+- Password protection for previews
+
+For BountyPay's typical usage, the **Free tier is usually sufficient** for development and small-scale production use.
+
+---
+
+## Getting Help
+
+- **Vercel Documentation**: [vercel.com/docs](https://vercel.com/docs)
+- **Next.js Documentation**: [nextjs.org/docs](https://nextjs.org/docs)
+- **Vercel Support**: Available through dashboard
+- **Community**: Next.js Discord and Vercel Community
+
+---
+
+## Maintenance
+
+### Updating Dependencies
+
+```bash
+npm update
+npm run build
+git commit -am "Update dependencies"
+git push  # Triggers automatic deployment
+```
+
+### Database Migrations
+
+When schema changes:
+
+```bash
+# Update server/db/schema.js
+# Vercel will run migrations on next deployment
+```
+
+### Monitoring Updates
+
+- Check Vercel dashboard weekly
+- Review function performance
+- Monitor error rates
+- Update Next.js monthly for security patches
 
 ---
 
 ## Next Steps
 
-- [GitHub App Setup](../development/github-app-setup.md) - Configure GitHub App for production
-- [Testing Environments](../development/testing-environments.md) - Set up staging
-- [Architecture](../reference/architecture.md) - Understand system design
-- [Troubleshooting](../support/troubleshooting.md) - Common issues and solutions
+After successful deployment:
+
+1. Test all functionality in production
+2. Set up monitoring and alerts
+3. Configure custom domain
+4. Enable analytics
+5. Share with users!
+
+**Your BountyPay app is now live on Vercel! 🎉**
