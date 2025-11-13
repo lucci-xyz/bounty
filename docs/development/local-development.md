@@ -6,14 +6,11 @@ Complete guide for setting up BountyPay locally for development and testing.
 
 ## Prerequisites
 
-Before starting, ensure you have:
-
-- **Node.js** 18+ and npm (or yarn/pnpm)
+- **Node.js** 18+ and npm
 - **Git** for cloning the repository
 - **A GitHub account** with admin access to repositories for testing
 - **A crypto wallet** (MetaMask recommended) with Base Sepolia testnet configured
 - **ngrok** (or similar) for exposing local server to GitHub webhooks
-- **SQLite** (usually comes with system, or install separately)
 
 ---
 
@@ -35,84 +32,74 @@ npm install
 Create a `.env` file in the project root:
 
 ```bash
-cp .env.example .env  # If an example exists, or create from scratch
-```
-
-### Required Environment Variables
-
-```bash
-# Server Configuration
-NODE_ENV=development
-PORT=3000
+# Required
+SESSION_SECRET=your-random-32-char-string
 FRONTEND_URL=http://localhost:3000
-SESSION_SECRET=your-secret-session-key-here
+ENV_TARGET=stage
 
-# GitHub App Configuration
+# GitHub App
 GITHUB_APP_ID=your_app_id
-GITHUB_PRIVATE_KEY_PATH=./private-key.pem
+GITHUB_PRIVATE_KEY=-----BEGIN RSA PRIVATE KEY-----...
 GITHUB_WEBHOOK_SECRET=your-webhook-secret
 GITHUB_CLIENT_ID=your_client_id
 GITHUB_CLIENT_SECRET=your_client_secret
 
-# Blockchain Configuration
-CHAIN_ID=84532
-RPC_URL=https://sepolia.base.org
+# Blockchain
 ESCROW_CONTRACT=0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD
-USDC_CONTRACT=0x036CbD53842c5426634e7929541eC2318f3dCF7e
 RESOLVER_PRIVATE_KEY=your_resolver_wallet_private_key
 
-# Database (optional, defaults to ./server/db/bounty.db)
-DATABASE_PATH=./server/db/bounty.db
+# Database (Prisma Postgres)
+DATABASE_URL=prisma+postgres://accelerate.prisma-data.net/?api_key=...
+DIRECT_DATABASE_URL=postgres://...@db.prisma.io:5432/postgres?sslmode=require
+
+# Optional
+NEXT_PUBLIC_MEZO_RPC_URL=https://mezo-testnet.drpc.org
 ```
 
 ### Generating Required Values
 
-**SESSION_SECRET:**
-
-```bash
-openssl rand -hex 32
-```
-
-**GITHUB_WEBHOOK_SECRET:**
+**SESSION_SECRET & GITHUB_WEBHOOK_SECRET:**
 
 ```bash
 openssl rand -hex 32
 ```
 
 **GitHub App Setup:**
-See [GitHub App Setup Guide](github-app-setup.md) for detailed instructions on obtaining:
-
+See [GitHub App Setup Guide](github-app-setup.md) for obtaining:
 - `GITHUB_APP_ID`
 - `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`
-- Private key file path
+- `GITHUB_PRIVATE_KEY`
 
 **RESOLVER_PRIVATE_KEY:**
-
-- Create a new wallet for the resolver (use a test account)
-- Export the private key (without `0x` prefix or with it, both work)
+- Create a new wallet for the resolver (test account)
+- Export the private key
 - This wallet needs Base Sepolia ETH for gas fees
 
 ---
 
 ## Step 3: Database Setup
 
-The database is automatically initialized when the server starts. However, you can manually run migrations:
+### Create Prisma Postgres Database
+
+1. Go to [Prisma Data Platform](https://console.prisma.io/)
+2. Create a new Postgres database
+3. Copy the connection strings to your `.env`:
+   - `DATABASE_URL` - Accelerate connection (for queries)
+   - `DIRECT_DATABASE_URL` - Direct connection (for migrations)
+
+### Initialize Database Tables
 
 ```bash
-npm run migrate
+npx prisma db push
 ```
 
-This creates the SQLite database at `server/db/bounty.db` (or your configured `DATABASE_PATH`).
+This creates all tables (`bounties`, `wallet_mappings`, `pr_claims`) in your Postgres database.
 
-### Database Schema
+### Generate Prisma Client
 
-The database includes three main tables:
-
-- `bounties` - Stores all bounty information
-- `wallet_mappings` - Links GitHub users to wallet addresses
-- `pr_claims` - Tracks PR claims on bounties
-
-See [Local Database Guide](local-db.md) for working with the database.
+```bash
+npx prisma generate
+```
 
 ---
 
@@ -123,8 +110,6 @@ See [Local Database Guide](local-db.md) for working with the database.
 Follow the [GitHub App Setup Guide](github-app-setup.md) to create and configure your GitHub App.
 
 ### Local Webhook Setup with ngrok
-
-Since GitHub requires a publicly accessible webhook URL, use ngrok for local development:
 
 **Install ngrok:**
 
@@ -138,33 +123,22 @@ brew install ngrok
 **Start ngrok:**
 
 ```bash
-# In a separate terminal
 ngrok http 3000
 ```
 
 You'll get a URL like `https://abc123.ngrok.io`. Use this for:
 
 1. **GitHub App Webhook URL:**
-
-   ```plaintext
-   https://abc123.ngrok.io/webhooks/github
+   ```
+   https://abc123.ngrok.io/api/webhooks/github
    ```
 
 2. **OAuth Callback URL:**
-
-   ```plaintext
-   https://abc123.ngrok.io/oauth/callback
+   ```
+   https://abc123.ngrok.io/api/oauth/callback
    ```
 
-**Note:** Free ngrok URLs change on restart. For stable URLs during development, consider:
-
-- Using ngrok.yml with an authtoken (see `ngrok.yml` in repo root)
-- Getting a paid ngrok plan
-- Using a service like Cloudflare Tunnel or localtunnel
-
-### Update Environment Variables
-
-Update your `.env` with the ngrok URL:
+**Update `.env` with ngrok URL:**
 
 ```bash
 FRONTEND_URL=https://abc123.ngrok.io
@@ -178,21 +152,16 @@ FRONTEND_URL=https://abc123.ngrok.io
 npm run dev
 ```
 
-The server will:
-
-- Initialize the database (if needed)
-- Start on `http://localhost:3000`
-- Enable file watching for automatic restarts
+The server will start on `http://localhost:3000` (accessible via ngrok URL).
 
 You should see:
 
-```plaintext
-🚀 Starting BountyPay GitHub App...
-✅ Database ready
-✅ GitHub App initialized
-✅ Server running on port 3000
-   Frontend: http://localhost:3000
-   Webhooks: http://localhost:3000/webhooks/github
+```
+▲ Next.js 15.x.x
+- Local:        http://localhost:3000
+- Network:      ...
+
+✓ Ready in 2s
 ```
 
 ---
@@ -201,125 +170,82 @@ You should see:
 
 ### 1. Test Webhook Connection
 
-1. Create a test repository (or use an existing one)
-2. Install your GitHub App on the repository
-3. Create a new issue in the repository
-4. Check server logs - you should see:
-
-   ```plaintext
-   📬 Webhook received: issues (delivery-id)
-   ```
-
-5. Verify a comment was posted on the issue
+1. Install your GitHub App on a test repository
+2. Create a new issue
+3. Check server logs - you should see webhook processing
+4. Verify a comment was posted on the issue
 
 ### 2. Test Frontend Pages
 
-Visit these URLs:
-
 - `http://localhost:3000` - Landing page
-- `http://localhost:3000/attach-bounty?repo=owner/repo&issue=1` - Bounty attachment page
-- `http://localhost:3000/link-wallet` - Wallet linking page
-- `http://localhost:3000/refund` - Refund page
+- `http://localhost:3000/attach-bounty?repo=owner/repo&issue=1` - Bounty page
+- `http://localhost:3000/link-wallet` - Wallet linking
 
 ### 3. Test Wallet Connection
 
-1. Visit `http://localhost:3000/link-wallet`
-2. Connect your wallet (MetaMask)
-3. Switch to Base Sepolia network (Chain ID 84532)
+1. Visit `/link-wallet`
+2. Connect wallet (MetaMask)
+3. Switch to Base Sepolia (Chain ID 84532)
 4. Sign the SIWE message
 5. Verify wallet is linked
 
 ### 4. Test Bounty Creation
 
-1. Create an issue in a test repository
-2. Click "Create a bounty" button (from bot comment)
-3. Connect wallet on the attach-bounty page
+1. Create an issue
+2. Click "Create a bounty" button
+3. Connect wallet
 4. Approve USDC spending
 5. Fund the bounty
-6. Verify transaction succeeds and bounty is created
+6. Verify transaction and database entry
 
 ---
 
 ## Development Workflow
 
-### File Structure
+### Project Structure
 
-```plaintext
-server/
-├── index.js           # Main server entry
+```
+app/                    # Next.js App Router
+├── api/               # API routes
+│   ├── bounty/
+│   ├── wallet/
+│   ├── oauth/
+│   └── webhooks/
+├── attach-bounty/     # Bounty funding page
+├── link-wallet/       # Wallet linking page
+└── layout.jsx         # Root layout
+
+server/                # Backend logic
 ├── config.js          # Configuration
-├── routes/
-│   ├── api.js        # API endpoints
-│   └── oauth.js      # OAuth routes
-├── github/
-│   ├── client.js     # GitHub App client
-│   └── webhooks.js   # Webhook handlers
-├── blockchain/
-│   └── contract.js   # Smart contract interface
-├── auth/
-│   └── siwe.js       # SIWE authentication
+├── github/            # GitHub integration
+├── blockchain/        # Smart contract interface
+├── auth/              # SIWE authentication
 └── db/
-    ├── index.js      # Database initialization
-    ├── schema.js     # Database schema
-    └── migrate.js     # Migration script
+    └── prisma.js      # Database queries
+
+prisma/
+└── schema.prisma      # Database schema
+
+components/            # React components
+config/                # Frontend config
 ```
 
 ### Hot Reload
 
-The `npm run dev` command uses Node's `--watch` flag for automatic restarts on file changes.
+Next.js automatically reloads on file changes during development.
 
 ### Debugging
-
-**Enable debug logging:**
-
-```bash
-DEBUG=* npm run dev
-```
 
 **Check database:**
 
 ```bash
-sqlite3 server/db/bounty.db
-# Then run SQL queries
+npx prisma studio
 ```
 
+This opens a GUI for viewing/editing database records.
+
 **View webhook deliveries:**
-
-- Check GitHub App settings → Advanced → Webhook deliveries
-- Check server logs for webhook processing
-
----
-
-## Testing Tips
-
-### Test with Base Sepolia
-
-1. Get Base Sepolia ETH:
-   - Use a faucet: <https://www.coinbase.com/faucets/base-ethereum-goerli-faucet>
-   - Bridge from Ethereum Sepolia
-
-2. Get Test USDC:
-   - The test USDC contract is at `0x036CbD53842c5426634e7929541eC2318f3dCF7e`
-   - You may need to mint or obtain test USDC for your test wallet
-
-### Test Bounty Flow
-
-1. **Sponsor flow:**
-   - Create issue → Attach bounty → Fund → Verify database entry
-
-2. **Contributor flow:**
-   - Link wallet → Submit PR → Merge PR → Verify payment
-
-3. **Refund flow:**
-   - Create bounty → Wait past deadline → Call refund → Verify refund
-
-### Common Test Scenarios
-
-- Multiple bounties on same issue
-- PR that doesn't close issue (should not trigger payout)
-- Bounty with expired deadline
-- Wallet linking for multiple GitHub accounts
-- Webhook retry scenarios
+- GitHub App settings → Advanced → Webhook deliveries
 
 ---
 
@@ -335,24 +261,20 @@ lsof -ti:3000 | xargs kill -9
 PORT=3001 npm run dev
 ```
 
-### Database Locked
+### Prisma Client Not Generated
 
 ```bash
-# Close any open SQLite connections
-# Or delete and recreate:
-rm server/db/bounty.db
-npm run migrate
+npx prisma generate
 ```
 
 ### Webhook Signature Verification Fails
 
 - Verify `GITHUB_WEBHOOK_SECRET` matches GitHub App settings
-- Ensure raw body is preserved (already handled in code)
 - Check ngrok URL hasn't changed
 
 ### Blockchain Connection Issues
 
-- Verify RPC URL is correct: `https://sepolia.base.org`
+- Verify RPC URL: `https://sepolia.base.org`
 - Check resolver wallet has Base Sepolia ETH
 - Verify contract addresses are correct
 
@@ -364,67 +286,33 @@ npm run migrate
 
 ---
 
+## Development Scripts
+
+```bash
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
+
+# Generate Prisma Client
+npx prisma generate
+
+# Push schema to database
+npx prisma db push
+
+# Open Prisma Studio
+npx prisma studio
+```
+
+---
+
 ## Next Steps
 
 - [GitHub App Setup](github-app-setup.md) - Detailed GitHub App configuration
 - [Architecture](../reference/architecture.md) - Understand system design
 - [API Documentation](../reference/api.md) - API endpoint reference
 - [Troubleshooting](../support/troubleshooting.md) - Solutions to common issues
-
----
-
-## Development Scripts
-
-```bash
-# Start development server with hot reload
-npm run dev
-
-# Start production server
-npm start
-
-# Run database migrations
-npm run migrate
-
-# Seed database (if seed script exists)
-npm run seed
-```
-
----
-
-## IDE Setup
-
-### VS Code
-
-Recommended extensions:
-
-- ESLint
-- Prettier
-- SQLite Viewer
-
-### Debug Configuration
-
-Create `.vscode/launch.json`:
-
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Launch Server",
-      "skipFiles": ["<node_internals>/**"],
-      "program": "${workspaceFolder}/server/index.js",
-      "envFile": "${workspaceFolder}/.env"
-    }
-  ]
-}
-```
-
----
-
-## Additional Resources
-
-- [Base Sepolia Network Info](https://docs.base.org/base-camp/docs/networks/base-sepolia)
-- [ethers.js Documentation](https://docs.ethers.org/)
-- [GitHub Apps Documentation](https://docs.github.com/en/apps)
