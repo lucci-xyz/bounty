@@ -66,13 +66,13 @@ Your app will be live at `https://your-app.vercel.app`
 3. Name it `bountypay-db`
 4. Click **"Create"**
 
-Vercel will automatically add these environment variables:
-- `POSTGRES_URL`
-- `POSTGRES_PRISMA_URL`
-- `POSTGRES_URL_NON_POOLING`
+Vercel will automatically add environment variables with your database prefix:
+- `BOUNTY_POSTGRES_URL`
+- `BOUNTY_PRISMA_DATABASE_URL`
+- `BOUNTY_DATABASE_URL`
 - And others...
 
-**Note:** Database tables are automatically created on first use.
+**Note:** The app is configured to use `BOUNTY_POSTGRES_URL`. Database tables are automatically created on first use.
 
 ### 5. Set ENV_TARGET (Important!)
 

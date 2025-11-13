@@ -100,14 +100,13 @@ All API routes and webhook handlers updated to use async queries:
 4. Name it `bountypay-db`
 5. Click **Create**
 
-Vercel will automatically set these environment variables for all environments:
-- `POSTGRES_URL`
-- `POSTGRES_PRISMA_URL`
-- `POSTGRES_URL_NON_POOLING`
-- `POSTGRES_USER`
-- `POSTGRES_HOST`
-- `POSTGRES_PASSWORD`
-- `POSTGRES_DATABASE`
+Vercel will automatically set environment variables with your database prefix:
+- `BOUNTY_POSTGRES_URL` (used by the app)
+- `BOUNTY_PRISMA_DATABASE_URL`
+- `BOUNTY_DATABASE_URL`
+- And others...
+
+**Note:** The app is configured to use `BOUNTY_POSTGRES_URL` for connections.
 
 ### 2. Initialize Database Schema
 

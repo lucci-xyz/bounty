@@ -227,14 +227,13 @@ Unlike the old SQLite setup (which used ephemeral `/tmp` storage):
 
 ### Database (Auto-set by Vercel)
 
-These are automatically set when you create a Postgres database:
-- `POSTGRES_URL`
-- `POSTGRES_PRISMA_URL`
-- `POSTGRES_URL_NON_POOLING`
-- `POSTGRES_USER`
-- `POSTGRES_HOST`
-- `POSTGRES_PASSWORD`
-- `POSTGRES_DATABASE`
+These are automatically set when you create a Postgres database (with your database prefix):
+- `BOUNTY_POSTGRES_URL` ← Used by the app
+- `BOUNTY_PRISMA_DATABASE_URL`
+- `BOUNTY_DATABASE_URL`
+- And others...
+
+**Note:** The app is configured to use `BOUNTY_POSTGRES_URL` for the database connection.
 
 ---
 

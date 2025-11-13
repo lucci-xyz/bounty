@@ -1,5 +1,31 @@
-import { sql } from '@vercel/postgres';
+import { createPool } from '@vercel/postgres';
 import { CONFIG } from '../config.js';
+
+// Lazy-load connection pool to avoid build-time errors
+let pool = null;
+let sql = null;
+
+function getPool() {
+  if (!pool) {
+    const connectionString = process.env.BOUNTY_POSTGRES_URL || process.env.POSTGRES_URL;
+    
+    if (!connectionString) {
+      throw new Error(
+        'Missing Postgres connection string. Please set BOUNTY_POSTGRES_URL or POSTGRES_URL environment variable.'
+      );
+    }
+    
+    pool = createPool({ connectionString });
+    sql = pool.sql;
+    console.log('✅ Postgres connection pool created');
+  }
+  return { pool, sql };
+}
+
+// Get sql function (lazy-loaded)
+function getSQL() {
+  return getPool().sql;
+}
 
 /**
  * Initialize Postgres database tables
@@ -7,6 +33,7 @@ import { CONFIG } from '../config.js';
 export async function initDB() {
   try {
     console.log('🔄 Initializing Postgres database...');
+    const sql = getSQL();
 
     // Create bounties table with environment tracking
     await sql`
@@ -80,6 +107,7 @@ export async function initDB() {
 // Bounty queries
 export const bountyQueries = {
   create: async (bountyData) => {
+    const sql = getSQL();
     const environment = CONFIG.envTarget || 'stage';
     
     const result = await sql`
@@ -102,6 +130,7 @@ export const bountyQueries = {
   },
 
   findByIssue: async (repoId, issueNumber) => {
+    const sql = getSQL();
     const environment = CONFIG.envTarget || 'stage';
     
     const result = await sql`
@@ -116,6 +145,7 @@ export const bountyQueries = {
   },
 
   findById: async (bountyId) => {
+    const sql = getSQL();
     const result = await sql`
       SELECT * FROM bounties WHERE bounty_id = ${bountyId}
     `;
@@ -123,6 +153,7 @@ export const bountyQueries = {
   },
 
   updateStatus: async (bountyId, status, txHash = null) => {
+    const sql = getSQL();
     const result = await sql`
       UPDATE bounties
       SET status = ${status}, 
@@ -135,6 +166,7 @@ export const bountyQueries = {
   },
 
   updatePinnedComment: async (bountyId, commentId) => {
+    const sql = getSQL();
     const result = await sql`
       UPDATE bounties
       SET pinned_comment_id = ${commentId},
@@ -146,6 +178,7 @@ export const bountyQueries = {
   },
 
   getExpired: async () => {
+    const sql = getSQL();
     const now = Math.floor(Date.now() / 1000);
     const result = await sql`
       SELECT * FROM bounties 
@@ -158,6 +191,7 @@ export const bountyQueries = {
 // Wallet mapping queries
 export const walletQueries = {
   create: async (githubId, githubUsername, walletAddress) => {
+    const sql = getSQL();
     const result = await sql`
       INSERT INTO wallet_mappings (
         github_id, github_username, wallet_address, verified_at, created_at
@@ -176,6 +210,7 @@ export const walletQueries = {
   },
 
   findByGithubId: async (githubId) => {
+    const sql = getSQL();
     const result = await sql`
       SELECT * FROM wallet_mappings WHERE github_id = ${githubId}
     `;
@@ -183,6 +218,7 @@ export const walletQueries = {
   },
 
   findByWallet: async (walletAddress) => {
+    const sql = getSQL();
     const result = await sql`
       SELECT * FROM wallet_mappings 
       WHERE wallet_address = ${walletAddress.toLowerCase()}
@@ -194,6 +230,7 @@ export const walletQueries = {
 // PR claim queries
 export const prClaimQueries = {
   create: async (bountyId, prNumber, prAuthorId, repoFullName) => {
+    const sql = getSQL();
     const result = await sql`
       INSERT INTO pr_claims (
         bounty_id, pr_number, pr_author_github_id, repo_full_name,
@@ -208,6 +245,7 @@ export const prClaimQueries = {
   },
 
   findByPR: async (repoFullName, prNumber) => {
+    const sql = getSQL();
     const result = await sql`
       SELECT * FROM pr_claims
       WHERE repo_full_name = ${repoFullName} AND pr_number = ${prNumber}
@@ -216,6 +254,7 @@ export const prClaimQueries = {
   },
 
   updateStatus: async (id, status, txHash = null, resolvedAt = null) => {
+    const sql = getSQL();
     const result = await sql`
       UPDATE pr_claims
       SET status = ${status},
@@ -231,6 +270,7 @@ export const prClaimQueries = {
 // Stats queries for analytics
 export const statsQueries = {
   getAll: async (limit = 20) => {
+    const sql = getSQL();
     const environment = CONFIG.envTarget || 'stage';
 
     // Token aggregates with TVL - filtered by environment
