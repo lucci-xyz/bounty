@@ -1,6 +1,6 @@
 import { getSession } from '@/lib/session';
 import { CONFIG } from '@/server/config';
-import { redirect } from 'next/navigation';
+import { NextResponse } from 'next/server';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -14,7 +14,6 @@ export async function GET(request) {
   // Store return URL in session
   if (returnTo) {
     session.oauthReturnTo = returnTo;
-    await session.save();
   }
   
   const redirectUri = `${CONFIG.frontendUrl}/api/oauth/callback`;
@@ -33,7 +32,8 @@ export async function GET(request) {
   
   const authUrl = `https://github.com/login/oauth/authorize?${params}`;
   console.log('   Redirecting to GitHub...');
+  console.log('   OAuth State:', session.oauthState);
   
-  return redirect(authUrl);
+  return NextResponse.redirect(authUrl);
 }
 
