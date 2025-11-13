@@ -1,6 +1,5 @@
 import { getSession } from '@/lib/session';
 import { CONFIG } from '@/server/config';
-import { redirect } from 'next/navigation';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
@@ -80,7 +79,10 @@ export async function GET(request) {
     await session.save();
     
     console.log('🔄 Redirecting to:', returnTo);
-    return redirect(returnTo);
+    
+    // Use NextResponse.redirect() to properly redirect from an API route
+    const url = new URL(returnTo, request.url);
+    return NextResponse.redirect(url);
   } catch (error) {
     console.error('❌ OAuth error:', error);
     return NextResponse.json({ error: `Authentication failed: ${error.message}` }, { status: 500 });
