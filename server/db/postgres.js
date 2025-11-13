@@ -1,9 +1,33 @@
-import { sql as vercelSql } from '@vercel/postgres';
+import { createPool } from '@vercel/postgres';
 import { CONFIG } from '../config.js';
 
-// Use Vercel's default sql instance which automatically handles pooling
-// and connection string detection from environment variables
-const getSQL = () => vercelSql;
+// Get the pooled connection string from environment
+function getConnectionString() {
+  // Priority order: Use pooled/Prisma URLs first (optimized for serverless)
+  const connectionString = 
+    process.env.POSTGRES_URL || 
+    process.env.BOUNTY_PRISMA_DATABASE_URL ||
+    process.env.BOUNTY_DATABASE_URL ||
+    process.env.BOUNTY_POSTGRES_URL;
+  
+  if (!connectionString) {
+    throw new Error('No Postgres connection string found. Please set POSTGRES_URL or BOUNTY_* environment variables.');
+  }
+  
+  return connectionString;
+}
+
+// Create pool instance
+let pool = null;
+
+function getSQL() {
+  if (!pool) {
+    pool = createPool({
+      connectionString: getConnectionString(),
+    });
+  }
+  return pool.sql;
+}
 
 /**
  * Initialize Postgres database tables
