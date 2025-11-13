@@ -4,7 +4,7 @@ This document provides a comprehensive overview of the migration from Vite + Exp
 
 ## Migration Status
 
-**Status:** ✅ Complete  
+**Status:**  Complete  
 **Framework:** Next.js 15.1.6 with App Router  
 **Date:** November 2024  
 
