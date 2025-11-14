@@ -30,7 +30,8 @@ const NETWORK_CONFIG = {
     tokenDecimals: 6,
   },
   MEZO_TESTNET: {
-    rpcUrl: process.env.MEZO_RPC_URL || 'https://mezo-testnet.drpc.org',
+    // Use official Mezo RPC for server-side to avoid dRPC batch request limits
+    rpcUrl: process.env.MEZO_RPC_URL || 'https://rpc.test.mezo.org',
     escrow: process.env.MEZO_ESCROW_CONTRACT || '0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3',
     token: CONFIG.blockchain.musdContract || '0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503',
     tokenDecimals: 18,
@@ -137,12 +138,13 @@ export async function resolveBountyOnNetwork(bountyId, recipientAddress, network
     // Mezo testnet doesn't support EIP-1559, use legacy transactions
     let txOverrides = {};
     if (network === 'MEZO_TESTNET') {
-      const feeData = await netProvider.getFeeData();
+      // Call eth_gasPrice directly to avoid batched getFeeData() which exceeds dRPC free tier limits
+      const gasPrice = await netProvider.send('eth_gasPrice', []);
       txOverrides = {
         type: 0, // Legacy transaction
-        gasPrice: feeData.gasPrice
+        gasPrice: BigInt(gasPrice)
       };
-      console.log(`   Using legacy transaction with gasPrice: ${ethers.formatUnits(feeData.gasPrice, 'gwei')} gwei`);
+      console.log(`   Using legacy transaction with gasPrice: ${ethers.formatUnits(gasPrice, 'gwei')} gwei`);
     }
     
     const tx = await netEscrow.resolve(bountyId, recipientAddress, txOverrides);
