@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { RainbowKitProvider, lightTheme, connectorsForWallets } from '@rainbow-me/rainbowkit';
 import { injectedWallet, metaMaskWallet, coinbaseWallet, walletConnectWallet, rainbowWallet } from '@rainbow-me/rainbowkit/wallets';
 import { WagmiProvider, createConfig, http } from 'wagmi';
@@ -58,8 +59,6 @@ const config = createConfig({
   ssr: true,
 });
 
-const queryClient = new QueryClient();
-
 const customTheme = lightTheme({
   accentColor: '#00827B',
   accentColorForeground: 'white',
@@ -68,13 +67,21 @@ const customTheme = lightTheme({
 });
 
 export function Providers({ children }) {
+  // Create a new QueryClient for each instance to avoid state issues
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 60 * 1000, // 1 minute
+      },
+    },
+  }));
+
   return (
-    <WagmiProvider config={config} reconnectOnMount={false}>
+    <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider 
           theme={customTheme} 
           modalSize="compact"
-          initialChain={undefined}
         >
           {children}
         </RainbowKitProvider>

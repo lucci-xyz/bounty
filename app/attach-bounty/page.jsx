@@ -15,6 +15,7 @@ function AttachBountyContent() {
   const [deadline, setDeadline] = useState('');
   const [status, setStatus] = useState({ message: '', type: '' });
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -31,6 +32,10 @@ function AttachBountyContent() {
 
   const networkConfig = NETWORKS[selectedNetwork];
   const contractConfig = CONTRACTS[selectedNetwork];
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (presetAmount) {
@@ -432,6 +437,15 @@ function AttachBountyContent() {
     }
   };
 
+  // Don't render wallet controls until mounted (prevents hydration mismatch)
+  if (!isMounted) {
+    return (
+      <div className="container" style={{ maxWidth: '600px', textAlign: 'center', padding: '100px 20px' }}>
+        <div style={{ fontSize: '16px', color: 'var(--color-text-secondary)' }}>Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="container" style={{ maxWidth: '600px' }}>
       <div style={{ textAlign: 'center', marginBottom: '48px' }}>
@@ -529,11 +543,18 @@ function AttachBountyContent() {
           <ConnectButton.Custom>
             {({ openConnectModal }) => (
               <button
-                onClick={() => {
-                  console.log('Opening wallet modal for attach-bounty...');
-                  openConnectModal();
+                onClick={(e) => {
+                  e.preventDefault();
+                  console.log('Connect Wallet clicked', { openConnectModal: typeof openConnectModal, isMounted });
+                  if (openConnectModal) {
+                    openConnectModal();
+                  } else {
+                    console.error('openConnectModal is not available');
+                  }
                 }}
                 className="btn btn-primary btn-full"
+                disabled={!isMounted || !openConnectModal}
+                style={{ cursor: (!isMounted || !openConnectModal) ? 'not-allowed' : 'pointer' }}
               >
                 Connect Wallet
               </button>
@@ -551,16 +572,34 @@ function AttachBountyContent() {
             {({ openAccountModal, openChainModal }) => (
               <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
                 <button
-                  onClick={openAccountModal}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    console.log('Change Wallet clicked', { openAccountModal: typeof openAccountModal });
+                    if (openAccountModal) {
+                      openAccountModal();
+                    } else {
+                      console.error('openAccountModal is not available');
+                    }
+                  }}
                   className="btn btn-secondary"
-                  style={{ flex: 1, margin: 0, fontSize: '14px' }}
+                  disabled={!isMounted || !openAccountModal}
+                  style={{ flex: 1, margin: 0, fontSize: '14px', cursor: (!isMounted || !openAccountModal) ? 'not-allowed' : 'pointer' }}
                 >
                   Change Wallet
                 </button>
                 <button
-                  onClick={openChainModal}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    console.log('Switch Network clicked', { openChainModal: typeof openChainModal });
+                    if (openChainModal) {
+                      openChainModal();
+                    } else {
+                      console.error('openChainModal is not available');
+                    }
+                  }}
                   className="btn btn-secondary"
-                  style={{ flex: 1, margin: 0, fontSize: '14px' }}
+                  disabled={!isMounted || !openChainModal}
+                  style={{ flex: 1, margin: 0, fontSize: '14px', cursor: (!isMounted || !openChainModal) ? 'not-allowed' : 'pointer' }}
                 >
                   Switch Network
                 </button>

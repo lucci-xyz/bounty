@@ -30,6 +30,7 @@ export default function LinkWallet() {
   const [status, setStatus] = useState({ message: '', type: '' });
   const [returnTo, setReturnTo] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -40,6 +41,8 @@ export default function LinkWallet() {
   const networkConfig = NETWORKS[selectedNetwork];
 
   useEffect(() => {
+    setIsMounted(true);
+    
     console.log('Environment check:', {
       NEXT_PUBLIC_ENV_TARGET: process.env.NEXT_PUBLIC_ENV_TARGET,
       isLocal,
@@ -197,6 +200,15 @@ export default function LinkWallet() {
       setIsProcessing(false);
     }
   };
+
+  // Don't render wallet controls until mounted (prevents hydration mismatch)
+  if (!isMounted) {
+    return (
+      <div className="container" style={{ maxWidth: '600px', textAlign: 'center', padding: '100px 20px' }}>
+        <div style={{ fontSize: '16px', color: 'var(--color-text-secondary)' }}>Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="container" style={{ maxWidth: '600px' }}>
@@ -357,13 +369,18 @@ export default function LinkWallet() {
               <ConnectButton.Custom>
                 {({ openConnectModal }) => (
                   <button
-                    onClick={() => {
-                      console.log('Opening wallet modal...');
-                      openConnectModal();
+                    onClick={(e) => {
+                      e.preventDefault();
+                      console.log('Opening wallet modal...', { openConnectModal: typeof openConnectModal });
+                      if (openConnectModal) {
+                        openConnectModal();
+                      } else {
+                        console.error('openConnectModal is not available');
+                      }
                     }}
-                    disabled={!githubUser && !isLocal}
+                    disabled={(!githubUser && !isLocal) || !isMounted || !openConnectModal}
                     className="btn btn-primary"
-                    style={{ width: '100%', margin: 0, opacity: (!githubUser && !isLocal) ? 0.5 : 1 }}
+                    style={{ width: '100%', margin: 0, opacity: ((!githubUser && !isLocal) || !isMounted) ? 0.5 : 1, cursor: (!isMounted || !openConnectModal) ? 'not-allowed' : 'pointer' }}
                   >
                     Link Wallet {isLocal && '(Local Mode)'}
                   </button>
@@ -396,16 +413,30 @@ export default function LinkWallet() {
                   {({ openAccountModal, openChainModal }) => (
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button
-                        onClick={openAccountModal}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          console.log('Change Wallet (link-wallet) clicked', { openAccountModal: typeof openAccountModal });
+                          if (openAccountModal) {
+                            openAccountModal();
+                          }
+                        }}
                         className="btn btn-secondary"
-                        style={{ flex: 1, margin: 0, fontSize: '14px' }}
+                        disabled={!isMounted || !openAccountModal || isProcessing}
+                        style={{ flex: 1, margin: 0, fontSize: '14px', cursor: (!isMounted || !openAccountModal || isProcessing) ? 'not-allowed' : 'pointer' }}
                       >
                         Change Wallet
                       </button>
                       <button
-                        onClick={openChainModal}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          console.log('Switch Network (link-wallet) clicked', { openChainModal: typeof openChainModal });
+                          if (openChainModal) {
+                            openChainModal();
+                          }
+                        }}
                         className="btn btn-secondary"
-                        style={{ flex: 1, margin: 0, fontSize: '14px' }}
+                        disabled={!isMounted || !openChainModal || isProcessing}
+                        style={{ flex: 1, margin: 0, fontSize: '14px', cursor: (!isMounted || !openChainModal || isProcessing) ? 'not-allowed' : 'pointer' }}
                       >
                         Switch Network
                       </button>
