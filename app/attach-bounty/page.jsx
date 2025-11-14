@@ -365,27 +365,27 @@ function AttachBountyContent() {
           console.error('Database recording failed:', error);
           
           // Transaction succeeded on-chain but DB failed - still show as success with warning
-          showStatus(`⚠️ Bounty created on-chain but database sync failed. Tx: ${receipt.hash.slice(0, 10)}...`, 'error');
+          showStatus(`⚠️ Bounty created on-chain but database sync failed. Redirecting back to GitHub...`, 'error');
           
           setTimeout(() => {
-            window.open(`https://github.com/${repoFullName}/issues/${issueNumber}`, '_self');
+            window.location.href = `https://github.com/${repoFullName}/issues/${issueNumber}`;
           }, 4000);
           return; // Exit early, don't throw
         }
 
-        showStatus('✅ Bounty created! Redirecting...', 'success');
+        showStatus('✅ Bounty created! Redirecting back to GitHub...', 'success');
 
         setTimeout(() => {
-          window.open(`https://github.com/${repoFullName}/issues/${issueNumber}`, '_self');
+          window.location.href = `https://github.com/${repoFullName}/issues/${issueNumber}`;
         }, 2000);
       } catch (dbError) {
         console.error('Database error:', dbError);
         
         // Transaction succeeded on-chain but DB failed
-        showStatus(`⚠️ Bounty created on-chain but database recording failed. Transaction: ${receipt.hash}`, 'error');
+        showStatus(`⚠️ Bounty created on-chain but database recording failed. Redirecting back to GitHub...`, 'error');
         
         setTimeout(() => {
-          window.open(`https://github.com/${repoFullName}/issues/${issueNumber}`, '_self');
+          window.location.href = `https://github.com/${repoFullName}/issues/${issueNumber}`;
         }, 4000);
       }
     } catch (error) {

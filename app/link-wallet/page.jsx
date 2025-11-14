@@ -28,6 +28,7 @@ export default function LinkWallet() {
   const [githubUser, setGithubUser] = useState(null);
   const [linked, setLinked] = useState(false);
   const [status, setStatus] = useState({ message: '', type: '' });
+  const [returnTo, setReturnTo] = useState(null);
 
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -43,6 +44,15 @@ export default function LinkWallet() {
       isLocal,
       githubUser
     });
+    
+    // Check for returnTo parameter
+    const params = new URLSearchParams(window.location.search);
+    const returnToParam = params.get('returnTo');
+    if (returnToParam) {
+      setReturnTo(returnToParam);
+      console.log('Will redirect to:', returnToParam);
+    }
+    
     checkGitHubAuth();
   }, []);
 
@@ -154,7 +164,16 @@ export default function LinkWallet() {
       }
 
       setLinked(true);
-      showStatus('✅ Wallet linked successfully! You can now receive bounty payments.', 'success');
+      showStatus('✅ Wallet linked successfully! Redirecting...', 'success');
+      
+      // Redirect back to the page they came from, or to GitHub profile
+      setTimeout(() => {
+        if (returnTo) {
+          window.location.href = returnTo;
+        } else if (githubUser?.githubUsername) {
+          window.location.href = `https://github.com/${githubUser.githubUsername}`;
+        }
+      }, 2000);
     } catch (error) {
       console.error(error);
       showStatus(error.message || 'An error occurred', 'error');

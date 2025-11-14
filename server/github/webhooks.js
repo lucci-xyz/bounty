@@ -181,7 +181,7 @@ export async function handleBountyCreated(bountyData) {
 
 ### To Claim:
 1. Open a PR that closes this issue (use \`Closes #${issueNumber}\` in PR description)
-2. <a href="${FRONTEND_BASE}/link-wallet" target="_blank" rel="noopener noreferrer">Link your wallet</a> to be eligible for payout
+2. <a href="${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(`https://github.com/${repoFullName}/issues/${issueNumber}`)}" target="_blank" rel="noopener noreferrer">Link your wallet</a> to be eligible for payout
 3. When your PR is merged, you'll automatically receive the bounty!
 
 ${BRAND_SIGNATURE}`;
@@ -284,12 +284,13 @@ export async function handlePROpened(payload) {
     
     if (!walletMapping) {
       // Prompt user to link wallet
+      const prUrl = `https://github.com/${repository.full_name}/pull/${pull_request.number}`;
       const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Wallet Needed
 
 **Status:** Awaiting wallet link  
 **Why:** Payout can't trigger until a wallet is on file.
 
-1. <a href="${FRONTEND_BASE}/link-wallet" target="_blank" rel="noopener noreferrer">Link your wallet</a>
+1. <a href="${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(prUrl)}" target="_blank" rel="noopener noreferrer">Link your wallet</a>
 2. Merge lands the bounty automatically.
 
 ${BRAND_SIGNATURE}`;
@@ -402,13 +403,14 @@ export async function handlePRMerged(payload) {
       if (!walletMapping) {
         // No wallet linked - post reminder
         console.log(`⚠️ User ${claim.prAuthorGithubId} has no linked wallet`);
+        const prUrl = `https://github.com/${repository.full_name}/pull/${pull_request.number}`;
         const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Wallet Missing
 
 **Status:** ⏸️ Payment paused  
 @${pull_request.user.login}, your PR was merged but we can't send the payment without a wallet address.
 
 **What to do:**
-1. <a href="${FRONTEND_BASE}/link-wallet" target="_blank" rel="noopener noreferrer">Link your wallet here</a>
+1. <a href="${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(prUrl)}" target="_blank" rel="noopener noreferrer">Link your wallet here</a>
 2. After linking, comment on this PR to trigger a manual payout
 
 ${BRAND_SIGNATURE}`;
@@ -421,13 +423,14 @@ ${BRAND_SIGNATURE}`;
       // Validate wallet address format
       if (!ethers.isAddress(walletMapping.walletAddress)) {
         console.error(`❌ Invalid wallet address for user ${claim.prAuthorGithubId}: ${walletMapping.walletAddress}`);
+        const prUrl = `https://github.com/${repository.full_name}/pull/${pull_request.number}`;
         const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Invalid Wallet
 
 **Status:** ❌ Payment failed  
 @${pull_request.user.login}, the wallet address on file (\`${walletMapping.walletAddress}\`) is invalid.
 
 **What to do:**
-1. <a href="${FRONTEND_BASE}/link-wallet" target="_blank" rel="noopener noreferrer">Re-link your wallet</a> with a valid Ethereum address
+1. <a href="${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(prUrl)}" target="_blank" rel="noopener noreferrer">Re-link your wallet</a> with a valid Ethereum address
 2. Contact support if this keeps happening
 
 ${BRAND_SIGNATURE}`;
