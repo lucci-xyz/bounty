@@ -14,6 +14,7 @@ export default function BountiesPage() {
   const [selectedLabels, setSelectedLabels] = useState([]);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [showLabelDropdown, setShowLabelDropdown] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     async function fetchBounties() {
@@ -89,6 +90,17 @@ export default function BountiesPage() {
     }
   }, [showLanguageDropdown, showLabelDropdown]);
 
+  // Handle responsive layout
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    
+    handleResize(); // Set initial value
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   function formatAmount(amount, tokenSymbol) {
     const decimals = tokenSymbol === 'USDC' ? 6 : 18;
     const value = Number(amount) / Math.pow(10, decimals);
@@ -147,10 +159,22 @@ export default function BountiesPage() {
   const allLabels = ['all', ...new Set(bounties.flatMap(b => b.labels || []))];
 
   return (
-    <div className="container" style={{ maxWidth: '1200px', padding: '40px 20px' }}>
+    <div className="container" style={{ 
+      maxWidth: '1200px', 
+      padding: '40px 20px',
+      width: '100%'
+    }}>
       <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '48px', marginBottom: '12px' }}>Open Bounties</h1>
-        <p style={{ fontSize: '18px', color: 'var(--color-text-secondary)' }}>
+        <h1 style={{ 
+          fontSize: 'clamp(32px, 6vw, 48px)', 
+          marginBottom: '12px' 
+        }}>
+          Open Bounties
+        </h1>
+        <p style={{ 
+          fontSize: 'clamp(16px, 2.5vw, 18px)', 
+          color: 'var(--color-text-secondary)' 
+        }}>
           {filteredBounties.length} {filteredBounties.length === 1 ? 'bounty' : 'bounties'} available
         </p>
       </div>
@@ -159,7 +183,7 @@ export default function BountiesPage() {
       <div style={{ 
         marginBottom: '24px',
         display: 'flex',
-        gap: '12px',
+        gap: '8px',
         alignItems: 'center',
         flexWrap: 'wrap'
       }}>
@@ -174,22 +198,28 @@ export default function BountiesPage() {
             key={sort.value}
             onClick={() => setSortBy(sort.value)}
             style={{
-              padding: '8px 16px',
+              padding: '8px 14px',
               borderRadius: '8px',
               border: 'none',
               background: sortBy === sort.value ? 'var(--color-primary)' : 'var(--color-background-secondary)',
               color: sortBy === sort.value ? 'white' : 'var(--color-text-secondary)',
-              fontSize: '14px',
+              fontSize: 'clamp(12px, 2vw, 14px)',
               cursor: 'pointer',
               fontWeight: sortBy === sort.value ? '600' : '400',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              whiteSpace: 'nowrap'
             }}
           >
             {sort.label}
           </button>
         ))}
 
-        <div style={{ width: '1px', height: '24px', background: 'var(--color-border)' }} />
+        <div style={{ 
+          width: '1px', 
+          height: '24px', 
+          background: 'var(--color-border)',
+          display: isMobile ? 'none' : 'block'
+        }} />
 
         {/* Language Dropdown */}
         <div style={{ position: 'relative' }}>
@@ -206,7 +236,7 @@ export default function BountiesPage() {
               border: '1px solid var(--color-border)',
               background: selectedLanguages.length > 0 ? 'rgba(0, 130, 123, 0.12)' : 'var(--color-background-secondary)',
               color: selectedLanguages.length > 0 ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-              fontSize: '13px',
+              fontSize: 'clamp(12px, 2vw, 13px)',
               cursor: 'pointer',
               fontWeight: '500',
               display: 'flex',
@@ -214,7 +244,8 @@ export default function BountiesPage() {
               gap: '6px',
               transition: 'all 0.15s',
               outline: 'none',
-              position: 'relative'
+              position: 'relative',
+              minWidth: 'fit-content'
             }}
             onMouseEnter={(e) => {
               if (selectedLanguages.length === 0) {
@@ -349,7 +380,7 @@ export default function BountiesPage() {
               border: '1px solid var(--color-border)',
               background: selectedLabels.length > 0 ? 'rgba(0, 130, 123, 0.12)' : 'var(--color-background-secondary)',
               color: selectedLabels.length > 0 ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-              fontSize: '13px',
+              fontSize: 'clamp(12px, 2vw, 13px)',
               cursor: 'pointer',
               fontWeight: '500',
               display: 'flex',
@@ -357,7 +388,8 @@ export default function BountiesPage() {
               gap: '6px',
               transition: 'all 0.15s',
               outline: 'none',
-              position: 'relative'
+              position: 'relative',
+              minWidth: 'fit-content'
             }}
             onMouseEnter={(e) => {
               if (selectedLabels.length === 0) {
@@ -507,27 +539,34 @@ export default function BountiesPage() {
               display: 'flex', 
               flexDirection: 'column',
               gap: '16px',
-              padding: '24px',
+              padding: 'clamp(16px, 3vw, 24px)',
               transition: 'transform 0.2s, box-shadow 0.2s'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '20px' }}>
-                <div style={{ flex: '1', minWidth: '0' }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'start', 
+                gap: '16px',
+                flexDirection: isMobile ? 'column' : 'row'
+              }}>
+                <div style={{ flex: '1', minWidth: '0', width: '100%' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
                     <a 
                       href={`https://github.com/${bounty.repoFullName}/issues/${bounty.issueNumber}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ 
-                        fontSize: '18px',
+                        fontSize: 'clamp(16px, 2.5vw, 18px)',
                         color: 'var(--color-primary)',
                         textDecoration: 'none',
-                        fontWeight: '600'
+                        fontWeight: '600',
+                        wordBreak: 'break-word'
                       }}
                     >
                       {bounty.repoFullName}#{bounty.issueNumber}
                     </a>
                     <span style={{ 
-                      fontSize: '14px',
+                      fontSize: 'clamp(13px, 2vw, 14px)',
                       color: 'var(--color-text-secondary)',
                       display: 'flex',
                       alignItems: 'center',
@@ -538,7 +577,7 @@ export default function BountiesPage() {
                   </div>
                   
                   <p style={{ 
-                    fontSize: '15px', 
+                    fontSize: 'clamp(14px, 2vw, 15px)', 
                     color: 'var(--color-text-secondary)', 
                     lineHeight: '1.5',
                     margin: '0 0 12px 0'
@@ -546,7 +585,13 @@ export default function BountiesPage() {
                     {bounty.issueDescription}
                   </p>
 
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', fontSize: '12px', alignItems: 'center' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: '6px', 
+                    flexWrap: 'wrap', 
+                    fontSize: 'clamp(11px, 1.8vw, 12px)', 
+                    alignItems: 'center' 
+                  }}>
                     {bounty.language && (
                       <span style={{ 
                         padding: '4px 10px',
@@ -580,11 +625,13 @@ export default function BountiesPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ 
-                      padding: '12px 20px',
+                      padding: isMobile ? '8px 12px' : 'clamp(10px, 2vw, 12px) clamp(16px, 3vw, 20px)',
                       background: 'rgba(131, 238, 232, 0.15)',
                       borderRadius: '8px',
                       textAlign: 'center',
-                      minWidth: '140px',
+                      minWidth: isMobile ? 'auto' : 'clamp(120px, 20vw, 140px)',
+                      width: isMobile ? 'fit-content' : 'auto',
+                      alignSelf: isMobile ? 'center' : 'auto',
                       textDecoration: 'none',
                       display: 'flex',
                       flexDirection: 'column',
@@ -602,26 +649,47 @@ export default function BountiesPage() {
                       e.currentTarget.style.background = 'rgba(131, 238, 232, 0.15)';
                     }}
                   >
-                    <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--color-primary)', marginBottom: '4px' }}>
+                    <div style={{ 
+                      fontSize: isMobile ? '16px' : 'clamp(18px, 3vw, 20px)', 
+                      fontWeight: '600', 
+                      color: 'var(--color-primary)', 
+                      marginBottom: '4px' 
+                    }}>
                       {formatAmount(bounty.amount, bounty.tokenSymbol)} {bounty.tokenSymbol}
                     </div>
-                    <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ 
+                      fontSize: isMobile ? '11px' : 'clamp(12px, 2vw, 13px)', 
+                      color: 'var(--color-text-secondary)', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '4px' 
+                    }}>
                       {formatDeadline(bounty.deadline)} left
                       <span>↗</span>
                     </div>
                   </a>
                 ) : (
                   <div style={{ 
-                    padding: '12px 20px',
+                    padding: isMobile ? '8px 12px' : 'clamp(10px, 2vw, 12px) clamp(16px, 3vw, 20px)',
                     background: 'rgba(131, 238, 232, 0.15)',
                     borderRadius: '8px',
                     textAlign: 'center',
-                    minWidth: '140px'
+                    minWidth: isMobile ? 'auto' : 'clamp(120px, 20vw, 140px)',
+                    width: isMobile ? 'fit-content' : 'auto',
+                    alignSelf: isMobile ? 'center' : 'auto'
                   }}>
-                    <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--color-primary)', marginBottom: '4px' }}>
+                    <div style={{ 
+                      fontSize: isMobile ? '16px' : 'clamp(18px, 3vw, 20px)', 
+                      fontWeight: '600', 
+                      color: 'var(--color-primary)', 
+                      marginBottom: '4px' 
+                    }}>
                       {formatAmount(bounty.amount, bounty.tokenSymbol)} {bounty.tokenSymbol}
                     </div>
-                    <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                    <div style={{ 
+                      fontSize: isMobile ? '11px' : 'clamp(12px, 2vw, 13px)', 
+                      color: 'var(--color-text-secondary)' 
+                    }}>
                       {formatDeadline(bounty.deadline)} left
                     </div>
                   </div>
