@@ -1,6 +1,7 @@
 import './globals.css';
 import '@rainbow-me/rainbowkit/styles.css';
 import { Providers } from '@/components/Providers';
+import Navbar from '@/components/Navbar';
 
 export const metadata = {
   title: 'BountyPay - Automated GitHub Bounty Payments',
@@ -19,7 +20,10 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <Navbar />
+          {children}
+        </Providers>
       </body>
     </html>
   );
