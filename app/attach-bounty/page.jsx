@@ -129,19 +129,97 @@ function AttachBountyContent() {
 
       showStatus('Creating bounty on-chain...', 'loading');
 
-      const escrow = new ethers.Contract(contractConfig.escrow, ESCROW_ABI, signer);
+      const escrow = new ethers.Contract(contractConfig.escrow, [
+        'function createBounty(address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) external returns (bytes32)',
+        'function computeBountyId(address sponsor, bytes32 repoIdHash, uint64 issueNumber) public pure returns (bytes32)',
+        'function getBounty(bytes32 bountyId) external view returns (tuple(bytes32 repoIdHash, address sponsor, address resolver, uint96 amount, uint64 deadline, uint64 issueNumber, uint8 status))',
+        'function paused() external view returns (bool)'
+      ], signer);
+      
       const repoIdHash = '0x' + parseInt(repoId).toString(16).padStart(64, '0');
 
-      const tx = await escrow.createBounty(
-        address,
-        repoIdHash,
-        parseInt(issueNumber),
-        deadlineTimestamp,
-        amountWei,
-        txOverrides
-      );
+      // Pre-flight checks
+      showStatus('Validating contract...', 'loading');
+      
+      // Check if contract exists at this address
+      const code = await provider.getCode(contractConfig.escrow);
+      if (code === '0x') {
+        throw new Error(`No contract found at ${contractConfig.escrow} on ${networkConfig.name}. The contract may not be deployed on this network.`);
+      }
+      console.log('Contract exists at', contractConfig.escrow);
+      
+      // Check if contract is paused
+      try {
+        const isPaused = await escrow.paused();
+        console.log('Contract paused status:', isPaused);
+        if (isPaused) {
+          throw new Error('Contract is currently paused. Please try again later.');
+        }
+      } catch (pauseError) {
+        console.warn('Could not check paused status (contract may not have this function):', pauseError.message);
+      }
 
-      const receipt = await tx.wait();
+      // Check if bounty already exists
+      const bountyId = await escrow.computeBountyId(address, repoIdHash, parseInt(issueNumber));
+      console.log('Computed bountyId:', bountyId);
+      
+      try {
+        const existingBounty = await escrow.getBounty(bountyId);
+        if (existingBounty.status !== 0) { // 0 = None/doesn't exist
+          throw new Error('A bounty for this issue already exists. You can top it up instead of creating a new one.');
+        }
+      } catch (bountyCheckError) {
+        // If getBounty fails, the bounty likely doesn't exist, which is good
+        console.log('Bounty does not exist yet (expected)');
+      }
+
+      console.log('CreateBounty parameters:', {
+        resolver: address,
+        repoIdHash,
+        issueNumber: parseInt(issueNumber),
+        deadline: deadlineTimestamp,
+        deadlineDate: new Date(deadlineTimestamp * 1000).toISOString(),
+        currentTime: Math.floor(Date.now() / 1000),
+        amount: amountWei.toString(),
+        amountFormatted: ethers.formatUnits(amountWei, contractConfig.tokenDecimals),
+        escrowAddress: contractConfig.escrow,
+        txOverrides
+      });
+
+      let receipt;
+      try {
+        const tx = await escrow.createBounty(
+          address,
+          repoIdHash,
+          parseInt(issueNumber),
+          deadlineTimestamp,
+          amountWei,
+          txOverrides
+        );
+        console.log('CreateBounty tx sent:', tx.hash);
+
+        receipt = await tx.wait();
+        console.log('CreateBounty tx confirmed');
+      } catch (contractError) {
+        console.error('Contract call error:', contractError);
+        
+        // Try to get more details from the contract
+        try {
+          const estimate = await escrow.createBounty.estimateGas(
+            address,
+            repoIdHash,
+            parseInt(issueNumber),
+            deadlineTimestamp,
+            amountWei,
+            txOverrides
+          );
+          console.log('Gas estimate succeeded:', estimate.toString());
+        } catch (estimateError) {
+          console.error('Gas estimation failed:', estimateError);
+        }
+        
+        throw new Error(`Contract call failed: ${contractError.reason || contractError.message || 'Unknown error'}`);
+      }
 
       showStatus('Recording bounty in database...', 'loading');
 
