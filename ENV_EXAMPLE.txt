@@ -52,6 +52,7 @@ ENV_TARGET=stage                   # Options: "stage" or "prod"
 # FRONTEND_URL=http://localhost:3000
 # SESSION_SECRET=your-local-dev-secret-32-chars-min
 # ENV_TARGET=stage
+# NEXT_PUBLIC_ENV_TARGET=local          # Set to "local" to enable wallet testing without GitHub auth
 #
 # Then expose your local server with ngrok:
 #   ngrok http 3000

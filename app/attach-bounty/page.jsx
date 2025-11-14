@@ -2,20 +2,25 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ethers } from 'ethers';
-import { NETWORKS, CONTRACTS, ESCROW_ABI, ERC20_ABI, getNetworkConfig } from '@/config/networks';
-import { MoneyIcon, WalletIcon } from '@/components/Icons';
+import { NETWORKS, CONTRACTS, ESCROW_ABI, ERC20_ABI } from '@/config/networks';
+import { MoneyIcon } from '@/components/Icons';
 
 function AttachBountyContent() {
   const searchParams = useSearchParams();
   const [selectedNetwork, setSelectedNetwork] = useState('BASE_SEPOLIA');
-  const [walletAddress, setWalletAddress] = useState('');
-  const [provider, setProvider] = useState(null);
-  const [signer, setSigner] = useState(null);
   const [amount, setAmount] = useState('');
   const [deadline, setDeadline] = useState('');
   const [status, setStatus] = useState({ message: '', type: '' });
-  const [showForm, setShowForm] = useState(false);
+
+  const { address, isConnected, chain } = useAccount();
+  const { data: walletClient } = useWalletClient();
+  const { switchChain } = useSwitchChain();
+
+  // Check if running locally for testing
+  const isLocal = process.env.NEXT_PUBLIC_ENV_TARGET === 'local';
 
   const repoFullName = searchParams.get('repo');
   const issueNumber = searchParams.get('issue');
@@ -39,65 +44,16 @@ function AttachBountyContent() {
     setStatus({ message, type });
   };
 
-  const connectWallet = async () => {
-    try {
-      showStatus('Connecting wallet...', 'loading');
-
-      if (!window.ethereum) {
-        showStatus('Please install MetaMask or another Web3 wallet', 'error');
-        window.open('https://metamask.io/download/', '_blank');
-        return;
-      }
-
-      const newProvider = new ethers.BrowserProvider(window.ethereum);
-      const accounts = await newProvider.send('eth_requestAccounts', []);
-      const address = accounts[0];
-
-      const network = await newProvider.getNetwork();
-
-      if (Number(network.chainId) !== networkConfig.chainId) {
-        showStatus(`Switching to ${networkConfig.name}...`, 'loading');
-        try {
-          await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: networkConfig.chainIdHex }],
-          });
-        } catch (switchError) {
-          if (switchError.code === 4902) {
-            await window.ethereum.request({
-              method: 'wallet_addEthereumChain',
-              params: [{
-                chainId: networkConfig.chainIdHex,
-                chainName: networkConfig.name,
-                nativeCurrency: networkConfig.nativeCurrency,
-                rpcUrls: [networkConfig.rpcUrl],
-                blockExplorerUrls: [networkConfig.blockExplorerUrl]
-              }],
-            });
-          } else {
-            throw switchError;
-          }
-        }
-        // Reconnect after network switch
-        const updatedProvider = new ethers.BrowserProvider(window.ethereum);
-        setProvider(updatedProvider);
-        setSigner(await updatedProvider.getSigner());
-      } else {
-        setProvider(newProvider);
-        setSigner(await newProvider.getSigner());
-      }
-
-      setWalletAddress(address);
-      setShowForm(true);
-      showStatus('Wallet connected!', 'success');
-    } catch (error) {
-      console.error('Wallet connection error:', error);
-      showStatus(error.message || 'Failed to connect wallet', 'error');
-    }
-  };
-
   const fundBounty = async () => {
     try {
+      if (!isConnected || !address) {
+        throw new Error('Please connect your wallet first');
+      }
+
+      if (!walletClient) {
+        throw new Error('Wallet client not available');
+      }
+
       if (!repoFullName || !issueNumber || !repoId) {
         throw new Error('Missing required parameters. Please use the link from GitHub.');
       }
@@ -110,10 +66,20 @@ function AttachBountyContent() {
         throw new Error('Please select a deadline');
       }
 
+      // Check and switch network if needed
+      if (chain?.id !== networkConfig.chainId) {
+        showStatus(`Switching to ${networkConfig.name}...`, 'loading');
+        await switchChain({ chainId: networkConfig.chainId });
+      }
+
       const deadlineTimestamp = Math.floor(new Date(deadline).getTime() / 1000);
       const amountWei = ethers.parseUnits(amount, contractConfig.tokenDecimals);
 
       showStatus(`Approving ${contractConfig.tokenSymbol}...`, 'loading');
+
+      // Create provider and signer using walletClient
+      const provider = new ethers.BrowserProvider(walletClient);
+      const signer = await provider.getSigner();
 
       const token = new ethers.Contract(contractConfig.token, ERC20_ABI, signer);
       const approveTx = await token.approve(contractConfig.escrow, amountWei);
@@ -125,7 +91,7 @@ function AttachBountyContent() {
       const repoIdHash = '0x' + parseInt(repoId).toString(16).padStart(64, '0');
 
       const tx = await escrow.createBounty(
-        walletAddress,
+        address,
         repoIdHash,
         parseInt(issueNumber),
         deadlineTimestamp,
@@ -143,7 +109,7 @@ function AttachBountyContent() {
           repoFullName,
           repoId: parseInt(repoId),
           issueNumber: parseInt(issueNumber),
-          sponsorAddress: walletAddress,
+          sponsorAddress: address,
           amount: amountWei.toString(),
           deadline: deadlineTimestamp,
           txHash: receipt.hash,
@@ -209,35 +175,59 @@ function AttachBountyContent() {
         )}
       </div>
 
-      {!showForm && (
+      {!isConnected ? (
         <>
           <div style={{ marginBottom: '24px' }}>
-            <label htmlFor="network">Network</label>
-            <select
-              id="network"
-              value={selectedNetwork}
-              onChange={(e) => setSelectedNetwork(e.target.value)}
-            >
-              <option value="BASE_SEPOLIA">Base Sepolia (USDC)</option>
-              <option value="MEZO_TESTNET">Mezo Testnet (MUSD)</option>
-            </select>
-            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '8px', marginBottom: '0' }}>
-              {networkConfig.name} • Chain ID: {networkConfig.chainId}
-            </p>
+            <label style={{ marginBottom: '8px' }}>Select Network</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => setSelectedNetwork('BASE_SEPOLIA')}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: selectedNetwork === 'BASE_SEPOLIA' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                  background: selectedNetwork === 'BASE_SEPOLIA' ? 'rgba(0, 130, 123, 0.1)' : 'var(--color-card)',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: selectedNetwork === 'BASE_SEPOLIA' ? 'var(--color-primary)' : 'var(--color-text-primary)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Base Sepolia
+                <div style={{ fontSize: '12px', fontWeight: 400, marginTop: '4px', color: 'var(--color-text-secondary)' }}>USDC</div>
+              </button>
+              <button
+                onClick={() => setSelectedNetwork('MEZO_TESTNET')}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: selectedNetwork === 'MEZO_TESTNET' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                  background: selectedNetwork === 'MEZO_TESTNET' ? 'rgba(0, 130, 123, 0.1)' : 'var(--color-card)',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: selectedNetwork === 'MEZO_TESTNET' ? 'var(--color-primary)' : 'var(--color-text-primary)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Mezo Testnet
+                <div style={{ fontSize: '12px', fontWeight: 400, marginTop: '4px', color: 'var(--color-text-secondary)' }}>MUSD</div>
+              </button>
+            </div>
           </div>
 
-          <button className="btn btn-primary btn-full" onClick={connectWallet}>
-            <WalletIcon size={20} color="white" />
-            Connect Wallet
-          </button>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <ConnectButton />
+          </div>
         </>
-      )}
-
-      {showForm && (
+      ) : (
         <>
           <div className="wallet-info" style={{ marginBottom: '32px' }}>
-            <div><strong>Connected:</strong> {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</div>
-            <div><strong>Network:</strong> {networkConfig.name} ({contractConfig.tokenSymbol})</div>
+            <div><strong>Connected:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}</div>
+            <div><strong>Network:</strong> {chain?.name || networkConfig.name} ({contractConfig.tokenSymbol})</div>
           </div>
 
           <div style={{ marginBottom: '24px' }}>
@@ -266,18 +256,6 @@ function AttachBountyContent() {
           <button className="btn btn-primary btn-full" onClick={fundBounty}>
             Fund Bounty
           </button>
-
-          <button 
-            className="btn btn-secondary btn-full" 
-            onClick={() => {
-              setShowForm(false);
-              setWalletAddress('');
-              setProvider(null);
-              setSigner(null);
-            }}
-          >
-            Change Network
-          </button>
         </>
       )}
 
@@ -297,4 +275,3 @@ export default function AttachBounty() {
     </Suspense>
   );
 }
-

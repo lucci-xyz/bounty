@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
+import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { NETWORKS } from '@/config/networks';
-import { LinkIcon, GitHubIcon, WalletIcon, CheckCircleIcon } from '@/components/Icons';
+import { LinkIcon, GitHubIcon, CheckCircleIcon } from '@/components/Icons';
 
 function createSiweMessage({ domain, address, statement, uri, version, chainId, nonce }) {
   const message = [
@@ -25,13 +26,23 @@ function createSiweMessage({ domain, address, statement, uri, version, chainId, 
 export default function LinkWallet() {
   const [selectedNetwork, setSelectedNetwork] = useState('BASE_SEPOLIA');
   const [githubUser, setGithubUser] = useState(null);
-  const [walletAddress, setWalletAddress] = useState('');
   const [linked, setLinked] = useState(false);
   const [status, setStatus] = useState({ message: '', type: '' });
 
+  const { address, isConnected, chain } = useAccount();
+  const { data: walletClient } = useWalletClient();
+  const { switchChain } = useSwitchChain();
+
+  // Check if running locally - do this outside of state for immediate access
+  const isLocal = process.env.NEXT_PUBLIC_ENV_TARGET === 'local';
   const networkConfig = NETWORKS[selectedNetwork];
 
   useEffect(() => {
+    console.log('Environment check:', {
+      NEXT_PUBLIC_ENV_TARGET: process.env.NEXT_PUBLIC_ENV_TARGET,
+      isLocal,
+      githubUser
+    });
     checkGitHubAuth();
   }, []);
 
@@ -61,46 +72,31 @@ export default function LinkWallet() {
     window.location.href = authUrl;
   };
 
-  const connectWallet = async () => {
+  const linkWallet = async () => {
     try {
-      if (!githubUser) {
+      if (!githubUser && !isLocal) {
         throw new Error('Please authenticate with GitHub first');
       }
 
-      showStatus('Connecting wallet...', 'loading');
-
-      if (!window.ethereum) {
-        throw new Error('Please install MetaMask or enable Brave Wallet');
+      if (!isConnected || !address) {
+        throw new Error('Please connect your wallet first');
       }
 
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const accounts = await provider.send('eth_requestAccounts', []);
-      const address = ethers.getAddress(accounts[0]);
+      if (!walletClient) {
+        throw new Error('Wallet client not available');
+      }
 
-      const network = await provider.getNetwork();
-      if (Number(network.chainId) !== networkConfig.chainId) {
-        showStatus(`Please switch to ${networkConfig.name}`, 'error');
-        try {
-          await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: networkConfig.chainIdHex }],
-          });
-        } catch (switchError) {
-          if (switchError.code === 4902) {
-            await window.ethereum.request({
-              method: 'wallet_addEthereumChain',
-              params: [{
-                chainId: networkConfig.chainIdHex,
-                chainName: networkConfig.name,
-                nativeCurrency: networkConfig.nativeCurrency,
-                rpcUrls: [networkConfig.rpcUrl],
-                blockExplorerUrls: [networkConfig.blockExplorerUrl]
-              }],
-            });
-          } else {
-            throw switchError;
-          }
-        }
+      if (isLocal) {
+        showStatus('✅ Local mode: Wallet connected for testing!', 'success');
+        return;
+      }
+
+      showStatus('Checking network...', 'loading');
+
+      // Switch network if needed
+      if (chain?.id !== networkConfig.chainId) {
+        showStatus(`Switching to ${networkConfig.name}...`, 'loading');
+        await switchChain({ chainId: networkConfig.chainId });
       }
 
       showStatus('Sign the message in your wallet...', 'loading');
@@ -120,8 +116,9 @@ export default function LinkWallet() {
         nonce
       });
 
-      const signer = await provider.getSigner();
-      const signature = await signer.signMessage(messageText);
+      const signature = await walletClient.signMessage({
+        message: messageText
+      });
 
       showStatus('Verifying signature...', 'loading');
 
@@ -156,12 +153,11 @@ export default function LinkWallet() {
         throw new Error('Failed to link wallet');
       }
 
-      setWalletAddress(address);
       setLinked(true);
       showStatus('✅ Wallet linked successfully! You can now receive bounty payments.', 'success');
     } catch (error) {
       console.error(error);
-      showStatus(error.message, 'error');
+      showStatus(error.message || 'An error occurred', 'error');
     }
   };
 
@@ -268,40 +264,96 @@ export default function LinkWallet() {
             
             {!linked && (
               <div style={{ marginBottom: '16px' }}>
-                <label htmlFor="network">Network</label>
-                <select
-                  id="network"
-                  value={selectedNetwork}
-                  onChange={(e) => setSelectedNetwork(e.target.value)}
-                  disabled={!githubUser}
-                >
-                  <option value="BASE_SEPOLIA">Base Sepolia</option>
-                  <option value="MEZO_TESTNET">Mezo Testnet</option>
-                </select>
-                <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '8px', marginBottom: '0' }}>
-                  {networkConfig.name} • Chain ID: {networkConfig.chainId}
-                </p>
+                <label style={{ marginBottom: '8px' }}>Select Network</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => {
+                      console.log('Base Sepolia clicked');
+                      setSelectedNetwork('BASE_SEPOLIA');
+                    }}
+                    disabled={(!githubUser && !isLocal) || isConnected}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: selectedNetwork === 'BASE_SEPOLIA' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                      background: selectedNetwork === 'BASE_SEPOLIA' ? 'rgba(0, 130, 123, 0.1)' : 'var(--color-card)',
+                      cursor: ((!githubUser && !isLocal) || isConnected) ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      color: selectedNetwork === 'BASE_SEPOLIA' ? 'var(--color-primary)' : 'var(--color-text-primary)',
+                      transition: 'all 0.2s',
+                      opacity: ((!githubUser && !isLocal) || isConnected) ? 0.5 : 1
+                    }}
+                  >
+                    Base Sepolia
+                    <div style={{ fontSize: '12px', fontWeight: 400, marginTop: '4px', color: 'var(--color-text-secondary)' }}>USDC</div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log('Mezo Testnet clicked');
+                      setSelectedNetwork('MEZO_TESTNET');
+                    }}
+                    disabled={(!githubUser && !isLocal) || isConnected}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: selectedNetwork === 'MEZO_TESTNET' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                      background: selectedNetwork === 'MEZO_TESTNET' ? 'rgba(0, 130, 123, 0.1)' : 'var(--color-card)',
+                      cursor: ((!githubUser && !isLocal) || isConnected) ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      color: selectedNetwork === 'MEZO_TESTNET' ? 'var(--color-primary)' : 'var(--color-text-primary)',
+                      transition: 'all 0.2s',
+                      opacity: ((!githubUser && !isLocal) || isConnected) ? 0.5 : 1
+                    }}
+                  >
+                    Mezo Testnet
+                    <div style={{ fontSize: '12px', fontWeight: 400, marginTop: '4px', color: 'var(--color-text-secondary)' }}>MUSD</div>
+                  </button>
+                </div>
               </div>
             )}
 
-            <button
-              className={linked ? "btn btn-secondary" : "btn btn-primary"}
-              onClick={connectWallet}
-              disabled={!githubUser || linked}
-              style={{ width: '100%', margin: 0 }}
-            >
-              {linked ? (
-                <>
-                  <CheckCircleIcon size={18} />
-                  Wallet Linked
-                </>
-              ) : (
-                <>
-                  <WalletIcon size={18} color="white" />
-                  Connect Wallet
-                </>
-              )}
-            </button>
+            {!isConnected ? (
+              <ConnectButton.Custom>
+                {({ openConnectModal }) => (
+                  <button
+                    onClick={() => {
+                      console.log('Opening wallet modal...');
+                      openConnectModal();
+                    }}
+                    disabled={!githubUser && !isLocal}
+                    className="btn btn-primary"
+                    style={{ width: '100%', margin: 0, opacity: (!githubUser && !isLocal) ? 0.5 : 1 }}
+                  >
+                    Link Wallet {isLocal && '(Local Mode)'}
+                  </button>
+                )}
+              </ConnectButton.Custom>
+            ) : linked ? (
+              <button
+                className="btn btn-secondary"
+                disabled
+                style={{ width: '100%', margin: 0 }}
+              >
+                <CheckCircleIcon size={18} />
+                Wallet Linked
+              </button>
+            ) : (
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  console.log('Linking wallet...');
+                  linkWallet();
+                }}
+                disabled={!githubUser && !isLocal}
+                style={{ width: '100%', margin: 0, opacity: (!githubUser && !isLocal) ? 0.5 : 1 }}
+              >
+                Sign & Link Wallet
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -309,7 +361,7 @@ export default function LinkWallet() {
       {linked && (
         <div className="wallet-info">
           <div><strong>GitHub:</strong> {githubUser?.githubUsername}</div>
-          <div><strong>Wallet:</strong> {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</div>
+          <div><strong>Wallet:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}</div>
           <div><strong>Network:</strong> {networkConfig.name}</div>
         </div>
       )}
@@ -322,4 +374,3 @@ export default function LinkWallet() {
     </div>
   );
 }
-
