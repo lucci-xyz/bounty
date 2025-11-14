@@ -135,10 +135,15 @@ export async function resolveBountyOnNetwork(bountyId, recipientAddress, network
     console.log(`🔄 Resolving bounty ${bountyId} to ${recipientAddress} on ${network}`);
     
     // Mezo testnet doesn't support EIP-1559, use legacy transactions
-    const txOverrides = network === 'MEZO_TESTNET' ? {
-      type: 0, // Legacy transaction
-      gasPrice: await netProvider.getFeeData().then(fees => fees.gasPrice)
-    } : {};
+    let txOverrides = {};
+    if (network === 'MEZO_TESTNET') {
+      const feeData = await netProvider.getFeeData();
+      txOverrides = {
+        type: 0, // Legacy transaction
+        gasPrice: feeData.gasPrice
+      };
+      console.log(`   Using legacy transaction with gasPrice: ${ethers.formatUnits(feeData.gasPrice, 'gwei')} gwei`);
+    }
     
     const tx = await netEscrow.resolve(bountyId, recipientAddress, txOverrides);
     console.log(`   Transaction sent: ${tx.hash}`);

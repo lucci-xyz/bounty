@@ -107,10 +107,15 @@ function AttachBountyContent() {
       showStatus(`Approving ${contractConfig.tokenSymbol}...`, 'loading');
       
       // Mezo testnet doesn't support EIP-1559, use legacy transactions
-      const txOverrides = selectedNetwork === 'MEZO_TESTNET' ? {
-        type: 0, // Legacy transaction
-        gasPrice: await provider.getGasPrice()
-      } : {};
+      let txOverrides = {};
+      if (selectedNetwork === 'MEZO_TESTNET') {
+        const feeData = await provider.getFeeData();
+        txOverrides = {
+          type: 0, // Legacy transaction
+          gasPrice: feeData.gasPrice
+        };
+        console.log('Using legacy transaction with gasPrice:', ethers.formatUnits(feeData.gasPrice, 'gwei'), 'gwei');
+      }
 
       try {
         const approveTx = await token.approve(contractConfig.escrow, amountWei, txOverrides);

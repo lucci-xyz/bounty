@@ -25,7 +25,7 @@ const mezoTestnet = {
   testnet: true,
 };
 
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID';
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '73b4fe978f9e3084af5e7c7595365793';
 const chains = [baseSepolia, mezoTestnet];
 
 // Configure wallets with injectedWallet first to catch all browser wallets
