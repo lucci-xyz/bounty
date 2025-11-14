@@ -70,20 +70,57 @@ function AttachBountyContent() {
       if (chain?.id !== networkConfig.chainId) {
         showStatus(`Switching to ${networkConfig.name}...`, 'loading');
         await switchChain({ chainId: networkConfig.chainId });
+        // Wait a bit for network switch to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
+
+      console.log('Network check:', {
+        currentChainId: chain?.id,
+        targetChainId: networkConfig.chainId,
+        network: selectedNetwork,
+        tokenContract: contractConfig.token,
+        escrowContract: contractConfig.escrow
+      });
 
       const deadlineTimestamp = Math.floor(new Date(deadline).getTime() / 1000);
       const amountWei = ethers.parseUnits(amount, contractConfig.tokenDecimals);
-
-      showStatus(`Approving ${contractConfig.tokenSymbol}...`, 'loading');
 
       // Create provider and signer using walletClient
       const provider = new ethers.BrowserProvider(walletClient);
       const signer = await provider.getSigner();
 
-      const token = new ethers.Contract(contractConfig.token, ERC20_ABI, signer);
-      const approveTx = await token.approve(contractConfig.escrow, amountWei);
-      await approveTx.wait();
+      // Check token balance first
+      showStatus(`Checking ${contractConfig.tokenSymbol} balance...`, 'loading');
+      const token = new ethers.Contract(contractConfig.token, [
+        'function balanceOf(address) view returns (uint256)',
+        'function approve(address spender, uint256 amount) external returns (bool)',
+        'function allowance(address owner, address spender) external view returns (uint256)'
+      ], signer);
+
+      const balance = await token.balanceOf(address);
+      console.log('Token balance:', ethers.formatUnits(balance, contractConfig.tokenDecimals), contractConfig.tokenSymbol);
+
+      if (balance < amountWei) {
+        throw new Error(`Insufficient ${contractConfig.tokenSymbol} balance. You have ${ethers.formatUnits(balance, contractConfig.tokenDecimals)} ${contractConfig.tokenSymbol}`);
+      }
+
+      showStatus(`Approving ${contractConfig.tokenSymbol}...`, 'loading');
+      
+      // Mezo testnet doesn't support EIP-1559, use legacy transactions
+      const txOverrides = selectedNetwork === 'MEZO_TESTNET' ? {
+        type: 0, // Legacy transaction
+        gasPrice: await provider.getGasPrice()
+      } : {};
+
+      try {
+        const approveTx = await token.approve(contractConfig.escrow, amountWei, txOverrides);
+        console.log('Approve tx sent:', approveTx.hash);
+        await approveTx.wait();
+        console.log('Approve tx confirmed');
+      } catch (approveError) {
+        console.error('Approval error:', approveError);
+        throw new Error(`Failed to approve ${contractConfig.tokenSymbol}: ${approveError.message || 'Transaction rejected'}`);
+      }
 
       showStatus('Creating bounty on-chain...', 'loading');
 
@@ -95,7 +132,8 @@ function AttachBountyContent() {
         repoIdHash,
         parseInt(issueNumber),
         deadlineTimestamp,
-        amountWei
+        amountWei,
+        txOverrides
       );
 
       const receipt = await tx.wait();

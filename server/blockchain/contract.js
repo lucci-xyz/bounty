@@ -106,7 +106,7 @@ export async function resolveBounty(bountyId, recipientAddress) {
   try {
     console.log(`🔄 Resolving bounty ${bountyId} to ${recipientAddress}`);
     
-    // Call resolve function
+    // Default network is BASE_SEPOLIA which supports EIP-1559, no overrides needed
     const tx = await escrowContract.resolve(bountyId, recipientAddress);
     console.log(`   Transaction sent: ${tx.hash}`);
     
@@ -131,9 +131,16 @@ export async function resolveBounty(bountyId, recipientAddress) {
 
 export async function resolveBountyOnNetwork(bountyId, recipientAddress, network = 'BASE_SEPOLIA') {
   try {
-    const { netEscrow } = getNetworkClients(network);
+    const { netEscrow, netProvider } = getNetworkClients(network);
     console.log(`🔄 Resolving bounty ${bountyId} to ${recipientAddress} on ${network}`);
-    const tx = await netEscrow.resolve(bountyId, recipientAddress);
+    
+    // Mezo testnet doesn't support EIP-1559, use legacy transactions
+    const txOverrides = network === 'MEZO_TESTNET' ? {
+      type: 0, // Legacy transaction
+      gasPrice: await netProvider.getFeeData().then(fees => fees.gasPrice)
+    } : {};
+    
+    const tx = await netEscrow.resolve(bountyId, recipientAddress, txOverrides);
     console.log(`   Transaction sent: ${tx.hash}`);
     const receipt = await tx.wait();
     console.log(`✅ Bounty resolved on ${network}! Gas used: ${receipt.gasUsed.toString()}`);

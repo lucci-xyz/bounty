@@ -110,7 +110,14 @@ export default function Refund() {
       const provider = new ethers.BrowserProvider(walletClient);
       const signer = await provider.getSigner();
       const escrow = new ethers.Contract(contractConfig.escrow, ESCROW_ABI, signer);
-      const tx = await escrow.refundExpired(currentBounty.bountyId);
+      
+      // Mezo testnet doesn't support EIP-1559, use legacy transactions
+      const txOverrides = selectedNetwork === 'MEZO_TESTNET' ? {
+        type: 0, // Legacy transaction
+        gasPrice: await provider.getGasPrice()
+      } : {};
+      
+      const tx = await escrow.refundExpired(currentBounty.bountyId, txOverrides);
 
       showStatus('Waiting for confirmation...', 'loading');
       const receipt = await tx.wait();
