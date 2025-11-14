@@ -128,23 +128,9 @@ function AttachBountyContent() {
       }
 
       showStatus(`Approving ${contractConfig.tokenSymbol}...`, 'loading');
-      
-      // Mezo testnet doesn't support EIP-1559, use legacy transactions
-      let txOverrides = {};
-      if (selectedNetwork === 'MEZO_TESTNET') {
-        const feeData = await provider.getFeeData();
-        // Set a reasonable gas price or use the fetched one (with a minimum)
-        const gasPrice = feeData.gasPrice && feeData.gasPrice > 0n ? feeData.gasPrice : ethers.parseUnits('1', 'gwei');
-        txOverrides = {
-          type: 0, // Legacy transaction
-          gasPrice: gasPrice,
-          gasLimit: 500000 // Set a manual gas limit for Mezo to avoid estimation issues
-        };
-        console.log('Using legacy transaction with gasPrice:', ethers.formatUnits(gasPrice, 'gwei'), 'gwei');
-      }
 
       try {
-        const approveTx = await token.approve(contractConfig.escrow, amountWei, txOverrides);
+        const approveTx = await token.approve(contractConfig.escrow, amountWei);
         console.log('Approve tx sent:', approveTx.hash);
         await approveTx.wait();
         console.log('Approve tx confirmed');
@@ -208,52 +194,25 @@ function AttachBountyContent() {
         currentTime: Math.floor(Date.now() / 1000),
         amount: amountWei.toString(),
         amountFormatted: ethers.formatUnits(amountWei, contractConfig.tokenDecimals),
-        escrowAddress: contractConfig.escrow,
-        txOverrides
+        escrowAddress: contractConfig.escrow
       });
 
       let receipt;
       try {
-        // Build the call with or without overrides
-        const tx = Object.keys(txOverrides).length > 0
-          ? await escrow.createBounty(
-              address,
-              repoIdHash,
-              parseInt(issueNumber),
-              deadlineTimestamp,
-              amountWei,
-              txOverrides
-            )
-          : await escrow.createBounty(
-              address,
-              repoIdHash,
-              parseInt(issueNumber),
-              deadlineTimestamp,
-              amountWei
-            );
+        // Let ethers handle gas estimation automatically
+        const tx = await escrow.createBounty(
+          address,
+          repoIdHash,
+          parseInt(issueNumber),
+          deadlineTimestamp,
+          amountWei
+        );
         console.log('CreateBounty tx sent:', tx.hash);
 
         receipt = await tx.wait();
         console.log('CreateBounty tx confirmed');
       } catch (contractError) {
         console.error('Contract call error:', contractError);
-        
-        // Try to get more details from the contract (skip gas estimation for Mezo as it may not be reliable)
-        if (selectedNetwork !== 'MEZO_TESTNET') {
-          try {
-            const estimate = await escrow.createBounty.estimateGas(
-              address,
-              repoIdHash,
-              parseInt(issueNumber),
-              deadlineTimestamp,
-              amountWei
-            );
-            console.log('Gas estimate succeeded:', estimate.toString());
-          } catch (estimateError) {
-            console.error('Gas estimation failed:', estimateError);
-          }
-        }
-        
         throw new Error(`Contract call failed: ${contractError.reason || contractError.message || 'Unknown error'}`);
       }
 
