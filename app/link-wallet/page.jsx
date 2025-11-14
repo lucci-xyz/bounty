@@ -29,6 +29,7 @@ export default function LinkWallet() {
   const [linked, setLinked] = useState(false);
   const [status, setStatus] = useState({ message: '', type: '' });
   const [returnTo, setReturnTo] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -83,7 +84,15 @@ export default function LinkWallet() {
   };
 
   const linkWallet = async () => {
+    // Prevent double-clicking
+    if (isProcessing) {
+      console.log('Already processing, ignoring click');
+      return;
+    }
+    
     try {
+      setIsProcessing(true);
+      
       if (!githubUser && !isLocal) {
         throw new Error('Please authenticate with GitHub first');
       }
@@ -93,11 +102,12 @@ export default function LinkWallet() {
       }
 
       if (!walletClient) {
-        throw new Error('Wallet client not available');
+        throw new Error('Wallet client not available. Please reconnect your wallet.');
       }
 
       if (isLocal) {
         showStatus('✅ Local mode: Wallet connected for testing!', 'success');
+        setIsProcessing(false);
         return;
       }
 
@@ -106,7 +116,14 @@ export default function LinkWallet() {
       // Switch network if needed
       if (chain?.id !== networkConfig.chainId) {
         showStatus(`Switching to ${networkConfig.name}...`, 'loading');
-        await switchChain({ chainId: networkConfig.chainId });
+        try {
+          await switchChain({ chainId: networkConfig.chainId });
+          // Wait for network switch to complete
+          await new Promise(resolve => setTimeout(resolve, 1500));
+        } catch (switchError) {
+          console.error('Network switch error:', switchError);
+          throw new Error(`Failed to switch to ${networkConfig.name}. Please switch manually in your wallet.`);
+        }
       }
 
       showStatus('Sign the message in your wallet...', 'loading');
@@ -177,6 +194,7 @@ export default function LinkWallet() {
     } catch (error) {
       console.error(error);
       showStatus(error.message || 'An error occurred', 'error');
+      setIsProcessing(false);
     }
   };
 
@@ -368,10 +386,10 @@ export default function LinkWallet() {
                     console.log('Linking wallet...');
                     linkWallet();
                   }}
-                  disabled={!githubUser && !isLocal}
-                  style={{ width: '100%', margin: 0, opacity: (!githubUser && !isLocal) ? 0.5 : 1, marginBottom: '12px' }}
+                  disabled={(!githubUser && !isLocal) || isProcessing}
+                  style={{ width: '100%', margin: 0, opacity: ((!githubUser && !isLocal) || isProcessing) ? 0.5 : 1, marginBottom: '12px', cursor: isProcessing ? 'not-allowed' : 'pointer' }}
                 >
-                  Sign & Link Wallet
+                  {isProcessing ? 'Processing...' : 'Sign & Link Wallet'}
                 </button>
 
                 <ConnectButton.Custom>

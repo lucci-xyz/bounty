@@ -14,6 +14,7 @@ function AttachBountyContent() {
   const [amount, setAmount] = useState('');
   const [deadline, setDeadline] = useState('');
   const [status, setStatus] = useState({ message: '', type: '' });
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -45,13 +46,21 @@ function AttachBountyContent() {
   };
 
   const fundBounty = async () => {
+    // Prevent double-clicking
+    if (isProcessing) {
+      console.log('Already processing, ignoring click');
+      return;
+    }
+    
     try {
+      setIsProcessing(true);
+      
       if (!isConnected || !address) {
         throw new Error('Please connect your wallet first');
       }
 
       if (!walletClient) {
-        throw new Error('Wallet client not available');
+        throw new Error('Wallet client not available. Please reconnect your wallet.');
       }
 
       if (!repoFullName || !issueNumber || !repoId) {
@@ -71,17 +80,22 @@ function AttachBountyContent() {
         showStatus(`Switching to ${networkConfig.name}...`, 'loading');
         try {
           await switchChain({ chainId: networkConfig.chainId });
-          // Wait a bit for network switch to complete
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Wait longer for network switch to complete and wallet state to sync
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Refresh the page after network switch to ensure clean state
+          console.log('Network switched, reloading to sync state...');
+          window.location.reload();
+          return; // Exit early, page will reload
         } catch (switchError) {
           console.error('Network switch error:', switchError);
-          throw new Error(`Failed to switch to ${networkConfig.name}. Please switch manually in your wallet.`);
+          throw new Error(`Failed to switch to ${networkConfig.name}. Please switch manually in your wallet and refresh the page.`);
         }
       }
       
-      // Verify we're on the correct network after switch
+      // Double-check we're on the correct network
       if (chain?.id !== networkConfig.chainId) {
-        throw new Error(`Please switch to ${networkConfig.name} (Chain ID: ${networkConfig.chainId}) in your wallet before continuing.`);
+        throw new Error(`Please switch to ${networkConfig.name} (Chain ID: ${networkConfig.chainId}) in your wallet and refresh the page.`);
       }
 
       console.log('Network check:', {
@@ -413,6 +427,8 @@ function AttachBountyContent() {
       }
       
       showStatus(userMessage, 'error');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -463,9 +479,11 @@ function AttachBountyContent() {
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 onClick={() => {
+                  if (isProcessing || isConnected) return;
                   console.log('Base Sepolia selected');
                   setSelectedNetwork('BASE_SEPOLIA');
                 }}
+                disabled={isProcessing || isConnected}
                 style={{
                   flex: 1,
                   padding: '12px',
@@ -484,9 +502,11 @@ function AttachBountyContent() {
               </button>
               <button
                 onClick={() => {
+                  if (isProcessing || isConnected) return;
                   console.log('Mezo Testnet selected');
                   setSelectedNetwork('MEZO_TESTNET');
                 }}
+                disabled={isProcessing || isConnected}
                 style={{
                   flex: 1,
                   padding: '12px',
@@ -571,8 +591,13 @@ function AttachBountyContent() {
             />
           </div>
 
-          <button className="btn btn-primary btn-full" onClick={fundBounty}>
-            Fund Bounty
+          <button 
+            className="btn btn-primary btn-full" 
+            onClick={fundBounty}
+            disabled={isProcessing}
+            style={{ opacity: isProcessing ? 0.6 : 1, cursor: isProcessing ? 'not-allowed' : 'pointer' }}
+          >
+            {isProcessing ? 'Processing...' : 'Fund Bounty'}
           </button>
         </>
       )}
