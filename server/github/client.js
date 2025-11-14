@@ -33,6 +33,9 @@ export function getGitHubApp() {
  * Get Octokit instance for a specific installation
  */
 export async function getOctokit(installationId) {
+  if (!githubApp) {
+    throw new Error('GitHub App not initialized. Check your GitHub App configuration.');
+  }
   return await githubApp.getInstallationOctokit(installationId);
 }
 

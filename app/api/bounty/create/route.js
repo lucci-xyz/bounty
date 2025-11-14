@@ -2,6 +2,7 @@ import { getSession } from '@/lib/session';
 import { bountyQueries } from '@/server/db/prisma';
 import { handleBountyCreated } from '@/server/github/webhooks';
 import { computeBountyIdOnNetwork, createRepoIdHash } from '@/server/blockchain/contract';
+import { getGitHubApp, initGitHubApp } from '@/server/github/client';
 import { CONFIG } from '@/server/config';
 
 /**
@@ -57,19 +58,36 @@ export async function POST(request) {
       tokenSymbol
     });
 
-    // Post GitHub comment
-    await handleBountyCreated({
-      repoFullName,
-      issueNumber,
-      bountyId,
-      amount,
-      deadline,
-      sponsorAddress,
-      txHash,
-      installationId,
-      network,
-      tokenSymbol
-    });
+    // Post GitHub comment (skip in local mode or if no installation)
+    if (installationId && installationId > 0) {
+      try {
+        // Initialize GitHub App if needed
+        try {
+          getGitHubApp();
+        } catch {
+          console.log('📱 Initializing GitHub App...');
+          initGitHubApp();
+        }
+
+        await handleBountyCreated({
+          repoFullName,
+          issueNumber,
+          bountyId,
+          amount,
+          deadline,
+          sponsorAddress,
+          txHash,
+          installationId,
+          network,
+          tokenSymbol
+        });
+      } catch (githubError) {
+        console.warn('⚠️ Failed to post GitHub comment (non-critical):', githubError.message);
+        // Don't fail the entire request if GitHub comment fails
+      }
+    } else {
+      console.log('⏭️ Skipping GitHub comment (no installation ID)');
+    }
 
     return Response.json({
       success: true,
