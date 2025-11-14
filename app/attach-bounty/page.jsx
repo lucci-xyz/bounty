@@ -69,9 +69,19 @@ function AttachBountyContent() {
       // Check and switch network if needed
       if (chain?.id !== networkConfig.chainId) {
         showStatus(`Switching to ${networkConfig.name}...`, 'loading');
-        await switchChain({ chainId: networkConfig.chainId });
-        // Wait a bit for network switch to complete
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+          await switchChain({ chainId: networkConfig.chainId });
+          // Wait a bit for network switch to complete
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (switchError) {
+          console.error('Network switch error:', switchError);
+          throw new Error(`Failed to switch to ${networkConfig.name}. Please switch manually in your wallet.`);
+        }
+      }
+      
+      // Verify we're on the correct network after switch
+      if (chain?.id !== networkConfig.chainId) {
+        throw new Error(`Please switch to ${networkConfig.name} (Chain ID: ${networkConfig.chainId}) in your wallet before continuing.`);
       }
 
       console.log('Network check:', {
@@ -124,19 +134,37 @@ function AttachBountyContent() {
       console.log('Token balance:', ethers.formatUnits(balance, contractConfig.tokenDecimals), contractConfig.tokenSymbol);
 
       if (balance < amountWei) {
-        throw new Error(`Insufficient ${contractConfig.tokenSymbol} balance. You have ${ethers.formatUnits(balance, contractConfig.tokenDecimals)} ${contractConfig.tokenSymbol}`);
+        throw new Error(`Insufficient ${contractConfig.tokenSymbol} balance. You have ${ethers.formatUnits(balance, contractConfig.tokenDecimals)} ${contractConfig.tokenSymbol}, but need ${ethers.formatUnits(amountWei, contractConfig.tokenDecimals)}.`);
       }
 
-      showStatus(`Approving ${contractConfig.tokenSymbol}...`, 'loading');
+      // Check current allowance
+      const currentAllowance = await token.allowance(address, contractConfig.escrow);
+      console.log('Current allowance:', ethers.formatUnits(currentAllowance, contractConfig.tokenDecimals), contractConfig.tokenSymbol);
 
-      try {
-        const approveTx = await token.approve(contractConfig.escrow, amountWei);
-        console.log('Approve tx sent:', approveTx.hash);
-        await approveTx.wait();
-        console.log('Approve tx confirmed');
-      } catch (approveError) {
-        console.error('Approval error:', approveError);
-        throw new Error(`Failed to approve ${contractConfig.tokenSymbol}: ${approveError.message || 'Transaction rejected'}`);
+      // Only approve if needed
+      if (currentAllowance < amountWei) {
+        showStatus(`Approving ${contractConfig.tokenSymbol}...`, 'loading');
+        
+        try {
+          const approveTx = await token.approve(contractConfig.escrow, amountWei);
+          console.log('Approve tx sent:', approveTx.hash);
+          await approveTx.wait();
+          console.log('Approve tx confirmed');
+        } catch (approveError) {
+          console.error('Approval error:', approveError);
+          
+          // Parse the error to provide better feedback
+          let errorMsg = 'Transaction rejected or failed';
+          if (approveError.code === 'ACTION_REJECTED') {
+            errorMsg = 'Transaction rejected by user';
+          } else if (approveError.message) {
+            errorMsg = approveError.message.substring(0, 100);
+          }
+          
+          throw new Error(`Failed to approve ${contractConfig.tokenSymbol}: ${errorMsg}`);
+        }
+      } else {
+        console.log('Sufficient allowance already exists, skipping approval');
       }
 
       showStatus('Creating bounty on-chain...', 'loading');
@@ -165,12 +193,30 @@ function AttachBountyContent() {
         const isPaused = await escrow.paused();
         console.log('Contract paused status:', isPaused);
         if (isPaused) {
-          throw new Error('Contract is currently paused. Please try again later.');
+          throw new Error(`The ${networkConfig.name} bounty contract is currently paused for maintenance. Please try again later or contact support.`);
         }
       } catch (pauseError) {
-        console.warn('Could not check paused status (contract may not have this function):', pauseError.message);
+        // If the paused() check fails, the contract might not have this function (unlikely but possible)
+        if (!pauseError.message.includes('paused')) {
+          console.warn('Could not check paused status:', pauseError.message);
+        } else {
+          throw pauseError;
+        }
       }
 
+      // Validate parameters before any transactions
+      if (!ethers.isAddress(address)) {
+        throw new Error('Invalid wallet address. Please reconnect your wallet.');
+      }
+      
+      if (!ethers.isAddress(contractConfig.escrow)) {
+        throw new Error(`Invalid escrow contract address for ${networkConfig.name}. Please contact support.`);
+      }
+      
+      if (deadlineTimestamp <= blockTimestamp) {
+        throw new Error('Deadline must be in the future. Please select a later date.');
+      }
+      
       // Check if bounty already exists
       const bountyId = await escrow.computeBountyId(address, repoIdHash, parseInt(issueNumber));
       console.log('Computed bountyId:', bountyId);
@@ -178,11 +224,17 @@ function AttachBountyContent() {
       try {
         const existingBounty = await escrow.getBounty(bountyId);
         if (existingBounty.status !== 0) { // 0 = None/doesn't exist
-          throw new Error('A bounty for this issue already exists. You can top it up instead of creating a new one.');
+          const statusNames = ['None', 'Open', 'Resolved', 'Refunded', 'Canceled'];
+          const statusName = statusNames[existingBounty.status] || 'Unknown';
+          throw new Error(`A bounty for this issue already exists with status: ${statusName}. You cannot create a duplicate bounty.`);
         }
       } catch (bountyCheckError) {
         // If getBounty fails, the bounty likely doesn't exist, which is good
-        console.log('Bounty does not exist yet (expected)');
+        if (!bountyCheckError.message.includes('already exists')) {
+          console.log('Bounty does not exist yet (expected)');
+        } else {
+          throw bountyCheckError;
+        }
       }
 
       console.log('CreateBounty parameters:', {
@@ -256,41 +308,100 @@ function AttachBountyContent() {
         console.log('CreateBounty tx confirmed');
       } catch (contractError) {
         console.error('Contract call error:', contractError);
-        throw new Error(`Contract call failed: ${contractError.reason || contractError.message || 'Unknown error'}`);
+        
+        // Parse the error to provide helpful feedback
+        let errorMsg = 'Unknown error';
+        
+        if (contractError.code === 'ACTION_REJECTED') {
+          errorMsg = 'Transaction was rejected in your wallet';
+        } else if (contractError.reason) {
+          errorMsg = contractError.reason;
+        } else if (contractError.message) {
+          const msg = contractError.message;
+          
+          // Extract useful error info
+          if (msg.includes('insufficient funds')) {
+            errorMsg = 'Insufficient ETH/BTC for gas fees';
+          } else if (msg.includes('AlreadyExists')) {
+            errorMsg = 'Bounty already exists for this issue';
+          } else if (msg.includes('InvalidParams')) {
+            errorMsg = 'Invalid parameters - check deadline and amount';
+          } else if (msg.includes('ZeroAddress')) {
+            errorMsg = 'Invalid address provided';
+          } else if (msg.includes('execution reverted')) {
+            errorMsg = 'Contract rejected the transaction - check all parameters are correct';
+          } else if (msg.includes('missing revert data')) {
+            errorMsg = 'Transaction simulation failed - the contract may not exist or parameters are invalid';
+          } else {
+            errorMsg = msg.substring(0, 150);
+          }
+        }
+        
+        throw new Error(`Contract call failed: ${errorMsg}`);
       }
 
       showStatus('Recording bounty in database...', 'loading');
 
-      const response = await fetch('/api/bounty/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          repoFullName,
-          repoId: parseInt(repoId),
-          issueNumber: parseInt(issueNumber),
-          sponsorAddress: address,
-          amount: amountWei.toString(),
-          deadline: deadlineTimestamp,
-          txHash: receipt.hash,
-          installationId: parseInt(installationId) || 0,
-          network: selectedNetwork,
-          tokenSymbol: contractConfig.tokenSymbol
-        })
-      });
+      try {
+        const response = await fetch('/api/bounty/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            repoFullName,
+            repoId: parseInt(repoId),
+            issueNumber: parseInt(issueNumber),
+            sponsorAddress: address,
+            amount: amountWei.toString(),
+            deadline: deadlineTimestamp,
+            txHash: receipt.hash,
+            installationId: parseInt(installationId) || 0,
+            network: selectedNetwork,
+            tokenSymbol: contractConfig.tokenSymbol
+          })
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to record bounty');
+        if (!response.ok) {
+          const error = await response.json();
+          console.error('Database recording failed:', error);
+          
+          // Transaction succeeded on-chain but DB failed - still show as success with warning
+          showStatus(`⚠️ Bounty created on-chain but database sync failed. Tx: ${receipt.hash.slice(0, 10)}...`, 'error');
+          
+          setTimeout(() => {
+            window.open(`https://github.com/${repoFullName}/issues/${issueNumber}`, '_self');
+          }, 4000);
+          return; // Exit early, don't throw
+        }
+
+        showStatus('✅ Bounty created! Redirecting...', 'success');
+
+        setTimeout(() => {
+          window.open(`https://github.com/${repoFullName}/issues/${issueNumber}`, '_self');
+        }, 2000);
+      } catch (dbError) {
+        console.error('Database error:', dbError);
+        
+        // Transaction succeeded on-chain but DB failed
+        showStatus(`⚠️ Bounty created on-chain but database recording failed. Transaction: ${receipt.hash}`, 'error');
+        
+        setTimeout(() => {
+          window.open(`https://github.com/${repoFullName}/issues/${issueNumber}`, '_self');
+        }, 4000);
       }
-
-      showStatus('✅ Bounty created! Redirecting...', 'success');
-
-      setTimeout(() => {
-        window.open(`https://github.com/${repoFullName}/issues/${issueNumber}`, '_self');
-      }, 2000);
     } catch (error) {
       console.error('Bounty creation error:', error);
-      showStatus(error.message || 'Failed to create bounty', 'error');
+      
+      // Format error message for user display
+      let userMessage = error.message || 'Failed to create bounty';
+      
+      // Add helpful context
+      if (userMessage.includes('network')) {
+        userMessage += ` Make sure you're connected to ${networkConfig.name}.`;
+      } else if (userMessage.includes('balance')) {
+        userMessage += ' Please add more funds to your wallet.';
+      }
+      
+      showStatus(userMessage, 'error');
     }
   };
 
