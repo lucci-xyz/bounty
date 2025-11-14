@@ -40,18 +40,10 @@ export default function LinkWallet() {
   useEffect(() => {
     setIsMounted(true);
     
-    console.log('Environment check:', {
-      NEXT_PUBLIC_ENV_TARGET: process.env.NEXT_PUBLIC_ENV_TARGET,
-      isLocal,
-      githubUser
-    });
-    
-    // Check for returnTo parameter
     const params = new URLSearchParams(window.location.search);
     const returnToParam = params.get('returnTo');
     if (returnToParam) {
       setReturnTo(returnToParam);
-      console.log('Will redirect to:', returnToParam);
     }
     
     checkGitHubAuth();
@@ -60,7 +52,6 @@ export default function LinkWallet() {
   // Auto-link wallet when both GitHub and wallet are connected
   useEffect(() => {
     if (githubUser && isConnected && address && walletClient && !linked && !isProcessing) {
-      console.log('Auto-linking wallet...');
       linkWallet();
     }
   }, [githubUser, isConnected, address, walletClient, linked, isProcessing]);
@@ -92,9 +83,7 @@ export default function LinkWallet() {
   };
 
   const linkWallet = async () => {
-    // Prevent double-clicking
     if (isProcessing) {
-      console.log('Already processing, ignoring');
       return;
     }
     

@@ -9,14 +9,10 @@ const prisma = new PrismaClient();
  */
 export async function initDB() {
   try {
-    console.log('🔄 Initializing Postgres database...');
-    
-    // Prisma automatically handles schema migrations
-    // Just test the connection
     await prisma.$connect();
-    console.log('✅ Postgres database connected');
+    console.log('Database connected');
   } catch (error) {
-    console.error('❌ Failed to connect to Postgres database:', error);
+    console.error('Failed to connect to database:', error.message);
     throw error;
   }
 }

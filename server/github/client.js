@@ -15,7 +15,7 @@ export function initGitHubApp() {
     }
   });
 
-  console.log('✅ GitHub App initialized');
+  console.log('GitHub App initialized');
   return githubApp;
 }
 

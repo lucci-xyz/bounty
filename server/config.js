@@ -90,18 +90,18 @@ export function validateConfig() {
       value = value?.[k];
     }
     if (!value) {
-      console.error(`❌ Missing required config: ${key}`);
+      console.error(`Missing required config: ${key}`);
       return false;
     }
   }
 
   // Validate callback targets conditionally
   if (CONFIG.envTarget === 'stage' && !CONFIG.stageCallbackUrl) {
-    console.error('❌ Missing required config: stageCallbackUrl (STAGE_CALLBACK_URL)');
+    console.error('Missing required config: stageCallbackUrl (STAGE_CALLBACK_URL)');
     return false;
   }
   if (CONFIG.envTarget === 'prod' && !CONFIG.prodCallbackUrl) {
-    console.error('❌ Missing required config: prodCallbackUrl (PROD_CALLBACK_URL)');
+    console.error('Missing required config: prodCallbackUrl (PROD_CALLBACK_URL)');
     return false;
   }
 

@@ -92,10 +92,10 @@ ${context ? `\n### Additional Context\n${context}` : ''}
 
   try {
     await postIssueComment(octokit, owner, repo, issueNumber, comment);
-    console.log(`📧 Maintainers notified of ${severity} severity error ${errorId} on issue #${issueNumber}`);
+    console.log(`Maintainer notification posted: ${errorId}`);
     return errorId;
   } catch (notifyError) {
-    console.error(`Failed to notify maintainers:`, notifyError);
+    console.error('Failed to notify maintainers:', notifyError.message);
     return null;
   }
 }
@@ -134,23 +134,19 @@ function formatAmountByToken(amount, tokenSymbol) {
 export async function handleIssueOpened(payload) {
   const { issue, repository, installation } = payload;
   
-  console.log(`📝 Issue opened: ${repository.full_name}#${issue.number}`);
-  
   try {
-  const octokit = await getOctokit(installation.id);
-  const [owner, repo] = repository.full_name.split('/');
-  
-  // Post "Attach Bounty" button comment
-  const attachUrl = `${FRONTEND_BASE}/attach-bounty?repo=${encodeURIComponent(repository.full_name)}&issue=${issue.number}&repoId=${repository.id}&installationId=${installation.id}`;
-  
+    const octokit = await getOctokit(installation.id);
+    const [owner, repo] = repository.full_name.split('/');
+    
+    const attachUrl = `${FRONTEND_BASE}/attach-bounty?repo=${encodeURIComponent(repository.full_name)}&issue=${issue.number}&repoId=${repository.id}&installationId=${installation.id}`;
+    
     const comment = `<a href="${attachUrl}" target="_blank" rel="noopener noreferrer"><img src="${CTA_BUTTON}" alt="Create a bounty button" /></a>
 
 ${BRAND_SIGNATURE}`;
 
-  await postIssueComment(octokit, owner, repo, issue.number, comment);
+    await postIssueComment(octokit, owner, repo, issue.number, comment);
   } catch (error) {
-    console.error('Failed to post bounty button:', error);
-    // Non-critical error, don't notify team
+    console.error('Failed to post bounty button:', error.message);
   }
 }
 
@@ -159,8 +155,6 @@ ${BRAND_SIGNATURE}`;
  */
 export async function handleBountyCreated(bountyData) {
   const { repoFullName, issueNumber, bountyId, amount, deadline, sponsorAddress, txHash, installationId, network = 'BASE_SEPOLIA', tokenSymbol = 'USDC' } = bountyData;
-  
-  console.log(`💰 Bounty created: ${repoFullName}#${issueNumber}`);
   
   try {
   const octokit = await getOctokit(installationId);
@@ -199,17 +193,16 @@ ${BRAND_SIGNATURE}`;
       '83EEE8',
       'Active bounty amount'
     );
-    await addLabels(octokit, owner, repo, issueNumber, [labelName]);
-  } catch (error) {
-    console.error('Error adding label:', error.message);
-      // Non-critical, don't notify
-  }
-  
-  // Update DB with comment ID
+      await addLabels(octokit, owner, repo, issueNumber, [labelName]);
+    } catch (error) {
+      // Non-critical, don't log
+    }
+    
+    // Update DB with comment ID
     try {
-  await bountyQueries.updatePinnedComment(bountyId, comment.id);
+      await bountyQueries.updatePinnedComment(bountyId, comment.id);
     } catch (dbError) {
-      console.error('Failed to update pinned comment ID:', dbError);
+      console.error('Failed to update pinned comment ID:', dbError.message);
       
       // Notify maintainers about DB sync issue
       await notifyMaintainers(octokit, owner, repo, issueNumber, {
@@ -223,9 +216,9 @@ ${BRAND_SIGNATURE}`;
       });
     }
   
-  return comment;
+    return comment;
   } catch (error) {
-    console.error('Error in handleBountyCreated:', error);
+    console.error('Error in handleBountyCreated:', error.message);
     
     // Try to notify maintainers
     try {
@@ -242,7 +235,7 @@ ${BRAND_SIGNATURE}`;
         context: `**Sponsor:** ${sponsorAddress}\n**Amount:** ${formatAmountByToken(amount, tokenSymbol)} ${tokenSymbol}\n\nThe bounty was created on-chain (tx: ${txHash}), but posting the notification comment failed. Users may not know about the bounty.`
       });
     } catch (notifyError) {
-      console.error('Could not notify maintainers:', notifyError);
+      console.error('Could not notify maintainers:', notifyError.message);
     }
     
     throw error;
@@ -255,37 +248,27 @@ ${BRAND_SIGNATURE}`;
 export async function handlePROpened(payload) {
   const { pull_request, repository, installation } = payload;
   
-  console.log(`🔀 PR opened: ${repository.full_name}#${pull_request.number}`);
-  
   try {
     const octokit = await getOctokit(installation.id);
     const [owner, repo] = repository.full_name.split('/');
     
-    // Get ALL open bounties in this repository
     const environment = process.env.ENV_TARGET || 'stage';
     const allOpenBounties = await bountyQueries.getAllOpen(repository.id, environment);
     
     if (allOpenBounties.length === 0) {
-      console.log('No open bounties in this repository');
-      return; // No bounties to process
+      return;
     }
     
-    console.log(`Found ${allOpenBounties.length} open bounties in repository`);
-    
-    // Strategy 1: Check for explicit "Closes #X" references
     const closedIssues = extractClosedIssues(pull_request.body);
-    
-    // Strategy 2: Check for ANY issue mentions in title or body
     const mentionedIssues = extractMentionedIssues(pull_request.title, pull_request.body);
     
-    // Strategy 3: Check if there's only ONE open bounty - auto-link it!
+    // Auto-link if only one bounty exists
     if (allOpenBounties.length === 1 && closedIssues.length === 0 && mentionedIssues.length === 0) {
-      console.log(`Only 1 open bounty exists (issue #${allOpenBounties[0].issueNumber}), auto-linking...`);
       await handlePRWithBounties(octokit, owner, repo, pull_request, repository, allOpenBounties);
       return;
     }
     
-    // Strategy 4: Try to match mentioned issues to bounties
+    // Match mentioned issues to bounties
     const matchedBounties = [];
     const issueNumbersToCheck = [...new Set([...closedIssues, ...mentionedIssues])];
     
@@ -295,16 +278,13 @@ export async function handlePROpened(payload) {
     }
     
     if (matchedBounties.length > 0) {
-      // Found bounties for mentioned issues - auto-link them!
-      console.log(`Auto-linking ${matchedBounties.length} bounties based on issue mentions`);
       await handlePRWithBounties(octokit, owner, repo, pull_request, repository, matchedBounties);
       return;
     }
     
-    // Strategy 5: No automatic match found - suggest available bounties
     await suggestBounties(octokit, owner, repo, pull_request, allOpenBounties);
   } catch (error) {
-    console.error('Error in handlePROpened:', error);
+    console.error('Error in handlePROpened:', error.message);
     
     try {
       const octokit = await getOctokit(installation.id);
@@ -421,7 +401,7 @@ ${BRAND_SIGNATURE}`;
         repository.full_name
       );
     } catch (claimError) {
-      console.error(`Failed to record PR claim:`, claimError);
+      console.error('Failed to record PR claim:', claimError.message);
       
       await notifyMaintainers(octokit, owner, repo, pull_request.number, {
         errorType: 'PR Claim Recording Failed',
@@ -444,12 +424,10 @@ export async function handlePRMerged(payload) {
   const { pull_request, repository, installation } = payload;
   
   if (!pull_request.merged) {
-    return; // PR was closed but not merged
+    return;
   }
   
-  console.log(`✅ PR merged: ${repository.full_name}#${pull_request.number}`);
-  
-  try {
+  try{
   // Find PR claims
   const claims = await prClaimQueries.findByPR(repository.full_name, pull_request.number);
   
@@ -464,22 +442,13 @@ export async function handlePRMerged(payload) {
   for (const claim of claims) {
       const bounty = await bountyQueries.findById(claim.bountyId);
       
-      if (!bounty) {
-        console.log(`⚠️ Bounty ${claim.bountyId} not found in database`);
+      if (!bounty || bounty.status !== 'open') {
         continue;
       }
       
-      if (bounty.status !== 'open') {
-        console.log(`⚠️ Bounty ${bounty.bountyId} is not open (status: ${bounty.status})`);
-        continue;
-    }
-    
-    // Get solver's wallet
       const walletMapping = await walletQueries.findByGithubId(claim.prAuthorGithubId);
     
-    if (!walletMapping) {
-      // No wallet linked - post reminder
-        console.log(`⚠️ User ${claim.prAuthorGithubId} has no linked wallet`);
+      if (!walletMapping) {
         const prUrl = `https://github.com/${repository.full_name}/pull/${pull_request.number}`;
       const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Wallet Missing
 
@@ -497,9 +466,8 @@ ${BRAND_SIGNATURE}`;
         continue;
       }
       
-      // Validate wallet address format
       if (!ethers.isAddress(walletMapping.walletAddress)) {
-        console.error(`❌ Invalid wallet address for user ${claim.prAuthorGithubId}: ${walletMapping.walletAddress}`);
+        console.error('Invalid wallet address in database');
         const prUrl = `https://github.com/${repository.full_name}/pull/${pull_request.number}`;
         const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Invalid Wallet
 
@@ -531,18 +499,15 @@ ${BRAND_SIGNATURE}`;
       continue;
     }
       
-      console.log(`💰 Attempting to resolve bounty ${bounty.bountyId} to ${walletMapping.walletAddress}`);
-    
-    // Resolve bounty on-chain on the correct network
       let result;
       try {
         result = await resolveBountyOnNetwork(
           bounty.bountyId,
           walletMapping.walletAddress,
-      bounty.network || 'BASE_SEPOLIA'
-    );
+          bounty.network || 'BASE_SEPOLIA'
+        );
       } catch (error) {
-        console.error(`❌ Exception during bounty resolution:`, error);
+        console.error('Exception during bounty resolution:', error.message);
         result = { success: false, error: error.message || 'Unknown error during resolution' };
       }
     
@@ -579,9 +544,8 @@ ${BRAND_SIGNATURE}`;
 
           await updateComment(octokit, owner, repo, bounty.pinnedCommentId, updatedSummary);
       }
-    } else {
-        // Payout failed - provide helpful error message
-        console.error(`❌ Bounty resolution failed:`, result.error);
+      } else {
+        console.error('Bounty resolution failed:', result.error);
         
         let errorHelp = 'Tag a maintainer to investigate and replay the payout.';
         let notifySeverity = 'high';
@@ -643,7 +607,7 @@ ${BRAND_SIGNATURE}`;
       }
     }
   } catch (error) {
-    console.error('Error in handlePRMerged:', error);
+    console.error('Error in handlePRMerged:', error.message);
     
     // Try to notify maintainers
     try {
@@ -659,7 +623,7 @@ ${BRAND_SIGNATURE}`;
         context: `**Repository:** ${repository.full_name}\n**PR Title:** ${pull_request.title}\n**PR Merged:** Yes\n\nFailed to process merged PR event. Bounty payouts may not have been triggered.`
       });
     } catch (notifyError) {
-      console.error('Could not notify maintainers:', notifyError);
+      console.error('Could not notify maintainers:', notifyError.message);
     }
     
     throw error;
@@ -671,15 +635,12 @@ ${BRAND_SIGNATURE}`;
  */
 export async function handleWebhook(event, payload) {
   try {
-    // GitHub sends event type + action in payload
     const action = payload.action;
     
     switch (event) {
       case 'issues':
         if (action === 'opened') {
           await handleIssueOpened(payload);
-        } else {
-          console.log(`Unhandled issues action: ${action}`);
         }
         break;
         
@@ -688,25 +649,23 @@ export async function handleWebhook(event, payload) {
           await handlePROpened(payload);
         } else if (action === 'closed' && payload.pull_request?.merged) {
           await handlePRMerged(payload);
-        } else {
-          console.log(`Unhandled pull_request action: ${action}`);
         }
         break;
         
       case 'ping':
-        console.log('✅ Webhook ping received - connection successful!');
+        console.log('Webhook ping received');
         break;
         
       case 'installation':
       case 'installation_repositories':
-        console.log(`✅ GitHub App ${action || 'event'} - installation successful!`);
+        console.log('GitHub App installation event');
         break;
 
       default:
-        console.log(`Unhandled event: ${event}`);
+        break;
     }
   } catch (error) {
-    console.error(`Error handling webhook ${event}:`, error);
+    console.error('Error handling webhook:', error.message);
     
     // Try to notify maintainers if we have enough context
     try {
@@ -729,7 +688,7 @@ export async function handleWebhook(event, payload) {
         }
       }
     } catch (notifyError) {
-      console.error('Could not notify maintainers of webhook error:', notifyError);
+      console.error('Could not notify maintainers of webhook error:', notifyError.message);
     }
     
     throw error;

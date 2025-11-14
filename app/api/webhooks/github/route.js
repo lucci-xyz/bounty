@@ -16,20 +16,10 @@ export async function POST(request) {
     
     const signature = request.headers.get('x-hub-signature-256');
     const event = request.headers.get('x-github-event');
-    const id = request.headers.get('x-github-delivery');
 
-    console.log(`\n📬 Webhook received: ${event} (${id})`);
-    console.log(`   Signature present: ${signature ? 'yes' : 'NO'}`);
-    console.log(`   Webhook secret configured: ${githubApp.webhooks.secret ? 'yes' : 'NO'}`);
-
-    // Get raw body for signature verification
     const rawBody = await request.text();
-    console.log(`   Body length: ${rawBody.length} bytes`);
     
-    // Verify webhook signature using raw body
     await githubApp.webhooks.verify(rawBody, signature);
-
-    console.log(`   ✅ Signature verified`);
 
     // Parse the body for handling
     const body = JSON.parse(rawBody);

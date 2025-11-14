@@ -51,9 +51,7 @@ function AttachBountyContent() {
   };
 
   const fundBounty = async () => {
-    // Prevent double-clicking
     if (isProcessing) {
-      console.log('Already processing, ignoring click');
       return;
     }
     
@@ -88,10 +86,8 @@ function AttachBountyContent() {
           // Wait longer for network switch to complete and wallet state to sync
           await new Promise(resolve => setTimeout(resolve, 2000));
           
-          // Refresh the page after network switch to ensure clean state
-          console.log('Network switched, reloading to sync state...');
           window.location.reload();
-          return; // Exit early, page will reload
+          return;
         } catch (switchError) {
           console.error('Network switch error:', switchError);
           throw new Error(`Failed to switch to ${networkConfig.name}. Please switch manually in your wallet and refresh the page.`);
@@ -103,13 +99,6 @@ function AttachBountyContent() {
         throw new Error(`Please switch to ${networkConfig.name} (Chain ID: ${networkConfig.chainId}) in your wallet and refresh the page.`);
       }
 
-      console.log('Network check:', {
-        currentChainId: chain?.id,
-        targetChainId: networkConfig.chainId,
-        network: selectedNetwork,
-        tokenContract: contractConfig.token,
-        escrowContract: contractConfig.escrow
-      });
 
       // Create provider and signer using walletClient
       const provider = new ethers.BrowserProvider(walletClient);
@@ -131,13 +120,6 @@ function AttachBountyContent() {
         deadlineTimestamp = minDeadline;
       }
       
-      console.log('Deadline validation:', {
-        blockTimestamp,
-        blockTime: new Date(blockTimestamp * 1000).toISOString(),
-        deadlineTimestamp,
-        deadlineTime: new Date(deadlineTimestamp * 1000).toISOString(),
-        isValid: deadlineTimestamp > blockTimestamp
-      });
       
       const amountWei = ethers.parseUnits(amount, contractConfig.tokenDecimals);
 
@@ -150,15 +132,12 @@ function AttachBountyContent() {
       ], signer);
 
       const balance = await token.balanceOf(address);
-      console.log('Token balance:', ethers.formatUnits(balance, contractConfig.tokenDecimals), contractConfig.tokenSymbol);
 
       if (balance < amountWei) {
         throw new Error(`Insufficient ${contractConfig.tokenSymbol} balance. You have ${ethers.formatUnits(balance, contractConfig.tokenDecimals)} ${contractConfig.tokenSymbol}, but need ${ethers.formatUnits(amountWei, contractConfig.tokenDecimals)}.`);
       }
 
-      // Check current allowance
       const currentAllowance = await token.allowance(address, contractConfig.escrow);
-      console.log('Current allowance:', ethers.formatUnits(currentAllowance, contractConfig.tokenDecimals), contractConfig.tokenSymbol);
 
       // Only approve if needed
       if (currentAllowance < amountWei) {
@@ -166,9 +145,7 @@ function AttachBountyContent() {
         
         try {
           const approveTx = await token.approve(contractConfig.escrow, amountWei);
-          console.log('Approve tx sent:', approveTx.hash);
           await approveTx.wait();
-          console.log('Approve tx confirmed');
         } catch (approveError) {
           console.error('Approval error:', approveError);
           
@@ -182,8 +159,6 @@ function AttachBountyContent() {
           
           throw new Error(`Failed to approve ${contractConfig.tokenSymbol}: ${errorMsg}`);
         }
-      } else {
-        console.log('Sufficient allowance already exists, skipping approval');
       }
 
       showStatus('Creating bounty on-chain...', 'loading');
@@ -205,12 +180,10 @@ function AttachBountyContent() {
       if (code === '0x') {
         throw new Error(`No contract found at ${contractConfig.escrow} on ${networkConfig.name}. The contract may not be deployed on this network.`);
       }
-      console.log('Contract exists at', contractConfig.escrow);
       
       // Check if contract is paused
       try {
         const isPaused = await escrow.paused();
-        console.log('Contract paused status:', isPaused);
         if (isPaused) {
           throw new Error(`The ${networkConfig.name} bounty contract is currently paused for maintenance. Please try again later or contact support.`);
         }
@@ -223,7 +196,6 @@ function AttachBountyContent() {
         }
       }
 
-      // Validate parameters before any transactions
       if (!ethers.isAddress(address)) {
         throw new Error('Invalid wallet address. Please reconnect your wallet.');
       }
@@ -236,48 +208,22 @@ function AttachBountyContent() {
         throw new Error('Deadline must be in the future. Please select a later date.');
       }
       
-      // Check if bounty already exists
       const bountyId = await escrow.computeBountyId(address, repoIdHash, parseInt(issueNumber));
-      console.log('Computed bountyId:', bountyId);
       
       try {
         const existingBounty = await escrow.getBounty(bountyId);
-        const status = Number(existingBounty.status); // Convert to number (could be BigInt)
+        const status = Number(existingBounty.status);
         
-        console.log('Existing bounty check:', {
-          status,
-          statusType: typeof existingBounty.status,
-          amount: existingBounty.amount.toString()
-        });
-        
-        // Status 0 = None (doesn't exist), 1 = Open, 2 = Resolved, etc.
         if (status !== 0 && status !== undefined && status !== null) {
           const statusNames = ['None', 'Open', 'Resolved', 'Refunded', 'Canceled'];
           const statusName = statusNames[status] || 'Unknown';
           throw new Error(`A bounty for this issue already exists with status: ${statusName}. You cannot create a duplicate bounty.`);
         }
-        
-        console.log('Bounty does not exist (status is None), proceeding...');
       } catch (bountyCheckError) {
-        // If getBounty fails or we threw the "already exists" error
         if (bountyCheckError.message && bountyCheckError.message.includes('already exists')) {
           throw bountyCheckError;
         }
-        // Otherwise, getBounty call failed, which likely means bounty doesn't exist (good)
-        console.log('Bounty check failed (bounty likely does not exist):', bountyCheckError.message);
       }
-
-      console.log('CreateBounty parameters:', {
-        resolver: address,
-        repoIdHash,
-        issueNumber: parseInt(issueNumber),
-        deadline: deadlineTimestamp,
-        deadlineDate: new Date(deadlineTimestamp * 1000).toISOString(),
-        currentTime: Math.floor(Date.now() / 1000),
-        amount: amountWei.toString(),
-        amountFormatted: ethers.formatUnits(amountWei, contractConfig.tokenDecimals),
-        escrowAddress: contractConfig.escrow
-      });
 
       let receipt;
       try {
@@ -291,7 +237,6 @@ function AttachBountyContent() {
               ? feeData.gasPrice
               : ethers.parseUnits('1', 'gwei');
 
-          // Encode the function call data
           const callData = escrow.interface.encodeFunctionData('createBounty', [
             address,
             repoIdHash,
@@ -299,9 +244,6 @@ function AttachBountyContent() {
             deadlineTimestamp,
             amountWei
           ]);
-
-          console.log('Encoded call data:', callData);
-          console.log('Call data length:', callData.length);
 
           const txRequest = {
             to: contractConfig.escrow,
@@ -314,13 +256,6 @@ function AttachBountyContent() {
             value: 0
           };
 
-          console.log('Transaction request:', {
-            to: txRequest.to,
-            dataLength: txRequest.data.length,
-            gasPrice: ethers.formatUnits(txRequest.gasPrice, 'gwei') + ' gwei',
-            gasLimit: txRequest.gasLimit
-          });
-
           tx = await signer.sendTransaction(txRequest);
         } else {
           // Default path uses RPC gas estimation
@@ -332,10 +267,8 @@ function AttachBountyContent() {
             amountWei
           );
         }
-        console.log('CreateBounty tx sent:', tx.hash);
 
         receipt = await tx.wait();
-        console.log('CreateBounty tx confirmed');
       } catch (contractError) {
         console.error('Contract call error:', contractError);
         
@@ -494,7 +427,6 @@ function AttachBountyContent() {
               <button
                 onClick={() => {
                   if (isProcessing || isConnected) return;
-                  console.log('Base Sepolia selected');
                   setSelectedNetwork('BASE_SEPOLIA');
                 }}
                 disabled={isProcessing || isConnected}
@@ -517,7 +449,6 @@ function AttachBountyContent() {
               <button
                 onClick={() => {
                   if (isProcessing || isConnected) return;
-                  console.log('Mezo Testnet selected');
                   setSelectedNetwork('MEZO_TESTNET');
                 }}
                 disabled={isProcessing || isConnected}
@@ -545,11 +476,8 @@ function AttachBountyContent() {
               <button
                 onClick={(e) => {
                   e.preventDefault();
-                  console.log('Connect Wallet clicked', { openConnectModal: typeof openConnectModal, isMounted });
                   if (openConnectModal) {
                     openConnectModal();
-                  } else {
-                    console.error('openConnectModal is not available');
                   }
                 }}
                 className="btn btn-primary btn-full"
@@ -574,11 +502,8 @@ function AttachBountyContent() {
                 <button
                   onClick={(e) => {
                     e.preventDefault();
-                    console.log('Change Wallet clicked', { openAccountModal: typeof openAccountModal });
                     if (openAccountModal) {
                       openAccountModal();
-                    } else {
-                      console.error('openAccountModal is not available');
                     }
                   }}
                   className="btn btn-secondary"
@@ -590,11 +515,8 @@ function AttachBountyContent() {
                 <button
                   onClick={(e) => {
                     e.preventDefault();
-                    console.log('Switch Network clicked', { openChainModal: typeof openChainModal });
                     if (openChainModal) {
                       openChainModal();
-                    } else {
-                      console.error('openChainModal is not available');
                     }
                   }}
                   className="btn btn-secondary"
