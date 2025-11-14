@@ -175,7 +175,7 @@ ${BRAND_SIGNATURE}`;
     const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Wallet Linked
 
 **Status:** Ready to pay  
-Linked wallet: \`${walletMapping.wallet_address.slice(0, 6)}...${walletMapping.wallet_address.slice(-4)}\`
+Linked wallet: \`${walletMapping.walletAddress.slice(0, 6)}...${walletMapping.walletAddress.slice(-4)}\`
 
 1. Keep the wallet connected.  
 2. Merge this PR and the payout triggers automatically.
@@ -188,7 +188,7 @@ ${BRAND_SIGNATURE}`;
   // Record PR claims
   for (const bounty of bounties) {
     await prClaimQueries.create(
-      bounty.bounty_id,
+      bounty.bountyId,
       pull_request.number,
       pull_request.user.id,
       repository.full_name
@@ -220,14 +220,14 @@ export async function handlePRMerged(payload) {
   
   // Process each claim
   for (const claim of claims) {
-    const bounty = await bountyQueries.findById(claim.bounty_id);
+    const bounty = await bountyQueries.findById(claim.bountyId);
     
     if (!bounty || bounty.status !== 'open') {
       continue; // Bounty doesn't exist or not open
     }
     
     // Get solver's wallet
-    const walletMapping = await walletQueries.findByGithubId(claim.pr_author_github_id);
+    const walletMapping = await walletQueries.findByGithubId(claim.prAuthorGithubId);
     
     if (!walletMapping) {
       // No wallet linked - post reminder
@@ -247,18 +247,18 @@ ${BRAND_SIGNATURE}`;
     
     // Resolve bounty on-chain on the correct network
     const result = await resolveBountyOnNetwork(
-      bounty.bounty_id,
-      walletMapping.wallet_address,
+      bounty.bountyId,
+      walletMapping.walletAddress,
       bounty.network || 'BASE_SEPOLIA'
     );
     
     if (result.success) {
       // Update DB
-      await bountyQueries.updateStatus(bounty.bounty_id, 'resolved', result.txHash);
+      await bountyQueries.updateStatus(bounty.bountyId, 'resolved', result.txHash);
       await prClaimQueries.updateStatus(claim.id, 'paid', result.txHash, Date.now());
       
       // Post success comment on PR
-      const tokenSymbol = bounty.token_symbol || 'USDC';
+      const tokenSymbol = bounty.tokenSymbol || 'USDC';
       const amountFormatted = formatAmountByToken(bounty.amount, tokenSymbol);
       const net = networkMeta(bounty.network || 'BASE_SEPOLIA');
       const successComment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Paid
@@ -271,7 +271,7 @@ ${BRAND_SIGNATURE}`;
       await postIssueComment(octokit, owner, repo, pull_request.number, successComment);
       
       // Update original issue's bounty comment
-      if (bounty.pinned_comment_id) {
+      if (bounty.pinnedCommentId) {
         const updatedSummary = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Closed
 
 **Paid:** ${amountFormatted} ${tokenSymbol} to @${pull_request.user.login}  
@@ -279,7 +279,7 @@ ${BRAND_SIGNATURE}`;
 
 ${BRAND_SIGNATURE}`;
 
-        await updateComment(octokit, owner, repo, bounty.pinned_comment_id, updatedSummary);
+        await updateComment(octokit, owner, repo, bounty.pinnedCommentId, updatedSummary);
       }
     } else {
       // Payout failed
