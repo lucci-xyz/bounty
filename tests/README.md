@@ -53,6 +53,8 @@ node --test --experimental-test-coverage tests/
 
 ## Test Data
 
+> **Note**: These tests use in-memory SQLite and may need updating to use Prisma + Postgres. The project has migrated from SQLite to Prisma, so test setup may require changes.
+
 Tests use in-memory SQLite databases with the following test scenario:
 
 - **USDC**: 5 bounties (3 resolved, 2 open)

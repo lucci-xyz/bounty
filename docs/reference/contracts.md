@@ -33,7 +33,7 @@ Quick reference for deployed BountyPay contracts on all supported networks.
   - `https://testnet-rpc.lavenderfive.com:443/mezo/` (Lavender.Five)
 - Block Explorer: [`https://explorer.test.mezo.org`](https://explorer.test.mezo.org)
 
-> **Note:** Boar Network (`rpc-http.mezo.boar.network`) is only available for Mezo **Mainnet** (Chain ID 31612), not testnet. You can customize the testnet RPC by setting `VITE_MEZO_RPC_URL` in your environment variables.
+> **Note:** Boar Network (`rpc-http.mezo.boar.network`) is only available for Mezo **Mainnet** (Chain ID 31612), not testnet. You can customize the testnet RPC by setting `NEXT_PUBLIC_MEZO_RPC_URL` in your environment variables.
 
 **Deployed Contracts:**
 

@@ -83,113 +83,100 @@ Common issues and solutions for BountyPay.
 
 ## Database Issues
 
-### Database Locked
+### Database Connection Issues
 
 **Symptoms:**
 
-- "SQLITE_BUSY" errors
+- "missing_connection_string" errors
+- "invalid_connection_string" errors
 - Database operations timing out
-- Application freezes
 
 **Solutions:**
 
-1. **Close other connections:**
+1. **Check environment variables:**
 
    ```bash
-   # Close any open SQLite connections
-   # Check for other processes using the database
-   lsof server/db/bounty.db
+   # Ensure both are set in .env or Vercel
+   DATABASE_URL=prisma+postgres://...
+   DIRECT_DATABASE_URL=postgres://...
    ```
 
-2. **Enable WAL mode:**
-
-   ```sql
-   PRAGMA journal_mode=WAL;
-   ```
-
-   (Should already be enabled, but verify)
-
-3. **Increase timeout:**
-
-   ```javascript
-   // In db/index.js, increase busy timeout
-   db.pragma('busy_timeout = 5000');
-   ```
-
-4. **Check file permissions:**
+2. **Regenerate Prisma Client:**
 
    ```bash
-   ls -la server/db/bounty.db
-   # Ensure file is writable
-   chmod 664 server/db/bounty.db
+   npx prisma generate
    ```
+
+3. **Test connection:**
+
+   ```bash
+   npx prisma db push
+   ```
+
+4. **Check Prisma Accelerate status:**
+   - Visit [Prisma Data Platform](https://console.prisma.io/)
+   - Verify your database is active
 
 ---
 
-### Database Not Found
+### Database Schema Out of Sync
 
 **Symptoms:**
 
-- "Database not found" errors
-- Empty query results
+- "Table does not exist" errors
+- Missing columns errors
 - Tables don't exist
 
 **Solutions:**
 
-1. **Run migrations:**
+1. **Push schema to database:**
 
    ```bash
-   npm run migrate
+   npx prisma db push
    ```
 
-2. **Check database path:**
+2. **Check Prisma schema:**
 
    ```bash
-   # Verify DATABASE_PATH in .env
-   echo $DATABASE_PATH
-   # Or check default location
-   ls -la server/db/bounty.db
+   # Verify schema matches expected structure
+   cat prisma/schema.prisma
    ```
 
-3. **Recreate database:**
+3. **View database in Prisma Studio:**
 
    ```bash
-   rm server/db/bounty.db
-   npm run migrate
+   npx prisma studio
    ```
 
 ---
 
-### Database Corruption
+### Prisma Client Issues
 
 **Symptoms:**
 
-- Query errors
-- Inconsistent data
-- Application crashes
+- "PrismaClient is unable to run in this browser environment"
+- Import errors
+- Type errors
 
 **Solutions:**
 
-1. **Check integrity:**
-
-   ```sql
-   PRAGMA integrity_check;
-   ```
-
-2. **Backup and restore:**
+1. **Regenerate Prisma Client:**
 
    ```bash
-   # Backup
-   cp server/db/bounty.db server/db/bounty.db.backup
-   
-   # Try to recover
-   sqlite3 server/db/bounty.db ".recover" | sqlite3 server/db/bounty-recovered.db
+   npx prisma generate
    ```
 
-3. **If recovery fails, restore from backup:**
+2. **Clear Next.js cache:**
 
    ```bash
-   cp server/db/bounty.db.backup server/db/bounty.db
+   rm -rf .next
+   npm run build
+   ```
+
+3. **Verify Prisma Client import:**
+
+   ```javascript
+   import { prisma } from '@/server/db/prisma';
    ```
 
 ---

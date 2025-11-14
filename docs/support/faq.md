@@ -218,8 +218,10 @@ Yes, the code is open source. See the [Deployment Guide](../deployment/deploymen
 
 ### What's the tech stack?
 
-- **Backend**: Node.js, Express
-- **Database**: SQLite (PostgreSQL recommended for scale)
+- **Frontend**: Next.js 15 (React 19)
+- **Backend**: Next.js API Routes
+- **Database**: Prisma + Postgres
+- **Deployment**: Vercel
 - **Blockchain**: ethers.js v6
 - **Authentication**: SIWE, GitHub OAuth
 - **Smart Contracts**: Solidity, OpenZeppelin

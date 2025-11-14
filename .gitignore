@@ -16,6 +16,8 @@ package-lock.json
 public/dist/
 client/dist/
 dist/
+.next/
+out/
 
 # IDE
 .vscode/

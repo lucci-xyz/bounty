@@ -15,7 +15,7 @@ export function initGitHubApp() {
     }
   });
 
-  console.log('✅ GitHub App initialized');
+  console.log('GitHub App initialized');
   return githubApp;
 }
 
@@ -33,6 +33,9 @@ export function getGitHubApp() {
  * Get Octokit instance for a specific installation
  */
 export async function getOctokit(installationId) {
+  if (!githubApp) {
+    throw new Error('GitHub App not initialized. Check your GitHub App configuration.');
+  }
   return await githubApp.getInstallationOctokit(installationId);
 }
 
@@ -144,6 +147,21 @@ export function extractClosedIssues(prBody) {
   const matches = [...prBody.matchAll(regex)];
   
   return matches.map(match => parseInt(match[1]));
+}
+
+/**
+ * Extract ALL issue numbers mentioned in PR title or body
+ */
+export function extractMentionedIssues(prTitle, prBody) {
+  const text = `${prTitle} ${prBody || ''}`;
+  if (!text) return [];
+  
+  // Match any #123 pattern
+  const regex = /#(\d+)/g;
+  const matches = [...text.matchAll(regex)];
+  
+  // Return unique issue numbers
+  return [...new Set(matches.map(match => parseInt(match[1])))];
 }
 
 /**

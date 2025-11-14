@@ -1,0 +1,79 @@
+# ==============================================
+# BountyPay Environment Variables
+# Copy this to .env and fill in your values
+# ==============================================
+
+# ============== REQUIRED FOR ALL ENVIRONMENTS ==============
+
+# Session & Authentication
+SESSION_SECRET=                    # Random 32+ character string (generate with: openssl rand -hex 32)
+FRONTEND_URL=                      # Your app URL (e.g., http://localhost:3000 or https://yourdomain.com)
+
+# GitHub App
+GITHUB_APP_ID=                     # Your GitHub App ID
+GITHUB_PRIVATE_KEY=                # GitHub App private key (full PEM format, or path to .pem file)
+GITHUB_WEBHOOK_SECRET=             # Webhook secret (generate with: openssl rand -hex 32)
+GITHUB_CLIENT_ID=                  # GitHub OAuth client ID
+GITHUB_CLIENT_SECRET=              # GitHub OAuth client secret
+
+# Blockchain
+ESCROW_CONTRACT=                   # Escrow contract address (Base: 0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD)
+RESOLVER_PRIVATE_KEY=              # Private key for resolver wallet (needs ETH for gas)
+
+# Database - Prisma Postgres
+DATABASE_URL=                      # Prisma Accelerate connection string (prisma+postgres://...)
+DIRECT_DATABASE_URL=               # Direct Postgres connection string (postgres://...)
+
+# ============== ENVIRONMENT-SPECIFIC ==============
+
+# Environment Target (determines which GitHub App to use)
+ENV_TARGET=stage                   # Options: "stage" or "prod"
+
+# Callback URLs for GitHub Webhooks (only needed if proxying)
+# STAGE_CALLBACK_URL=              # Staging webhook callback URL
+# PROD_CALLBACK_URL=               # Production webhook callback URL
+
+# ============== OPTIONAL ==============
+
+# WalletConnect (for mobile wallet support)
+# NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=  # Get from https://cloud.reown.com
+
+# Network Configuration (defaults provided)
+# CHAIN_ID=84532                   # Default: Base Sepolia
+# RPC_URL=https://sepolia.base.org # Default: Base Sepolia RPC
+
+# Mezo Network (for client-side)
+# NEXT_PUBLIC_MEZO_RPC_URL=https://mezo-testnet.drpc.org
+
+# Cookie Domain (auto-detected from FRONTEND_URL if not set)
+# COOKIE_DOMAIN=                   # e.g., .yourdomain.com
+
+# ============== LOCAL DEVELOPMENT ==============
+# Use these values for local development:
+#
+# NODE_ENV=development
+# FRONTEND_URL=http://localhost:3000
+# SESSION_SECRET=your-local-dev-secret-32-chars-min
+# ENV_TARGET=stage
+# NEXT_PUBLIC_ENV_TARGET=local          # Set to "local" to enable wallet testing without GitHub auth
+#
+# Then expose your local server with ngrok:
+#   ngrok http 3000
+# And update FRONTEND_URL to your ngrok URL
+
+# ============== STAGING ==============
+# Use these values for staging deployment on Vercel:
+#
+# NODE_ENV=production
+# FRONTEND_URL=https://bounty-stage.yourdomain.com
+# ENV_TARGET=stage
+# (Use staging GitHub App credentials)
+
+# ============== PRODUCTION ==============
+# Use these values for production deployment on Vercel:
+#
+# NODE_ENV=production
+# FRONTEND_URL=https://bounty.yourdomain.com
+# ENV_TARGET=prod
+# (Use production GitHub App credentials)
+
