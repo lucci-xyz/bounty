@@ -184,6 +184,29 @@ export const bountyQueries = {
       updatedAt: Number(b.updatedAt),
       pinnedCommentId: b.pinnedCommentId ? Number(b.pinnedCommentId) : null
     }));
+  },
+
+  findAllOpen: async () => {
+    const environment = CONFIG.envTarget || 'stage';
+    const bounties = await prisma.bounty.findMany({
+      where: {
+        status: 'open',
+        environment: environment
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    
+    return bounties.map(b => ({
+      ...b,
+      repoId: Number(b.repoId),
+      sponsorGithubId: b.sponsorGithubId ? Number(b.sponsorGithubId) : null,
+      deadline: Number(b.deadline),
+      createdAt: Number(b.createdAt),
+      updatedAt: Number(b.updatedAt),
+      pinnedCommentId: b.pinnedCommentId ? Number(b.pinnedCommentId) : null
+    }));
   }
 };
 

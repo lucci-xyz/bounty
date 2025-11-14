@@ -16,6 +16,10 @@ export default function Home() {
             <GitHubIcon size={20} color="white" />
             Install GitHub App
           </a>
+          <Link href="/bounties" className="btn btn-secondary" style={{ fontSize: '18px', padding: '16px 32px' }}>
+            <TargetIcon size={20} />
+            View Open Bounties
+          </Link>
           <Link href="/link-wallet" className="btn btn-secondary" style={{ fontSize: '18px', padding: '16px 32px' }}>
             <WalletIcon size={20} />
             Link Your Wallet
