@@ -1,4 +1,4 @@
-import { getGitHubApp, getOctokit, postIssueComment, updateComment, addLabels, ensureLabel, extractClosedIssues } from './client.js';
+import { getGitHubApp, getOctokit, postIssueComment, updateComment, addLabels, ensureLabel, extractClosedIssues, extractMentionedIssues } from './client.js';
 import { bountyQueries, walletQueries, prClaimQueries } from '../db/prisma.js';
 import { resolveBountyOnNetwork } from '../blockchain/contract.js';
 import { ethers } from 'ethers';
@@ -137,17 +137,17 @@ export async function handleIssueOpened(payload) {
   console.log(`📝 Issue opened: ${repository.full_name}#${issue.number}`);
   
   try {
-    const octokit = await getOctokit(installation.id);
-    const [owner, repo] = repository.full_name.split('/');
-    
-    // Post "Attach Bounty" button comment
-    const attachUrl = `${FRONTEND_BASE}/attach-bounty?repo=${encodeURIComponent(repository.full_name)}&issue=${issue.number}&repoId=${repository.id}&installationId=${installation.id}`;
-    
+  const octokit = await getOctokit(installation.id);
+  const [owner, repo] = repository.full_name.split('/');
+  
+  // Post "Attach Bounty" button comment
+  const attachUrl = `${FRONTEND_BASE}/attach-bounty?repo=${encodeURIComponent(repository.full_name)}&issue=${issue.number}&repoId=${repository.id}&installationId=${installation.id}`;
+  
     const comment = `<a href="${attachUrl}" target="_blank" rel="noopener noreferrer"><img src="${CTA_BUTTON}" alt="Create a bounty button" /></a>
 
 ${BRAND_SIGNATURE}`;
 
-    await postIssueComment(octokit, owner, repo, issue.number, comment);
+  await postIssueComment(octokit, owner, repo, issue.number, comment);
   } catch (error) {
     console.error('Failed to post bounty button:', error);
     // Non-critical error, don't notify team
@@ -163,51 +163,51 @@ export async function handleBountyCreated(bountyData) {
   console.log(`💰 Bounty created: ${repoFullName}#${issueNumber}`);
   
   try {
-    const octokit = await getOctokit(installationId);
-    const [owner, repo] = repoFullName.split('/');
-    
-    // Format deadline
-    const deadlineDate = new Date(deadline * 1000).toISOString().split('T')[0];
-    const amountFormatted = formatAmountByToken(amount, tokenSymbol);
-    const net = networkMeta(network);
-    
-    // Post pinned bounty summary
-    const truncatedTx = txHash ? `${txHash.slice(0, 10)}...` : 'transaction';
-    const summary = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: ${amountFormatted} ${tokenSymbol} on ${net.name}
+  const octokit = await getOctokit(installationId);
+  const [owner, repo] = repoFullName.split('/');
+  
+  // Format deadline
+  const deadlineDate = new Date(deadline * 1000).toISOString().split('T')[0];
+  const amountFormatted = formatAmountByToken(amount, tokenSymbol);
+  const net = networkMeta(network);
+  
+  // Post pinned bounty summary
+  const truncatedTx = txHash ? `${txHash.slice(0, 10)}...` : 'transaction';
+  const summary = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: ${amountFormatted} ${tokenSymbol} on ${net.name}
 
 **Deadline:** ${deadlineDate}  
 **Status:** Open  
 **Tx:** <a href="${net.explorerTx(txHash)}" target="_blank" rel="noopener noreferrer">\`${truncatedTx}\`</a>
 
 ### To Claim:
-1. Open a PR that closes this issue (use \`Closes #${issueNumber}\` in PR description)
-2. <a href="${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(`https://github.com/${repoFullName}/issues/${issueNumber}`)}" target="_blank" rel="noopener noreferrer">Link your wallet</a> to be eligible for payout
-3. When your PR is merged, you'll automatically receive the bounty!
+1. Open a PR that fixes this issue (mention #${issueNumber} anywhere in title or description)
+2. <a href="${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(`https://github.com/${repoFullName}/issues/${issueNumber}`)}" target="_blank" rel="noopener noreferrer">Link your wallet</a> to receive payment
+3. Merge your PR and receive ${amountFormatted} ${tokenSymbol} automatically
 
 ${BRAND_SIGNATURE}`;
 
-    const comment = await postIssueComment(octokit, owner, repo, issueNumber, summary);
-    
-    // Add label
-    const labelName = `bounty:$${Math.floor(parseFloat(amountFormatted))}`;
-    try {
-      await ensureLabel(
-        octokit,
-        owner,
-        repo,
-        labelName,
-        '83EEE8',
-        'Active bounty amount'
-      );
-      await addLabels(octokit, owner, repo, issueNumber, [labelName]);
-    } catch (error) {
-      console.error('Error adding label:', error.message);
+  const comment = await postIssueComment(octokit, owner, repo, issueNumber, summary);
+  
+  // Add label
+  const labelName = `bounty:$${Math.floor(parseFloat(amountFormatted))}`;
+  try {
+    await ensureLabel(
+      octokit,
+      owner,
+      repo,
+      labelName,
+      '83EEE8',
+      'Active bounty amount'
+    );
+    await addLabels(octokit, owner, repo, issueNumber, [labelName]);
+  } catch (error) {
+    console.error('Error adding label:', error.message);
       // Non-critical, don't notify
-    }
-    
-    // Update DB with comment ID
+  }
+  
+  // Update DB with comment ID
     try {
-      await bountyQueries.updatePinnedComment(bountyId, comment.id);
+  await bountyQueries.updatePinnedComment(bountyId, comment.id);
     } catch (dbError) {
       console.error('Failed to update pinned comment ID:', dbError);
       
@@ -222,8 +222,8 @@ ${BRAND_SIGNATURE}`;
         context: `Bounty was created successfully on-chain and the comment was posted, but saving the comment ID (${comment.id}) to the database failed. This may affect future bounty updates.`
       });
     }
-    
-    return comment;
+  
+  return comment;
   } catch (error) {
     console.error('Error in handleBountyCreated:', error);
     
@@ -258,88 +258,54 @@ export async function handlePROpened(payload) {
   console.log(`🔀 PR opened: ${repository.full_name}#${pull_request.number}`);
   
   try {
-    // Extract closed issues from PR body
-    const closedIssues = extractClosedIssues(pull_request.body);
-    
-    if (closedIssues.length === 0) {
-      return; // No issues referenced
-    }
-    
-    // Check if any of these issues have bounties
-    const bounties = [];
-    for (const issueNumber of closedIssues) {
-      const issueBounties = await bountyQueries.findByIssue(repository.id, issueNumber);
-      bounties.push(...issueBounties);
-    }
-    
-    if (bounties.length === 0) {
-      return; // No bounties on these issues
-    }
-    
     const octokit = await getOctokit(installation.id);
     const [owner, repo] = repository.full_name.split('/');
     
-    // Check if user has linked wallet
-    const walletMapping = await walletQueries.findByGithubId(pull_request.user.id);
+    // Get ALL open bounties in this repository
+    const environment = process.env.ENV_TARGET || 'stage';
+    const allOpenBounties = await bountyQueries.getAllOpen(repository.id, environment);
     
-    if (!walletMapping) {
-      // Prompt user to link wallet
-      const prUrl = `https://github.com/${repository.full_name}/pull/${pull_request.number}`;
-      const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Wallet Needed
-
-**Status:** Awaiting wallet link  
-**Why:** Payout can't trigger until a wallet is on file.
-
-1. <a href="${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(prUrl)}" target="_blank" rel="noopener noreferrer">Link your wallet</a>
-2. Merge lands the bounty automatically.
-
-${BRAND_SIGNATURE}`;
-
-      await postIssueComment(octokit, owner, repo, pull_request.number, comment);
-    } else {
-      // User already has wallet linked
-      const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Wallet Linked
-
-**Status:** Ready to pay  
-Linked wallet: \`${walletMapping.walletAddress.slice(0, 6)}...${walletMapping.walletAddress.slice(-4)}\`
-
-1. Keep the wallet connected.  
-2. Merge this PR and the payout triggers automatically.
-
-${BRAND_SIGNATURE}`;
-
-      await postIssueComment(octokit, owner, repo, pull_request.number, comment);
+    if (allOpenBounties.length === 0) {
+      console.log('No open bounties in this repository');
+      return; // No bounties to process
     }
     
-    // Record PR claims
-    for (const bounty of bounties) {
-      try {
-        await prClaimQueries.create(
-          bounty.bountyId,
-          pull_request.number,
-          pull_request.user.id,
-          repository.full_name
-        );
-      } catch (claimError) {
-        console.error(`Failed to record PR claim:`, claimError);
-        
-        // Notify about claim recording failure - this is critical
-        await notifyMaintainers(octokit, owner, repo, pull_request.number, {
-          errorType: 'PR Claim Recording Failed',
-          errorMessage: claimError.message,
-          severity: 'critical',
-          bountyId: bounty.bountyId,
-          network: bounty.network,
-          prNumber: pull_request.number,
-          username: pull_request.user.login,
-          context: `Failed to record this PR as a claim for bounty ${bounty.bountyId}. This will prevent automatic payout when the PR is merged. Manual intervention required.`
-        });
-      }
+    console.log(`Found ${allOpenBounties.length} open bounties in repository`);
+    
+    // Strategy 1: Check for explicit "Closes #X" references
+    const closedIssues = extractClosedIssues(pull_request.body);
+    
+    // Strategy 2: Check for ANY issue mentions in title or body
+    const mentionedIssues = extractMentionedIssues(pull_request.title, pull_request.body);
+    
+    // Strategy 3: Check if there's only ONE open bounty - auto-link it!
+    if (allOpenBounties.length === 1 && closedIssues.length === 0 && mentionedIssues.length === 0) {
+      console.log(`Only 1 open bounty exists (issue #${allOpenBounties[0].issueNumber}), auto-linking...`);
+      await handlePRWithBounties(octokit, owner, repo, pull_request, repository, allOpenBounties);
+      return;
     }
+    
+    // Strategy 4: Try to match mentioned issues to bounties
+    const matchedBounties = [];
+    const issueNumbersToCheck = [...new Set([...closedIssues, ...mentionedIssues])];
+    
+    for (const issueNumber of issueNumbersToCheck) {
+      const issueBounties = await bountyQueries.findByIssue(repository.id, issueNumber);
+      matchedBounties.push(...issueBounties);
+    }
+    
+    if (matchedBounties.length > 0) {
+      // Found bounties for mentioned issues - auto-link them!
+      console.log(`Auto-linking ${matchedBounties.length} bounties based on issue mentions`);
+      await handlePRWithBounties(octokit, owner, repo, pull_request, repository, matchedBounties);
+      return;
+    }
+    
+    // Strategy 5: No automatic match found - suggest available bounties
+    await suggestBounties(octokit, owner, repo, pull_request, allOpenBounties);
   } catch (error) {
     console.error('Error in handlePROpened:', error);
     
-    // Try to notify maintainers
     try {
       const octokit = await getOctokit(installation.id);
       const [owner, repo] = repository.full_name.split('/');
@@ -361,6 +327,117 @@ ${BRAND_SIGNATURE}`;
 }
 
 /**
+ * Suggest available bounties when PR doesn't reference any
+ */
+async function suggestBounties(octokit, owner, repo, pull_request, bounties) {
+  if (bounties.length === 0) return;
+  
+  // Build list of available bounties
+  let bountyList = '';
+  for (const bounty of bounties.slice(0, 5)) { // Show max 5
+    const tokenSymbol = bounty.tokenSymbol || 'USDC';
+    const amountFormatted = formatAmountByToken(bounty.amount, tokenSymbol);
+    bountyList += `- [#${bounty.issueNumber}](https://github.com/${bounty.repoFullName}/issues/${bounty.issueNumber}) - ${amountFormatted} ${tokenSymbol}\n`;
+  }
+  
+  const highestBounty = bounties[0]; // Already sorted by amount
+  
+  const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Available Issues
+
+@${pull_request.user.login}, there ${bounties.length === 1 ? 'is 1 open bounty' : `are ${bounties.length} open bounties`} in this repository:
+
+${bountyList}
+
+**To claim a bounty:**  
+Edit your PR title or description to reference the issue number (e.g., "Fix #${highestBounty.issueNumber}" or "Closes #${highestBounty.issueNumber}").
+
+The bounty will be automatically linked and paid when your PR is merged.
+
+${BRAND_SIGNATURE}`;
+  
+  await postIssueComment(octokit, owner, repo, pull_request.number, comment);
+}
+
+/**
+ * Handle PR that has bounty references
+ */
+async function handlePRWithBounties(octokit, owner, repo, pull_request, repository, bounties) {
+  // Check if user has linked wallet
+  const walletMapping = await walletQueries.findByGithubId(pull_request.user.id);
+  
+  // Build bounty summary
+  const totalAmount = bounties.reduce((sum, b) => {
+    const decimals = b.tokenSymbol === 'MUSD' ? 18 : 6;
+    return sum + Number(ethers.formatUnits(b.amount, decimals));
+  }, 0);
+  
+  const tokenSymbol = bounties[0].tokenSymbol || 'USDC';
+  const issueLinks = bounties.map(b => `[#${b.issueNumber}](https://github.com/${repository.full_name}/issues/${b.issueNumber})`).join(', ');
+  
+  const prUrl = `https://github.com/${repository.full_name}/pull/${pull_request.number}`;
+  
+  if (!walletMapping) {
+    // Prompt user to link wallet
+    const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Linked to PR
+
+**Claim:** ${issueLinks}  
+**Value:** ${totalAmount.toFixed(2)} ${tokenSymbol}  
+**Status:** Wallet required
+
+<a href="${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(prUrl)}" target="_blank" rel="noopener noreferrer">
+  <img src="https://img.shields.io/badge/Link_Wallet-00827B?style=for-the-badge&logo=ethereum&logoColor=white" alt="Link Wallet" />
+</a>
+
+**Next steps:**
+1. Link your wallet (free, takes 30 seconds)
+2. Merge this PR
+3. Payment sent automatically
+
+${BRAND_SIGNATURE}`;
+
+    await postIssueComment(octokit, owner, repo, pull_request.number, comment);
+  } else {
+    // User already has wallet linked
+    const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Ready to Pay
+
+**Claim:** ${issueLinks}  
+**Value:** ${totalAmount.toFixed(2)} ${tokenSymbol}  
+**Recipient:** \`${walletMapping.walletAddress.slice(0, 6)}...${walletMapping.walletAddress.slice(-4)}\`
+
+When this PR is merged, payment will be sent automatically to your linked wallet.
+
+${BRAND_SIGNATURE}`;
+
+    await postIssueComment(octokit, owner, repo, pull_request.number, comment);
+  }
+  
+  // Record PR claims
+  for (const bounty of bounties) {
+    try {
+      await prClaimQueries.create(
+        bounty.bountyId,
+        pull_request.number,
+        pull_request.user.id,
+        repository.full_name
+      );
+    } catch (claimError) {
+      console.error(`Failed to record PR claim:`, claimError);
+      
+      await notifyMaintainers(octokit, owner, repo, pull_request.number, {
+        errorType: 'PR Claim Recording Failed',
+        errorMessage: claimError.message,
+        severity: 'critical',
+        bountyId: bounty.bountyId,
+        network: bounty.network,
+        prNumber: pull_request.number,
+        username: pull_request.user.login,
+        context: `Failed to record this PR as a claim for bounty ${bounty.bountyId}. This will prevent automatic payout when the PR is merged.`
+      });
+    }
+  }
+}
+
+/**
  * Handle 'pull_request.closed' webhook (merged)
  */
 export async function handlePRMerged(payload) {
@@ -373,18 +450,18 @@ export async function handlePRMerged(payload) {
   console.log(`✅ PR merged: ${repository.full_name}#${pull_request.number}`);
   
   try {
-    // Find PR claims
-    const claims = await prClaimQueries.findByPR(repository.full_name, pull_request.number);
-    
-    if (claims.length === 0) {
-      return; // No bounty claims for this PR
-    }
-    
-    const octokit = await getOctokit(installation.id);
-    const [owner, repo] = repository.full_name.split('/');
-    
-    // Process each claim
-    for (const claim of claims) {
+  // Find PR claims
+  const claims = await prClaimQueries.findByPR(repository.full_name, pull_request.number);
+  
+  if (claims.length === 0) {
+    return; // No bounty claims for this PR
+  }
+  
+  const octokit = await getOctokit(installation.id);
+  const [owner, repo] = repository.full_name.split('/');
+  
+  // Process each claim
+  for (const claim of claims) {
       const bounty = await bountyQueries.findById(claim.bountyId);
       
       if (!bounty) {
@@ -395,16 +472,16 @@ export async function handlePRMerged(payload) {
       if (bounty.status !== 'open') {
         console.log(`⚠️ Bounty ${bounty.bountyId} is not open (status: ${bounty.status})`);
         continue;
-      }
-      
-      // Get solver's wallet
+    }
+    
+    // Get solver's wallet
       const walletMapping = await walletQueries.findByGithubId(claim.prAuthorGithubId);
     
-      if (!walletMapping) {
-        // No wallet linked - post reminder
+    if (!walletMapping) {
+      // No wallet linked - post reminder
         console.log(`⚠️ User ${claim.prAuthorGithubId} has no linked wallet`);
         const prUrl = `https://github.com/${repository.full_name}/pull/${pull_request.number}`;
-        const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Wallet Missing
+      const comment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Wallet Missing
 
 **Status:** ⏸️ Payment paused  
 @${pull_request.user.login}, your PR was merged but we can't send the payment without a wallet address.
@@ -435,7 +512,7 @@ ${BRAND_SIGNATURE}`;
 
 ${BRAND_SIGNATURE}`;
 
-        await postIssueComment(octokit, owner, repo, pull_request.number, comment);
+      await postIssueComment(octokit, owner, repo, pull_request.number, comment);
         await prClaimQueries.updateStatus(claim.id, 'failed');
         
         // Notify maintainers about invalid wallet
@@ -451,54 +528,58 @@ ${BRAND_SIGNATURE}`;
           context: 'This indicates a data integrity issue in the wallet_mappings table. The user needs to re-link their wallet with a valid Ethereum address.'
         });
         
-        continue;
-      }
+      continue;
+    }
       
       console.log(`💰 Attempting to resolve bounty ${bounty.bountyId} to ${walletMapping.walletAddress}`);
-      
-      // Resolve bounty on-chain on the correct network
+    
+    // Resolve bounty on-chain on the correct network
       let result;
       try {
         result = await resolveBountyOnNetwork(
           bounty.bountyId,
           walletMapping.walletAddress,
-          bounty.network || 'BASE_SEPOLIA'
-        );
+      bounty.network || 'BASE_SEPOLIA'
+    );
       } catch (error) {
         console.error(`❌ Exception during bounty resolution:`, error);
         result = { success: false, error: error.message || 'Unknown error during resolution' };
       }
-      
-      if (result.success) {
-        // Update DB
+    
+    if (result.success) {
+      // Update DB
         await bountyQueries.updateStatus(bounty.bountyId, 'resolved', result.txHash);
-        await prClaimQueries.updateStatus(claim.id, 'paid', result.txHash, Date.now());
-        
-        // Post success comment on PR
+      await prClaimQueries.updateStatus(claim.id, 'paid', result.txHash, Date.now());
+      
+      // Post success comment on PR
         const tokenSymbol = bounty.tokenSymbol || 'USDC';
-        const amountFormatted = formatAmountByToken(bounty.amount, tokenSymbol);
-        const net = networkMeta(bounty.network || 'BASE_SEPOLIA');
+      const amountFormatted = formatAmountByToken(bounty.amount, tokenSymbol);
+      const net = networkMeta(bounty.network || 'BASE_SEPOLIA');
         const successComment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Paid
 
-@${pull_request.user.login} just collected ${amountFormatted} ${tokenSymbol}.  
-Transaction: <a href="${net.explorerTx(result.txHash)}" target="_blank" rel="noopener noreferrer">View Tx</a>
+**Recipient:** @${pull_request.user.login}  
+**Amount:** ${amountFormatted} ${tokenSymbol}  
+**Transaction:** <a href="${net.explorerTx(result.txHash)}" target="_blank" rel="noopener noreferrer">View on Explorer</a>
+
+Payment has been sent successfully.
 
 ${BRAND_SIGNATURE}`;
 
-        await postIssueComment(octokit, owner, repo, pull_request.number, successComment);
-        
-        // Update original issue's bounty comment
+      await postIssueComment(octokit, owner, repo, pull_request.number, successComment);
+      
+      // Update original issue's bounty comment
         if (bounty.pinnedCommentId) {
-          const updatedSummary = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Closed
+          const updatedSummary = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Resolved
 
-**Paid:** ${amountFormatted} ${tokenSymbol} to @${pull_request.user.login}  
-**Tx:** <a href="${net.explorerTx(result.txHash)}" target="_blank" rel="noopener noreferrer">View Tx</a>
+**Paid to:** @${pull_request.user.login}  
+**Amount:** ${amountFormatted} ${tokenSymbol}  
+**Transaction:** <a href="${net.explorerTx(result.txHash)}" target="_blank" rel="noopener noreferrer">View on Explorer</a>
 
 ${BRAND_SIGNATURE}`;
 
           await updateComment(octokit, owner, repo, bounty.pinnedCommentId, updatedSummary);
-        }
-      } else {
+      }
+    } else {
         // Payout failed - provide helpful error message
         console.error(`❌ Bounty resolution failed:`, result.error);
         
@@ -539,8 +620,8 @@ ${errorHelp}
 
 ${BRAND_SIGNATURE}`;
 
-        await postIssueComment(octokit, owner, repo, pull_request.number, errorComment);
-        await prClaimQueries.updateStatus(claim.id, 'failed');
+      await postIssueComment(octokit, owner, repo, pull_request.number, errorComment);
+      await prClaimQueries.updateStatus(claim.id, 'failed');
         
         // Notify maintainers for critical/high severity errors
         if (shouldNotify) {
@@ -603,7 +684,7 @@ export async function handleWebhook(event, payload) {
         break;
         
       case 'pull_request':
-        if (action === 'opened') {
+        if (action === 'opened' || action === 'edited') {
           await handlePROpened(payload);
         } else if (action === 'closed' && payload.pull_request?.merged) {
           await handlePRMerged(payload);

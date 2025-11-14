@@ -150,6 +150,21 @@ export function extractClosedIssues(prBody) {
 }
 
 /**
+ * Extract ALL issue numbers mentioned in PR title or body
+ */
+export function extractMentionedIssues(prTitle, prBody) {
+  const text = `${prTitle} ${prBody || ''}`;
+  if (!text) return [];
+  
+  // Match any #123 pattern
+  const regex = /#(\d+)/g;
+  const matches = [...text.matchAll(regex)];
+  
+  // Return unique issue numbers
+  return [...new Set(matches.map(match => parseInt(match[1])))];
+}
+
+/**
  * Get user details
  */
 export async function getUser(octokit, username) {
