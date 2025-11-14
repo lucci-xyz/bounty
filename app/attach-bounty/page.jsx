@@ -199,14 +199,40 @@ function AttachBountyContent() {
 
       let receipt;
       try {
-        // Let ethers handle gas estimation automatically
-        const tx = await escrow.createBounty(
-          address,
-          repoIdHash,
-          parseInt(issueNumber),
-          deadlineTimestamp,
-          amountWei
-        );
+        let tx;
+        if (selectedNetwork === 'MEZO_TESTNET') {
+          // Mezo RPC fails gas estimation because token transfers revert under eth_call.
+          // Build a legacy transaction manually so we can skip estimateGas.
+          const populatedTx = await escrow.createBounty.populateTransaction(
+            address,
+            repoIdHash,
+            parseInt(issueNumber),
+            deadlineTimestamp,
+            amountWei
+          );
+
+          const feeData = await provider.getFeeData();
+          const legacyGasPrice =
+            feeData.gasPrice && feeData.gasPrice > 0n
+              ? feeData.gasPrice
+              : ethers.parseUnits('1', 'gwei');
+
+          populatedTx.type = 0; // legacy transaction (Mezo does not support EIP-1559)
+          populatedTx.gasPrice = legacyGasPrice;
+          populatedTx.gasLimit = 400000n; // previous successful calls used ~140k
+          populatedTx.chainId = networkConfig.chainId;
+
+          tx = await signer.sendTransaction(populatedTx);
+        } else {
+          // Default path uses RPC gas estimation
+          tx = await escrow.createBounty(
+            address,
+            repoIdHash,
+            parseInt(issueNumber),
+            deadlineTimestamp,
+            amountWei
+          );
+        }
         console.log('CreateBounty tx sent:', tx.hash);
 
         receipt = await tx.wait();
