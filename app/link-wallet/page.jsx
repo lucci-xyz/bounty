@@ -342,17 +342,40 @@ export default function LinkWallet() {
                 Wallet Linked
               </button>
             ) : (
-              <button
-                className="btn btn-primary"
-                onClick={() => {
-                  console.log('Linking wallet...');
-                  linkWallet();
-                }}
-                disabled={!githubUser && !isLocal}
-                style={{ width: '100%', margin: 0, opacity: (!githubUser && !isLocal) ? 0.5 : 1 }}
-              >
-                Sign & Link Wallet
-              </button>
+              <>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    console.log('Linking wallet...');
+                    linkWallet();
+                  }}
+                  disabled={!githubUser && !isLocal}
+                  style={{ width: '100%', margin: 0, opacity: (!githubUser && !isLocal) ? 0.5 : 1, marginBottom: '12px' }}
+                >
+                  Sign & Link Wallet
+                </button>
+
+                <ConnectButton.Custom>
+                  {({ openAccountModal, openChainModal }) => (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={openAccountModal}
+                        className="btn btn-secondary"
+                        style={{ flex: 1, margin: 0, fontSize: '14px' }}
+                      >
+                        Change Wallet
+                      </button>
+                      <button
+                        onClick={openChainModal}
+                        className="btn btn-secondary"
+                        style={{ flex: 1, margin: 0, fontSize: '14px' }}
+                      >
+                        Switch Network
+                      </button>
+                    </div>
+                  )}
+                </ConnectButton.Custom>
+              </>
             )}
           </div>
         </div>

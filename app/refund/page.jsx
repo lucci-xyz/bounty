@@ -167,7 +167,10 @@ export default function Refund() {
             <label style={{ marginBottom: '8px' }}>Select Network</label>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
-                onClick={() => setSelectedNetwork('BASE_SEPOLIA')}
+                onClick={() => {
+                  console.log('Base Sepolia selected');
+                  setSelectedNetwork('BASE_SEPOLIA');
+                }}
                 style={{
                   flex: 1,
                   padding: '12px',
@@ -185,7 +188,10 @@ export default function Refund() {
                 <div style={{ fontSize: '12px', fontWeight: 400, marginTop: '4px', color: 'var(--color-text-secondary)' }}>USDC</div>
               </button>
               <button
-                onClick={() => setSelectedNetwork('MEZO_TESTNET')}
+                onClick={() => {
+                  console.log('Mezo Testnet selected');
+                  setSelectedNetwork('MEZO_TESTNET');
+                }}
                 style={{
                   flex: 1,
                   padding: '12px',
@@ -205,15 +211,47 @@ export default function Refund() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <ConnectButton />
-          </div>
+          <ConnectButton.Custom>
+            {({ openConnectModal }) => (
+              <button
+                onClick={() => {
+                  console.log('Opening wallet modal for refund...');
+                  openConnectModal();
+                }}
+                className="btn btn-primary btn-full"
+              >
+                Connect Wallet
+              </button>
+            )}
+          </ConnectButton.Custom>
         </>
       ) : (
         <>
-          <div className="wallet-info" style={{ marginBottom: '32px' }}>
-            <strong>Network:</strong> {networkConfig.name} ({contractConfig.tokenSymbol})
+          <div className="wallet-info" style={{ marginBottom: '24px' }}>
+            <div><strong>Connected:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}</div>
+            <div><strong>Network:</strong> {networkConfig.name} ({contractConfig.tokenSymbol})</div>
           </div>
+
+          <ConnectButton.Custom>
+            {({ openAccountModal, openChainModal }) => (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+                <button
+                  onClick={openAccountModal}
+                  className="btn btn-secondary"
+                  style={{ flex: 1, margin: 0, fontSize: '14px' }}
+                >
+                  Change Wallet
+                </button>
+                <button
+                  onClick={openChainModal}
+                  className="btn btn-secondary"
+                  style={{ flex: 1, margin: 0, fontSize: '14px' }}
+                >
+                  Switch Network
+                </button>
+              </div>
+            )}
+          </ConnectButton.Custom>
 
           <div style={{ marginBottom: '24px' }}>
             <label htmlFor="bountyId">Bounty ID</label>

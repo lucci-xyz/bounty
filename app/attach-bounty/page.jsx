@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
+import { useAccount, useWalletClient, useSwitchChain, useDisconnect } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ethers } from 'ethers';
 import { NETWORKS, CONTRACTS, ESCROW_ABI, ERC20_ABI } from '@/config/networks';
@@ -181,7 +181,10 @@ function AttachBountyContent() {
             <label style={{ marginBottom: '8px' }}>Select Network</label>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
-                onClick={() => setSelectedNetwork('BASE_SEPOLIA')}
+                onClick={() => {
+                  console.log('Base Sepolia selected');
+                  setSelectedNetwork('BASE_SEPOLIA');
+                }}
                 style={{
                   flex: 1,
                   padding: '12px',
@@ -199,7 +202,10 @@ function AttachBountyContent() {
                 <div style={{ fontSize: '12px', fontWeight: 400, marginTop: '4px', color: 'var(--color-text-secondary)' }}>USDC</div>
               </button>
               <button
-                onClick={() => setSelectedNetwork('MEZO_TESTNET')}
+                onClick={() => {
+                  console.log('Mezo Testnet selected');
+                  setSelectedNetwork('MEZO_TESTNET');
+                }}
                 style={{
                   flex: 1,
                   padding: '12px',
@@ -219,16 +225,47 @@ function AttachBountyContent() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <ConnectButton />
-          </div>
+          <ConnectButton.Custom>
+            {({ openConnectModal }) => (
+              <button
+                onClick={() => {
+                  console.log('Opening wallet modal for attach-bounty...');
+                  openConnectModal();
+                }}
+                className="btn btn-primary btn-full"
+              >
+                Connect Wallet
+              </button>
+            )}
+          </ConnectButton.Custom>
         </>
       ) : (
         <>
-          <div className="wallet-info" style={{ marginBottom: '32px' }}>
+          <div className="wallet-info" style={{ marginBottom: '24px' }}>
             <div><strong>Connected:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}</div>
             <div><strong>Network:</strong> {chain?.name || networkConfig.name} ({contractConfig.tokenSymbol})</div>
           </div>
+
+          <ConnectButton.Custom>
+            {({ openAccountModal, openChainModal }) => (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+                <button
+                  onClick={openAccountModal}
+                  className="btn btn-secondary"
+                  style={{ flex: 1, margin: 0, fontSize: '14px' }}
+                >
+                  Change Wallet
+                </button>
+                <button
+                  onClick={openChainModal}
+                  className="btn btn-secondary"
+                  style={{ flex: 1, margin: 0, fontSize: '14px' }}
+                >
+                  Switch Network
+                </button>
+              </div>
+            )}
+          </ConnectButton.Custom>
 
           <div style={{ marginBottom: '24px' }}>
             <label htmlFor="amount">Bounty Amount ({contractConfig.tokenSymbol})</label>
