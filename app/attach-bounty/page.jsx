@@ -223,18 +223,29 @@ function AttachBountyContent() {
       
       try {
         const existingBounty = await escrow.getBounty(bountyId);
-        if (existingBounty.status !== 0) { // 0 = None/doesn't exist
+        const status = Number(existingBounty.status); // Convert to number (could be BigInt)
+        
+        console.log('Existing bounty check:', {
+          status,
+          statusType: typeof existingBounty.status,
+          amount: existingBounty.amount.toString()
+        });
+        
+        // Status 0 = None (doesn't exist), 1 = Open, 2 = Resolved, etc.
+        if (status !== 0 && status !== undefined && status !== null) {
           const statusNames = ['None', 'Open', 'Resolved', 'Refunded', 'Canceled'];
-          const statusName = statusNames[existingBounty.status] || 'Unknown';
+          const statusName = statusNames[status] || 'Unknown';
           throw new Error(`A bounty for this issue already exists with status: ${statusName}. You cannot create a duplicate bounty.`);
         }
+        
+        console.log('Bounty does not exist (status is None), proceeding...');
       } catch (bountyCheckError) {
-        // If getBounty fails, the bounty likely doesn't exist, which is good
-        if (!bountyCheckError.message.includes('already exists')) {
-          console.log('Bounty does not exist yet (expected)');
-        } else {
+        // If getBounty fails or we threw the "already exists" error
+        if (bountyCheckError.message && bountyCheckError.message.includes('already exists')) {
           throw bountyCheckError;
         }
+        // Otherwise, getBounty call failed, which likely means bounty doesn't exist (good)
+        console.log('Bounty check failed (bounty likely does not exist):', bountyCheckError.message);
       }
 
       console.log('CreateBounty parameters:', {
