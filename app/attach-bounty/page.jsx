@@ -209,21 +209,35 @@ function AttachBountyContent() {
               ? feeData.gasPrice
               : ethers.parseUnits('1', 'gwei');
 
+          // Encode the function call data
+          const callData = escrow.interface.encodeFunctionData('createBounty', [
+            address,
+            repoIdHash,
+            parseInt(issueNumber),
+            deadlineTimestamp,
+            amountWei
+          ]);
+
+          console.log('Encoded call data:', callData);
+          console.log('Call data length:', callData.length);
+
           const txRequest = {
             to: contractConfig.escrow,
-            data: escrow.interface.encodeFunctionData('createBounty', [
-              address,
-              repoIdHash,
-              parseInt(issueNumber),
-              deadlineTimestamp,
-              amountWei
-            ]),
+            from: address,
+            data: callData,
             type: 0,
             gasPrice: legacyGasPrice,
-            gasLimit: 400000n, // successful tx history ~140k gas
-            chainId: BigInt(networkConfig.chainId),
-            value: 0n
+            gasLimit: 400000,
+            chainId: networkConfig.chainId,
+            value: 0
           };
+
+          console.log('Transaction request:', {
+            to: txRequest.to,
+            dataLength: txRequest.data.length,
+            gasPrice: ethers.formatUnits(txRequest.gasPrice, 'gwei') + ' gwei',
+            gasLimit: txRequest.gasLimit
+          });
 
           tx = await signer.sendTransaction(txRequest);
         } else {
