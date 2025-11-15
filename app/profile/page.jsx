@@ -383,7 +383,7 @@ export default function Profile() {
             ${totalEarned.toLocaleString()}
           </div>
           <div style={{ fontSize: '12px', opacity: 0.85 }}>
-            {claimedBounties.filter(b => b.claimStatus === 'resolved').length} bounties
+            {claimedBounties.filter(b => b.claimStatus === 'resolved' || b.claimStatus === 'paid').length} bounties
           </div>
         </div>
 
@@ -403,7 +403,7 @@ export default function Profile() {
             COMPLETED
           </div>
           <div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--color-primary)' }}>
-            {claimedBounties.filter(b => b.claimStatus === 'resolved').length}
+            {claimedBounties.filter(b => b.claimStatus === 'resolved' || b.claimStatus === 'paid').length}
           </div>
         </div>
       </div>
@@ -481,7 +481,7 @@ export default function Profile() {
                     {bounty.repoFullName}#{bounty.issueNumber}
                   </a>
                   <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-                    {bounty.claimStatus === 'resolved' ? `Paid ${new Date(bounty.paidAt).toLocaleDateString()}` : 'In Progress'}
+                    {(bounty.claimStatus === 'resolved' || bounty.claimStatus === 'paid') ? `Paid ${new Date(bounty.paidAt).toLocaleDateString()}` : 'In Progress'}
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -493,7 +493,7 @@ export default function Profile() {
                       {bounty.tokenSymbol}
                     </div>
                   </div>
-                  {bounty.claimStatus === 'resolved' && (
+                  {(bounty.claimStatus === 'resolved' || bounty.claimStatus === 'paid') && (
                     <CheckCircleIcon size={20} color="var(--color-primary)" />
                   )}
                 </div>

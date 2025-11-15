@@ -29,7 +29,7 @@ export async function GET(request) {
 
     // Calculate total earned (only resolved/paid bounties)
     const totalEarned = bountiesWithClaims
-      .filter(b => b && b.claimStatus === 'resolved')
+      .filter(b => b && (b.claimStatus === 'resolved' || b.claimStatus === 'paid'))
       .reduce((sum, b) => {
         const decimals = b.tokenSymbol === 'MUSD' ? 18 : 6;
         const value = Number(b.amount) / Math.pow(10, decimals);
