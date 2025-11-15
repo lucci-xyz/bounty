@@ -110,15 +110,15 @@ export default function Profile() {
         setProfile(data);
       }
 
-      // TODO: Fetch claimed bounties from API
-      // const claimedRes = await fetch('/api/user/claimed-bounties', {
-      //   credentials: 'include'
-      // });
-      // if (claimedRes.ok) {
-      //   const data = await claimedRes.json();
-      //   setClaimedBounties(data.bounties);
-      //   setTotalEarned(data.totalEarned);
-      // }
+      // Fetch claimed bounties from API
+      const claimedRes = await fetch('/api/user/claimed-bounties', {
+        credentials: 'include'
+      });
+      if (claimedRes.ok) {
+        const data = await claimedRes.json();
+        setClaimedBounties(data.bounties);
+        setTotalEarned(data.totalEarned);
+      }
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {
@@ -146,8 +146,8 @@ export default function Profile() {
   };
 
   const handleDeleteWallet = async () => {
-    if (deleteConfirmation.toLowerCase() !== 'i agree') {
-      setDeleteError('Please type "i agree" to confirm');
+    if (deleteConfirmation.toLowerCase() !== 'i want to remove my wallet') {
+      setDeleteError('Please type "I want to remove my wallet" to confirm');
       return;
     }
 
@@ -341,7 +341,7 @@ export default function Profile() {
             ${totalEarned.toLocaleString()}
           </div>
           <div style={{ fontSize: '12px', opacity: 0.85 }}>
-            {claimedBounties.filter(b => b.status === 'resolved').length} bounties
+            {claimedBounties.filter(b => b.claimStatus === 'resolved').length} bounties
           </div>
         </div>
 
@@ -351,7 +351,7 @@ export default function Profile() {
             ACTIVE CLAIMS
           </div>
           <div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--color-primary)' }}>
-            {claimedBounties.filter(b => b.status === 'pending').length}
+            {claimedBounties.filter(b => b.claimStatus === 'pending').length}
           </div>
         </div>
 
@@ -360,8 +360,8 @@ export default function Profile() {
           <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: '600', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
             COMPLETED
           </div>
-          <div style={{ fontSize: '32px', fontWeight: '700', color: '#22C55E' }}>
-            {claimedBounties.filter(b => b.status === 'resolved').length}
+          <div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--color-primary)' }}>
+            {claimedBounties.filter(b => b.claimStatus === 'resolved').length}
           </div>
         </div>
       </div>
@@ -418,7 +418,7 @@ export default function Profile() {
                     {bounty.repoFullName}#{bounty.issueNumber}
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-                    {bounty.status === 'resolved' ? `Paid ${new Date(bounty.paidAt).toLocaleDateString()}` : 'In Progress'}
+                    {bounty.claimStatus === 'resolved' ? `Paid ${new Date(bounty.paidAt).toLocaleDateString()}` : 'In Progress'}
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -430,8 +430,8 @@ export default function Profile() {
                       {bounty.tokenSymbol}
                     </div>
                   </div>
-                  {bounty.status === 'resolved' && (
-                    <CheckCircleIcon size={20} color="#22C55E" />
+                  {bounty.claimStatus === 'resolved' && (
+                    <CheckCircleIcon size={20} color="var(--color-primary)" />
                   )}
                 </div>
               </div>
@@ -879,7 +879,7 @@ export default function Profile() {
               marginBottom: '8px',
               fontWeight: '500'
             }}>
-              Type <span style={{ fontFamily: "'JetBrains Mono', monospace", background: 'var(--color-background-secondary)', padding: '2px 6px', borderRadius: '4px' }}>i agree</span> to confirm:
+              Type <span style={{ fontFamily: "'JetBrains Mono', monospace", background: 'var(--color-background-secondary)', padding: '2px 6px', borderRadius: '4px' }}>I want to remove my wallet</span> to confirm:
             </p>
 
             <input
@@ -889,7 +889,7 @@ export default function Profile() {
                 setDeleteConfirmation(e.target.value);
                 setDeleteError('');
               }}
-              placeholder="i agree"
+              placeholder="I want to remove my wallet"
               style={{
                 width: '100%',
                 padding: '10px 12px',
@@ -954,30 +954,30 @@ export default function Profile() {
 
               <button
                 onClick={handleDeleteWallet}
-                disabled={deleteLoading || deleteConfirmation.toLowerCase() !== 'i agree'}
+                disabled={deleteLoading || deleteConfirmation.toLowerCase() !== 'i want to remove my wallet'}
                 style={{
                   flex: 1,
                   padding: '10px',
                   borderRadius: '8px',
                   border: 'none',
-                  background: (deleteLoading || deleteConfirmation.toLowerCase() !== 'i agree') 
+                  background: (deleteLoading || deleteConfirmation.toLowerCase() !== 'i want to remove my wallet') 
                     ? 'var(--color-text-secondary)' 
                     : 'var(--color-error)',
                   color: 'white',
                   fontSize: '14px',
                   fontWeight: '600',
-                  cursor: (deleteLoading || deleteConfirmation.toLowerCase() !== 'i agree') 
+                  cursor: (deleteLoading || deleteConfirmation.toLowerCase() !== 'i want to remove my wallet') 
                     ? 'not-allowed' 
                     : 'pointer',
                   transition: 'all 0.2s ease'
                 }}
                 onMouseEnter={(e) => {
-                  if (!deleteLoading && deleteConfirmation.toLowerCase() === 'i agree') {
+                  if (!deleteLoading && deleteConfirmation.toLowerCase() === 'i want to remove my wallet') {
                     e.currentTarget.style.background = '#CC2800';
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (!deleteLoading && deleteConfirmation.toLowerCase() === 'i agree') {
+                  if (!deleteLoading && deleteConfirmation.toLowerCase() === 'i want to remove my wallet') {
                     e.currentTarget.style.background = 'var(--color-error)';
                   }
                 }}

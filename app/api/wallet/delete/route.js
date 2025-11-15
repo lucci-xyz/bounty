@@ -12,7 +12,7 @@ export async function DELETE(request) {
     const { confirmation } = await request.json();
     
     // Verify user typed the confirmation phrase
-    if (confirmation?.toLowerCase() !== 'i agree') {
+    if (confirmation?.toLowerCase() !== 'i want to remove my wallet') {
       return Response.json({ error: 'Invalid confirmation phrase' }, { status: 400 });
     }
 

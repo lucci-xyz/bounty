@@ -358,6 +358,24 @@ export const prClaimQueries = {
       createdAt: Number(claim.createdAt),
       resolvedAt: claim.resolvedAt ? Number(claim.resolvedAt) : null
     };
+  },
+
+  findByContributor: async (prAuthorGithubId) => {
+    const claims = await prisma.prClaim.findMany({
+      where: {
+        prAuthorGithubId: BigInt(prAuthorGithubId)
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    
+    return claims.map(c => ({
+      ...c,
+      prAuthorGithubId: Number(c.prAuthorGithubId),
+      createdAt: Number(c.createdAt),
+      resolvedAt: c.resolvedAt ? Number(c.resolvedAt) : null
+    }));
   }
 };
 
