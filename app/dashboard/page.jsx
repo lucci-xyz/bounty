@@ -90,10 +90,15 @@ export default function Dashboard() {
       
       if (res.ok) {
         const data = await res.json();
-        setBounties(data);
+        // Ensure data is an array
+        const bountiesArray = Array.isArray(data) ? data : [];
+        setBounties(bountiesArray);
+      } else {
+        setBounties([]);
       }
     } catch (error) {
       console.error('Error fetching bounties:', error);
+      setBounties([]);
     }
   };
 

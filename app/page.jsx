@@ -33,11 +33,16 @@ export default function Home() {
             throw new Error('Failed to fetch bounties');
           }
           const data = await response.json();
-          setBounties(data);
-          setFilteredBounties(data);
+          // Ensure data is an array
+          const bountiesArray = Array.isArray(data) ? data : [];
+          setBounties(bountiesArray);
+          setFilteredBounties(bountiesArray);
         }
       } catch (err) {
+        console.error('Error fetching bounties:', err);
         setError(err.message);
+        setBounties([]);
+        setFilteredBounties([]);
       } finally {
         setLoading(false);
       }
@@ -133,6 +138,9 @@ export default function Home() {
   }
 
   function formatStars(stars) {
+    if (!stars && stars !== 0) {
+      return '0';
+    }
     if (stars >= 1000) {
       return `${(stars / 1000).toFixed(1)}k`;
     }

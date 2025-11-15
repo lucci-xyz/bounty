@@ -42,10 +42,13 @@ export default function BountyCard({ bounty, showActions = false, onManage }) {
   }
 
   function formatStars(stars) {
+    if (!stars && stars !== 0) {
+      return '0';
+    }
     if (stars >= 1000) {
       return `${(stars / 1000).toFixed(1)}k`;
     }
-    return stars?.toString() || '0';
+    return stars.toString();
   }
 
   const getStatusColor = (status) => {
