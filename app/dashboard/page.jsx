@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { TargetIcon, PlusIcon } from '@/components/Icons';
+import { TargetIcon, PlusIcon, WalletIcon } from '@/components/Icons';
 import { dummyUserBounties, dummyStats } from '@/dummy-data/dashboard';
 
 export default function Dashboard() {
