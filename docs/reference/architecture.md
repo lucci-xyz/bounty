@@ -90,7 +90,7 @@ Technical overview of BountyPay's system design and data flows.
 bounties
 - bounty_id (unique, from contract)
 - repo_id, issue_number
-- sponsor_address
+- sponsor_address, sponsor_github_id
 - amount, deadline
 - status (open, resolved, refunded)
 - tx_hash
@@ -108,6 +108,25 @@ pr_claims
 - pr_number, pr_author_github_id
 - status (pending, paid, failed)
 - tx_hash
+
+users
+- id (auto-increment)
+- github_id (unique)
+- github_username, email, avatar_url
+- preferences (JSON)
+- created_at, updated_at
+
+allowlists
+- id (auto-increment)
+- user_id, bounty_id, repo_id
+- allowed_address
+- created_at
+
+notification_preferences
+- id (auto-increment)
+- user_id (unique)
+- email_on_claim, email_on_merge, email_on_expiry
+- created_at, updated_at
 ```
 
 ### 4. Smart Contracts
@@ -194,14 +213,77 @@ None → Open → Resolved
    ↓
 3. Server queries wallet_mappings for solver's address
    ↓
-4. Server calls resolve(bountyId, recipient) on contract
+4. Server checks allowlist (if configured)
    ↓
-5. USDC transferred on Base
+5. Server calls resolve(bountyId, recipient) on contract
    ↓
-6. Server updates Postgres (status: resolved)
+6. USDC transferred on Base
    ↓
-7. Server posts success comment with TX hash
+7. Server updates Postgres (status: resolved)
+   ↓
+8. Server posts success comment with TX hash
 ```
+
+### Flow 4: User Management & Allowlists
+
+```plaintext
+1. User authenticates with GitHub OAuth
+   ↓
+2. Session stores githubId, username, email, avatarUrl
+   ↓
+3. On first bounty creation → User record auto-created
+   ↓
+4. Sponsor can configure allowlists per bounty or repo
+   ↓
+5. Only allowlisted addresses can claim bounties
+   ↓
+6. Allowlists checked during payout validation
+```
+
+---
+
+## User Management
+
+### Unified Account System
+
+BountyPay uses a unified account system where users are no longer separated into "sponsors" and "contributors". Every user has a single account that can perform both roles:
+
+**User Model:**
+- Automatically created on first bounty creation or explicit registration
+- Stores GitHub identity (ID, username, email, avatar)
+- Supports user preferences (JSON field for extensibility)
+- Links to wallet mappings for payments
+
+**Key Features:**
+1. **Auto-Creation**: Users are automatically created when they fund their first bounty (if GitHub session exists)
+2. **Single Identity**: One GitHub account = one user, regardless of role
+3. **Flexible Roles**: Users can both sponsor bounties and claim rewards
+4. **Profile Management**: Users can view their profile, bounties, and stats
+
+### Allowlist System
+
+Sponsors can restrict who can claim their bounties using allowlists:
+
+**Allowlist Types:**
+1. **Bounty-Level**: Restrict specific bounty to certain addresses
+2. **Repo-Level**: Apply allowlist to all bounties in a repository
+
+**Use Cases:**
+- Whitelist trusted contributors
+- Restrict bounties to team members
+- Control who can claim high-value bounties
+
+**Validation:**
+- Checked during PR merge payout flow
+- If allowlist exists and address not on it → payout blocked
+- If no allowlist configured → anyone can claim
+
+### Notification Preferences
+
+Users can configure email notifications for:
+- PR claims on their bounties
+- PR merges (payout triggers)
+- Bounty expiration warnings
 
 ---
 
@@ -242,9 +324,23 @@ GET  /api/nonce
 POST /api/verify-wallet
 POST /api/bounty/create
 GET  /api/bounty/[bountyId]
+GET  /api/bounties/open
 GET  /api/issue/[repoId]/[issueNumber]
 GET  /api/contract/bounty/[bountyId]
 GET  /api/stats
+```
+
+### Users
+```plaintext
+GET  /api/user/profile
+GET  /api/user/bounties
+GET  /api/user/stats
+```
+
+### Allowlists
+```plaintext
+GET  /api/allowlist/[bountyId]
+POST /api/allowlist/[bountyId]
 ```
 
 ### Wallets
@@ -275,12 +371,22 @@ CREATE INDEX idx_bounties_status ON bounties(status);
 CREATE INDEX idx_bounties_environment ON bounties(environment);
 CREATE INDEX idx_pr_claims_bounty ON pr_claims(bounty_id);
 CREATE INDEX idx_wallet_github ON wallet_mappings(github_id);
+CREATE INDEX idx_users_github ON users(github_id);
+CREATE INDEX idx_allowlist_user ON allowlists(user_id);
+CREATE INDEX idx_allowlist_bounty ON allowlists(bounty_id);
+CREATE INDEX idx_allowlist_repo ON allowlists(repo_id);
 ```
 
 ### Relationships
 - `bounties.bounty_id` → Unique contract identifier
+- `bounties.sponsor_github_id` → References `users.github_id`
 - `pr_claims.bounty_id` → References `bounties.bounty_id`
 - `wallet_mappings.github_id` → Used to find recipient address
+- `users.github_id` → Unique GitHub user identifier
+- `allowlists.user_id` → References `users.id`
+- `allowlists.bounty_id` → References `bounties.bounty_id` (optional)
+- `allowlists.repo_id` → Repository ID for repo-level allowlists (optional)
+- `notification_preferences.user_id` → References `users.id`
 
 ---
 
@@ -323,6 +429,16 @@ FRONTEND_URL
 ENV_TARGET
 DATABASE_URL
 DIRECT_DATABASE_URL
+```
+
+### Optional
+```bash
+NEXT_PUBLIC_ENV_TARGET=local          # Enable local testing mode
+NEXT_PUBLIC_USE_DUMMY_DATA=true       # Use dummy data instead of API calls
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID  # WalletConnect project ID
+CHAIN_ID=84532                        # Default: Base Sepolia
+RPC_URL=https://sepolia.base.org      # Default: Base Sepolia RPC
+COOKIE_DOMAIN                         # Auto-detected from FRONTEND_URL
 ```
 
 ### Pre-configured

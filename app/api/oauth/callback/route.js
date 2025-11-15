@@ -57,8 +57,10 @@ export async function GET(request) {
     session.githubId = userData.id;
     session.githubUsername = userData.login;
     session.githubAccessToken = tokenData.access_token;
+    session.avatarUrl = userData.avatar_url;
+    session.email = userData.email;
     
-    const returnTo = session.oauthReturnTo || '/link-wallet';
+    const returnTo = session.oauthReturnTo || '/';
     delete session.oauthReturnTo;
     delete session.oauthState;
     await session.save();

@@ -1,5 +1,5 @@
 import { getSession } from '@/lib/session';
-import { bountyQueries } from '@/server/db/prisma';
+import { bountyQueries, userQueries } from '@/server/db/prisma';
 import { handleBountyCreated } from '@/server/github/webhooks';
 import { computeBountyIdOnNetwork, createRepoIdHash } from '@/server/blockchain/contract';
 import { getGitHubApp, initGitHubApp } from '@/server/github/client';
@@ -39,6 +39,21 @@ export async function POST(request) {
 
     // Derive chainId from network
     const chainId = getChainIdFromNetwork(network);
+
+    // Auto-create or update user if session exists (backward compatible)
+    if (session && session.githubId) {
+      try {
+        await userQueries.upsert({
+          githubId: session.githubId,
+          githubUsername: session.githubUsername,
+          email: session.email,
+          avatarUrl: session.avatarUrl
+        });
+      } catch (userError) {
+        console.warn('Failed to upsert user (non-critical):', userError.message);
+        // Don't fail the request if user creation fails
+      }
+    }
 
     // Store in database
     await bountyQueries.create({

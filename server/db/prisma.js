@@ -184,6 +184,52 @@ export const bountyQueries = {
       updatedAt: Number(b.updatedAt),
       pinnedCommentId: b.pinnedCommentId ? Number(b.pinnedCommentId) : null
     }));
+  },
+
+  findAllOpen: async () => {
+    const environment = CONFIG.envTarget || 'stage';
+    const bounties = await prisma.bounty.findMany({
+      where: {
+        status: 'open',
+        environment: environment
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    
+    return bounties.map(b => ({
+      ...b,
+      repoId: Number(b.repoId),
+      sponsorGithubId: b.sponsorGithubId ? Number(b.sponsorGithubId) : null,
+      deadline: Number(b.deadline),
+      createdAt: Number(b.createdAt),
+      updatedAt: Number(b.updatedAt),
+      pinnedCommentId: b.pinnedCommentId ? Number(b.pinnedCommentId) : null
+    }));
+  },
+
+  findBySponsor: async (sponsorGithubId) => {
+    const environment = CONFIG.envTarget || 'stage';
+    const bounties = await prisma.bounty.findMany({
+      where: {
+        sponsorGithubId: BigInt(sponsorGithubId),
+        environment: environment
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    
+    return bounties.map(b => ({
+      ...b,
+      repoId: Number(b.repoId),
+      sponsorGithubId: b.sponsorGithubId ? Number(b.sponsorGithubId) : null,
+      deadline: Number(b.deadline),
+      createdAt: Number(b.createdAt),
+      updatedAt: Number(b.updatedAt),
+      pinnedCommentId: b.pinnedCommentId ? Number(b.pinnedCommentId) : null
+    }));
   }
 };
 
@@ -235,6 +281,19 @@ export const walletQueries = {
     });
     
     if (!wallet) return null;
+    
+    return {
+      ...wallet,
+      githubId: Number(wallet.githubId),
+      verifiedAt: Number(wallet.verifiedAt),
+      createdAt: Number(wallet.createdAt)
+    };
+  },
+
+  delete: async (githubId) => {
+    const wallet = await prisma.walletMapping.delete({
+      where: { githubId: BigInt(githubId) }
+    });
     
     return {
       ...wallet,
@@ -299,6 +358,24 @@ export const prClaimQueries = {
       createdAt: Number(claim.createdAt),
       resolvedAt: claim.resolvedAt ? Number(claim.resolvedAt) : null
     };
+  },
+
+  findByContributor: async (prAuthorGithubId) => {
+    const claims = await prisma.prClaim.findMany({
+      where: {
+        prAuthorGithubId: BigInt(prAuthorGithubId)
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    
+    return claims.map(c => ({
+      ...c,
+      prAuthorGithubId: Number(c.prAuthorGithubId),
+      createdAt: Number(c.createdAt),
+      resolvedAt: c.resolvedAt ? Number(c.resolvedAt) : null
+    }));
   }
 };
 
@@ -361,6 +438,168 @@ export const statsQueries = {
     }));
 
     return { tokenStats, recent: recentConverted, overall };
+  }
+};
+
+// User queries
+export const userQueries = {
+  upsert: async (githubData) => {
+    const user = await prisma.user.upsert({
+      where: { githubId: BigInt(githubData.githubId) },
+      update: {
+        githubUsername: githubData.githubUsername,
+        email: githubData.email || null,
+        avatarUrl: githubData.avatarUrl || null,
+        updatedAt: BigInt(Date.now())
+      },
+      create: {
+        githubId: BigInt(githubData.githubId),
+        githubUsername: githubData.githubUsername,
+        email: githubData.email || null,
+        avatarUrl: githubData.avatarUrl || null,
+        createdAt: BigInt(Date.now()),
+        updatedAt: BigInt(Date.now())
+      }
+    });
+    
+    return {
+      ...user,
+      githubId: Number(user.githubId),
+      createdAt: Number(user.createdAt),
+      updatedAt: Number(user.updatedAt)
+    };
+  },
+
+  findByGithubId: async (githubId) => {
+    const user = await prisma.user.findUnique({
+      where: { githubId: BigInt(githubId) }
+    });
+    
+    if (!user) return null;
+    
+    return {
+      ...user,
+      githubId: Number(user.githubId),
+      createdAt: Number(user.createdAt),
+      updatedAt: Number(user.updatedAt)
+    };
+  },
+
+  updatePreferences: async (userId, preferences) => {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        preferences,
+        updatedAt: BigInt(Date.now())
+      }
+    });
+    
+    return {
+      ...user,
+      githubId: Number(user.githubId),
+      createdAt: Number(user.createdAt),
+      updatedAt: Number(user.updatedAt)
+    };
+  }
+};
+
+// Allowlist queries
+export const allowlistQueries = {
+  create: async (userId, bountyId, repoId, allowedAddress) => {
+    const allowlist = await prisma.allowlist.create({
+      data: {
+        userId,
+        bountyId: bountyId || null,
+        repoId: repoId ? BigInt(repoId) : null,
+        allowedAddress: allowedAddress.toLowerCase(),
+        createdAt: BigInt(Date.now())
+      }
+    });
+    
+    return {
+      ...allowlist,
+      repoId: allowlist.repoId ? Number(allowlist.repoId) : null,
+      createdAt: Number(allowlist.createdAt)
+    };
+  },
+
+  findByBounty: async (bountyId) => {
+    const allowlists = await prisma.allowlist.findMany({
+      where: { bountyId },
+      include: { user: true }
+    });
+    
+    return allowlists.map(a => ({
+      ...a,
+      repoId: a.repoId ? Number(a.repoId) : null,
+      createdAt: Number(a.createdAt),
+      user: {
+        ...a.user,
+        githubId: Number(a.user.githubId),
+        createdAt: Number(a.user.createdAt),
+        updatedAt: Number(a.user.updatedAt)
+      }
+    }));
+  },
+
+  findByRepo: async (repoId, userId) => {
+    const allowlists = await prisma.allowlist.findMany({
+      where: {
+        repoId: BigInt(repoId),
+        userId,
+        bountyId: null
+      }
+    });
+    
+    return allowlists.map(a => ({
+      ...a,
+      repoId: a.repoId ? Number(a.repoId) : null,
+      createdAt: Number(a.createdAt)
+    }));
+  },
+
+  checkAllowed: async (bountyId, address) => {
+    const bounty = await prisma.bounty.findUnique({
+      where: { bountyId }
+    });
+    
+    if (!bounty || !bounty.sponsorGithubId) return true; // No sponsor or allowlist
+    
+    const user = await prisma.user.findUnique({
+      where: { githubId: bounty.sponsorGithubId }
+    });
+    
+    if (!user) return true; // No user account = no allowlist
+    
+    // Check bounty-specific allowlist
+    const bountyAllowlist = await prisma.allowlist.findFirst({
+      where: {
+        userId: user.id,
+        bountyId,
+        allowedAddress: address.toLowerCase()
+      }
+    });
+    
+    if (bountyAllowlist) return true;
+    
+    // Check repo-level allowlist
+    const repoAllowlist = await prisma.allowlist.findFirst({
+      where: {
+        userId: user.id,
+        repoId: bounty.repoId,
+        bountyId: null,
+        allowedAddress: address.toLowerCase()
+      }
+    });
+    
+    return !!repoAllowlist;
+  },
+
+  remove: async (id) => {
+    await prisma.allowlist.delete({
+      where: { id }
+    });
+    return { success: true };
   }
 };
 

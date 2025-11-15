@@ -6,7 +6,7 @@ import { useAccount, useWalletClient, useSwitchChain, useDisconnect } from 'wagm
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ethers } from 'ethers';
 import { NETWORKS, CONTRACTS, ESCROW_ABI, ERC20_ABI } from '@/config/networks';
-import { MoneyIcon } from '@/components/Icons';
+import { MoneyIcon, GitHubIcon } from '@/components/Icons';
 
 function AttachBountyContent() {
   const searchParams = useSearchParams();
@@ -379,9 +379,78 @@ function AttachBountyContent() {
     );
   }
 
+  // Check if user came from GitHub App or direct visit
+  const hasIssueData = repoFullName && issueNumber && repoId;
+
+  // Direct visit - show setup options
+  if (!hasIssueData) {
+    return (
+      <div className="container" style={{ maxWidth: '600px' }}>
+        <div className="animate-fade-in-up" style={{ textAlign: 'center', marginBottom: '48px' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            gap: '12px',
+            marginBottom: '16px'
+          }}>
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '16px',
+              background: 'rgba(131, 238, 232, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <MoneyIcon size={32} color="var(--color-primary)" />
+            </div>
+          </div>
+          <h1 style={{ 
+            fontSize: 'clamp(32px, 6vw, 40px)',
+            fontFamily: "'Space Grotesk', sans-serif",
+            letterSpacing: '-0.02em'
+          }}>
+            Create Bounty
+          </h1>
+          <p className="subtitle" style={{ fontSize: 'clamp(15px, 2.5vw, 16px)', marginBottom: '0' }}>
+            First, install the GitHub App to attach bounties to issues
+          </p>
+        </div>
+
+        <div className="animate-fade-in-up delay-100">
+          <div className="card" style={{ marginBottom: '20px' }}>
+            <h3 style={{ marginBottom: '12px' }}>Install GitHub App</h3>
+            <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
+              Install BountyPay on your repositories, then create bounties directly from any issue.
+            </p>
+            <a 
+              href="https://github.com/apps/bountypay" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="btn btn-primary btn-full"
+            >
+              <GitHubIcon size={18} color="white" />
+              Install GitHub App
+            </a>
+          </div>
+
+          <div className="info-box">
+            <h3 style={{ fontSize: '16px', marginBottom: '12px' }}>After Installation</h3>
+            <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', margin: 0 }}>
+              Once installed, visit any issue in your repository and you'll see an "Attach Bounty" button. 
+              Click it to fund the issue with crypto.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // From GitHub App - existing flow
   return (
     <div className="container" style={{ maxWidth: '600px' }}>
-      <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+      <div className="animate-fade-in-up" style={{ textAlign: 'center', marginBottom: '48px' }}>
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
@@ -401,27 +470,31 @@ function AttachBountyContent() {
             <MoneyIcon size={32} color="var(--color-primary)" />
           </div>
         </div>
-        <h1 style={{ fontSize: '40px' }}>Attach Bounty</h1>
-        <p className="subtitle" style={{ fontSize: '16px', marginBottom: '0' }}>
+        <h1 style={{ 
+          fontSize: 'clamp(32px, 6vw, 40px)',
+          fontFamily: "'Space Grotesk', sans-serif",
+          letterSpacing: '-0.02em'
+        }}>
+          Attach Bounty
+        </h1>
+        <p className="subtitle" style={{ fontSize: 'clamp(15px, 2.5vw, 16px)', marginBottom: '0' }}>
           Fund this issue with crypto. Payment triggers automatically when PR merges.
         </p>
       </div>
 
-      <div className="info-box" style={{ marginBottom: '32px' }}>
-        <p><strong>Repository:</strong> {repoFullName || 'Loading...'}</p>
-        <p><strong>Issue:</strong> #{issueNumber || '-'}</p>
-        {repoFullName && issueNumber && (
-          <p>
-            <a href={`https://github.com/${repoFullName}/issues/${issueNumber}`} target="_blank" rel="noopener noreferrer">
-              View on GitHub →
-            </a>
-          </p>
-        )}
+      <div className="info-box animate-fade-in-up delay-100" style={{ marginBottom: '32px' }}>
+        <p><strong>Repository:</strong> {repoFullName}</p>
+        <p><strong>Issue:</strong> #{issueNumber}</p>
+        <p>
+          <a href={`https://github.com/${repoFullName}/issues/${issueNumber}`} target="_blank" rel="noopener noreferrer">
+            View on GitHub →
+          </a>
+        </p>
       </div>
 
       {!isConnected ? (
         <>
-          <div style={{ marginBottom: '24px' }}>
+          <div className="animate-fade-in-up delay-200" style={{ marginBottom: '24px' }}>
             <label style={{ marginBottom: '8px' }}>Select Network</label>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button

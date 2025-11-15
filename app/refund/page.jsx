@@ -137,7 +137,7 @@ export default function Refund() {
 
   return (
     <div className="container" style={{ maxWidth: '600px' }}>
-      <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+      <div className="animate-fade-in-up" style={{ textAlign: 'center', marginBottom: '48px' }}>
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
@@ -157,13 +157,19 @@ export default function Refund() {
             <RefreshIcon size={32} color="var(--color-primary)" />
           </div>
         </div>
-        <h1 style={{ fontSize: '40px' }}>Refund Bounty</h1>
-        <p className="subtitle" style={{ fontSize: '16px', marginBottom: '0' }}>
+        <h1 style={{ 
+          fontSize: 'clamp(32px, 6vw, 40px)',
+          fontFamily: "'Space Grotesk', sans-serif",
+          letterSpacing: '-0.02em'
+        }}>
+          Refund Bounty
+        </h1>
+        <p className="subtitle" style={{ fontSize: 'clamp(15px, 2.5vw, 16px)', marginBottom: '0' }}>
           Request refund for expired bounties that were never resolved
         </p>
       </div>
 
-      <div className="warning" style={{ marginBottom: '32px' }}>
+      <div className="warning animate-fade-in-up delay-100" style={{ marginBottom: '32px' }}>
         <AlertIcon size={20} color="#B87D00" />
         <div>
           <strong>Eligibility Requirements</strong>
@@ -175,7 +181,7 @@ export default function Refund() {
 
       {!isConnected ? (
         <>
-          <div style={{ marginBottom: '24px' }}>
+          <div className="animate-fade-in-up delay-200" style={{ marginBottom: '24px' }}>
             <label style={{ marginBottom: '8px' }}>Select Network</label>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button

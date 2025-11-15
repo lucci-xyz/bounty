@@ -67,3 +67,47 @@ model PrClaim {
   @@map("pr_claims")
 }
 
+model User {
+  id             Int          @id @default(autoincrement())
+  githubId       BigInt       @unique @map("github_id")
+  githubUsername String       @map("github_username")
+  email          String?
+  avatarUrl      String?      @map("avatar_url")
+  preferences    Json?
+  createdAt      BigInt       @map("created_at")
+  updatedAt      BigInt       @map("updated_at")
+  
+  allowlists     Allowlist[]
+  
+  @@index([githubId], name: "idx_users_github")
+  @@map("users")
+}
+
+model Allowlist {
+  id             Int     @id @default(autoincrement())
+  userId         Int     @map("user_id")
+  bountyId       String? @map("bounty_id")
+  repoId         BigInt? @map("repo_id")
+  allowedAddress String  @map("allowed_address")
+  createdAt      BigInt  @map("created_at")
+  
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId], name: "idx_allowlist_user")
+  @@index([bountyId], name: "idx_allowlist_bounty")
+  @@index([repoId], name: "idx_allowlist_repo")
+  @@map("allowlists")
+}
+
+model NotificationPreference {
+  id             Int     @id @default(autoincrement())
+  userId         Int     @unique @map("user_id")
+  emailOnClaim   Boolean @default(true) @map("email_on_claim")
+  emailOnMerge   Boolean @default(true) @map("email_on_merge")
+  emailOnExpiry  Boolean @default(true) @map("email_on_expiry")
+  createdAt      BigInt  @map("created_at")
+  updatedAt      BigInt  @map("updated_at")
+  
+  @@map("notification_preferences")
+}
+
