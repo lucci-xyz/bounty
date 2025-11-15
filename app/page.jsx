@@ -19,18 +19,23 @@ export default function Home() {
   useEffect(() => {
     async function fetchBounties() {
       try {
-        // Use dummy data for now
-        // Uncomment below to fetch from API instead
-        // const response = await fetch('/api/bounties/open');
-        // if (!response.ok) {
-        //   throw new Error('Failed to fetch bounties');
-        // }
-        // const data = await response.json();
+        const useDummyData = process.env.NEXT_PUBLIC_USE_DUMMY_DATA === 'true';
         
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setBounties(dummyBounties);
-        setFilteredBounties(dummyBounties);
+        if (useDummyData) {
+          // Use dummy data
+          await new Promise(resolve => setTimeout(resolve, 500));
+          setBounties(dummyBounties);
+          setFilteredBounties(dummyBounties);
+        } else {
+          // Fetch from API
+          const response = await fetch('/api/bounties/open');
+          if (!response.ok) {
+            throw new Error('Failed to fetch bounties');
+          }
+          const data = await response.json();
+          setBounties(data);
+          setFilteredBounties(data);
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -137,8 +142,11 @@ export default function Home() {
   if (loading) {
     return (
       <div className="container" style={{ maxWidth: '1200px', padding: '40px 20px' }}>
-        <h1>Open Bounties</h1>
-        <p style={{ color: 'var(--color-text-secondary)' }}>Loading bounties...</p>
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light leading-tight mb-3" style={{ 
+          fontFamily: 'Georgia, Times New Roman, serif',
+          color: '#00827B'
+        }}>Bounties</h1>
+        <p style={{ color: 'var(--color-text-secondary)' }}>Loading...</p>
       </div>
     );
   }
@@ -146,7 +154,10 @@ export default function Home() {
   if (error) {
     return (
       <div className="container" style={{ maxWidth: '1200px', padding: '40px 20px' }}>
-        <h1>Open Bounties</h1>
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light leading-tight mb-3" style={{ 
+          fontFamily: 'Georgia, Times New Roman, serif',
+          color: '#00827B'
+        }}>Bounties</h1>
         <div className="card" style={{ background: 'rgba(255, 59, 48, 0.1)', border: '1px solid rgba(255, 59, 48, 0.3)' }}>
           <p style={{ color: '#ff3b30', margin: 0 }}>Error: {error}</p>
         </div>
@@ -161,32 +172,32 @@ export default function Home() {
   return (
     <div className="container" style={{ 
       maxWidth: '1200px', 
-      padding: '40px 20px',
+      padding: isMobile ? '24px 16px' : '40px 20px',
       width: '100%'
     }}>
-      <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ 
-          fontSize: 'clamp(32px, 6vw, 48px)', 
-          marginBottom: '12px' 
+      <div style={{ marginBottom: isMobile ? '20px' : '32px' }}>
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light leading-tight animate-fade-in-up" style={{ 
+          fontFamily: 'Georgia, Times New Roman, serif',
+          color: '#00827B',
+          marginBottom: isMobile ? '8px' : '12px'
         }}>
-          Open Bounties
+          Bounties
         </h1>
-        <p style={{ 
-          fontSize: 'clamp(16px, 2.5vw, 18px)', 
-          color: 'var(--color-text-secondary)' 
-        }}>
+        <p className="text-sm md:text-base" style={{ color: 'var(--color-text-secondary)' }}>
           {filteredBounties.length} {filteredBounties.length === 1 ? 'bounty' : 'bounties'} available
         </p>
       </div>
 
       {/* Filter Bar */}
-      <div style={{ 
-        marginBottom: '24px',
+      <div style={{
+        marginBottom: isMobile ? '16px' : '24px',
         display: 'flex',
-        gap: '8px',
+        gap: isMobile ? '6px' : '8px',
         alignItems: 'center',
-        flexWrap: 'wrap'
-      }}>
+        flexWrap: 'wrap',
+        position: 'relative',
+        zIndex: 100
+      }} className="animate-fade-in-up delay-100">
         {/* Sort Pills */}
         {[
           { value: 'newest', label: 'Newest' },
@@ -197,24 +208,35 @@ export default function Home() {
           <button
             key={sort.value}
             onClick={() => setSortBy(sort.value)}
-            style={{
+            className="text-sm"
+          style={{
               padding: '8px 14px',
               borderRadius: '8px',
               border: 'none',
               background: sortBy === sort.value ? 'var(--color-primary)' : 'var(--color-background-secondary)',
               color: sortBy === sort.value ? 'white' : 'var(--color-text-secondary)',
-              fontSize: 'clamp(12px, 2vw, 14px)',
-              cursor: 'pointer',
-              fontWeight: sortBy === sort.value ? '600' : '400',
-              transition: 'all 0.2s',
-              whiteSpace: 'nowrap'
+            cursor: 'pointer',
+              fontWeight: sortBy === sort.value ? '600' : '500',
+              transition: 'all 0.2s ease',
+              whiteSpace: 'nowrap',
+              outline: 'none'
+            }}
+          onMouseEnter={(e) => {
+              if (sortBy !== sort.value) {
+                e.currentTarget.style.background = 'var(--color-card)';
+              }
+          }}
+          onMouseLeave={(e) => {
+              if (sortBy !== sort.value) {
+                e.currentTarget.style.background = 'var(--color-background-secondary)';
+              }
             }}
           >
             {sort.label}
           </button>
         ))}
 
-        <div style={{ 
+          <div style={{
           width: '1px', 
           height: '24px', 
           background: 'var(--color-border)',
@@ -229,6 +251,7 @@ export default function Home() {
               setShowLanguageDropdown(!showLanguageDropdown);
               setShowLabelDropdown(false);
             }}
+            className="text-xs"
             style={{
               padding: '8px 14px',
               paddingRight: selectedLanguages.length > 0 ? '32px' : '14px',
@@ -236,7 +259,6 @@ export default function Home() {
               border: '1px solid var(--color-border)',
               background: selectedLanguages.length > 0 ? 'rgba(0, 130, 123, 0.12)' : 'var(--color-background-secondary)',
               color: selectedLanguages.length > 0 ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-              fontSize: 'clamp(12px, 2vw, 13px)',
               cursor: 'pointer',
               fontWeight: '500',
               display: 'flex',
@@ -284,9 +306,9 @@ export default function Home() {
                   color: 'var(--color-primary)',
                   fontSize: '16px',
                   cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
                   transition: 'background 0.15s',
                   fontWeight: '600',
                   lineHeight: '1'
@@ -310,7 +332,7 @@ export default function Home() {
                 border: '1px solid var(--color-border)',
                 borderRadius: '10px',
                 boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
-                zIndex: 100,
+                zIndex: 1000,
                 minWidth: '160px',
                 overflow: 'hidden',
                 padding: '6px'
@@ -329,13 +351,13 @@ export default function Home() {
                           : [...prev, lang]
                       );
                     }}
+                    className="text-xs"
                     style={{
                       width: '100%',
                       padding: '8px 12px',
                       border: 'none',
                       background: isSelected ? 'rgba(0, 130, 123, 0.12)' : 'transparent',
                       color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
-                      fontSize: '13px',
                       cursor: 'pointer',
                       textAlign: 'left',
                       transition: 'all 0.1s',
@@ -373,6 +395,7 @@ export default function Home() {
               setShowLabelDropdown(!showLabelDropdown);
               setShowLanguageDropdown(false);
             }}
+            className="text-xs"
             style={{
               padding: '8px 14px',
               paddingRight: selectedLabels.length > 0 ? '32px' : '14px',
@@ -380,7 +403,6 @@ export default function Home() {
               border: '1px solid var(--color-border)',
               background: selectedLabels.length > 0 ? 'rgba(0, 130, 123, 0.12)' : 'var(--color-background-secondary)',
               color: selectedLabels.length > 0 ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-              fontSize: 'clamp(12px, 2vw, 13px)',
               cursor: 'pointer',
               fontWeight: '500',
               display: 'flex',
@@ -454,7 +476,7 @@ export default function Home() {
                 border: '1px solid var(--color-border)',
                 borderRadius: '10px',
                 boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
-                zIndex: 100,
+                zIndex: 1000,
                 minWidth: '160px',
                 maxHeight: '280px',
                 overflow: 'auto',
@@ -474,13 +496,13 @@ export default function Home() {
                           : [...prev, label]
                       );
                     }}
+                    className="text-xs"
                     style={{
                       width: '100%',
                       padding: '8px 12px',
                       border: 'none',
                       background: isSelected ? 'rgba(0, 130, 123, 0.12)' : 'transparent',
                       color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
-                      fontSize: '13px',
                       cursor: 'pointer',
                       textAlign: 'left',
                       transition: 'all 0.1s',
@@ -513,14 +535,10 @@ export default function Home() {
 
       {filteredBounties.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <p style={{ fontSize: '18px', color: 'var(--color-text-secondary)', marginBottom: '24px' }}>
+          <p className="text-lg mb-6" style={{ color: 'var(--color-text-secondary)' }}>
             {bounties.length === 0 ? 'No open bounties at the moment.' : 'No bounties match your filters.'}
           </p>
-          {bounties.length === 0 ? (
-            <Link href="/about" className="btn btn-primary">
-              Learn More
-            </Link>
-          ) : (
+          {bounties.length > 0 && (
             <button
               onClick={() => {
                 setSelectedLanguages([]);
@@ -533,65 +551,63 @@ export default function Home() {
           )}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {filteredBounties.map((bounty) => (
-            <div key={bounty.bountyId} className="card" style={{ 
+        <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '12px' : '16px', position: 'relative', zIndex: 1 }}>
+          {filteredBounties.map((bounty, index) => (
+            <div key={bounty.bountyId} className={`card animate-fade-in-up delay-${Math.min(index * 100, 500)}`} style={{ 
               display: 'flex', 
               flexDirection: 'column',
-              gap: '16px',
-              padding: 'clamp(16px, 3vw, 24px)',
-              transition: 'transform 0.2s, box-shadow 0.2s'
-            }}>
-              <div style={{ 
-                display: 'flex', 
+              gap: isMobile ? '12px' : '16px',
+              padding: isMobile ? '14px' : 'clamp(18px, 3vw, 24px)',
+            transition: 'all 0.3s ease',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+              position: 'relative',
+              zIndex: 1
+          }}
+          onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.08)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.04)';
+          }}
+        >
+          <div style={{
+            display: 'flex',
                 justifyContent: 'space-between', 
                 alignItems: 'start', 
-                gap: '16px',
+                gap: isMobile ? '12px' : '16px',
                 flexDirection: isMobile ? 'column' : 'row'
               }}>
                 <div style={{ flex: '1', minWidth: '0', width: '100%' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px', marginBottom: isMobile ? '8px' : '12px', flexWrap: 'wrap' }}>
                     <a 
                       href={`https://github.com/${bounty.repoFullName}/issues/${bounty.issueNumber}`}
                       target="_blank"
                       rel="noopener noreferrer"
+                      className="text-sm md:text-base font-semibold"
                       style={{ 
-                        fontSize: 'clamp(16px, 2.5vw, 18px)',
                         color: 'var(--color-primary)',
                         textDecoration: 'none',
-                        fontWeight: '600',
                         wordBreak: 'break-word'
                       }}
                     >
                       {bounty.repoFullName}#{bounty.issueNumber}
                     </a>
-                    <span style={{ 
-                      fontSize: 'clamp(13px, 2vw, 14px)',
-                      color: 'var(--color-text-secondary)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}>
+                    <span className="text-xs md:text-sm flex items-center gap-1" style={{ color: 'var(--color-text-secondary)' }}>
                       ★ {formatStars(bounty.repoStars)}
                     </span>
-                  </div>
-                  
-                  <p style={{ 
-                    fontSize: 'clamp(14px, 2vw, 15px)', 
-                    color: 'var(--color-text-secondary)', 
+          </div>
+          
+                  <p className="text-xs md:text-sm" style={{ 
+            color: 'var(--color-text-secondary)', 
                     lineHeight: '1.5',
-                    margin: '0 0 12px 0'
+                    margin: isMobile ? '0 0 8px 0' : '0 0 12px 0'
                   }}>
                     {bounty.issueDescription}
                   </p>
 
-                  <div style={{ 
-                    display: 'flex', 
-                    gap: '6px', 
-                    flexWrap: 'wrap', 
-                    fontSize: 'clamp(11px, 1.8vw, 12px)', 
-                    alignItems: 'center' 
-                  }}>
+                  <div className="flex gap-2 flex-wrap text-xs">
                     {bounty.language && (
                       <span style={{ 
                         padding: '4px 10px',
@@ -617,25 +633,26 @@ export default function Home() {
                       </span>
                     ))}
                   </div>
-                </div>
-                
+          </div>
+
                 {bounty.txHash ? (
                   <a
                     href={`https://sepolia.basescan.org/tx/${bounty.txHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ 
-                      padding: isMobile ? '8px 12px' : 'clamp(10px, 2vw, 12px) clamp(16px, 3vw, 20px)',
+                      padding: isMobile ? '10px 16px' : 'clamp(10px, 2vw, 12px) clamp(16px, 3vw, 20px)',
                       background: 'rgba(131, 238, 232, 0.15)',
                       borderRadius: '8px',
                       textAlign: 'center',
-                      minWidth: isMobile ? 'auto' : 'clamp(120px, 20vw, 140px)',
-                      width: isMobile ? 'fit-content' : 'auto',
-                      alignSelf: isMobile ? 'center' : 'auto',
+                      minWidth: isMobile ? '100%' : 'clamp(120px, 20vw, 140px)',
+                      width: isMobile ? '100%' : 'auto',
+                      alignSelf: 'stretch',
                       textDecoration: 'none',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
+                      justifyContent: 'center',
                       position: 'relative',
                       cursor: 'pointer',
                       transition: 'transform 0.2s, background 0.2s'
@@ -649,55 +666,40 @@ export default function Home() {
                       e.currentTarget.style.background = 'rgba(131, 238, 232, 0.15)';
                     }}
                   >
-                    <div style={{ 
-                      fontSize: isMobile ? '16px' : 'clamp(18px, 3vw, 20px)', 
-                      fontWeight: '600', 
-                      color: 'var(--color-primary)', 
-                      marginBottom: '4px' 
-                    }}>
+                    <div className="text-base md:text-lg font-semibold mb-1" style={{ color: 'var(--color-primary)' }}>
                       {formatAmount(bounty.amount, bounty.tokenSymbol)} {bounty.tokenSymbol}
                     </div>
-                    <div style={{ 
-                      fontSize: isMobile ? '11px' : 'clamp(12px, 2vw, 13px)', 
-                      color: 'var(--color-text-secondary)', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '4px' 
-                    }}>
+                    <div className="text-xs flex items-center gap-1" style={{ color: 'var(--color-text-secondary)' }}>
                       {formatDeadline(bounty.deadline)} left
                       <span>↗</span>
                     </div>
                   </a>
                 ) : (
-                  <div style={{ 
-                    padding: isMobile ? '8px 12px' : 'clamp(10px, 2vw, 12px) clamp(16px, 3vw, 20px)',
+          <div style={{ 
+                    padding: isMobile ? '10px 16px' : 'clamp(10px, 2vw, 12px) clamp(16px, 3vw, 20px)',
                     background: 'rgba(131, 238, 232, 0.15)',
                     borderRadius: '8px',
                     textAlign: 'center',
-                    minWidth: isMobile ? 'auto' : 'clamp(120px, 20vw, 140px)',
-                    width: isMobile ? 'fit-content' : 'auto',
-                    alignSelf: isMobile ? 'center' : 'auto'
+                    minWidth: isMobile ? '100%' : 'clamp(120px, 20vw, 140px)',
+                    width: isMobile ? '100%' : 'auto',
+                    alignSelf: 'stretch',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}>
-                    <div style={{ 
-                      fontSize: isMobile ? '16px' : 'clamp(18px, 3vw, 20px)', 
-                      fontWeight: '600', 
-                      color: 'var(--color-primary)', 
-                      marginBottom: '4px' 
-                    }}>
+                    <div className="text-base md:text-lg font-semibold mb-1" style={{ color: 'var(--color-primary)' }}>
                       {formatAmount(bounty.amount, bounty.tokenSymbol)} {bounty.tokenSymbol}
                     </div>
-                    <div style={{ 
-                      fontSize: isMobile ? '11px' : 'clamp(12px, 2vw, 13px)', 
-                      color: 'var(--color-text-secondary)' 
-                    }}>
+                    <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                       {formatDeadline(bounty.deadline)} left
-                    </div>
+          </div>
                   </div>
                 )}
-              </div>
-            </div>
-          ))}
         </div>
+      </div>
+          ))}
+      </div>
       )}
     </div>
   );

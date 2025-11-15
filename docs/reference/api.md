@@ -122,6 +122,12 @@ Record bounty creation after blockchain transaction. Called by frontend after su
 }
 ```
 
+**Side Effects:**
+- Auto-creates or updates user record in `users` table if GitHub session exists
+- Stores sponsor's `githubId`, `username`, `email`, and `avatarUrl` from session
+- Posts bounty summary comment to GitHub issue
+- Adds bounty label to issue
+
 **Errors:**
 
 - `400` - Missing required fields
@@ -263,6 +269,242 @@ curl https://your-domain.com/api/contract/bounty/0x1234...
 
 ---
 
+#### GET /api/bounties/open
+
+Get all open bounties (public endpoint).
+
+**Response:**
+
+```json
+[
+  {
+    "id": 1,
+    "bounty_id": "0x...",
+    "repo_full_name": "owner/repo",
+    "repo_id": 123456789,
+    "issue_number": 42,
+    "sponsor_address": "0x...",
+    "sponsor_github_id": 12345,
+    "amount": "1000000000",
+    "token_symbol": "USDC",
+    "deadline": 1735689600,
+    "status": "open",
+    "tx_hash": "0x...",
+    "network": "BASE_SEPOLIA",
+    "environment": "stage",
+    "created_at": 1704067200,
+    "updated_at": 1704067200
+  }
+]
+```
+
+**Example:**
+
+```bash
+curl https://your-domain.com/api/bounties/open
+```
+
+---
+
+### Users
+
+#### GET /api/user/profile
+
+Get authenticated user's profile. Requires GitHub OAuth session.
+
+**Response:**
+
+```json
+{
+  "user": {
+    "id": 1,
+    "github_id": 12345,
+    "github_username": "username",
+    "email": "user@example.com",
+    "avatar_url": "https://avatars.githubusercontent.com/...",
+    "created_at": 1704067200,
+    "updated_at": 1704067200
+  },
+  "wallet": {
+    "wallet_address": "0x...",
+    "verified_at": 1704067200
+  }
+}
+```
+
+**Errors:**
+
+- `401` - Not authenticated
+
+**Example:**
+
+```bash
+curl https://your-domain.com/api/user/profile \
+  -H "Cookie: session=..."
+```
+
+---
+
+#### GET /api/user/bounties
+
+Get bounties sponsored by authenticated user. Requires GitHub OAuth session.
+
+**Response:**
+
+```json
+{
+  "bounties": [
+    {
+      "id": 1,
+      "bounty_id": "0x...",
+      "repo_full_name": "owner/repo",
+      "issue_number": 42,
+      "amount": "1000000000",
+      "status": "open",
+      ...
+    }
+  ]
+}
+```
+
+**Errors:**
+
+- `401` - Not authenticated
+
+**Example:**
+
+```bash
+curl https://your-domain.com/api/user/bounties \
+  -H "Cookie: session=..."
+```
+
+---
+
+#### GET /api/user/stats
+
+Get statistics for authenticated user. Requires GitHub OAuth session.
+
+**Response:**
+
+```json
+{
+  "total_bounties": 5,
+  "total_funded": "5000000000",
+  "active_bounties": 3,
+  "resolved_bounties": 2
+}
+```
+
+**Errors:**
+
+- `401` - Not authenticated
+
+**Example:**
+
+```bash
+curl https://your-domain.com/api/user/stats \
+  -H "Cookie: session=..."
+```
+
+---
+
+### Allowlists
+
+#### GET /api/allowlist/:bountyId
+
+Get allowlist for a specific bounty. Requires GitHub OAuth session and bounty ownership.
+
+**Parameters:**
+
+- `bountyId` (path) - Bounty ID (bytes32 hex string)
+
+**Response:**
+
+```json
+{
+  "bountyId": "0x...",
+  "allowlist": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "allowed_address": "0x123...",
+      "created_at": 1704067200,
+      "user": {
+        "github_username": "contributor1"
+      }
+    }
+  ]
+}
+```
+
+**Errors:**
+
+- `401` - Not authenticated
+- `403` - Not bounty owner
+- `404` - Bounty not found
+
+**Example:**
+
+```bash
+curl https://your-domain.com/api/allowlist/0x1234... \
+  -H "Cookie: session=..."
+```
+
+---
+
+#### POST /api/allowlist/:bountyId
+
+Add address to bounty allowlist. Requires GitHub OAuth session and bounty ownership.
+
+**Parameters:**
+
+- `bountyId` (path) - Bounty ID (bytes32 hex string)
+
+**Request Body:**
+
+```json
+{
+  "address": "0x...",
+  "repoLevel": false
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "allowlist": {
+    "id": 1,
+    "user_id": 1,
+    "bounty_id": "0x...",
+    "allowed_address": "0x...",
+    "created_at": 1704067200
+  }
+}
+```
+
+**Errors:**
+
+- `400` - Invalid address
+- `401` - Not authenticated
+- `403` - Not bounty owner
+- `404` - Bounty not found
+
+**Example:**
+
+```bash
+curl -X POST https://your-domain.com/api/allowlist/0x1234... \
+  -H "Cookie: session=..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "address": "0x123...",
+    "repoLevel": false
+  }'
+```
+
+---
+
 ### Wallets
 
 #### POST /api/wallet/link
@@ -371,20 +613,32 @@ GitHub OAuth callback endpoint. Handled automatically by GitHub redirect.
 - `state` - CSRF protection token
 
 **Response:**
-Redirects to return URL or `/link-wallet`.
+Redirects to return URL or `/` (home page).
+
+**Session Data Stored:**
+- `githubId` - GitHub user ID
+- `githubUsername` - GitHub username
+- `githubAccessToken` - OAuth access token
+- `avatarUrl` - User avatar URL
+- `email` - User email (if available)
+
+**Side Effects:**
+- Auto-creates or updates user record in database on first bounty creation
 
 ---
 
 #### GET /oauth/user
 
-Get current authenticated GitHub user.
+Get current authenticated GitHub user from session.
 
 **Response:**
 
 ```json
 {
   "githubId": 12345,
-  "githubUsername": "username"
+  "githubUsername": "username",
+  "avatarUrl": "https://avatars.githubusercontent.com/...",
+  "email": "user@example.com"
 }
 ```
 
@@ -395,7 +649,8 @@ Get current authenticated GitHub user.
 **Example:**
 
 ```bash
-curl https://your-domain.com/oauth/user
+curl https://your-domain.com/oauth/user \
+  -H "Cookie: session=..."
 ```
 
 ---

@@ -56,6 +56,7 @@ ENV_TARGET=stage                   # Options: "stage" or "prod"
 # SESSION_SECRET=your-local-dev-secret-32-chars-min
 # ENV_TARGET=stage
 # NEXT_PUBLIC_ENV_TARGET=local          # Set to "local" to enable wallet testing without GitHub auth
+# NEXT_PUBLIC_USE_DUMMY_DATA=true       # Set to "true" to use dummy data instead of real API calls (for testing)
 #
 # Then expose your local server with ngrok:
 #   ngrok http 3000

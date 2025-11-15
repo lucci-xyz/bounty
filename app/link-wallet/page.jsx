@@ -30,12 +30,14 @@ export default function LinkWallet() {
   const [returnTo, setReturnTo] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [useLocalMode, setUseLocalMode] = useState(false);
 
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
 
-  // Check if running locally - do this outside of state for immediate access
+  // Check if running locally or with dummy data - do this outside of state for immediate access
   const isLocal = process.env.NEXT_PUBLIC_ENV_TARGET === 'local';
+  const useDummyData = process.env.NEXT_PUBLIC_USE_DUMMY_DATA === 'true';
 
   useEffect(() => {
     setIsMounted(true);
@@ -46,7 +48,17 @@ export default function LinkWallet() {
       setReturnTo(returnToParam);
     }
     
-    checkGitHubAuth();
+    // In local mode or with dummy data enabled, use dummy GitHub user
+    if (isLocal || useDummyData) {
+      setUseLocalMode(true);
+      setGithubUser({
+        githubId: 123456789,
+        githubUsername: 'local-dev',
+        avatarUrl: null
+      });
+    } else {
+      checkGitHubAuth();
+    }
   }, []);
 
   // Auto-link wallet when both GitHub and wallet are connected
@@ -102,9 +114,19 @@ export default function LinkWallet() {
         throw new Error('Wallet client not available. Please reconnect your wallet.');
       }
 
-      if (isLocal) {
-        showStatus('✅ Local mode: Wallet connected for testing!', 'success');
+      if (isLocal || useLocalMode) {
+        showStatus('✅ Local mode: Wallet linked for testing!', 'success');
+        setLinked(true);
         setIsProcessing(false);
+        
+        // Simulate redirect
+        setTimeout(() => {
+          if (returnTo) {
+            window.location.href = returnTo;
+          } else {
+            window.location.href = '/';
+          }
+        }, 2000);
         return;
       }
 
@@ -191,7 +213,7 @@ export default function LinkWallet() {
 
   return (
     <div className="container" style={{ maxWidth: '600px' }}>
-      <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+      <div className="animate-fade-in-up" style={{ textAlign: 'center', marginBottom: '48px' }}>
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
@@ -211,14 +233,20 @@ export default function LinkWallet() {
             <LinkIcon size={32} color="var(--color-primary)" />
           </div>
         </div>
-        <h1 style={{ fontSize: '40px' }}>Link Your Wallet</h1>
-        <p className="subtitle" style={{ fontSize: '16px', marginBottom: '0' }}>
-          Connect GitHub and wallet to receive automatic bounty payments
+        <h1 style={{ 
+          fontSize: 'clamp(32px, 6vw, 40px)',
+          fontFamily: "'Space Grotesk', sans-serif",
+          letterSpacing: '-0.02em'
+        }}>
+          Link Your Wallet
+        </h1>
+        <p className="subtitle" style={{ fontSize: 'clamp(15px, 2.5vw, 16px)', marginTop: '8px' }}>
+          Connect your GitHub and wallet to receive automatic bounty payments
         </p>
       </div>
 
       {!githubUser ? (
-        <div className="card">
+        <div className="card animate-fade-in-up delay-100">
           <h3 style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{
               width: '24px',
@@ -236,16 +264,40 @@ export default function LinkWallet() {
           <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
             First, connect your GitHub account to verify your identity
           </p>
-          <button
-            className="btn btn-primary btn-full"
-            onClick={authenticateGitHub}
-          >
-            <GitHubIcon size={18} />
-            Connect GitHub
-          </button>
+          
+          {isLocal ? (
+            <div>
+              <button
+                className="btn btn-primary btn-full"
+                onClick={() => {
+                  setUseLocalMode(true);
+                  setGithubUser({
+                    githubId: 123456789,
+                    githubUsername: 'local-dev',
+                    avatarUrl: null
+                  });
+                  showStatus('Local mode: GitHub authenticated', 'success');
+                }}
+              >
+                <GitHubIcon size={18} />
+                Use Local Mode (Testing)
+              </button>
+              <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '12px' }}>
+                Running in local environment - OAuth bypass enabled
+              </p>
+            </div>
+          ) : (
+            <button
+              className="btn btn-primary btn-full"
+              onClick={authenticateGitHub}
+            >
+              <GitHubIcon size={18} />
+              Connect GitHub
+            </button>
+          )}
         </div>
       ) : !isConnected ? (
-        <div className="card">
+        <div className="card animate-fade-in-up delay-100">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
             <div style={{
               width: '24px',
@@ -302,7 +354,7 @@ export default function LinkWallet() {
           </ConnectButton.Custom>
         </div>
       ) : linked ? (
-        <div className="card" style={{ textAlign: 'center' }}>
+        <div className="card animate-fade-in-up" style={{ textAlign: 'center' }}>
           <div style={{
             width: '80px',
             height: '80px',
@@ -326,7 +378,7 @@ export default function LinkWallet() {
           </p>
         </div>
       ) : (
-        <div className="card">
+        <div className="card animate-fade-in-up delay-100">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
             <div style={{
               width: '24px',

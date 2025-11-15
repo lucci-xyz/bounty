@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   --color-primary: #00827B;
   --color-primary-medium: #39BEB7;
@@ -5,13 +7,36 @@
   --color-primary-lighter: rgba(131, 238, 232, 0.1);
   --color-text-primary: #211D1D;
   --color-text-secondary: #847E7E;
+  --color-text: #211D1D;
   --color-background: #FAFAFA;
+  --color-background-secondary: #F5F5F5;
   --color-card: #FFFFFF;
   --color-border: #E6E6E6;
   --color-accent: #008AFF;
   --color-success: #00827B;
   --color-error: #FF3200;
   --color-warning: #FFB400;
+  
+  --background: 0 0% 98%;
+  --foreground: 0 0% 13%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 13%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 13%;
+  --primary: 178 100% 26%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 13%;
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 52%;
+  --accent: 0 0% 96%;
+  --accent-foreground: 0 0% 13%;
+  --destructive: 0 100% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 90%;
+  --input: 0 0% 90%;
+  --ring: 178 100% 26%;
+  --radius: 0.75rem;
 }
 
 * {
@@ -201,11 +226,12 @@ label {
   padding: 24px;
   margin-bottom: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
 }
 
 .card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
 }
 
 .info-box {
@@ -298,6 +324,58 @@ code {
   letter-spacing: 0.05em;
 }
 
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.5s ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.5s ease-out forwards;
+}
+
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
 @media (max-width: 768px) {
   h1 {
     font-size: 36px;
@@ -315,5 +393,16 @@ code {
     width: 100%;
     margin: 8px 0;
   }
+}
+
+/* Remove focus outline from chart SVG elements */
+.recharts-wrapper,
+.recharts-wrapper svg,
+.recharts-wrapper:focus,
+.recharts-wrapper:focus-visible,
+.recharts-wrapper svg:focus,
+.recharts-wrapper svg:focus-visible {
+  outline: none !important;
+  border: none !important;
 }
 
