@@ -2,6 +2,7 @@ import './globals.css';
 import '@rainbow-me/rainbowkit/styles.css';
 import { Providers } from '@/components/Providers';
 import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 export const metadata = {
   title: 'BountyPay - Automated GitHub Bounty Payments',
@@ -21,8 +22,13 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <Providers>
-          <Navbar />
-          {children}
+          <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+            <Navbar />
+            <main style={{ flex: 1 }}>
+              {children}
+            </main>
+            <Footer />
+          </div>
         </Providers>
       </body>
     </html>

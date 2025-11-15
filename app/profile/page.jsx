@@ -313,7 +313,7 @@ export default function Profile() {
           letterSpacing: '-0.02em',
           fontWeight: '700'
         }}>
-          Hello, @{githubUser.githubUsername}
+          Hello @{githubUser.githubUsername}
         </h1>
         <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
           Track your claimed bounties and earnings
@@ -414,9 +414,30 @@ export default function Profile() {
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-primary)', marginBottom: '2px' }}>
+                  <a
+                    href={`https://github.com/${bounty.repoFullName}/issues/${bounty.issueNumber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ 
+                      fontSize: '14px', 
+                      fontWeight: '600', 
+                      color: 'var(--color-primary)', 
+                      marginBottom: '2px',
+                      display: 'block',
+                      textDecoration: 'none',
+                      transition: 'opacity 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = '0.7';
+                      e.currentTarget.style.textDecoration = 'underline';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = '1';
+                      e.currentTarget.style.textDecoration = 'none';
+                    }}
+                  >
                     {bounty.repoFullName}#{bounty.issueNumber}
-                  </div>
+                  </a>
                   <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
                     {bounty.claimStatus === 'resolved' ? `Paid ${new Date(bounty.paidAt).toLocaleDateString()}` : 'In Progress'}
                   </div>
@@ -458,15 +479,15 @@ export default function Profile() {
           </h3>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <UserAvatar 
-              username={githubUser.githubUsername}
-              avatarUrl={githubUser.avatarUrl}
+          <UserAvatar 
+            username={githubUser.githubUsername}
+            avatarUrl={githubUser.avatarUrl}
               size={48}
-            />
-            <div>
+          />
+          <div>
               <div style={{ fontSize: '15px', fontWeight: '600', marginBottom: '2px' }}>
-                @{githubUser.githubUsername}
-              </div>
+              @{githubUser.githubUsername}
+            </div>
               <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
                 ID: {githubUser.githubId}
               </div>
@@ -577,8 +598,8 @@ export default function Profile() {
                   Link Wallet
                 </button>
               </Link>
-            </div>
-          )}
+          </div>
+        )}
         </div>
       </div>
 
@@ -986,8 +1007,8 @@ export default function Profile() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+          </div>
+        )}
 
       <div className="card animate-fade-in-up delay-700" style={{ 
         borderColor: 'rgba(255, 50, 0, 0.15)',
