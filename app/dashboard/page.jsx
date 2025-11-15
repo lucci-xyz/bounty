@@ -30,7 +30,7 @@ export default function Dashboard() {
 
   const checkAuth = async () => {
     try {
-      if (isLocal || useDummyData) {
+      if (useDummyData) {
         setGithubUser({
           githubId: 123456789,
           githubUsername: 'local-dev',

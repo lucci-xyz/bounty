@@ -23,8 +23,8 @@ export default function Profile() {
 
   const fetchProfile = async () => {
     try {
-      // In local mode or with dummy data enabled, use dummy data
-      if (isLocal || useDummyData) {
+      // With dummy data enabled, use dummy data
+      if (useDummyData) {
         setGithubUser({
           githubId: 123456789,
           githubUsername: 'local-dev',
@@ -117,7 +117,7 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="container" style={{ maxWidth: '800px', padding: '40px 20px' }}>
+      <div className="container" style={{ maxWidth: '1200px', padding: '32px 24px' }}>
         <p style={{ color: 'var(--color-text-secondary)' }}>Loading...</p>
       </div>
     );
@@ -128,71 +128,78 @@ export default function Profile() {
   }
 
   return (
-    <div className="container" style={{ maxWidth: '900px' }}>
-      <div className="animate-fade-in-up" style={{ marginBottom: '40px' }}>
+    <div className="container" style={{ maxWidth: '1200px', padding: '32px 24px' }}>
+      {/* Header */}
+      <div className="mb-6 animate-fade-in-up">
         <h1 style={{ 
-          fontSize: 'clamp(32px, 6vw, 48px)',
-          marginBottom: '8px',
+          fontSize: 'clamp(22px, 4vw, 28px)',
+          marginBottom: '4px',
           fontFamily: "'Space Grotesk', sans-serif",
-          letterSpacing: '-0.02em'
+          letterSpacing: '-0.02em',
+          fontWeight: '700'
         }}>
-          Contributor Profile
+          Hello, @{githubUser.githubUsername}
         </h1>
-        <p style={{ 
-          fontSize: 'clamp(16px, 2.5vw, 18px)', 
-          color: 'var(--color-text-secondary)' 
-        }}>
+        <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
           Track your claimed bounties and earnings
         </p>
       </div>
 
-      {/* Earnings Summary */}
-      <div className="card animate-fade-in-up delay-100" style={{
-        background: 'linear-gradient(135deg, #00827B 0%, #39BEB7 100%)',
-        color: 'white',
-        padding: '32px',
-        marginBottom: '24px'
+      {/* Stats Grid */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+        gap: '16px', 
+        marginBottom: '32px' 
       }}>
-        <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px', fontWeight: '500', letterSpacing: '0.5px' }}>
-          TOTAL EARNED
+        {/* Total Earned Card */}
+        <div className="card animate-fade-in-up delay-100" style={{ 
+          background: 'linear-gradient(135deg, #00827B 0%, #39BEB7 100%)',
+          color: 'white',
+          padding: '24px',
+          marginBottom: 0
+        }}>
+          <div style={{ fontSize: '11px', opacity: 0.9, marginBottom: '8px', fontWeight: '600', letterSpacing: '0.5px' }}>
+            TOTAL EARNED
+          </div>
+          <div style={{ fontSize: '32px', fontWeight: '700', marginBottom: '4px' }}>
+            ${totalEarned.toLocaleString()}
+          </div>
+          <div style={{ fontSize: '12px', opacity: 0.85 }}>
+            {claimedBounties.filter(b => b.status === 'resolved').length} bounties
+          </div>
         </div>
-        <div style={{ fontSize: '48px', fontWeight: '700', marginBottom: '8px' }}>
-          ${totalEarned.toLocaleString()}
-        </div>
-        <div style={{ fontSize: '14px', opacity: 0.9 }}>
-          {claimedBounties.filter(b => b.status === 'resolved').length} bounties completed
-        </div>
-      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
         {/* Active Claims Card */}
-        <div className="card animate-fade-in-up delay-200" style={{ marginBottom: 0 }}>
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--color-primary)', marginBottom: '4px' }}>
-              {claimedBounties.filter(b => b.status === 'pending').length}
-            </div>
-            <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-              Active Claims
-            </div>
+        <div className="card animate-fade-in-up delay-200" style={{ padding: '24px', marginBottom: 0 }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: '600', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+            ACTIVE CLAIMS
+          </div>
+          <div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--color-primary)' }}>
+            {claimedBounties.filter(b => b.status === 'pending').length}
           </div>
         </div>
 
         {/* Completed Card */}
-        <div className="card animate-fade-in-up delay-300" style={{ marginBottom: 0 }}>
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ fontSize: '32px', fontWeight: '700', color: '#22C55E', marginBottom: '4px' }}>
-              {claimedBounties.filter(b => b.status === 'resolved').length}
-            </div>
-            <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-              Completed
-            </div>
+        <div className="card animate-fade-in-up delay-300" style={{ padding: '24px', marginBottom: 0 }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: '600', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+            COMPLETED
+          </div>
+          <div style={{ fontSize: '32px', fontWeight: '700', color: '#22C55E' }}>
+            {claimedBounties.filter(b => b.status === 'resolved').length}
           </div>
         </div>
       </div>
 
       {/* Claimed Bounties */}
       <div className="card animate-fade-in-up delay-400" style={{ marginBottom: '24px' }}>
-        <h3 style={{ marginBottom: '20px', fontFamily: "'Space Grotesk', sans-serif", fontSize: '20px' }}>
+        <h3 style={{ 
+          marginBottom: '20px', 
+          fontFamily: "'Space Grotesk', sans-serif", 
+          fontSize: '18px',
+          fontWeight: '600',
+          letterSpacing: '-0.01em'
+        }}>
           Your Bounties
         </h3>
         
@@ -208,39 +215,48 @@ export default function Profile() {
             </Link>
           </div>
         ) : (
-          <div style={{ display: 'grid', gap: '12px' }}>
+          <div style={{ display: 'grid', gap: '10px' }}>
             {claimedBounties.map((bounty) => (
               <div 
                 key={bounty.bountyId}
                 style={{
-                  padding: '16px',
+                  padding: '14px 16px',
                   border: '1px solid var(--color-border)',
                   borderRadius: '8px',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  gap: '16px'
+                  gap: '16px',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--color-background-secondary)';
+                  e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.borderColor = 'var(--color-border)';
                 }}
               >
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--color-primary)', marginBottom: '4px' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-primary)', marginBottom: '2px' }}>
                     {bounty.repoFullName}#{bounty.issueNumber}
                   </div>
-                  <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
                     {bounty.status === 'resolved' ? `Paid ${new Date(bounty.paidAt).toLocaleDateString()}` : 'In Progress'}
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--color-primary)' }}>
+                    <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--color-text-primary)' }}>
                       ${formatAmount(bounty.amount, bounty.tokenSymbol)}
                     </div>
-                    <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
                       {bounty.tokenSymbol}
                     </div>
                   </div>
                   {bounty.status === 'resolved' && (
-                    <CheckCircleIcon size={24} color="#22C55E" />
+                    <CheckCircleIcon size={20} color="#22C55E" />
                   )}
                 </div>
               </div>
@@ -250,10 +266,19 @@ export default function Profile() {
       </div>
 
       {/* Account Details */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
-        <div className="card animate-fade-in-up delay-500" style={{ marginBottom: 0 }}>
-          <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '16px' }}>
-            <GitHubIcon size={20} color="var(--color-primary)" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <div className="card animate-fade-in-up delay-500" style={{ marginBottom: 0, padding: '20px' }}>
+          <h3 style={{ 
+            marginBottom: '16px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            fontSize: '14px',
+            fontWeight: '600',
+            fontFamily: "'Space Grotesk', sans-serif",
+            letterSpacing: '-0.01em'
+          }}>
+            <GitHubIcon size={18} color="var(--color-primary)" />
             GitHub Account
           </h3>
           
@@ -274,9 +299,18 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="card animate-fade-in-up delay-600" style={{ marginBottom: 0 }}>
-          <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '16px' }}>
-            <WalletIcon size={20} color="var(--color-primary)" />
+        <div className="card animate-fade-in-up delay-600" style={{ marginBottom: 0, padding: '20px' }}>
+          <h3 style={{ 
+            marginBottom: '16px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            fontSize: '14px',
+            fontWeight: '600',
+            fontFamily: "'Space Grotesk', sans-serif",
+            letterSpacing: '-0.01em'
+          }}>
+            <WalletIcon size={18} color="var(--color-primary)" />
             Payout Wallet
           </h3>
           
@@ -322,18 +356,28 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="card animate-fade-in-up delay-300" style={{ 
-        borderColor: 'rgba(255, 50, 0, 0.2)',
-        background: 'rgba(255, 50, 0, 0.02)'
+      <div className="card animate-fade-in-up delay-700" style={{ 
+        borderColor: 'rgba(255, 50, 0, 0.15)',
+        background: 'rgba(255, 50, 0, 0.02)',
+        padding: '20px'
       }}>
-        <h3 style={{ marginBottom: '12px', color: 'var(--color-error)' }}>Danger Zone</h3>
-        <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginBottom: '16px' }}>
+        <h3 style={{ 
+          marginBottom: '8px', 
+          color: 'var(--color-error)',
+          fontSize: '14px',
+          fontWeight: '600',
+          fontFamily: "'Space Grotesk', sans-serif",
+          letterSpacing: '-0.01em'
+        }}>
+          Danger Zone
+        </h3>
+        <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '16px' }}>
           Logging out will end your session. You can log back in anytime.
         </p>
         <button
           onClick={logout}
           className="btn btn-danger"
-          style={{ margin: 0 }}
+          style={{ margin: 0, fontSize: '13px', padding: '10px 20px' }}
         >
           Logout
         </button>
