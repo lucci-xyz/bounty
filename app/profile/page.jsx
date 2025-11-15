@@ -159,7 +159,7 @@ export default function Profile() {
         <div style={{ fontSize: '48px', fontWeight: '700', marginBottom: '8px' }}>
           ${totalEarned.toLocaleString()}
         </div>
-        <div style={{ fontSize: '14px', opacity: 0.9' }}>
+        <div style={{ fontSize: '14px', opacity: 0.9 }}>
           {claimedBounties.filter(b => b.status === 'resolved').length} bounties completed
         </div>
       </div>

@@ -217,7 +217,7 @@ export default function Dashboard() {
           Hello, @{githubUser.githubUsername}
         </h1>
         <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
-          {showEmptyState ? 'Get started by funding your first bounty' : 'Here's what's happening with your bounties'}
+          {showEmptyState ? 'Get started by funding your first bounty' : "Here's what's happening with your bounties"}
         </p>
       </div>
 
