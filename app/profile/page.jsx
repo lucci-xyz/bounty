@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { GitHubIcon, WalletIcon, CheckCircleIcon, AlertIcon } from '@/components/Icons';
+import { GitHubIcon, WalletIcon, CheckCircleIcon, AlertIcon, SettingsIcon } from '@/components/Icons';
 import UserAvatar from '@/components/UserAvatar';
 import { useAccount, useWalletClient } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
@@ -40,6 +40,9 @@ export default function Profile() {
   const [showChangeWalletModal, setShowChangeWalletModal] = useState(false);
   const [changeWalletStatus, setChangeWalletStatus] = useState({ message: '', type: '' });
   const [isProcessingChange, setIsProcessingChange] = useState(false);
+  const [showManageReposModal, setShowManageReposModal] = useState(false);
+  const [repositories, setRepositories] = useState([]);
+  const [loadingRepos, setLoadingRepos] = useState(false);
 
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -143,6 +146,45 @@ export default function Profile() {
     } catch (error) {
       console.error('Logout error:', error);
     }
+  };
+
+  const handleManageRepos = async () => {
+    setShowManageReposModal(true);
+    setLoadingRepos(true);
+    
+    try {
+      // Fetch dummy data if enabled
+      if (useDummyData) {
+        setRepositories([
+          { id: 1, name: 'test-repo', fullName: 'test-user/test-repo', owner: 'test-user' },
+          { id: 2, name: 'demo-repo', fullName: 'test-user/demo-repo', owner: 'test-user' }
+        ]);
+        setLoadingRepos(false);
+        return;
+      }
+
+      const res = await fetch('/api/github/installations', {
+        credentials: 'include'
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setRepositories(data.repositories || []);
+      } else {
+        setRepositories([]);
+      }
+    } catch (error) {
+      console.error('Error fetching repositories:', error);
+      setRepositories([]);
+    } finally {
+      setLoadingRepos(false);
+    }
+  };
+
+  const handleInstallApp = () => {
+    // GitHub App installation URL
+    const githubAppInstallUrl = `https://github.com/apps/${process.env.NEXT_PUBLIC_GITHUB_APP_NAME || 'bountypay'}/installations/new`;
+    window.open(githubAppInstallUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleDeleteWallet = async () => {
@@ -464,19 +506,52 @@ export default function Profile() {
       {/* Account Details */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '24px' }}>
         <div className="card animate-fade-in-up delay-500" style={{ marginBottom: 0, padding: '20px' }}>
-          <h3 style={{ 
-            marginBottom: '16px', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px', 
-            fontSize: '14px',
-            fontWeight: '600',
-            fontFamily: "'Space Grotesk', sans-serif",
-            letterSpacing: '-0.01em'
-          }}>
-            <GitHubIcon size={18} color="var(--color-primary)" />
-            GitHub Account
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              fontSize: '14px',
+              fontWeight: '600',
+              fontFamily: "'Space Grotesk', sans-serif",
+              letterSpacing: '-0.01em',
+              margin: 0
+            }}>
+              <GitHubIcon size={18} color="var(--color-primary)" />
+              GitHub Account
+            </h3>
+            
+            <button
+              onClick={handleManageRepos}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: '1px solid var(--color-border)',
+                background: 'white',
+                color: 'var(--color-text-secondary)',
+                fontSize: '12px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--color-background-secondary)';
+                e.currentTarget.style.borderColor = 'var(--color-primary)';
+                e.currentTarget.style.color = 'var(--color-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'white';
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
+              }}
+            >
+              <SettingsIcon size={14} />
+              Manage repos
+            </button>
+          </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <UserAvatar 
@@ -1036,6 +1111,162 @@ export default function Profile() {
           Logout
         </button>
       </div>
+
+      {/* Manage Repos Modal */}
+      {showManageReposModal && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px',
+            backdropFilter: 'blur(4px)'
+          }}
+          onClick={() => setShowManageReposModal(false)}
+        >
+          <div 
+            style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '28px',
+              maxWidth: '600px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{
+                fontSize: '22px',
+                fontFamily: "'Space Grotesk', sans-serif",
+                color: 'var(--color-text-primary)',
+                fontWeight: '600',
+                margin: 0
+              }}>
+                Manage Repositories
+              </h2>
+              
+              <button
+                onClick={() => setShowManageReposModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  color: 'var(--color-text-secondary)',
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  lineHeight: 1,
+                  transition: 'color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-text-primary)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-text-secondary)'}
+              >
+                ×
+              </button>
+            </div>
+
+            {loadingRepos ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <p style={{ color: 'var(--color-text-secondary)' }}>Loading repositories...</p>
+              </div>
+            ) : repositories.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '16px',
+                  background: 'rgba(131, 238, 232, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 20px'
+                }}>
+                  <GitHubIcon size={32} color="var(--color-primary)" />
+                </div>
+                <p style={{ fontSize: '15px', color: 'var(--color-text-secondary)', marginBottom: '24px' }}>
+                  BountyPay isn't installed on any repositories yet.
+                </p>
+                <button
+                  onClick={handleInstallApp}
+                  className="btn btn-primary"
+                  style={{ fontSize: '14px' }}
+                >
+                  Install on a repository
+                </button>
+              </div>
+            ) : (
+              <>
+                <p style={{ 
+                  fontSize: '14px', 
+                  color: 'var(--color-text-secondary)', 
+                  marginBottom: '20px',
+                  lineHeight: '1.6'
+                }}>
+                  BountyPay is installed on the following repositories:
+                </p>
+                
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '8px',
+                  marginBottom: '24px'
+                }}>
+                  {repositories.map((repo) => (
+                    <div
+                      key={repo.id}
+                      style={{
+                        padding: '12px 16px',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '8px',
+                        background: 'var(--color-background)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--color-primary)';
+                        e.currentTarget.style.background = 'rgba(131, 238, 232, 0.05)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--color-border)';
+                        e.currentTarget.style.background = 'var(--color-background)';
+                      }}
+                    >
+                      <GitHubIcon size={20} color="var(--color-text-secondary)" />
+                      <span style={{ 
+                        fontSize: '14px', 
+                        fontWeight: '500',
+                        color: 'var(--color-text-primary)',
+                        fontFamily: "'Space Grotesk', sans-serif"
+                      }}>
+                        {repo.fullName}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={handleInstallApp}
+                  className="btn btn-primary btn-full"
+                  style={{ fontSize: '14px' }}
+                >
+                  Add / import repository
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
