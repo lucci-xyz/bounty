@@ -288,6 +288,19 @@ export const walletQueries = {
       verifiedAt: Number(wallet.verifiedAt),
       createdAt: Number(wallet.createdAt)
     };
+  },
+
+  delete: async (githubId) => {
+    const wallet = await prisma.walletMapping.delete({
+      where: { githubId: BigInt(githubId) }
+    });
+    
+    return {
+      ...wallet,
+      githubId: Number(wallet.githubId),
+      verifiedAt: Number(wallet.verifiedAt),
+      createdAt: Number(wallet.createdAt)
+    };
   }
 };
 

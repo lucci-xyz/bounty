@@ -3,10 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { TargetIcon, PlusIcon, WalletIcon } from '@/components/Icons';
-import { dummyUserBounties, dummyStats, dummyTopContributors, dummyWalletBalance, dummyContributionsData } from '@/dummy-data/dashboard';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { TargetIcon, PlusIcon } from '@/components/Icons';
+import { dummyUserBounties, dummyStats } from '@/dummy-data/dashboard';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -14,8 +12,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [bounties, setBounties] = useState([]);
   const [stats, setStats] = useState(null);
-  const [contributors, setContributors] = useState([]);
-  const [walletBalance, setWalletBalance] = useState(null);
   const [hasWallet, setHasWallet] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -38,8 +34,6 @@ export default function Dashboard() {
         });
         setBounties(dummyUserBounties);
         setStats(dummyStats);
-        setContributors(dummyTopContributors);
-        setWalletBalance(dummyWalletBalance);
         setHasWallet(true);
         setLoading(false);
         return;
@@ -135,9 +129,10 @@ export default function Dashboard() {
   function formatTimeLeft(deadline) {
     if (!deadline) return '-';
     
-    const now = new Date();
-    const end = new Date(deadline);
-    const diff = end.getTime() - now.getTime();
+    // deadline is Unix timestamp in seconds, convert to milliseconds
+    const deadlineMs = Number(deadline) * 1000;
+    const now = Date.now();
+    const diff = deadlineMs - now;
     
     if (diff < 0) return 'Expired';
     
@@ -164,8 +159,7 @@ export default function Dashboard() {
     return null; // Will redirect in checkAuth
   }
 
-  const totalContributions = dummyContributionsData.reduce((sum, d) => sum + d.value, 0);
-  const avgDaily = totalContributions / 30;
+  // Removed: totalContributions and avgDaily calculations (not implemented yet)
 
   // Sorting function
   const handleSort = (key) => {
@@ -193,8 +187,9 @@ export default function Dashboard() {
       aValue = Number(a.amount);
       bValue = Number(b.amount);
     } else if (sortConfig.key === 'timeLeft') {
-      aValue = a.deadline ? new Date(a.deadline).getTime() : Infinity;
-      bValue = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+      // deadline is stored in seconds, convert to milliseconds for comparison
+      aValue = a.deadline ? Number(a.deadline) * 1000 : Infinity;
+      bValue = b.deadline ? Number(b.deadline) * 1000 : Infinity;
     }
 
     if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -385,182 +380,65 @@ export default function Dashboard() {
       {/* Dashboard Content - Only show if user has bounties or wallet */}
       {!showEmptyState && (
         <>
-      {/* Top Row - Wallet + Contributions + Top Contributors */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" style={{ marginBottom: '24px' }}>
-        {/* Virtual Wallet Card */}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" style={{ marginBottom: '24px' }}>
+        {/* Total Value Locked */}
         <div className="card animate-fade-in-up delay-100" style={{
           marginBottom: 0,
           background: 'linear-gradient(135deg, #00827B 0%, #39BEB7 100%)',
           color: 'white',
-          padding: '28px',
-          position: 'relative',
-          overflow: 'hidden'
+          padding: '20px'
         }}>
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '20px', fontWeight: '500', letterSpacing: '0.5px' }}>
-              PROJECT WALLET
-            </div>
-            
-            <div style={{ marginBottom: '24px' }}>
-              <div style={{ fontSize: '11px', opacity: 0.8, marginBottom: '4px' }}>Total Balance</div>
-              <div style={{ fontSize: '32px', fontWeight: '700' }}>
-                ${walletBalance?.totalUsdValue.toLocaleString() || '0'}
-              </div>
-            </div>
-            
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '1fr 1fr',
-              gap: '16px',
-              marginBottom: '20px'
-            }}>
-              {walletBalance?.balances.map((bal, idx) => (
-                <div key={idx} style={{ 
-                  padding: '10px 12px',
-                  background: 'rgba(255, 255, 255, 0.15)',
-                  borderRadius: '8px',
-                  backdropFilter: 'blur(10px)'
-                }}>
-                  <div style={{ fontSize: '10px', opacity: 0.9, marginBottom: '2px' }}>{bal.token}</div>
-                  <div style={{ fontSize: '16px', fontWeight: '600' }}>${bal.usdValue.toLocaleString()}</div>
-                </div>
-              ))}
-            </div>
-            
-            <div style={{ 
-              padding: '10px 14px',
-              background: 'rgba(255, 255, 255, 0.2)',
-              borderRadius: '6px',
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '11px',
-              letterSpacing: '0.5px'
-            }}>
-              {walletBalance?.address.slice(0, 14)}...{walletBalance?.address.slice(-10)}
-            </div>
+          <div style={{ fontSize: '11px', opacity: 0.9, marginBottom: '8px', fontWeight: '600', letterSpacing: '0.5px' }}>
+            VALUE LOCKED
           </div>
-          
-          {/* Decorative elements */}
-          <div style={{
-            position: 'absolute',
-            top: '-40px',
-            right: '-40px',
-            width: '150px',
-            height: '150px',
-            borderRadius: '50%',
-            background: 'rgba(255, 255, 255, 0.1)',
-            filter: 'blur(40px)'
-          }} />
-        </div>
-
-        {/* Contributions Chart */}
-        <div className="card animate-fade-in-up delay-200" style={{ marginBottom: 0, padding: '24px' }}>
-          <div className="mb-4">
-            <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '4px', fontWeight: '500' }}>
-              Contributions
-            </div>
-            <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--color-text-primary)' }}>
-              +{totalContributions.toLocaleString()}
-            </div>
-            <div style={{ fontSize: '12px', color: '#00827B', fontWeight: '500' }}>
-              +180.1% from last month
-            </div>
+          <div style={{ fontSize: '28px', fontWeight: '700', marginBottom: '4px' }}>
+            ${stats?.totalValueLocked.toLocaleString() || '0'}
           </div>
-          
-          <div 
-            style={{ 
-              outline: 'none',
-              userSelect: 'none'
-            }} 
-            tabIndex={-1}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={(e) => e.preventDefault()}
-          >
-            <ResponsiveContainer width="100%" height={140}>
-              <AreaChart 
-                data={dummyContributionsData}
-              >
-                <defs>
-                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#63BBB6" stopOpacity={0.7}/>
-                    <stop offset="50%" stopColor="#63BBB6" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#63BBB6" stopOpacity={0.1}/>
-                  </linearGradient>
-                </defs>
-                <Area 
-                  type="monotone" 
-                  dataKey="value" 
-                  stroke="#63BBB6" 
-                  strokeWidth={2}
-                  fill="url(#colorValue)" 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div style={{ fontSize: '12px', opacity: 0.85 }}>
+            In {stats?.openBounties || 0} open bounties
           </div>
         </div>
 
-          {/* Top Contributors */}
-        <div className="card animate-fade-in-up delay-300" style={{ marginBottom: 0, padding: '24px' }}>
-            <h3 style={{ 
-              fontSize: '16px',
-              marginBottom: '20px',
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontWeight: '700'
-            }}>
-              Top Contributors
-            </h3>
-            
-            <div>
-              {contributors.map((contributor, idx) => (
-                <div key={idx} className="flex items-center justify-between" style={{ marginBottom: idx < contributors.length - 1 ? '24px' : '0' }}>
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src={contributor.avatarUrl} alt={contributor.username} />
-                      <AvatarFallback>{contributor.username.slice(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div style={{ fontSize: '14px', fontWeight: '500', color: 'var(--color-text-primary)', marginBottom: '2px' }}>
-                        {contributor.username}
-                      </div>
-                      <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-                        ${contributor.totalEarned.toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                  <a
-                    href={`https://github.com/${contributor.username}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '6px',
-                      background: 'transparent',
-                      color: 'var(--color-text-secondary)',
-                      textDecoration: 'none',
-                      transition: 'all 0.2s ease',
-                      cursor: 'pointer'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'var(--color-background-secondary)';
-                      e.currentTarget.style.color = '#00827B';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = 'var(--color-text-secondary)';
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </a>
-                </div>
-              ))}
-            </div>
+        {/* Total Paid Out */}
+        <div className="card animate-fade-in-up delay-200" style={{ marginBottom: 0, padding: '20px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: '600', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+            TOTAL PAID
+          </div>
+          <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--color-primary)', marginBottom: '4px' }}>
+            ${stats?.totalValuePaid.toLocaleString() || '0'}
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+            To {stats?.resolvedBounties || 0} contributors
+          </div>
         </div>
+
+        {/* Total Bounties */}
+        <div className="card animate-fade-in-up delay-300" style={{ marginBottom: 0, padding: '20px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: '600', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+            TOTAL BOUNTIES
+          </div>
+          <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--color-text-primary)', marginBottom: '4px' }}>
+            {stats?.totalBounties || 0}
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+            {stats?.openBounties || 0} open · {stats?.resolvedBounties || 0} resolved
+          </div>
         </div>
+
+        {/* Refunded */}
+        <div className="card animate-fade-in-up delay-400" style={{ marginBottom: 0, padding: '20px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: '600', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+            REFUNDED
+          </div>
+          <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--color-text-primary)', marginBottom: '4px' }}>
+            {stats?.refundedBounties || 0}
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+            Expired bounties
+          </div>
+        </div>
+      </div>
 
       {/* Bounties List - Full Width */}
       <div className="card animate-fade-in-up delay-400" style={{ marginBottom: 0, padding: '24px' }}>
@@ -604,7 +482,16 @@ export default function Dashboard() {
               {sortConfig.key === 'status' && sortConfig.direction === 'asc' ? '↑' : '↓'}
             </span>
           </div>
-          <div className="col-span-3">Time Left</div>
+          <div 
+            className="col-span-3 flex items-center gap-1 cursor-pointer"
+            onClick={() => handleSort('timeLeft')}
+            style={{ userSelect: 'none' }}
+          >
+            Time Left
+            <span style={{ fontSize: '10px', opacity: sortConfig.key === 'timeLeft' ? 1 : 0.3 }}>
+              {sortConfig.key === 'timeLeft' && sortConfig.direction === 'asc' ? '↑' : '↓'}
+            </span>
+          </div>
           <div 
             className="col-span-2 text-right flex items-center justify-end gap-1 cursor-pointer"
             onClick={() => handleSort('amount')}

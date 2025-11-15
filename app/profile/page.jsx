@@ -3,8 +3,28 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { GitHubIcon, WalletIcon, CheckCircleIcon } from '@/components/Icons';
+import { GitHubIcon, WalletIcon, CheckCircleIcon, AlertIcon } from '@/components/Icons';
 import UserAvatar from '@/components/UserAvatar';
+import { useAccount, useWalletClient } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { NETWORKS } from '@/config/networks';
+
+function createSiweMessage({ domain, address, statement, uri, version, chainId, nonce }) {
+  const message = [
+    `${domain} wants you to sign in with your Ethereum account:`,
+    address,
+    '',
+    statement,
+    '',
+    `URI: ${uri}`,
+    `Version: ${version}`,
+    `Chain ID: ${chainId}`,
+    `Nonce: ${nonce}`,
+    `Issued At: ${new Date().toISOString()}`
+  ].join('\n');
+
+  return message;
+}
 
 export default function Profile() {
   const router = useRouter();
@@ -13,6 +33,16 @@ export default function Profile() {
   const [githubUser, setGithubUser] = useState(null);
   const [claimedBounties, setClaimedBounties] = useState([]);
   const [totalEarned, setTotalEarned] = useState(0);
+  const [showDeleteWalletModal, setShowDeleteWalletModal] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [showChangeWalletModal, setShowChangeWalletModal] = useState(false);
+  const [changeWalletStatus, setChangeWalletStatus] = useState({ message: '', type: '' });
+  const [isProcessingChange, setIsProcessingChange] = useState(false);
+
+  const { address, isConnected, chain } = useAccount();
+  const { data: walletClient } = useWalletClient();
 
   const isLocal = process.env.NEXT_PUBLIC_ENV_TARGET === 'local';
   const useDummyData = process.env.NEXT_PUBLIC_USE_DUMMY_DATA === 'true';
@@ -114,6 +144,151 @@ export default function Profile() {
       console.error('Logout error:', error);
     }
   };
+
+  const handleDeleteWallet = async () => {
+    if (deleteConfirmation.toLowerCase() !== 'i agree') {
+      setDeleteError('Please type "i agree" to confirm');
+      return;
+    }
+
+    setDeleteLoading(true);
+    setDeleteError('');
+
+    try {
+      const res = await fetch('/api/wallet/delete', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ confirmation: deleteConfirmation })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete wallet');
+      }
+
+      // Refresh profile data
+      await fetchProfile();
+      setShowDeleteWalletModal(false);
+      setDeleteConfirmation('');
+    } catch (error) {
+      console.error('Error deleting wallet:', error);
+      setDeleteError(error.message);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const openDeleteWalletModal = () => {
+    setShowDeleteWalletModal(true);
+    setDeleteConfirmation('');
+    setDeleteError('');
+  };
+
+  const openChangeWalletModal = () => {
+    setShowChangeWalletModal(true);
+    setChangeWalletStatus({ message: '', type: '' });
+    setIsProcessingChange(false);
+  };
+
+  const handleChangeWallet = async () => {
+    if (isProcessingChange) {
+      return;
+    }
+
+    try {
+      setIsProcessingChange(true);
+      setChangeWalletStatus({ message: 'Connecting...', type: 'info' });
+
+      if (!githubUser && !isLocal) {
+        throw new Error('GitHub authentication required');
+      }
+
+      if (!address || !isConnected) {
+        throw new Error('Please connect your wallet first');
+      }
+
+      if (!walletClient) {
+        throw new Error('Wallet client not available');
+      }
+
+      // Get nonce
+      setChangeWalletStatus({ message: 'Getting verification nonce...', type: 'info' });
+      const nonceRes = await fetch('/api/nonce', {
+        credentials: 'include'
+      });
+
+      if (!nonceRes.ok) {
+        throw new Error('Failed to get nonce');
+      }
+
+      const { nonce } = await nonceRes.json();
+
+      // Create SIWE message
+      const message = createSiweMessage({
+        domain: window.location.host,
+        address: address,
+        statement: 'Sign in with Ethereum to link your wallet to BountyPay',
+        uri: window.location.origin,
+        version: '1',
+        chainId: chain.id,
+        nonce: nonce
+      });
+
+      // Sign message
+      setChangeWalletStatus({ message: 'Please sign the message in your wallet...', type: 'info' });
+      const signature = await walletClient.signMessage({
+        message: message
+      });
+
+      // Verify and link wallet
+      setChangeWalletStatus({ message: 'Verifying signature...', type: 'info' });
+      const linkRes = await fetch('/api/wallet/link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          address,
+          signature,
+          message,
+          chainId: chain.id
+        })
+      });
+
+      const linkData = await linkRes.json();
+
+      if (!linkRes.ok) {
+        throw new Error(linkData.error || 'Failed to update wallet');
+      }
+
+      setChangeWalletStatus({ message: 'Wallet updated successfully!', type: 'success' });
+      
+      // Refresh profile data
+      await fetchProfile();
+      
+      // Close modal after a short delay
+      setTimeout(() => {
+        setShowChangeWalletModal(false);
+        setChangeWalletStatus({ message: '', type: '' });
+      }, 1500);
+    } catch (error) {
+      console.error('Error changing wallet:', error);
+      setChangeWalletStatus({ message: error.message || 'An error occurred', type: 'error' });
+      setIsProcessingChange(false);
+    }
+  };
+
+  // Auto-link when wallet is connected in change modal
+  useEffect(() => {
+    if (showChangeWalletModal && githubUser && isConnected && address && walletClient && !isProcessingChange) {
+      handleChangeWallet();
+    }
+  }, [showChangeWalletModal, githubUser, isConnected, address, walletClient]);
 
   if (loading) {
     return (
@@ -328,8 +503,59 @@ export default function Profile() {
               }}>
                 {profile.wallet.walletAddress.slice(0, 10)}...{profile.wallet.walletAddress.slice(-8)}
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '16px' }}>
                 Linked {new Date(profile.wallet.verifiedAt).toLocaleDateString()}
+              </div>
+              
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button 
+                  onClick={openChangeWalletModal}
+                  style={{
+                    fontSize: '12px',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--color-border)',
+                    background: 'white',
+                    color: 'var(--color-text-primary)',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--color-background-secondary)';
+                    e.currentTarget.style.borderColor = 'var(--color-primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'white';
+                    e.currentTarget.style.borderColor = 'var(--color-border)';
+                  }}
+                >
+                  Change Wallet
+                </button>
+                <button 
+                  onClick={openDeleteWalletModal}
+                  style={{
+                    fontSize: '12px',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(255, 50, 0, 0.3)',
+                    background: 'white',
+                    color: 'var(--color-error)',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 50, 0, 0.05)';
+                    e.currentTarget.style.borderColor = 'var(--color-error)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'white';
+                    e.currentTarget.style.borderColor = 'rgba(255, 50, 0, 0.3)';
+                  }}
+                >
+                  Delete Wallet
+                </button>
               </div>
             </div>
           ) : (
@@ -355,6 +581,413 @@ export default function Profile() {
           )}
         </div>
       </div>
+
+      {/* Change Wallet Modal */}
+      {showChangeWalletModal && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px',
+            backdropFilter: 'blur(4px)'
+          }}
+          onClick={() => !isProcessingChange && setShowChangeWalletModal(false)}
+        >
+          <div 
+            style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '28px',
+              maxWidth: '500px',
+              width: '100%',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+              border: '2px solid rgba(255, 180, 0, 0.2)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '12px',
+              background: 'rgba(255, 180, 0, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px'
+            }}>
+              <WalletIcon size={28} color="var(--color-warning)" />
+            </div>
+
+            <h2 style={{
+              fontSize: '22px',
+              fontFamily: "'Space Grotesk', sans-serif",
+              textAlign: 'center',
+              marginBottom: '12px',
+              color: 'var(--color-text-primary)',
+              fontWeight: '600'
+            }}>
+              Change Payout Wallet
+            </h2>
+
+            <div style={{
+              background: 'rgba(255, 180, 0, 0.08)',
+              border: '1px solid rgba(255, 180, 0, 0.3)',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '24px',
+              display: 'flex',
+              gap: '12px'
+            }}>
+              <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                <AlertIcon size={20} color="var(--color-warning)" />
+              </div>
+              <div>
+                <p style={{
+                  fontSize: '14px',
+                  color: 'var(--color-text-primary)',
+                  marginBottom: '8px',
+                  fontWeight: '600'
+                }}>
+                  ⚠️ Important Notice
+                </p>
+                <p style={{
+                  fontSize: '13px',
+                  color: 'var(--color-text-secondary)',
+                  lineHeight: '1.6',
+                  margin: 0
+                }}>
+                  The new wallet will be used for <strong>all active and future bounty payments</strong>. 
+                  Make sure you have access to the new wallet before proceeding.
+                </p>
+              </div>
+            </div>
+
+            {changeWalletStatus.message && (
+              <div style={{
+                padding: '12px 16px',
+                borderRadius: '8px',
+                marginBottom: '20px',
+                background: changeWalletStatus.type === 'success' 
+                  ? 'rgba(0, 130, 123, 0.1)' 
+                  : changeWalletStatus.type === 'error'
+                  ? 'rgba(255, 50, 0, 0.1)'
+                  : 'rgba(0, 138, 255, 0.1)',
+                border: `1px solid ${
+                  changeWalletStatus.type === 'success' 
+                    ? 'rgba(0, 130, 123, 0.3)' 
+                    : changeWalletStatus.type === 'error'
+                    ? 'rgba(255, 50, 0, 0.3)'
+                    : 'rgba(0, 138, 255, 0.3)'
+                }`,
+                color: changeWalletStatus.type === 'success' 
+                  ? 'var(--color-primary)' 
+                  : changeWalletStatus.type === 'error'
+                  ? 'var(--color-error)'
+                  : 'var(--color-accent)',
+                fontSize: '13px',
+                fontWeight: '500',
+                textAlign: 'center'
+              }}>
+                {changeWalletStatus.message}
+              </div>
+            )}
+
+            <div style={{ marginBottom: '20px' }}>
+              <p style={{
+                fontSize: '13px',
+                color: 'var(--color-text-secondary)',
+                marginBottom: '12px',
+                fontWeight: '500'
+              }}>
+                Connect your new wallet:
+              </p>
+              
+              <ConnectButton.Custom>
+                {({ openConnectModal }) => (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (openConnectModal) openConnectModal();
+                    }}
+                    disabled={isProcessingChange || !openConnectModal}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: (isProcessingChange || !openConnectModal) 
+                        ? 'var(--color-text-secondary)' 
+                        : 'var(--color-primary)',
+                      color: 'white',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: (isProcessingChange || !openConnectModal) ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isProcessingChange && openConnectModal) {
+                        e.currentTarget.style.background = 'var(--color-primary-medium)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isProcessingChange && openConnectModal) {
+                        e.currentTarget.style.background = 'var(--color-primary)';
+                      }
+                    }}
+                  >
+                    <WalletIcon size={18} color="white" />
+                    {isConnected ? `Connected: ${address.slice(0, 6)}...${address.slice(-4)}` : 'Connect Wallet'}
+                  </button>
+                )}
+              </ConnectButton.Custom>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowChangeWalletModal(false);
+                setChangeWalletStatus({ message: '', type: '' });
+              }}
+              disabled={isProcessingChange}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '8px',
+                border: '1px solid var(--color-border)',
+                background: 'white',
+                color: 'var(--color-text-primary)',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: isProcessingChange ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s ease',
+                opacity: isProcessingChange ? 0.5 : 1
+              }}
+              onMouseEnter={(e) => {
+                if (!isProcessingChange) {
+                  e.currentTarget.style.background = 'var(--color-background-secondary)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isProcessingChange) {
+                  e.currentTarget.style.background = 'white';
+                }
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Wallet Modal */}
+      {showDeleteWalletModal && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px',
+            backdropFilter: 'blur(4px)'
+          }}
+          onClick={() => setShowDeleteWalletModal(false)}
+        >
+          <div 
+            style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '28px',
+              maxWidth: '500px',
+              width: '100%',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+              border: '2px solid rgba(255, 50, 0, 0.2)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '12px',
+              background: 'rgba(255, 50, 0, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px'
+            }}>
+              <AlertIcon size={28} color="var(--color-error)" />
+            </div>
+
+            <h2 style={{
+              fontSize: '22px',
+              fontFamily: "'Space Grotesk', sans-serif",
+              textAlign: 'center',
+              marginBottom: '12px',
+              color: 'var(--color-error)',
+              fontWeight: '600'
+            }}>
+              Delete Payout Wallet
+            </h2>
+
+            <div style={{
+              background: 'rgba(255, 50, 0, 0.05)',
+              border: '1px solid rgba(255, 50, 0, 0.2)',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '20px'
+            }}>
+              <p style={{
+                fontSize: '14px',
+                color: 'var(--color-text-primary)',
+                lineHeight: '1.6',
+                marginBottom: '12px'
+              }}>
+                <strong>⚠️ Warning:</strong> Deleting your payout wallet will have the following consequences:
+              </p>
+              <ul style={{
+                fontSize: '13px',
+                color: 'var(--color-text-secondary)',
+                lineHeight: '1.8',
+                paddingLeft: '20px',
+                margin: 0
+              }}>
+                <li>You will <strong>not be able to receive payments</strong> for any active bounties</li>
+                <li>If any of your PRs are merged, you will <strong>lose the ability to claim those rewards</strong></li>
+                <li>You can link a new wallet at any time to restore payout functionality</li>
+              </ul>
+            </div>
+
+            <p style={{
+              fontSize: '13px',
+              color: 'var(--color-text-secondary)',
+              marginBottom: '8px',
+              fontWeight: '500'
+            }}>
+              Type <span style={{ fontFamily: "'JetBrains Mono', monospace", background: 'var(--color-background-secondary)', padding: '2px 6px', borderRadius: '4px' }}>i agree</span> to confirm:
+            </p>
+
+            <input
+              type="text"
+              value={deleteConfirmation}
+              onChange={(e) => {
+                setDeleteConfirmation(e.target.value);
+                setDeleteError('');
+              }}
+              placeholder="i agree"
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: '6px',
+                border: `1px solid ${deleteError ? 'var(--color-error)' : 'var(--color-border)'}`,
+                fontSize: '14px',
+                marginBottom: deleteError ? '8px' : '20px',
+                fontFamily: "'JetBrains Mono', monospace"
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleDeleteWallet();
+                }
+              }}
+            />
+
+            {deleteError && (
+              <p style={{
+                fontSize: '13px',
+                color: 'var(--color-error)',
+                marginBottom: '16px',
+                marginTop: '-12px'
+              }}>
+                {deleteError}
+              </p>
+            )}
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => {
+                  setShowDeleteWalletModal(false);
+                  setDeleteConfirmation('');
+                  setDeleteError('');
+                }}
+                disabled={deleteLoading}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--color-border)',
+                  background: 'white',
+                  color: 'var(--color-text-primary)',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: deleteLoading ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: deleteLoading ? 0.5 : 1
+                }}
+                onMouseEnter={(e) => {
+                  if (!deleteLoading) {
+                    e.currentTarget.style.background = 'var(--color-background-secondary)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!deleteLoading) {
+                    e.currentTarget.style.background = 'white';
+                  }
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleDeleteWallet}
+                disabled={deleteLoading || deleteConfirmation.toLowerCase() !== 'i agree'}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: (deleteLoading || deleteConfirmation.toLowerCase() !== 'i agree') 
+                    ? 'var(--color-text-secondary)' 
+                    : 'var(--color-error)',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: (deleteLoading || deleteConfirmation.toLowerCase() !== 'i agree') 
+                    ? 'not-allowed' 
+                    : 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (!deleteLoading && deleteConfirmation.toLowerCase() === 'i agree') {
+                    e.currentTarget.style.background = '#CC2800';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!deleteLoading && deleteConfirmation.toLowerCase() === 'i agree') {
+                    e.currentTarget.style.background = 'var(--color-error)';
+                  }
+                }}
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete Wallet'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="card animate-fade-in-up delay-700" style={{ 
         borderColor: 'rgba(255, 50, 0, 0.15)',

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { NETWORKS } from '@/config/networks';
-import { LinkIcon, GitHubIcon, CheckCircleIcon } from '@/components/Icons';
+import { LinkIcon, GitHubIcon, CheckCircleIcon, AlertIcon } from '@/components/Icons';
 
 function createSiweMessage({ domain, address, statement, uri, version, chainId, nonce }) {
   const message = [
@@ -31,6 +31,7 @@ export default function LinkWallet() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [useLocalMode, setUseLocalMode] = useState(false);
+  const [isChangingWallet, setIsChangingWallet] = useState(false);
 
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -44,8 +45,14 @@ export default function LinkWallet() {
     
     const params = new URLSearchParams(window.location.search);
     const returnToParam = params.get('returnTo');
+    const actionParam = params.get('action');
+    
     if (returnToParam) {
       setReturnTo(returnToParam);
+    }
+    
+    if (actionParam === 'change') {
+      setIsChangingWallet(true);
     }
     
     // In local mode or with dummy data enabled, use dummy GitHub user
@@ -238,12 +245,51 @@ export default function LinkWallet() {
           fontFamily: "'Space Grotesk', sans-serif",
           letterSpacing: '-0.02em'
         }}>
-          Link Your Wallet
+          {isChangingWallet ? 'Change Your Wallet' : 'Link Your Wallet'}
         </h1>
         <p className="subtitle" style={{ fontSize: 'clamp(15px, 2.5vw, 16px)', marginTop: '8px' }}>
-          Connect your GitHub and wallet to receive automatic bounty payments
+          {isChangingWallet 
+            ? 'Link a new wallet to receive bounty payments' 
+            : 'Connect your GitHub and wallet to receive automatic bounty payments'
+          }
         </p>
       </div>
+
+      {/* Warning banner for changing wallet */}
+      {isChangingWallet && (
+        <div className="animate-fade-in-up delay-100" style={{
+          background: 'rgba(255, 180, 0, 0.08)',
+          border: '1px solid rgba(255, 180, 0, 0.3)',
+          borderRadius: '8px',
+          padding: '16px',
+          marginBottom: '24px',
+          display: 'flex',
+          gap: '12px'
+        }}>
+          <div style={{ flexShrink: 0, marginTop: '2px' }}>
+            <AlertIcon size={20} color="var(--color-warning)" />
+          </div>
+          <div>
+            <p style={{
+              fontSize: '14px',
+              color: 'var(--color-text-primary)',
+              marginBottom: '8px',
+              fontWeight: '600'
+            }}>
+              ⚠️ Important: Changing Your Wallet
+            </p>
+            <p style={{
+              fontSize: '13px',
+              color: 'var(--color-text-secondary)',
+              lineHeight: '1.6',
+              margin: 0
+            }}>
+              The new wallet will be used for <strong>all active and future bounty payments</strong>. 
+              Make sure you have access to the new wallet before proceeding.
+            </p>
+          </div>
+        </div>
+      )}
 
       {!githubUser ? (
         <div className="card animate-fade-in-up delay-100">

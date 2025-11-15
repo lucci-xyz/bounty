@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { dummyBounties } from '@/dummy-data/bounties';
+import { NETWORKS } from '@/config/networks';
 
 export default function Home() {
   const [bounties, setBounties] = useState([]);
@@ -147,6 +148,12 @@ export default function Home() {
     return stars.toString();
   }
 
+  function getBlockExplorerUrl(network, txHash) {
+    const networkConfig = NETWORKS[network];
+    if (!networkConfig || !txHash) return null;
+    return `${networkConfig.blockExplorerUrl}/tx/${txHash}`;
+  }
+
   if (loading) {
     return (
       <div className="container" style={{ maxWidth: '1200px', padding: '40px 20px' }}>
@@ -252,6 +259,7 @@ export default function Home() {
         }} />
 
         {/* Language Dropdown */}
+        {languages.length > 1 && (
         <div style={{ position: 'relative' }}>
           <button
             onClick={(e) => {
@@ -394,8 +402,10 @@ export default function Home() {
             </div>
           )}
         </div>
+        )}
 
         {/* Label Dropdown */}
+        {allLabels.length > 1 && (
         <div style={{ position: 'relative' }}>
           <button
             onClick={(e) => {
@@ -539,6 +549,7 @@ export default function Home() {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {filteredBounties.length === 0 ? (
@@ -645,7 +656,7 @@ export default function Home() {
 
                 {bounty.txHash ? (
                   <a
-                    href={`https://sepolia.basescan.org/tx/${bounty.txHash}`}
+                    href={getBlockExplorerUrl(bounty.network, bounty.txHash)}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ 
