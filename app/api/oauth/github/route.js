@@ -1,6 +1,7 @@
 import { getSession } from '@/lib/session';
 import { CONFIG } from '@/server/config';
 import { NextResponse } from 'next/server';
+import { randomBytes } from 'crypto';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -14,14 +15,17 @@ export async function GET(request) {
   
   const redirectUri = `${CONFIG.frontendUrl}/api/oauth/callback`;
   
+  // Generate cryptographically secure random state for CSRF protection
+  const state = randomBytes(32).toString('hex');
+  
   const params = new URLSearchParams({
     client_id: CONFIG.github.clientId,
     redirect_uri: redirectUri,
     scope: 'read:user',
-    state: Math.random().toString(36).substring(7)
+    state: state
   });
   
-  session.oauthState = params.get('state');
+  session.oauthState = state;
   await session.save();
   
   const authUrl = `https://github.com/login/oauth/authorize?${params}`;

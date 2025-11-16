@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { CONFIG } from '../config.js';
+import { validateAddress, validateBytes32 } from './validation.js';
 
 // ABI excerpts for the functions we need
 const ESCROW_ABI = [
@@ -104,6 +105,10 @@ export async function getBountyFromContract(bountyId, network = 'BASE_SEPOLIA') 
  */
 export async function resolveBounty(bountyId, recipientAddress) {
   try {
+    // Validate inputs
+    bountyId = validateBytes32(bountyId, 'bountyId');
+    recipientAddress = validateAddress(recipientAddress, 'recipientAddress');
+    
     const tx = await escrowContract.resolve(bountyId, recipientAddress);
     const receipt = await tx.wait();
     
@@ -126,6 +131,10 @@ export async function resolveBounty(bountyId, recipientAddress) {
 
 export async function resolveBountyOnNetwork(bountyId, recipientAddress, network = 'BASE_SEPOLIA') {
   try {
+    // Validate inputs
+    bountyId = validateBytes32(bountyId, 'bountyId');
+    recipientAddress = validateAddress(recipientAddress, 'recipientAddress');
+    
     const { netEscrow, netProvider } = getNetworkClients(network);
     
     // Mezo testnet doesn't support EIP-1559, use legacy transactions

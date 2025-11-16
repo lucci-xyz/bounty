@@ -1,12 +1,14 @@
 import { SiweMessage } from 'siwe';
+import { randomBytes } from 'crypto';
 import { CONFIG } from '../config.js';
 
 /**
- * Generate a SIWE nonce
+ * Generate a cryptographically secure SIWE nonce
  */
 export function generateNonce() {
-  return Math.random().toString(36).substring(2, 15) + 
-         Math.random().toString(36).substring(2, 15);
+  // Generate 32 bytes of cryptographically secure random data
+  // and convert to hex string (64 characters)
+  return randomBytes(32).toString('hex');
 }
 
 /**
