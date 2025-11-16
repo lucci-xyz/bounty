@@ -1,7 +1,12 @@
+/**
+ * Blockchain contract interaction module
+ * Handles all interactions with smart contracts (BountyEscrow, ERC20)
+ */
+
 import { ethers } from 'ethers';
 import { CONFIG } from '../config.js';
 
-// ABI excerpts for the functions we need
+// ABI excerpts for contract functions
 const ESCROW_ABI = [
   'function resolve(bytes32 bountyId, address recipient) external',
   'function getBounty(bytes32 bountyId) external view returns (tuple(bytes32 repoIdHash, address sponsor, address resolver, uint96 amount, uint64 deadline, uint64 issueNumber, uint8 status))',

@@ -1,3 +1,8 @@
+/**
+ * Server configuration module
+ * Loads and exports all environment variables and settings
+ */
+
 import { config } from 'dotenv';
 import { readFileSync } from 'fs';
 
@@ -6,19 +11,25 @@ if (process.env.NODE_ENV !== 'production') {
   config();
 }
 
-// Lazy-load private key to avoid build-time file access
+/**
+ * Lazy-loads GitHub private key to avoid build-time file access
+ * Attempts to read from file first, then falls back to environment variable
+ */
 function getPrivateKey() {
   if (process.env.GITHUB_PRIVATE_KEY_PATH) {
     try {
       return readFileSync(process.env.GITHUB_PRIVATE_KEY_PATH, 'utf8');
     } catch (error) {
-      // If file doesn't exist, fall back to env var
       return process.env.GITHUB_PRIVATE_KEY;
     }
   }
   return process.env.GITHUB_PRIVATE_KEY;
 }
 
+/**
+ * Application configuration object
+ * Centralizes all environment variables and settings
+ */
 export const CONFIG = {
   // Server
   port: process.env.PORT || 3000,
@@ -70,7 +81,10 @@ export const CONFIG = {
   databasePath: process.env.DATABASE_PATH,
 };
 
-// Validation function (called at runtime, not at build time)
+/**
+ * Validates required configuration values at runtime
+ * @returns {boolean} True if all required config values are present
+ */
 export function validateConfig() {
   const required = [
     'sessionSecret',

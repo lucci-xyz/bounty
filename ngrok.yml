@@ -1,9 +1,0 @@
-version: "2"
-authtoken: 2zjseQCSdzpgiSbeNzX85kN41X8_5omLucb16MrpdDbiom6o4
-tunnels:
-  bountypay:
-    proto: http
-    addr: 3000
-    bind_tls: true
-    inspect: true
-

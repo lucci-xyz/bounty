@@ -4,33 +4,21 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AllowlistManager from '@/components/AllowlistManager';
+import { formatAmount, formatDateLong, getStatusColor } from '@/lib/formatters';
+import { getNetworkMeta } from '@/lib/utils';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 export default function BountyDetail({ params }) {
   const router = useRouter();
+  const { githubUser, loading: authLoading } = useAuth();
   const [bounty, setBounty] = useState(null);
   const [allowlist, setAllowlist] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [githubUser, setGithubUser] = useState(null);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const fetchData = async () => {
+    if (!githubUser) return;
+
     try {
-      // Check auth
-      const authRes = await fetch('/api/oauth/user', {
-        credentials: 'include'
-      });
-
-      if (!authRes.ok) {
-        router.push('/dashboard');
-        return;
-      }
-
-      const user = await authRes.json();
-      setGithubUser(user);
-
       // Get bounty ID from params
       const { bountyId } = await params;
 
@@ -40,7 +28,7 @@ export default function BountyDetail({ params }) {
         const bountyData = await bountyRes.json();
         
         // Verify user owns this bounty
-        if (bountyData.sponsorGithubId !== user.githubId) {
+        if (bountyData.sponsorGithubId !== githubUser.githubId) {
           router.push('/dashboard');
           return;
         }
@@ -64,39 +52,15 @@ export default function BountyDetail({ params }) {
     }
   };
 
-  function formatAmount(amount, tokenSymbol) {
-    const decimals = tokenSymbol === 'MUSD' ? 18 : 6;
-    const value = Number(amount) / Math.pow(10, decimals);
-    return value.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
-  }
-
-  function formatDate(timestamp) {
-    return new Date(Number(timestamp) * 1000).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  }
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'open':
-        return 'var(--color-primary)';
-      case 'resolved':
-        return 'var(--color-success)';
-      case 'refunded':
-        return 'var(--color-warning)';
-      case 'canceled':
-        return 'var(--color-text-secondary)';
-      default:
-        return 'var(--color-text-secondary)';
+  useEffect(() => {
+    if (!authLoading && !githubUser) {
+      router.push('/dashboard');
+    } else if (githubUser) {
+      fetchData();
     }
-  };
+  }, [githubUser, authLoading]);
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="container" style={{ maxWidth: '900px', padding: '40px 20px' }}>
         <p style={{ color: 'var(--color-text-secondary)' }}>Loading bounty...</p>
@@ -201,7 +165,7 @@ export default function BountyDetail({ params }) {
               Deadline
             </div>
             <div style={{ fontSize: '16px', fontWeight: '500', color: isExpired ? 'var(--color-error)' : 'var(--color-text-primary)' }}>
-              {formatDate(bounty.deadline)}
+              {formatDateLong(bounty.deadline)}
               {isExpired && ' (Expired)'}
             </div>
           </div>
@@ -211,7 +175,7 @@ export default function BountyDetail({ params }) {
               Network
             </div>
             <div style={{ fontSize: '16px', fontWeight: '500' }}>
-              {bounty.network === 'MEZO_TESTNET' ? 'Mezo Testnet' : 'Base Sepolia'}
+              {getNetworkMeta(bounty.network).name}
             </div>
           </div>
         </div>
@@ -222,10 +186,7 @@ export default function BountyDetail({ params }) {
               Transaction Hash
             </div>
             <a
-              href={bounty.network === 'MEZO_TESTNET' 
-                ? `https://explorer.test.mezo.org/tx/${bounty.txHash}`
-                : `https://sepolia.basescan.org/tx/${bounty.txHash}`
-              }
+              href={getNetworkMeta(bounty.network).explorerTx(bounty.txHash)}
               target="_blank"
               rel="noopener noreferrer"
               style={{ 

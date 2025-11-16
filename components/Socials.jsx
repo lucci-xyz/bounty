@@ -41,8 +41,7 @@ export default function Socials() {
           href={social.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="transition-opacity hover:opacity-70"
-          style={{ color: 'var(--color-primary)' }}
+          className="text-primary transition-opacity hover:opacity-70"
           aria-label={social.name}
         >
           {social.icon}

@@ -1,27 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
+import { useAccount, useWalletClient } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { NETWORKS } from '@/config/networks';
 import { LinkIcon, GitHubIcon, CheckCircleIcon, AlertIcon } from '@/components/Icons';
-
-function createSiweMessage({ domain, address, statement, uri, version, chainId, nonce }) {
-  const message = [
-    `${domain} wants you to sign in with your Ethereum account:`,
-    address,
-    '',
-    statement,
-    '',
-    `URI: ${uri}`,
-    `Version: ${version}`,
-    `Chain ID: ${chainId}`,
-    `Nonce: ${nonce}`,
-    `Issued At: ${new Date().toISOString()}`
-  ].join('\n');
-
-  return message;
-}
+import PageHeader from '@/components/PageHeader';
+import StatusMessage from '@/components/StatusMessage';
+import { createSiweMessage } from '@/lib/siwe';
 
 export default function LinkWallet() {
   const [githubUser, setGithubUser] = useState(null);
@@ -315,40 +300,14 @@ export default function LinkWallet() {
 
   return (
     <div className="container" style={{ maxWidth: '600px' }}>
-      <div className="animate-fade-in-up" style={{ textAlign: 'center', marginBottom: '48px' }}>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          gap: '12px',
-          marginBottom: '16px'
-        }}>
-          <div style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '16px',
-            background: 'rgba(131, 238, 232, 0.15)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <LinkIcon size={32} color="var(--color-primary)" />
-          </div>
-        </div>
-        <h1 style={{ 
-          fontSize: 'clamp(32px, 6vw, 40px)',
-          fontFamily: "'Space Grotesk', sans-serif",
-          letterSpacing: '-0.02em'
-        }}>
-          {isChangingWallet ? 'Change Your Wallet' : 'Link Your Wallet'}
-        </h1>
-        <p className="subtitle" style={{ fontSize: 'clamp(15px, 2.5vw, 16px)', marginTop: '8px' }}>
-          {isChangingWallet 
-            ? 'Link a new wallet to receive bounty payments' 
-            : 'Connect your GitHub and wallet to receive automatic bounty payments'
-          }
-        </p>
-      </div>
+      <PageHeader
+        icon={LinkIcon}
+        title={isChangingWallet ? 'Change Your Wallet' : 'Link Your Wallet'}
+        subtitle={isChangingWallet 
+          ? 'Link a new wallet to receive bounty payments' 
+          : 'Connect your GitHub and wallet to receive automatic bounty payments'
+        }
+      />
 
       {/* Warning banner for changing wallet */}
       {isChangingWallet && (
@@ -658,10 +617,8 @@ export default function LinkWallet() {
         </div>
       )}
 
-      {status.message && !linked && !showAccountPrompt && !existingWallet && (
-        <div className={`status ${status.type}`} style={{ marginTop: '20px' }}>
-          {status.message}
-        </div>
+      {!linked && !showAccountPrompt && !existingWallet && (
+        <StatusMessage message={status.message} type={status.type} />
       )}
     </div>
   );

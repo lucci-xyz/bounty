@@ -1,32 +1,24 @@
 export default function UserAvatar({ username, avatarUrl, size = 40 }) {
   return (
-    <div style={{
+    <div 
+      className="rounded-full flex items-center justify-center overflow-hidden border-2 border-border"
+      style={{
       width: `${size}px`,
       height: `${size}px`,
-      borderRadius: '50%',
-      background: 'var(--color-primary-lighter)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'hidden',
-      border: '2px solid var(--color-border)'
-    }}>
+        background: 'var(--color-primary-lighter)'
+      }}
+    >
       {avatarUrl ? (
         <img 
           src={avatarUrl} 
           alt={username}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover'
-          }}
+          className="w-full h-full object-cover"
         />
       ) : (
-        <span style={{
-          fontSize: `${size * 0.4}px`,
-          fontWeight: '600',
-          color: 'var(--color-primary)'
-        }}>
+        <span 
+          className="font-semibold text-primary"
+          style={{ fontSize: `${size * 0.4}px` }}
+        >
           {username?.[0]?.toUpperCase() || '?'}
         </span>
       )}

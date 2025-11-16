@@ -6,6 +6,10 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ethers } from 'ethers';
 import { NETWORKS, CONTRACTS } from '@/config/networks';
 import { RefreshIcon, AlertIcon } from '@/components/Icons';
+import PageHeader from '@/components/PageHeader';
+import NetworkSelector from '@/components/NetworkSelector';
+import WalletInfo from '@/components/WalletInfo';
+import StatusMessage from '@/components/StatusMessage';
 
 const ESCROW_ABI = [
   'function refundExpired(bytes32 bountyId) external',
@@ -23,9 +27,6 @@ export default function Refund() {
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
   const { switchChain } = useSwitchChain();
-
-  // Check if running locally for testing
-  const isLocal = process.env.NEXT_PUBLIC_ENV_TARGET === 'local';
 
   const networkConfig = NETWORKS[selectedNetwork];
   const contractConfig = CONTRACTS[selectedNetwork];
@@ -137,37 +138,11 @@ export default function Refund() {
 
   return (
     <div className="container" style={{ maxWidth: '600px' }}>
-      <div className="animate-fade-in-up" style={{ textAlign: 'center', marginBottom: '48px' }}>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          gap: '12px',
-          marginBottom: '16px'
-        }}>
-          <div style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '16px',
-            background: 'rgba(131, 238, 232, 0.15)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <RefreshIcon size={32} color="var(--color-primary)" />
-          </div>
-        </div>
-        <h1 style={{ 
-          fontSize: 'clamp(32px, 6vw, 40px)',
-          fontFamily: "'Space Grotesk', sans-serif",
-          letterSpacing: '-0.02em'
-        }}>
-          Refund Bounty
-        </h1>
-        <p className="subtitle" style={{ fontSize: 'clamp(15px, 2.5vw, 16px)', marginBottom: '0' }}>
-          Request refund for expired bounties that were never resolved
-        </p>
-      </div>
+      <PageHeader
+        icon={RefreshIcon}
+        title="Refund Bounty"
+        subtitle="Request refund for expired bounties that were never resolved"
+      />
 
       <div className="warning animate-fade-in-up delay-100" style={{ marginBottom: '32px' }}>
         <AlertIcon size={20} color="#B87D00" />
@@ -181,52 +156,11 @@ export default function Refund() {
 
       {!isConnected ? (
         <>
-          <div className="animate-fade-in-up delay-200" style={{ marginBottom: '24px' }}>
-            <label style={{ marginBottom: '8px' }}>Select Network</label>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => {
-                  console.log('Base Sepolia selected');
-                  setSelectedNetwork('BASE_SEPOLIA');
-                }}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: selectedNetwork === 'BASE_SEPOLIA' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  background: selectedNetwork === 'BASE_SEPOLIA' ? 'rgba(0, 130, 123, 0.1)' : 'var(--color-card)',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: selectedNetwork === 'BASE_SEPOLIA' ? 'var(--color-primary)' : 'var(--color-text-primary)',
-                  transition: 'all 0.2s'
-                }}
-              >
-                Base Sepolia
-                <div style={{ fontSize: '12px', fontWeight: 400, marginTop: '4px', color: 'var(--color-text-secondary)' }}>USDC</div>
-              </button>
-              <button
-                onClick={() => {
-                  console.log('Mezo Testnet selected');
-                  setSelectedNetwork('MEZO_TESTNET');
-                }}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: selectedNetwork === 'MEZO_TESTNET' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  background: selectedNetwork === 'MEZO_TESTNET' ? 'rgba(0, 130, 123, 0.1)' : 'var(--color-card)',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: selectedNetwork === 'MEZO_TESTNET' ? 'var(--color-primary)' : 'var(--color-text-primary)',
-                  transition: 'all 0.2s'
-                }}
-              >
-                Mezo Testnet
-                <div style={{ fontSize: '12px', fontWeight: 400, marginTop: '4px', color: 'var(--color-text-secondary)' }}>MUSD</div>
-              </button>
-            </div>
+          <div className="animate-fade-in-up delay-200">
+            <NetworkSelector
+              selectedNetwork={selectedNetwork}
+              onNetworkChange={setSelectedNetwork}
+            />
           </div>
 
           <ConnectButton.Custom>
@@ -245,10 +179,11 @@ export default function Refund() {
         </>
       ) : (
         <>
-          <div className="wallet-info" style={{ marginBottom: '24px' }}>
-            <div><strong>Connected:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}</div>
-            <div><strong>Network:</strong> {networkConfig.name} ({contractConfig.tokenSymbol})</div>
-          </div>
+          <WalletInfo
+            address={address}
+            network={networkConfig.name}
+            tokenSymbol={contractConfig.tokenSymbol}
+          />
 
           <ConnectButton.Custom>
             {({ openAccountModal, openChainModal }) => (
@@ -307,11 +242,7 @@ export default function Refund() {
         </>
       )}
 
-      {status.message && (
-        <div className={`status ${status.type}`}>
-          {status.message}
-        </div>
-      )}
+      <StatusMessage message={status.message} type={status.type} />
     </div>
   );
 }

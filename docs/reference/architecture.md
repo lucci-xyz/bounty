@@ -51,6 +51,56 @@ Technical overview of BountyPay's system design and data flows.
 
 ---
 
+## Frontend Architecture
+
+### Custom Hooks Pattern
+
+The frontend uses a custom hooks pattern to separate data fetching and state management from component rendering:
+
+**Benefits:**
+- Reusable logic across components
+- Cleaner component code focused on UI
+- Easier testing and maintenance
+- Consistent data fetching patterns
+
+**Key Hooks:**
+- `useAuth()` - Manages GitHub OAuth authentication state
+- `useBounties()` - Fetches and filters bounty data with sorting/filtering
+- `useWallet()` - Checks wallet connection status
+- `useResponsive()` - Provides responsive breakpoint detection
+- `useStats()` - Fetches user statistics for dashboard
+
+### Style Separation
+
+Styles are separated from component logic into dedicated files:
+
+**Approach:**
+- `lib/styles/` contains all style objects and generators
+- Components import styles rather than defining inline
+- Common styles (badges, buttons) are centralized and reusable
+- Style functions accept parameters for variants
+
+**Files:**
+- `lib/styles/bountyCard.styles.js` - All BountyCard component styles
+- `lib/styles/common.styles.js` - Shared style generators (badge, button, pill, etc.)
+
+### Component Composition
+
+Large pages are broken down into focused, single-responsibility components:
+
+**Home Page (`app/page.jsx`):**
+- `BountyList` - Displays array of bounties
+- `BountyFilters` - Filter and sort controls
+- Main page orchestrates these with hooks
+
+**Dashboard Page (`app/dashboard/page.jsx`):**
+- `StatsCards` - Statistics display cards
+- `BountyTable` - Sortable/paginated bounty table
+- `EmptyState` - Welcome message for new users
+- Main page orchestrates these with hooks
+
+---
+
 ## Components
 
 ### 1. GitHub App
@@ -71,16 +121,51 @@ Technical overview of BountyPay's system design and data flows.
 - `/api/bounty/*` - Bounty management
 - `/api/wallet/*` - Wallet operations
 - `/api/oauth/*` - GitHub OAuth flow
+- `/api/user/*` - User profile and stats
 - `/attach-bounty` - Bounty funding page
 - `/link-wallet` - Wallet linking page
+- `/dashboard` - User dashboard
+- `/profile` - User profile page
 - `/refund` - Refund page
+
+**Webhook Handler Structure:**
+
+The webhook system is organized into focused handler modules:
+
+```
+server/github/
+  ├── webhooks.js (main router, ~60 lines)
+  └── handlers/
+      ├── issueHandlers.js (issue events)
+      ├── prHandlers.js (PR events and payouts)
+      ├── bountyHandlers.js (bounty notifications)
+      └── notificationHelpers.js (error alerts, formatting)
+```
+
+This modular structure keeps each handler focused on a single domain.
 
 **Key Files:**
 - `app/api/*/route.js` - API route handlers
-- `server/github/webhooks.js` - Webhook logic
+- `server/github/webhooks.js` - Main webhook router
+- `server/github/handlers/` - Specialized webhook handlers
+  - `issueHandlers.js` - Issue event handlers
+  - `prHandlers.js` - Pull request event handlers
+  - `bountyHandlers.js` - Bounty creation handlers
+  - `notificationHelpers.js` - Error notifications and formatting
 - `server/blockchain/contract.js` - Smart contract interface
 - `server/auth/siwe.js` - SIWE authentication
 - `server/db/prisma.js` - Database queries
+- `lib/hooks/` - Custom React hooks
+  - `useAuth.js` - Authentication state
+  - `useBounties.js` - Bounty data fetching
+  - `useWallet.js` - Wallet connection state
+  - `useResponsive.js` - Responsive breakpoints
+  - `useStats.js` - Statistics fetching
+- `lib/formatters.js` - Shared formatting utilities
+- `lib/utils.js` - General utilities and helpers
+- `lib/styles/` - Centralized style objects
+  - `bountyCard.styles.js` - BountyCard component styles
+  - `common.styles.js` - Reusable style generators
 
 ### 3. Database (Prisma + Postgres)
 
@@ -509,6 +594,50 @@ ESCROW_CONTRACT=0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD
 - Database connection pool
 - API response times
 - Blockchain gas costs
+
+---
+
+## Code Organization Principles
+
+### File Size and Responsibility
+
+- Keep files focused on a single responsibility
+- Break files > 200 lines into smaller modules
+- Component files should primarily contain JSX/rendering logic
+- Logic and data fetching belong in custom hooks
+- Styles belong in separate style files
+
+### Naming Conventions
+
+- **Files:** camelCase for utilities, PascalCase for components
+- **Functions:** Consistent verb prefixes (get*, fetch*, create*, update*, format*)
+- **Hooks:** Always start with `use` prefix
+- **Handlers:** Descriptive names ending in "Handler" or starting with "handle"
+
+### Import Organization
+
+```javascript
+// 1. External libraries
+import { useState } from 'react';
+import { ethers } from 'ethers';
+
+// 2. Internal modules
+import { useAuth } from '@/lib/hooks/useAuth';
+import { formatAmount } from '@/lib/formatters';
+
+// 3. Components
+import BountyCard from '@/components/BountyCard';
+
+// 4. Styles
+import { cardContainer } from '@/lib/styles/bountyCard.styles';
+```
+
+### Comment Guidelines
+
+- Add doc comments to all exported functions
+- Explain "why" not "what" for complex logic
+- No redundant comments that restate code
+- Use JSDoc format for function documentation
 
 ---
 

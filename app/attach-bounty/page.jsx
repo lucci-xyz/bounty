@@ -2,11 +2,15 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useAccount, useWalletClient, useSwitchChain, useDisconnect } from 'wagmi';
+import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ethers } from 'ethers';
-import { NETWORKS, CONTRACTS, ESCROW_ABI, ERC20_ABI } from '@/config/networks';
+import { NETWORKS, CONTRACTS } from '@/config/networks';
 import { MoneyIcon, GitHubIcon } from '@/components/Icons';
+import PageHeader from '@/components/PageHeader';
+import NetworkSelector from '@/components/NetworkSelector';
+import WalletInfo from '@/components/WalletInfo';
+import StatusMessage from '@/components/StatusMessage';
 
 function AttachBountyContent() {
   const searchParams = useSearchParams();
@@ -20,9 +24,6 @@ function AttachBountyContent() {
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
   const { switchChain } = useSwitchChain();
-
-  // Check if running locally for testing
-  const isLocal = process.env.NEXT_PUBLIC_ENV_TARGET === 'local';
 
   const repoFullName = searchParams.get('repo');
   const issueNumber = searchParams.get('issue');
@@ -386,37 +387,11 @@ function AttachBountyContent() {
   if (!hasIssueData) {
     return (
       <div className="container" style={{ maxWidth: '600px' }}>
-        <div className="animate-fade-in-up" style={{ textAlign: 'center', marginBottom: '48px' }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            gap: '12px',
-            marginBottom: '16px'
-          }}>
-            <div style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: '16px',
-              background: 'rgba(131, 238, 232, 0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <MoneyIcon size={32} color="var(--color-primary)" />
-            </div>
-          </div>
-          <h1 style={{ 
-            fontSize: 'clamp(32px, 6vw, 40px)',
-            fontFamily: "'Space Grotesk', sans-serif",
-            letterSpacing: '-0.02em'
-          }}>
-            Create Bounty
-          </h1>
-          <p className="subtitle" style={{ fontSize: 'clamp(15px, 2.5vw, 16px)', marginBottom: '0' }}>
-            First, install the GitHub App to attach bounties to issues
-          </p>
-        </div>
+        <PageHeader
+          icon={MoneyIcon}
+          title="Create Bounty"
+          subtitle="First, install the GitHub App to attach bounties to issues"
+        />
 
         <div className="animate-fade-in-up delay-100">
           <div className="card" style={{ marginBottom: '20px' }}>
@@ -450,37 +425,11 @@ function AttachBountyContent() {
   // From GitHub App - existing flow
   return (
     <div className="container" style={{ maxWidth: '600px' }}>
-      <div className="animate-fade-in-up" style={{ textAlign: 'center', marginBottom: '48px' }}>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          gap: '12px',
-          marginBottom: '16px'
-        }}>
-          <div style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '16px',
-            background: 'rgba(131, 238, 232, 0.15)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <MoneyIcon size={32} color="var(--color-primary)" />
-          </div>
-        </div>
-        <h1 style={{ 
-          fontSize: 'clamp(32px, 6vw, 40px)',
-          fontFamily: "'Space Grotesk', sans-serif",
-          letterSpacing: '-0.02em'
-        }}>
-          Attach Bounty
-        </h1>
-        <p className="subtitle" style={{ fontSize: 'clamp(15px, 2.5vw, 16px)', marginBottom: '0' }}>
-          Fund this issue with crypto. Payment triggers automatically when PR merges.
-        </p>
-      </div>
+      <PageHeader
+        icon={MoneyIcon}
+        title="Attach Bounty"
+        subtitle="Fund this issue with crypto. Payment triggers automatically when PR merges."
+      />
 
       <div className="info-box animate-fade-in-up delay-100" style={{ marginBottom: '32px' }}>
         <p><strong>Repository:</strong> {repoFullName}</p>
@@ -494,54 +443,12 @@ function AttachBountyContent() {
 
       {!isConnected ? (
         <>
-          <div className="animate-fade-in-up delay-200" style={{ marginBottom: '24px' }}>
-            <label style={{ marginBottom: '8px' }}>Select Network</label>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => {
-                  if (isProcessing || isConnected) return;
-                  setSelectedNetwork('BASE_SEPOLIA');
-                }}
-                disabled={isProcessing || isConnected}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: selectedNetwork === 'BASE_SEPOLIA' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  background: selectedNetwork === 'BASE_SEPOLIA' ? 'rgba(0, 130, 123, 0.1)' : 'var(--color-card)',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: selectedNetwork === 'BASE_SEPOLIA' ? 'var(--color-primary)' : 'var(--color-text-primary)',
-                  transition: 'all 0.2s'
-                }}
-              >
-                Base Sepolia
-                <div style={{ fontSize: '12px', fontWeight: 400, marginTop: '4px', color: 'var(--color-text-secondary)' }}>USDC</div>
-              </button>
-              <button
-                onClick={() => {
-                  if (isProcessing || isConnected) return;
-                  setSelectedNetwork('MEZO_TESTNET');
-                }}
-                disabled={isProcessing || isConnected}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: selectedNetwork === 'MEZO_TESTNET' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  background: selectedNetwork === 'MEZO_TESTNET' ? 'rgba(0, 130, 123, 0.1)' : 'var(--color-card)',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: selectedNetwork === 'MEZO_TESTNET' ? 'var(--color-primary)' : 'var(--color-text-primary)',
-                  transition: 'all 0.2s'
-                }}
-              >
-                Mezo Testnet
-                <div style={{ fontSize: '12px', fontWeight: 400, marginTop: '4px', color: 'var(--color-text-secondary)' }}>MUSD</div>
-              </button>
-            </div>
+          <div className="animate-fade-in-up delay-200">
+            <NetworkSelector
+              selectedNetwork={selectedNetwork}
+              onNetworkChange={setSelectedNetwork}
+              disabled={isProcessing || isConnected}
+            />
           </div>
 
           <ConnectButton.Custom>
@@ -564,10 +471,11 @@ function AttachBountyContent() {
         </>
       ) : (
         <>
-          <div className="wallet-info" style={{ marginBottom: '24px' }}>
-            <div><strong>Connected:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}</div>
-            <div><strong>Network:</strong> {chain?.name || networkConfig.name} ({contractConfig.tokenSymbol})</div>
-          </div>
+          <WalletInfo
+            address={address}
+            network={chain?.name || networkConfig.name}
+            tokenSymbol={contractConfig.tokenSymbol}
+          />
 
           <ConnectButton.Custom>
             {({ openAccountModal, openChainModal }) => (
@@ -636,11 +544,7 @@ function AttachBountyContent() {
         </>
       )}
 
-      {status.message && (
-        <div className={`status ${status.type}`}>
-          {status.message}
-        </div>
-      )}
+      <StatusMessage message={status.message} type={status.type} />
     </div>
   );
 }
