@@ -44,9 +44,19 @@ GITHUB_WEBHOOK_SECRET=your-webhook-secret
 GITHUB_CLIENT_ID=your_client_id
 GITHUB_CLIENT_SECRET=your_client_secret
 
-# Blockchain
-ESCROW_CONTRACT=0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD
-RESOLVER_PRIVATE_KEY=your_resolver_wallet_private_key
+# Blockchain (alias-based config)
+BLOCKCHAIN_SUPPORTED_TESTNET_ALIASES=BASE_SEPOLIA
+BLOCKCHAIN_DEFAULT_TESTNET_ALIAS=BASE_SEPOLIA
+BASE_SEPOLIA_ESCROW_ADDRESS=0x3C1AF89cf9773744e0DAe9EBB7e3289e1AeCF0E7
+BASE_SEPOLIA_TOKEN_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e
+BASE_SEPOLIA_TOKEN_SYMBOL=USDC
+BASE_SEPOLIA_TOKEN_DECIMALS=6
+BASE_SEPOLIA_OWNER_WALLET=0xYourLocalOwnerWallet
+BASE_SEPOLIA_OWNER_PRIVATE_KEY=0xYourLocalOwnerPrivateKey
+# Optional additional networks
+# MEZO_TESTNET_OWNER_WALLET=0x...
+# MEZO_TESTNET_OWNER_PRIVATE_KEY=0x...
+# RESOLVER_PRIVATE_KEY=0xFallbackPrivateKey   # legacy fallback if you want one key for every network
 
 # Database (Prisma Postgres)
 DATABASE_URL=prisma+postgres://accelerate.prisma-data.net/?api_key=...
@@ -70,10 +80,11 @@ See [GitHub App Setup Guide](github-app-setup.md) for obtaining:
 - `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`
 - `GITHUB_PRIVATE_KEY`
 
-**RESOLVER_PRIVATE_KEY:**
-- Create a new wallet for the resolver (test account)
-- Export the private key
-- This wallet needs Base Sepolia ETH for gas fees
+**Network Owner Wallets:**
+- Each configured alias can provide its own admin wallet via `{ALIAS}_OWNER_WALLET` and `{ALIAS}_OWNER_PRIVATE_KEY`
+- These wallets are used for contract interactions (deployments, admin ops, automated payouts)
+- Fund each wallet with the native gas token on its network (ETH on Base Sepolia, BTC on Mezo)
+- Optional: set `RESOLVER_PRIVATE_KEY` as a single fallback key if you don't want per-alias wallets
 
 ---
 

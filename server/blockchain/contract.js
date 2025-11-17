@@ -3,6 +3,19 @@ import { CONFIG } from '../config.js';
 import { REGISTRY, ABIS, getDefaultAliasForGroup } from '../../config/chain-registry.js';
 import { validateAddress, validateBytes32 } from './validation.js';
 
+function getPrivateKeyForAlias(alias) {
+  const aliasWallet = CONFIG.blockchain.walletsByAlias?.[alias];
+  if (aliasWallet?.privateKey) {
+    return aliasWallet.privateKey;
+  }
+  if (CONFIG.blockchain.resolverPrivateKey) {
+    return CONFIG.blockchain.resolverPrivateKey;
+  }
+  throw new Error(
+    `No private key configured for network ${alias}. Set ${alias}_OWNER_PRIVATE_KEY (and wallet) or RESOLVER_PRIVATE_KEY.`
+  );
+}
+
 /**
  * Get network clients for a specific alias
  * @param {string} alias - Network alias (e.g., 'BASE_MAINNET')
@@ -15,7 +28,8 @@ function getNetworkClients(alias) {
   }
 
   const provider = new ethers.JsonRpcProvider(network.rpcUrl);
-  const wallet = new ethers.Wallet(CONFIG.blockchain.resolverPrivateKey, provider);
+  const privateKey = getPrivateKeyForAlias(alias);
+  const wallet = new ethers.Wallet(privateKey, provider);
   const escrowContract = new ethers.Contract(network.contracts.escrow, ABIS.escrow, wallet);
   const tokenContract = new ethers.Contract(network.token.address, ABIS.erc20, provider);
 

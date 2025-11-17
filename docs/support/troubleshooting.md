@@ -484,15 +484,25 @@ Common issues and solutions for BountyPay.
 2. **Check required variables:**
 
    ```bash
-   # From server/config.js
+   # From server/config.js / config/chain-registry.js
    SESSION_SECRET
    GITHUB_APP_ID
    GITHUB_PRIVATE_KEY or GITHUB_PRIVATE_KEY_PATH
    GITHUB_WEBHOOK_SECRET
    GITHUB_CLIENT_ID
    GITHUB_CLIENT_SECRET
-   ESCROW_CONTRACT
-   RESOLVER_PRIVATE_KEY
+   BLOCKCHAIN_SUPPORTED_TESTNET_ALIASES
+   BLOCKCHAIN_DEFAULT_TESTNET_ALIAS
+   BASE_SEPOLIA_ESCROW_ADDRESS
+   BASE_SEPOLIA_TOKEN_ADDRESS
+   BASE_SEPOLIA_TOKEN_SYMBOL
+   BASE_SEPOLIA_TOKEN_DECIMALS
+   BASE_SEPOLIA_OWNER_WALLET
+   BASE_SEPOLIA_OWNER_PRIVATE_KEY
+   MEZO_TESTNET_OWNER_WALLET (if MEZO_TESTNET enabled)
+   MEZO_TESTNET_OWNER_PRIVATE_KEY (if MEZO_TESTNET enabled)
+   # Optional fallback if you use one wallet everywhere:
+   # RESOLVER_PRIVATE_KEY
    ```
 
 3. **Verify private key:**
@@ -520,26 +530,29 @@ Common issues and solutions for BountyPay.
 1. **Check variable formats:**
 
    ```bash
-   # Chain ID must be number
-   echo $CHAIN_ID # Should be 84532
+   # Aliases should be comma-separated
+   echo $BLOCKCHAIN_SUPPORTED_TESTNET_ALIASES
    
    # Addresses must be valid hex
-   echo $ESCROW_CONTRACT # Should start with 0x
+   echo $BASE_SEPOLIA_ESCROW_ADDRESS # Should start with 0x
    ```
 
 2. **Verify private keys:**
 
    ```bash
-   # Resolver private key format
-   # Can be with or without 0x prefix
-   echo $RESOLVER_PRIVATE_KEY | wc -c # Should be 64 or 66 chars
+   # Alias-specific private keys must be 64 hex chars (with or without 0x)
+   echo $BASE_SEPOLIA_OWNER_PRIVATE_KEY | wc -c
+   echo $MEZO_TESTNET_OWNER_PRIVATE_KEY | wc -c
+   
+   # Optional fallback resolver key (legacy)
+   echo $RESOLVER_PRIVATE_KEY | wc -c
    ```
 
 3. **Check URLs:**
 
    ```bash
    # Must be valid URLs
-   echo $RPC_URL
+   echo $BASE_SEPOLIA_RPC_URL
    echo $FRONTEND_URL
    ```
 

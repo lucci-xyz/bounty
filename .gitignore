@@ -18,6 +18,9 @@ client/dist/
 dist/
 .next/
 out/
+artifacts/
+broadcast/
+cache/
 
 # IDE
 .vscode/

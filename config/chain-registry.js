@@ -45,8 +45,7 @@ const CURATED_ALIASES = {
     },
     // Hardcoded defaults for local/staging convenience (can be overridden via env)
     defaultContracts: {
-      escrow: '0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD',
-      feeVault: '0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3'
+      escrow: '0x3C1AF89cf9773744e0DAe9EBB7e3289e1AeCF0E7'
     },
     defaultToken: {
       address: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
@@ -69,8 +68,7 @@ const CURATED_ALIASES = {
     },
     // Hardcoded defaults for local/staging convenience (can be overridden via env)
     defaultContracts: {
-      escrow: '0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3',
-      feeVault: '0xa8Fc9DC3383E9E64FF9F7552a5A6B25885e5b094'
+      escrow: '0xcBaf5066aDc2299C14112E8A79645900eeb3A76a'
     },
     defaultToken: {
       address: '0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503',
@@ -131,7 +129,6 @@ function buildRegistry() {
       const tokenEnv = process.env[`${alias}_TOKEN_ADDRESS`];
       const tokenSymbolEnv = process.env[`${alias}_TOKEN_SYMBOL`];
       const tokenDecimalsEnv = process.env[`${alias}_TOKEN_DECIMALS`];
-      const feeVaultEnv = process.env[`${alias}_FEE_VAULT_ADDRESS`];
 
       const escrowAddress = escrowEnv || (isTestnet ? curated.defaultContracts?.escrow : undefined);
       if (!escrowAddress) {
@@ -160,12 +157,6 @@ function buildRegistry() {
         throw new Error(`Invalid token decimals for ${alias}: ${tokenDecimals} (must be 0-18)`);
       }
 
-      // Optional fee vault address (use curated default for testnets if present)
-      const feeVaultAddress = feeVaultEnv || (isTestnet ? curated.defaultContracts?.feeVault : undefined);
-      if (feeVaultAddress && !isAddress(feeVaultAddress)) {
-        throw new Error(`Invalid fee vault address for ${alias}: ${feeVaultAddress}`);
-      }
-
       // Build complete network config
       registry[alias] = {
         group: curated.group,
@@ -177,8 +168,7 @@ function buildRegistry() {
         supports1559: curated.supports1559,
         nativeCurrency: curated.nativeCurrency,
         contracts: {
-          escrow: escrowAddress,
-          ...(feeVaultAddress && { feeVault: feeVaultAddress })
+          escrow: escrowAddress
         },
         token: {
           address: tokenAddress,

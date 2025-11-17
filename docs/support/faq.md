@@ -232,7 +232,7 @@ Yes, the code is open source. See the [Deployment Guide](../deployment/deploymen
 
 ### How does BountyPay make money?
 
-Protocol fees are collected on bounty resolutions. A small percentage goes to the FeeVault for platform maintenance.
+Protocol fees are collected on bounty resolutions. A small percentage stays in the BountyEscrow contract for platform maintenance withdrawals.
 
 ### What's the protocol fee?
 

@@ -1,5 +1,6 @@
 import { config } from 'dotenv';
 import { readFileSync } from 'fs';
+import { isAddress } from 'ethers';
 import { REGISTRY } from '../config/chain-registry.js';
 
 // Load .env file (only in development)
@@ -35,6 +36,33 @@ function buildTokensMap() {
   return tokens;
 }
 
+function normalizePrivateKey(key) {
+  if (!key) return undefined;
+  return key.startsWith('0x') ? key : `0x${key}`;
+}
+
+function buildNetworkWallets() {
+  const wallets = {};
+  for (const alias of Object.keys(REGISTRY)) {
+    const walletEnv =
+      process.env[`${alias}_OWNER_WALLET`] || process.env[`${alias}_RESOLVER_WALLET`];
+    const keyEnv =
+      process.env[`${alias}_OWNER_PRIVATE_KEY`] || process.env[`${alias}_RESOLVER_PRIVATE_KEY`];
+
+    if (walletEnv || keyEnv) {
+      wallets[alias] = {
+        address: walletEnv,
+        privateKey: normalizePrivateKey(keyEnv)
+      };
+    }
+  }
+  return wallets;
+}
+
+function isValidPrivateKey(value) {
+  return typeof value === 'string' && /^0x[a-fA-F0-9]{64}$/.test(value);
+}
+
 export const CONFIG = {
   // Server
   port: process.env.PORT || 3000,
@@ -58,7 +86,8 @@ export const CONFIG = {
 
   // Blockchain
   blockchain: {
-    resolverPrivateKey: process.env.RESOLVER_PRIVATE_KEY,
+    resolverPrivateKey: normalizePrivateKey(process.env.RESOLVER_PRIVATE_KEY),
+    walletsByAlias: buildNetworkWallets()
   },
 
   // Token metadata for display (built from REGISTRY)
@@ -112,17 +141,43 @@ export function validateConfig() {
     }
   }
 
-  // Required blockchain config
-  if (!CONFIG.blockchain.resolverPrivateKey) {
-    errors.push('Missing required config: RESOLVER_PRIVATE_KEY');
+  // Blockchain wallets: either provide a global resolver key or per-alias keys
+  const hasGlobalResolverKey = Boolean(CONFIG.blockchain.resolverPrivateKey);
+  const aliasWallets = CONFIG.blockchain.walletsByAlias || {};
+
+  if (hasGlobalResolverKey && !isValidPrivateKey(CONFIG.blockchain.resolverPrivateKey)) {
+    errors.push('Invalid RESOLVER_PRIVATE_KEY format (must be 64 hex characters, prefixed with 0x)');
   }
 
-  // Validate resolver private key format (should start with 0x and be 64 hex chars)
-  if (CONFIG.blockchain.resolverPrivateKey) {
-    const key = CONFIG.blockchain.resolverPrivateKey;
-    if (!/^(0x)?[a-fA-F0-9]{64}$/.test(key)) {
-      errors.push('Invalid RESOLVER_PRIVATE_KEY format (must be 64 hex characters, optionally prefixed with 0x)');
+  const aliasesMissingPrivateKeys = [];
+  for (const alias of Object.keys(REGISTRY)) {
+    const wallet = aliasWallets[alias];
+    if (wallet) {
+      const walletEnvKey = `${alias}_OWNER_WALLET`;
+      const keyEnvKey = `${alias}_OWNER_PRIVATE_KEY`;
+
+      if (!wallet.address) {
+        errors.push(`Missing required config: ${walletEnvKey}`);
+      } else if (!isAddress(wallet.address)) {
+        errors.push(`Invalid ${walletEnvKey}: ${wallet.address}`);
+      }
+
+      if (!wallet.privateKey) {
+        errors.push(`Missing required config: ${keyEnvKey}`);
+      } else if (!isValidPrivateKey(wallet.privateKey)) {
+        errors.push(`Invalid ${keyEnvKey} format (must be 64 hex characters, prefixed with 0x)`);
+      }
+    } else if (!hasGlobalResolverKey) {
+      aliasesMissingPrivateKeys.push(alias);
     }
+  }
+
+  if (!hasGlobalResolverKey && aliasesMissingPrivateKeys.length > 0) {
+    errors.push(
+      `Missing per-alias wallet for networks: ${aliasesMissingPrivateKeys.join(
+        ', '
+      )}. Set ${aliasesMissingPrivateKeys[0]}_OWNER_PRIVATE_KEY (and _WALLET) or provide RESOLVER_PRIVATE_KEY as a fallback.`
+    );
   }
 
   // Validate callback targets conditionally

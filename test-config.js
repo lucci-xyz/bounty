@@ -35,16 +35,20 @@ process.env.MEZO_MAINNET_TOKEN_SYMBOL = 'MUSD';
 process.env.MEZO_MAINNET_TOKEN_DECIMALS = '18';
 
 // Base Sepolia
-process.env.BASE_SEPOLIA_ESCROW_ADDRESS = '0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD';
+process.env.BASE_SEPOLIA_ESCROW_ADDRESS = '0x3C1AF89cf9773744e0DAe9EBB7e3289e1AeCF0E7';
 process.env.BASE_SEPOLIA_TOKEN_ADDRESS = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
 process.env.BASE_SEPOLIA_TOKEN_SYMBOL = 'USDC';
 process.env.BASE_SEPOLIA_TOKEN_DECIMALS = '6';
+process.env.BASE_SEPOLIA_OWNER_WALLET = '0x0000000000000000000000000000000000000004';
+process.env.BASE_SEPOLIA_OWNER_PRIVATE_KEY = '0x'.padEnd(66, '4');
 
 // Mezo Testnet
-process.env.MEZO_TESTNET_ESCROW_ADDRESS = '0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3';
+process.env.MEZO_TESTNET_ESCROW_ADDRESS = '0xcBaf5066aDc2299C14112E8A79645900eeb3A76a';
 process.env.MEZO_TESTNET_TOKEN_ADDRESS = '0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503';
 process.env.MEZO_TESTNET_TOKEN_SYMBOL = 'MUSD';
 process.env.MEZO_TESTNET_TOKEN_DECIMALS = '18';
+process.env.MEZO_TESTNET_OWNER_WALLET = '0x0000000000000000000000000000000000000005';
+process.env.MEZO_TESTNET_OWNER_PRIVATE_KEY = '0x'.padEnd(66, '5');
 
 async function testConfig() {
   console.log('🔍 Testing chain registry configuration...\n');
@@ -100,7 +104,9 @@ async function testConfig() {
       console.log('✓ Server config validation passed');
       console.log(`  Session secret: ${CONFIG.sessionSecret ? '✓ Set' : '✗ Missing'}`);
       console.log(`  Frontend URL: ${CONFIG.frontendUrl}`);
-      console.log(`  Resolver key: ${CONFIG.blockchain.resolverPrivateKey ? '✓ Set' : '✗ Missing'}`);
+      console.log(`  Resolver key fallback: ${CONFIG.blockchain.resolverPrivateKey ? '✓ Set' : '✗ Missing'}`);
+      const aliasWallets = Object.keys(CONFIG.blockchain.walletsByAlias || {});
+      console.log(`  Alias wallets: ${aliasWallets.length ? aliasWallets.join(', ') : 'none'}`);
       
       // Test tokens map
       const tokens = CONFIG.tokens;

@@ -10,9 +10,10 @@ Complete reference for BountyPay smart contracts deployed on Base Sepolia and Me
 
 | Contract | Address | Network |
 |----------|---------|---------|
-| BountyEscrow | [`0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD`](https://sepolia.basescan.org/address/0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD) | Base Sepolia |
-| FeeVault | [`0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3`](https://sepolia.basescan.org/address/0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3) | Base Sepolia |
+| BountyEscrow | [`0x3C1AF89cf9773744e0DAe9EBB7e3289e1AeCF0E7`](https://sepolia.basescan.org/address/0x3C1AF89cf9773744e0DAe9EBB7e3289e1AeCF0E7) | Base Sepolia |
 | USDC (Test) | [`0x036CbD53842c5426634e7929541eC2318f3dCF7e`](https://sepolia.basescan.org/address/0x036CbD53842c5426634e7929541eC2318f3dCF7e) | Base Sepolia |
+
+> Latest deployment (Nov 17, 2025): [`tx 0xa19fe746a6efee740bf9cd37790368078cd1a93f00702495e1233de4f10a4689`](https://sepolia.basescan.org/tx/0xa19fe746a6efee740bf9cd37790368078cd1a93f00702495e1233de4f10a4689)
 
 **Chain ID:** 84532  
 **RPC URL:** `https://sepolia.base.org`  
@@ -22,9 +23,10 @@ Complete reference for BountyPay smart contracts deployed on Base Sepolia and Me
 
 | Contract | Address | Network |
 |----------|---------|---------|
-| BountyEscrow | [`0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3`](https://explorer.test.mezo.org/address/0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3) | Mezo Testnet |
-| FeeVault | [`0xa8Fc9DC3383E9E64FF9F7552a5A6B25885e5b094`](https://explorer.test.mezo.org/address/0xa8Fc9DC3383E9E64FF9F7552a5A6B25885e5b094) | Mezo Testnet |
+| BountyEscrow | [`0xcBaf5066aDc2299C14112E8A79645900eeb3A76a`](https://explorer.test.mezo.org/address/0xcBaf5066aDc2299C14112E8A79645900eeb3A76a) | Mezo Testnet |
 | MUSD (Test) | [`0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503`](https://explorer.test.mezo.org/address/0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503) | Mezo Testnet |
+
+> Latest deployment (Nov 17, 2025): [`tx 0x58ceec0b7579df664edd095756bc96aef8ce0dac2318e0b29d07082572c6ba1d`](https://explorer.test.mezo.org/tx/0x58ceec0b7579df664edd095756bc96aef8ce0dac2318e0b29d07082572c6ba1d)
 
 **Chain ID:** 31611  
 **Native Currency:** BTC (Bitcoin)  
@@ -213,7 +215,7 @@ function resolve(bytes32 bountyId, address recipient) external nonReentrant when
 
 - Calculates protocol fee: `fee = amount * feeBps / 10000`
 - Pays net amount to recipient: `amount - fee`
-- Pays fee to FeeVault
+- Accrues `fee` inside the escrow contract (tracked via `totalFeesAccrued`)
 - Sets bounty status to `Resolved`
 
 **Events:**
@@ -365,103 +367,108 @@ function unpause() external onlyOwner
 
 ---
 
-#### setFeeParams
+#### setFeeBps
 
-Update protocol fee and fee vault. Owner only.
+Update protocol fee basis points. Owner only.
 
 ```solidity
-function setFeeParams(uint16 _feeBps, address _feeVault) external onlyOwner
+function setFeeBps(uint16 newFeeBps) external onlyOwner
 ```
 
 **Parameters:**
 
-- `_feeBps` - New fee in basis points (max 1000 = 10%)
-- `_feeVault` - New fee vault address
+- `newFeeBps` - New fee in basis points (max 1000 = 10%)
 
 **Requirements:**
 
-- `_feeBps` must be <= `MAX_FEE_BPS` (1000)
-- `_feeVault` must not be zero address
+- `newFeeBps` must be <= `MAX_FEE_BPS`
 
 **Events:**
 
-- `FeeParamsUpdated(uint16 feeBps, address feeVault)`
+- `FeeBpsUpdated(uint16 feeBps)`
 
 ---
 
-## FeeVault Contract
+#### availableFees
 
-Protocol fee collection vault. Receives fees from BountyEscrow resolutions.
-
-### FeeVault Functions
-
-#### withdraw
-
-Withdraw ERC-20 tokens. Owner only.
+Return the current amount of protocol fees that can be withdrawn.
 
 ```solidity
-function withdraw(address token, address to, uint256 amount) external onlyOwner nonReentrant
+function availableFees() external view returns (uint256)
+```
+
+- Computed as `USDC balance - totalEscrowed`
+- Returns `0` if no withdrawable fees exist
+
+---
+
+#### withdrawFees
+
+Withdraw accumulated protocol fees (USDC/MUSD). Owner only.
+
+```solidity
+function withdrawFees(address to, uint256 amount) external onlyOwner
 ```
 
 **Parameters:**
 
-- `token` - ERC-20 token address
 - `to` - Recipient address
-- `amount` - Amount to withdraw
+- `amount` - Amount to withdraw; set to `0` to withdraw full `availableFees()`
+
+**Requirements:**
+
+- `to` must not be zero address
+- `availableFees()` must be > 0
+- `amount` (if non-zero) must be ≤ `availableFees()`
+
+**Events:**
+
+- `FeesWithdrawn(address indexed to, uint256 amount)`
+
+---
+
+#### rescueToken
+
+Rescue arbitrary ERC-20 tokens (non-USDC/MUSD) accidentally sent to the contract.
+
+```solidity
+function rescueToken(address token, address to, uint256 amount) external onlyOwner
+```
 
 **Requirements:**
 
 - `token` and `to` must not be zero addresses
 - `amount` must be greater than zero
+- `token` cannot be the configured escrow token (USDC/MUSD)
 
 **Events:**
 
-- `Withdraw(address indexed token, address indexed to, uint256 amount)`
-
-**Example:**
-
-```javascript
-const tx = await feeVault.withdraw(
-  usdcAddress,
-  ownerAddress,
-  ethers.parseUnits("1000", 6) // Withdraw 1000 USDC
-);
-```
+- `TokenRescued(address indexed token, address indexed to, uint256 amount)`
 
 ---
 
 #### sweepNative
 
-Sweep all native ETH to recipient. Owner only.
+Sweep any native ETH/BTC (wrapped as EVM native) held by the contract. Owner only.
 
 ```solidity
-function sweepNative(address payable to) external onlyOwner nonReentrant
+function sweepNative(address to) external onlyOwner
 ```
-
-**Parameters:**
-
-- `to` - Recipient address
 
 **Requirements:**
 
 - `to` must not be zero address
-- Contract must have non-zero ETH balance
+- Contract must hold native balance > 0
 
 **Events:**
 
-- `SweepNative(address indexed to, uint256 amount)`
-
-**Example:**
-
-```javascript
-const tx = await feeVault.sweepNative(ownerAddress);
-```
+- `NativeSwept(address indexed to, uint256 amount)`
 
 ---
 
 #### receive
 
-Receive native ETH (can be sent directly to contract).
+The contract accepts native deposits for completeness (e.g., if sent by mistake).
 
 ```solidity
 receive() external payable
@@ -469,7 +476,7 @@ receive() external payable
 
 **Events:**
 
-- `DepositNative(address indexed from, uint256 amount)`
+- `NativeDeposited(address indexed from, uint256 amount)`
 
 ---
 
@@ -484,7 +491,7 @@ import EscrowABI from './abis/BountyEscrow.json';
 const provider = new ethers.BrowserProvider(window.ethereum);
 const signer = await provider.getSigner();
 
-const escrowAddress = '0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD';
+const escrowAddress = '0x3C1AF89cf9773744e0DAe9EBB7e3289e1AeCF0E7';
 const escrowContract = new ethers.Contract(escrowAddress, EscrowABI, signer);
 
 // First, approve USDC spending
@@ -523,7 +530,7 @@ import EscrowABI from './abis/BountyEscrow.json';
 const provider = new ethers.BrowserProvider(window.ethereum);
 const signer = await provider.getSigner();
 
-const escrowAddress = '0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3';
+const escrowAddress = '0xcBaf5066aDc2299C14112E8A79645900eeb3A76a';
 const escrowContract = new ethers.Contract(escrowAddress, EscrowABI, signer);
 
 // First, approve MUSD spending
@@ -560,9 +567,15 @@ import { ethers } from 'ethers';
 import EscrowABI from './abis/BountyEscrow.json';
 
 const provider = new ethers.JsonRpcProvider('https://sepolia.base.org');
-const wallet = new ethers.Wallet(process.env.RESOLVER_PRIVATE_KEY, provider);
+const alias = 'BASE_SEPOLIA';
+const privateKey =
+  process.env[`${alias}_OWNER_PRIVATE_KEY`] ?? process.env.RESOLVER_PRIVATE_KEY;
+if (!privateKey) {
+  throw new Error(`Set ${alias}_OWNER_PRIVATE_KEY or RESOLVER_PRIVATE_KEY`);
+}
+const wallet = new ethers.Wallet(privateKey, provider);
 
-const escrowAddress = '0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD';
+const escrowAddress = '0x3C1AF89cf9773744e0DAe9EBB7e3289e1AeCF0E7';
 const escrowContract = new ethers.Contract(escrowAddress, EscrowABI, wallet);
 
 const bountyId = '0x...';
@@ -666,15 +679,15 @@ event Canceled(
   uint256 amount
 );
 
-event FeeParamsUpdated(uint16 feeBps, address feeVault);
-```
+event FeeBpsUpdated(uint16 feeBps);
 
-### FeeVault Events
+event FeesWithdrawn(address indexed to, uint256 amount);
 
-```solidity
-event Withdraw(address indexed token, address indexed to, uint256 amount);
-event DepositNative(address indexed from, uint256 amount);
-event SweepNative(address indexed to, uint256 amount);
+event TokenRescued(address indexed token, address indexed to, uint256 amount);
+
+event NativeDeposited(address indexed from, uint256 amount);
+
+event NativeSwept(address indexed to, uint256 amount);
 ```
 
 ---
@@ -691,6 +704,9 @@ event SweepNative(address indexed to, uint256 amount);
 **`DeadlineNotReached()`** - Cannot refund before deadline  
 **`ZeroAddress()`** - Zero address provided where not allowed  
 **`ZeroAmount()`** - Zero amount provided where not allowed  
+**`NoFeesAvailable()`** - Attempted to withdraw when no fees accrued  
+**`InsufficientFees()`** - Requested fee withdrawal exceeds available fees  
+**`CannotRescueUsdc()`** - Tried to rescue the primary escrow token  
 
 ---
 
@@ -703,8 +719,7 @@ event SweepNative(address indexed to, uint256 amount);
   - `Pausable` - Emergency pause functionality
   - `Ownable` - Access control
   - `SafeERC20` - Safe ERC-20 token transfers
-  - `SafeCast` - Safe integer casting
-  - `Math` - Overflow-safe math operations
+  - `Address` - Safe native token transfers
 
 ### Design Principles
 
