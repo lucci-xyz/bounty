@@ -2,13 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [githubUser, setGithubUser] = useState(null);
+  const [networkEnv, setNetworkEnv] = useState('testnet');
+  const [switching, setSwitching] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -21,6 +24,7 @@ export default function Navbar() {
 
   useEffect(() => {
     checkAuth();
+    fetchNetworkEnv();
   }, []);
 
   const checkAuth = async () => {
@@ -34,6 +38,47 @@ export default function Navbar() {
       }
     } catch (error) {
       // User not logged in
+    }
+  };
+
+  const fetchNetworkEnv = async () => {
+    try {
+      const res = await fetch('/api/network/env', {
+        credentials: 'include'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNetworkEnv(data.env || 'testnet');
+      }
+    } catch (error) {
+      console.error('Failed to fetch network env:', error);
+    }
+  };
+
+  const handleNetworkSwitch = async () => {
+    setSwitching(true);
+    try {
+      const newEnv = networkEnv === 'mainnet' ? 'testnet' : 'mainnet';
+      const res = await fetch('/api/network/env', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ env: newEnv })
+      });
+
+      if (res.ok) {
+        setNetworkEnv(newEnv);
+        router.refresh();
+      } else {
+        const error = await res.json();
+        console.error('Failed to switch network:', error);
+        alert(error.error || `Cannot switch to ${newEnv}: network not configured in .env`);
+      }
+    } catch (error) {
+      console.error('Error switching network:', error);
+      alert('Failed to switch network. Check console for details.');
+    } finally {
+      setSwitching(false);
     }
   };
 
@@ -105,6 +150,50 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          
+          <div style={{ width: '1px', height: '24px', background: 'var(--color-border)', margin: '0 8px' }} />
+          
+          <button
+            onClick={handleNetworkSwitch}
+            disabled={switching}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              border: '1px solid var(--color-border)',
+              fontSize: '13px',
+              fontWeight: '500',
+              background: 'var(--color-background)',
+              color: 'var(--color-text)',
+              cursor: switching ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s ease',
+              opacity: switching ? 0.6 : 1
+            }}
+            onMouseEnter={(e) => {
+              if (!switching) {
+                e.currentTarget.style.borderColor = 'var(--color-primary)';
+                e.currentTarget.style.background = 'rgba(0, 130, 123, 0.04)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-border)';
+              e.currentTarget.style.background = 'var(--color-background)';
+            }}
+            title={`Switch to ${networkEnv === 'mainnet' ? 'testnet' : 'mainnet'}`}
+          >
+            <span style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: networkEnv === 'mainnet' ? '#00827B' : '#39BEB7',
+              boxShadow: networkEnv === 'mainnet' 
+                ? '0 0 8px rgba(0, 130, 123, 0.5)' 
+                : '0 0 8px rgba(57, 190, 183, 0.5)'
+            }} />
+            {networkEnv === 'mainnet' ? 'Mainnet' : 'Testnet'}
+          </button>
           
           {githubUser && (
             <div style={{ width: '1px', height: '24px', background: 'var(--color-border)', margin: '0 8px' }} />

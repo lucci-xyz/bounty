@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { dummyBounties } from '@/dummy-data/bounties';
-import { NETWORKS } from '@/config/networks';
 
 export default function Home() {
   const [bounties, setBounties] = useState([]);
@@ -16,6 +15,25 @@ export default function Home() {
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [showLabelDropdown, setShowLabelDropdown] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [registry, setRegistry] = useState({});
+
+  // Fetch registry on mount
+  useEffect(() => {
+    async function fetchRegistry() {
+      try {
+        const response = await fetch('/api/registry');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setRegistry(data.registry);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching registry:', err);
+      }
+    }
+    fetchRegistry();
+  }, []);
 
   useEffect(() => {
     async function fetchBounties() {
@@ -149,9 +167,9 @@ export default function Home() {
   }
 
   function getBlockExplorerUrl(network, txHash) {
-    const networkConfig = NETWORKS[network];
-    if (!networkConfig || !txHash) return null;
-    return `${networkConfig.blockExplorerUrl}/tx/${txHash}`;
+    const config = registry[network];
+    if (!config || !txHash) return null;
+    return `${config.blockExplorerUrl}/tx/${txHash}`;
   }
 
   if (loading) {

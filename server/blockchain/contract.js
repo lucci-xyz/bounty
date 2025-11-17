@@ -1,67 +1,60 @@
 import { ethers } from 'ethers';
 import { CONFIG } from '../config.js';
+import { REGISTRY, ABIS, getDefaultAliasForGroup } from '../../config/chain-registry.js';
 import { validateAddress, validateBytes32 } from './validation.js';
 
-// ABI excerpts for the functions we need
-const ESCROW_ABI = [
-  'function resolve(bytes32 bountyId, address recipient) external',
-  'function getBounty(bytes32 bountyId) external view returns (tuple(bytes32 repoIdHash, address sponsor, address resolver, uint96 amount, uint64 deadline, uint64 issueNumber, uint8 status))',
-  'function computeBountyId(address sponsor, bytes32 repoIdHash, uint64 issueNumber) external pure returns (bytes32)',
-  'event Resolved(bytes32 indexed bountyId, address indexed recipient, uint256 net, uint256 fee)',
-  'event BountyCreated(bytes32 indexed bountyId, address indexed sponsor, bytes32 indexed repoIdHash, uint64 issueNumber, uint64 deadline, address resolver, uint256 amount)'
-];
+/**
+ * Get network clients for a specific alias
+ * @param {string} alias - Network alias (e.g., 'BASE_MAINNET')
+ * @returns {Object} Network clients and config
+ */
+function getNetworkClients(alias) {
+  const network = REGISTRY[alias];
+  if (!network) {
+    throw new Error(`Unknown network alias: ${alias}. Available: ${Object.keys(REGISTRY).join(', ')}`);
+  }
 
-const ERC20_ABI = [
-  'function decimals() external view returns (uint8)',
-  'function symbol() external view returns (string)',
-  'function balanceOf(address account) external view returns (uint256)'
-];
+  const provider = new ethers.JsonRpcProvider(network.rpcUrl);
+  const wallet = new ethers.Wallet(CONFIG.blockchain.resolverPrivateKey, provider);
+  const escrowContract = new ethers.Contract(network.contracts.escrow, ABIS.escrow, wallet);
+  const tokenContract = new ethers.Contract(network.token.address, ABIS.erc20, provider);
 
+  return {
+    network,
+    provider,
+    wallet,
+    escrowContract,
+    tokenContract
+  };
+}
+
+// Legacy global clients (kept for backward compatibility, use default testnet)
 let provider;
 let resolverWallet;
 let escrowContract;
-let usdcContract;
-
-// Network-aware configuration for server-side actions
-const NETWORK_CONFIG = {
-  BASE_SEPOLIA: {
-    rpcUrl: CONFIG.blockchain.rpcUrl,
-    escrow: CONFIG.blockchain.escrowContract,
-    token: CONFIG.blockchain.usdcContract,
-    tokenDecimals: 6,
-  },
-  MEZO_TESTNET: {
-    // Use official Mezo RPC for server-side to avoid dRPC batch request limits
-    rpcUrl: process.env.MEZO_RPC_URL || 'https://rpc.test.mezo.org',
-    escrow: process.env.MEZO_ESCROW_CONTRACT || '0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3',
-    token: CONFIG.blockchain.musdContract || '0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503',
-    tokenDecimals: 18,
-  }
-};
-
-function getNetworkClients(network = 'BASE_SEPOLIA') {
-  const net = NETWORK_CONFIG[network] || NETWORK_CONFIG.BASE_SEPOLIA;
-  const netProvider = new ethers.JsonRpcProvider(net.rpcUrl);
-  const netWallet = new ethers.Wallet(CONFIG.blockchain.resolverPrivateKey, netProvider);
-  const netEscrow = new ethers.Contract(net.escrow, ESCROW_ABI, netWallet);
-  const netToken = new ethers.Contract(net.token, ERC20_ABI, netProvider);
-  return { net, netProvider, netWallet, netEscrow, netToken };
-}
+let tokenContract;
 
 /**
- * Initialize blockchain connection
+ * Initialize blockchain connection (legacy - uses default testnet)
  */
 export function initBlockchain() {
-  // Initialize defaults for backward compatibility (Base Sepolia)
-  provider = new ethers.JsonRpcProvider(CONFIG.blockchain.rpcUrl);
-  resolverWallet = new ethers.Wallet(CONFIG.blockchain.resolverPrivateKey, provider);
-  escrowContract = new ethers.Contract(CONFIG.blockchain.escrowContract, ESCROW_ABI, resolverWallet);
-  usdcContract = new ethers.Contract(CONFIG.blockchain.usdcContract, ERC20_ABI, provider);
-  console.log('Blockchain initialized');
+  try {
+    const defaultTestnetAlias = getDefaultAliasForGroup('testnet');
+    const clients = getNetworkClients(defaultTestnetAlias);
+    
+    provider = clients.provider;
+    resolverWallet = clients.wallet;
+    escrowContract = clients.escrowContract;
+    tokenContract = clients.tokenContract;
+    
+    console.log(`Blockchain initialized with ${defaultTestnetAlias}`);
+  } catch (error) {
+    console.warn('Could not initialize default blockchain clients:', error.message);
+  }
 }
 
 /**
- * Get provider instance
+ * Get provider instance (legacy)
  */
 export function getProvider() {
   if (!provider) throw new Error('Blockchain not initialized');
@@ -69,23 +62,27 @@ export function getProvider() {
 }
 
 /**
- * Compute bountyId from contract parameters
+ * Compute bountyId from contract parameters (legacy - uses default testnet)
  */
 export async function computeBountyId(sponsorAddress, repoIdHash, issueNumber) {
+  if (!escrowContract) throw new Error('Blockchain not initialized');
   return await escrowContract.computeBountyId(sponsorAddress, repoIdHash, issueNumber);
 }
 
-export async function computeBountyIdOnNetwork(sponsorAddress, repoIdHash, issueNumber, network = 'BASE_SEPOLIA') {
-  const { netEscrow } = getNetworkClients(network);
-  return await netEscrow.computeBountyId(sponsorAddress, repoIdHash, issueNumber);
+/**
+ * Compute bountyId on a specific network
+ */
+export async function computeBountyIdOnNetwork(sponsorAddress, repoIdHash, issueNumber, alias) {
+  const { escrowContract } = getNetworkClients(alias);
+  return await escrowContract.computeBountyId(sponsorAddress, repoIdHash, issueNumber);
 }
 
 /**
- * Get bounty details from contract
+ * Get bounty details from contract on a specific network
  */
-export async function getBountyFromContract(bountyId, network = 'BASE_SEPOLIA') {
-  const { netEscrow } = getNetworkClients(network);
-  const bounty = await netEscrow.getBounty(bountyId);
+export async function getBountyFromContract(bountyId, alias) {
+  const { escrowContract } = getNetworkClients(alias);
+  const bounty = await escrowContract.getBounty(bountyId);
   return {
     repoIdHash: bounty.repoIdHash,
     sponsor: bounty.sponsor,
@@ -98,12 +95,14 @@ export async function getBountyFromContract(bountyId, network = 'BASE_SEPOLIA') 
 }
 
 /**
- * Resolve a bounty by calling the contract
+ * Resolve a bounty by calling the contract (legacy - uses default testnet)
  * @param {string} bountyId - bytes32 bounty ID
  * @param {string} recipientAddress - Recipient wallet address
  * @returns {Object} Transaction receipt
  */
 export async function resolveBounty(bountyId, recipientAddress) {
+  if (!escrowContract) throw new Error('Blockchain not initialized');
+  
   try {
     // Validate inputs
     bountyId = validateBytes32(bountyId, 'bountyId');
@@ -129,57 +128,81 @@ export async function resolveBounty(bountyId, recipientAddress) {
   }
 }
 
-export async function resolveBountyOnNetwork(bountyId, recipientAddress, network = 'BASE_SEPOLIA') {
+/**
+ * Resolve a bounty on a specific network
+ * @param {string} bountyId - bytes32 bounty ID
+ * @param {string} recipientAddress - Recipient wallet address
+ * @param {string} alias - Network alias
+ * @returns {Object} Transaction receipt
+ */
+export async function resolveBountyOnNetwork(bountyId, recipientAddress, alias) {
   try {
     // Validate inputs
     bountyId = validateBytes32(bountyId, 'bountyId');
     recipientAddress = validateAddress(recipientAddress, 'recipientAddress');
     
-    const { netEscrow, netProvider } = getNetworkClients(network);
+    const { escrowContract, provider, network } = getNetworkClients(alias);
     
-    // Mezo testnet doesn't support EIP-1559, use legacy transactions
+    // For networks that don't support EIP-1559, use legacy transactions
     let txOverrides = {};
-    if (network === 'MEZO_TESTNET') {
-      const gasPrice = await netProvider.send('eth_gasPrice', []);
+    if (!network.supports1559) {
+      const gasPrice = await provider.send('eth_gasPrice', []);
       txOverrides = {
         type: 0,
         gasPrice: BigInt(gasPrice)
       };
     }
     
-    const tx = await netEscrow.resolve(bountyId, recipientAddress, txOverrides);
+    const tx = await escrowContract.resolve(bountyId, recipientAddress, txOverrides);
     const receipt = await tx.wait();
     
-    console.log(`Bounty resolved on ${network}: ${bountyId.slice(0, 10)}... -> ${receipt.hash}`);
+    console.log(`Bounty resolved on ${alias}: ${bountyId.slice(0, 10)}... -> ${receipt.hash}`);
     
-    return { success: true, txHash: receipt.hash, blockNumber: receipt.blockNumber, gasUsed: receipt.gasUsed.toString() };
+    return { 
+      success: true, 
+      txHash: receipt.hash, 
+      blockNumber: receipt.blockNumber, 
+      gasUsed: receipt.gasUsed.toString() 
+    };
   } catch (error) {
-    console.error(`Error resolving bounty on ${network}:`, error.message);
-    return { success: false, error: error.message };
+    console.error(`Error resolving bounty on ${alias}:`, error.message);
+    return { 
+      success: false, 
+      error: error.message 
+    };
   }
 }
 
 /**
- * Format USDC amount for display (assuming 6 decimals)
+ * Format token amount for display
+ * @param {string|bigint} amount - Token amount in smallest units
+ * @param {number} decimals - Token decimals
+ * @returns {string} Formatted amount
  */
-export function formatUSDC(amount) {
-  return ethers.formatUnits(amount, 6);
+export function formatTokenAmount(amount, decimals) {
+  return ethers.formatUnits(amount, decimals);
 }
 
 /**
- * Parse USDC amount from user input
+ * Parse token amount from user input
+ * @param {string} amount - Human-readable amount
+ * @param {number} decimals - Token decimals
+ * @returns {bigint} Amount in smallest units
  */
-export function parseUSDC(amount) {
-  return ethers.parseUnits(amount, 6);
+export function parseTokenAmount(amount, decimals) {
+  return ethers.parseUnits(amount, decimals);
 }
 
 /**
- * Get USDC token info
+ * Get token info from contract
+ * @param {string} alias - Network alias
+ * @returns {Object} Token symbol and decimals
  */
-export async function getUSDCInfo() {
+export async function getTokenInfo(alias) {
+  const { tokenContract } = getNetworkClients(alias);
   const [symbol, decimals] = await Promise.all([
-    usdcContract.symbol(),
-    usdcContract.decimals()
+    tokenContract.symbol(),
+    tokenContract.decimals()
   ]);
   return { symbol, decimals: Number(decimals) };
 }
@@ -195,10 +218,10 @@ export function createRepoIdHash(repoId) {
   return hex;
 }
 
+// Export legacy globals for backward compatibility
 export {
   provider,
   resolverWallet,
   escrowContract,
-  usdcContract
+  tokenContract
 };
-

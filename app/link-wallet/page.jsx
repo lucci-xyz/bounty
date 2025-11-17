@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { NETWORKS } from '@/config/networks';
 import { LinkIcon, GitHubIcon, CheckCircleIcon, AlertIcon } from '@/components/Icons';
 
 function createSiweMessage({ domain, address, statement, uri, version, chainId, nonce }) {

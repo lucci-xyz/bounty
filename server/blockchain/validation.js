@@ -86,19 +86,32 @@ export function validateAmount(amount, fieldName = 'amount') {
 }
 
 /**
- * Validate a network name
+ * Validate a network alias
+ * @param {string} alias - Network alias to validate
+ * @returns {string} Validated network alias
+ * @throws {Error} If alias is invalid
+ */
+export function validateAlias(alias) {
+  // Import REGISTRY - safe to use direct import since validation happens after config build
+  const { REGISTRY } = require('../../config/chain-registry.js');
+  const validAliases = Object.keys(REGISTRY);
+  
+  if (!alias || !validAliases.includes(alias)) {
+    throw new Error(`Invalid network alias. Must be one of: ${validAliases.join(', ')}`);
+  }
+  
+  return alias;
+}
+
+/**
+ * Validate a network name (legacy compatibility)
  * @param {string} network - Network name to validate
  * @returns {string} Validated network name
  * @throws {Error} If network is invalid
+ * @deprecated Use validateAlias instead
  */
 export function validateNetwork(network) {
-  const validNetworks = ['BASE_SEPOLIA', 'MEZO_TESTNET'];
-  
-  if (!network || !validNetworks.includes(network)) {
-    throw new Error(`Invalid network. Must be one of: ${validNetworks.join(', ')}`);
-  }
-  
-  return network;
+  return validateAlias(network);
 }
 
 /**

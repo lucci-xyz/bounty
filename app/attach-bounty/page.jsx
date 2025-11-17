@@ -5,12 +5,12 @@ import { useSearchParams } from 'next/navigation';
 import { useAccount, useWalletClient, useSwitchChain, useDisconnect } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ethers } from 'ethers';
-import { NETWORKS, CONTRACTS, ESCROW_ABI, ERC20_ABI } from '@/config/networks';
 import { MoneyIcon, GitHubIcon } from '@/components/Icons';
 
 function AttachBountyContent() {
   const searchParams = useSearchParams();
-  const [selectedNetwork, setSelectedNetwork] = useState('BASE_SEPOLIA');
+  const [alias, setAlias] = useState(null);
+  const [registry, setRegistry] = useState({});
   const [amount, setAmount] = useState('');
   const [deadline, setDeadline] = useState('');
   const [status, setStatus] = useState({ message: '', type: '' });
@@ -30,11 +30,57 @@ function AttachBountyContent() {
   const installationId = searchParams.get('installationId');
   const presetAmount = searchParams.get('amount');
 
-  const networkConfig = NETWORKS[selectedNetwork];
-  const contractConfig = CONTRACTS[selectedNetwork];
+  const network = alias ? registry[alias] : null;
 
   useEffect(() => {
     setIsMounted(true);
+  }, []);
+
+  // Fetch registry on mount
+  useEffect(() => {
+    async function fetchRegistry() {
+      try {
+        const response = await fetch('/api/registry');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setRegistry(data.registry);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching registry:', err);
+      }
+    }
+    fetchRegistry();
+  }, []);
+
+  // Resolve active alias from cookie via API
+  useEffect(() => {
+    const fetchEnv = async () => {
+      try {
+        const res = await fetch('/api/network/env', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          const group = data.env === 'mainnet' ? 'mainnet' : 'testnet';
+          // Get default alias from API instead
+          const aliasRes = await fetch(`/api/network/default?group=${group}`);
+          if (aliasRes.ok) {
+            const aliasData = await aliasRes.json();
+            setAlias(aliasData.alias);
+          }
+        } else {
+          // Default to testnet if API fails
+          const aliasRes = await fetch('/api/network/default?group=testnet');
+          if (aliasRes.ok) {
+            const aliasData = await aliasRes.json();
+            setAlias(aliasData.alias);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching env:', err);
+      }
+    };
+    fetchEnv();
   }, []);
 
   useEffect(() => {
@@ -79,10 +125,10 @@ function AttachBountyContent() {
       }
 
       // Check and switch network if needed
-      if (chain?.id !== networkConfig.chainId) {
-        showStatus(`Switching to ${networkConfig.name}...`, 'loading');
+      if (chain?.id !== network.chainId) {
+        showStatus(`Switching to ${network.name}...`, 'loading');
         try {
-          await switchChain({ chainId: networkConfig.chainId });
+          await switchChain({ chainId: network.chainId });
           // Wait longer for network switch to complete and wallet state to sync
           await new Promise(resolve => setTimeout(resolve, 2000));
           
@@ -90,13 +136,13 @@ function AttachBountyContent() {
           return;
         } catch (switchError) {
           console.error('Network switch error:', switchError);
-          throw new Error(`Failed to switch to ${networkConfig.name}. Please switch manually in your wallet and refresh the page.`);
+          throw new Error(`Failed to switch to ${network.name}. Please switch manually in your wallet and refresh the page.`);
         }
       }
       
       // Double-check we're on the correct network
-      if (chain?.id !== networkConfig.chainId) {
-        throw new Error(`Please switch to ${networkConfig.name} (Chain ID: ${networkConfig.chainId}) in your wallet and refresh the page.`);
+      if (chain?.id !== network.chainId) {
+        throw new Error(`Please switch to ${network.name} (Chain ID: ${network.chainId}) in your wallet and refresh the page.`);
       }
 
 
@@ -121,11 +167,11 @@ function AttachBountyContent() {
       }
       
       
-      const amountWei = ethers.parseUnits(amount, contractConfig.tokenDecimals);
+      const amountWei = ethers.parseUnits(amount, network.token.decimals);
 
       // Check token balance first
-      showStatus(`Checking ${contractConfig.tokenSymbol} balance...`, 'loading');
-      const token = new ethers.Contract(contractConfig.token, [
+      showStatus(`Checking ${network.token.symbol} balance...`, 'loading');
+      const token = new ethers.Contract(network.token.address, [
         'function balanceOf(address) view returns (uint256)',
         'function approve(address spender, uint256 amount) external returns (bool)',
         'function allowance(address owner, address spender) external view returns (uint256)'
@@ -134,17 +180,17 @@ function AttachBountyContent() {
       const balance = await token.balanceOf(address);
 
       if (balance < amountWei) {
-        throw new Error(`Insufficient ${contractConfig.tokenSymbol} balance. You have ${ethers.formatUnits(balance, contractConfig.tokenDecimals)} ${contractConfig.tokenSymbol}, but need ${ethers.formatUnits(amountWei, contractConfig.tokenDecimals)}.`);
+        throw new Error(`Insufficient ${network.token.symbol} balance. You have ${ethers.formatUnits(balance, network.token.decimals)} ${network.token.symbol}, but need ${ethers.formatUnits(amountWei, network.token.decimals)}.`);
       }
 
-      const currentAllowance = await token.allowance(address, contractConfig.escrow);
+      const currentAllowance = await token.allowance(address, network.contracts.escrow);
 
       // Only approve if needed
       if (currentAllowance < amountWei) {
-        showStatus(`Approving ${contractConfig.tokenSymbol}...`, 'loading');
+        showStatus(`Approving ${network.token.symbol}...`, 'loading');
         
         try {
-          const approveTx = await token.approve(contractConfig.escrow, amountWei);
+          const approveTx = await token.approve(network.contracts.escrow, amountWei);
           await approveTx.wait();
         } catch (approveError) {
           console.error('Approval error:', approveError);
@@ -157,13 +203,13 @@ function AttachBountyContent() {
             errorMsg = approveError.message.substring(0, 100);
           }
           
-          throw new Error(`Failed to approve ${contractConfig.tokenSymbol}: ${errorMsg}`);
+          throw new Error(`Failed to approve ${network.token.symbol}: ${errorMsg}`);
         }
       }
 
       showStatus('Creating bounty on-chain...', 'loading');
 
-      const escrow = new ethers.Contract(contractConfig.escrow, [
+      const escrow = new ethers.Contract(network.contracts.escrow, [
         'function createBounty(address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) external returns (bytes32)',
         'function computeBountyId(address sponsor, bytes32 repoIdHash, uint64 issueNumber) public pure returns (bytes32)',
         'function getBounty(bytes32 bountyId) external view returns (tuple(bytes32 repoIdHash, address sponsor, address resolver, uint96 amount, uint64 deadline, uint64 issueNumber, uint8 status))',
@@ -176,16 +222,16 @@ function AttachBountyContent() {
       showStatus('Validating contract...', 'loading');
       
       // Check if contract exists at this address
-      const code = await provider.getCode(contractConfig.escrow);
+      const code = await provider.getCode(network.contracts.escrow);
       if (code === '0x') {
-        throw new Error(`No contract found at ${contractConfig.escrow} on ${networkConfig.name}. The contract may not be deployed on this network.`);
+        throw new Error(`No contract found at ${network.contracts.escrow} on ${network.name}. The contract may not be deployed on this network.`);
       }
       
       // Check if contract is paused
       try {
         const isPaused = await escrow.paused();
         if (isPaused) {
-          throw new Error(`The ${networkConfig.name} bounty contract is currently paused for maintenance. Please try again later or contact support.`);
+          throw new Error(`The ${network.name} bounty contract is currently paused for maintenance. Please try again later or contact support.`);
         }
       } catch (pauseError) {
         // If the paused() check fails, the contract might not have this function (unlikely but possible)
@@ -200,8 +246,8 @@ function AttachBountyContent() {
         throw new Error('Invalid wallet address. Please reconnect your wallet.');
       }
       
-      if (!ethers.isAddress(contractConfig.escrow)) {
-        throw new Error(`Invalid escrow contract address for ${networkConfig.name}. Please contact support.`);
+      if (!ethers.isAddress(network.contracts.escrow)) {
+        throw new Error(`Invalid escrow contract address for ${network.name}. Please contact support.`);
       }
       
       if (deadlineTimestamp <= blockTimestamp) {
@@ -228,8 +274,8 @@ function AttachBountyContent() {
       let receipt;
       try {
         let tx;
-        if (selectedNetwork === 'MEZO_TESTNET') {
-          // Mezo RPC fails gas estimation because token transfers revert under eth_call.
+        if (!network.supports1559) {
+          // Legacy networks may fail gas estimation because token transfers revert under eth_call.
           // Build a legacy transaction manually so we can skip estimateGas entirely.
           const feeData = await provider.getFeeData();
           const legacyGasPrice =
@@ -246,13 +292,13 @@ function AttachBountyContent() {
           ]);
 
           const txRequest = {
-            to: contractConfig.escrow,
+            to: network.contracts.escrow,
             from: address,
             data: callData,
             type: 0,
             gasPrice: legacyGasPrice,
             gasLimit: 400000,
-            chainId: networkConfig.chainId,
+            chainId: network.chainId,
             value: 0
           };
 
@@ -318,8 +364,8 @@ function AttachBountyContent() {
             deadline: deadlineTimestamp,
             txHash: receipt.hash,
             installationId: parseInt(installationId) || 0,
-            network: selectedNetwork,
-            tokenSymbol: contractConfig.tokenSymbol
+            // network is derived from cookie on server; tokenSymbol optional
+            tokenSymbol: network.token.symbol
           })
         });
 
@@ -359,7 +405,7 @@ function AttachBountyContent() {
       
       // Add helpful context
       if (userMessage.includes('network')) {
-        userMessage += ` Make sure you're connected to ${networkConfig.name}.`;
+        userMessage += ` Make sure you're connected to ${network?.name}.`;
       } else if (userMessage.includes('balance')) {
         userMessage += ' Please add more funds to your wallet.';
       }
@@ -492,57 +538,9 @@ function AttachBountyContent() {
         </p>
       </div>
 
-      {!isConnected ? (
+        {!isConnected ? (
         <>
-          <div className="animate-fade-in-up delay-200" style={{ marginBottom: '24px' }}>
-            <label style={{ marginBottom: '8px' }}>Select Network</label>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => {
-                  if (isProcessing || isConnected) return;
-                  setSelectedNetwork('BASE_SEPOLIA');
-                }}
-                disabled={isProcessing || isConnected}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: selectedNetwork === 'BASE_SEPOLIA' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  background: selectedNetwork === 'BASE_SEPOLIA' ? 'rgba(0, 130, 123, 0.1)' : 'var(--color-card)',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: selectedNetwork === 'BASE_SEPOLIA' ? 'var(--color-primary)' : 'var(--color-text-primary)',
-                  transition: 'all 0.2s'
-                }}
-              >
-                Base Sepolia
-                <div style={{ fontSize: '12px', fontWeight: 400, marginTop: '4px', color: 'var(--color-text-secondary)' }}>USDC</div>
-              </button>
-              <button
-                onClick={() => {
-                  if (isProcessing || isConnected) return;
-                  setSelectedNetwork('MEZO_TESTNET');
-                }}
-                disabled={isProcessing || isConnected}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: selectedNetwork === 'MEZO_TESTNET' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  background: selectedNetwork === 'MEZO_TESTNET' ? 'rgba(0, 130, 123, 0.1)' : 'var(--color-card)',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: selectedNetwork === 'MEZO_TESTNET' ? 'var(--color-primary)' : 'var(--color-text-primary)',
-                  transition: 'all 0.2s'
-                }}
-              >
-                Mezo Testnet
-                <div style={{ fontSize: '12px', fontWeight: 400, marginTop: '4px', color: 'var(--color-text-secondary)' }}>MUSD</div>
-              </button>
-            </div>
-          </div>
+            {/* Network selection handled globally via Navbar toggle */}
 
           <ConnectButton.Custom>
             {({ openConnectModal }) => (
@@ -566,7 +564,7 @@ function AttachBountyContent() {
         <>
           <div className="wallet-info" style={{ marginBottom: '24px' }}>
             <div><strong>Connected:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}</div>
-            <div><strong>Network:</strong> {chain?.name || networkConfig.name} ({contractConfig.tokenSymbol})</div>
+              <div><strong>Network:</strong> {chain?.name || network?.name} ({network?.token.symbol})</div>
           </div>
 
           <ConnectButton.Custom>
@@ -609,7 +607,7 @@ function AttachBountyContent() {
               id="amount"
               placeholder="500"
               min="1"
-              step={contractConfig.tokenDecimals === 18 ? "0.0001" : "0.01"}
+                step={network?.token.decimals === 18 ? "0.0001" : "0.01"}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />

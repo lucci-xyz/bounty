@@ -7,7 +7,6 @@ import { GitHubIcon, WalletIcon, CheckCircleIcon, AlertIcon, SettingsIcon } from
 import UserAvatar from '@/components/UserAvatar';
 import { useAccount, useWalletClient } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { NETWORKS } from '@/config/networks';
 
 function createSiweMessage({ domain, address, statement, uri, version, chainId, nonce }) {
   const message = [
