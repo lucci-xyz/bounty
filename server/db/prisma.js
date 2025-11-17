@@ -22,6 +22,17 @@ export const bountyQueries = {
   create: async (bountyData) => {
     const environment = CONFIG.envTarget || 'stage';
     
+    // Validate required fields
+    if (!bountyData.network) {
+      throw new Error('Network alias is required to create bounty');
+    }
+    if (!bountyData.chainId) {
+      throw new Error('Chain ID is required to create bounty');
+    }
+    if (!bountyData.tokenSymbol) {
+      throw new Error('Token symbol is required to create bounty');
+    }
+    
     const bounty = await prisma.bounty.create({
       data: {
         bountyId: bountyData.bountyId,
@@ -35,9 +46,9 @@ export const bountyQueries = {
         deadline: BigInt(bountyData.deadline),
         status: bountyData.status,
         txHash: bountyData.txHash || null,
-        network: bountyData.network || 'BASE_SEPOLIA',
-        chainId: bountyData.chainId || 84532,
-        tokenSymbol: bountyData.tokenSymbol || 'USDC',
+        network: bountyData.network,
+        chainId: bountyData.chainId,
+        tokenSymbol: bountyData.tokenSymbol,
         environment: environment,
         createdAt: BigInt(Date.now()),
         updatedAt: BigInt(Date.now())

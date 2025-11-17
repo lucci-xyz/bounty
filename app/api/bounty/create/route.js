@@ -31,6 +31,11 @@ export async function POST(request) {
 
     // Use provided network or default from cookie
     const alias = network || defaultAlias;
+    
+    console.log('📡 Creating bounty with network alias:', alias);
+    console.log('📦 Received network param:', network);
+    console.log('🔧 Default alias from cookie:', defaultAlias);
+    
     const networkConfig = REGISTRY[alias];
     
     if (!networkConfig) {

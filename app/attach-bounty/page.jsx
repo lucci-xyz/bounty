@@ -357,6 +357,34 @@ function AttachBountyContent() {
 
       showStatus('Recording bounty in database...', 'loading');
 
+      // Determine the correct network alias based on the connected chain
+      // This ensures we use the network the user actually transacted on
+      let networkAliasToSend = selectedAlias || defaultAlias;
+      
+      if (chain?.id && registry) {
+        const matchingEntry = Object.entries(registry).find(([, config]) => {
+          if (networkGroup && config.group !== networkGroup) {
+            return false;
+          }
+          return config.chainId === chain.id;
+        });
+        
+        if (matchingEntry) {
+          networkAliasToSend = matchingEntry[0];
+        }
+      }
+      
+      // Debug: Log network information
+      console.log('🔍 Network Debug Info:');
+      console.log('  - Connected chain.id:', chain?.id);
+      console.log('  - Connected chain.name:', chain?.name);
+      console.log('  - selectedAlias:', selectedAlias);
+      console.log('  - defaultAlias:', defaultAlias);
+      console.log('  - currentNetwork name:', network?.name);
+      console.log('  - networkGroup:', networkGroup);
+      console.log('  ➡️  SENDING network:', networkAliasToSend);
+      console.log('  ➡️  SENDING tokenSymbol:', network?.token?.symbol);
+
       try {
         const response = await fetch('/api/bounty/create', {
           method: 'POST',
@@ -370,7 +398,7 @@ function AttachBountyContent() {
             deadline: deadlineTimestamp,
             txHash: receipt.hash,
             installationId: parseInt(installationId) || 0,
-            // network is derived from cookie on server; tokenSymbol optional
+            network: networkAliasToSend,
             tokenSymbol: network.token.symbol
           })
         });

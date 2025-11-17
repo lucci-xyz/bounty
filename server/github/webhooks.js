@@ -163,7 +163,14 @@ ${BRAND_SIGNATURE}`;
  * Handle bounty creation (called from frontend after funding)
  */
 export async function handleBountyCreated(bountyData) {
-  const { repoFullName, issueNumber, bountyId, amount, deadline, sponsorAddress, txHash, installationId, network = 'BASE_SEPOLIA', tokenSymbol = 'USDC' } = bountyData;
+  const { repoFullName, issueNumber, bountyId, amount, deadline, sponsorAddress, txHash, installationId, network, tokenSymbol } = bountyData;
+  
+  if (!network) {
+    throw new Error('Network alias is required for bounty creation');
+  }
+  if (!tokenSymbol) {
+    throw new Error('Token symbol is required for bounty creation');
+  }
   
   try {
   const octokit = await getOctokit(installationId);
@@ -508,12 +515,27 @@ ${BRAND_SIGNATURE}`;
       continue;
     }
       
+      if (!bounty.network) {
+        console.error('Bounty has no network configured:', bounty.bountyId);
+        await notifyMaintainers(octokit, owner, repo, pull_request.number, {
+          errorType: 'Missing Network Configuration',
+          errorMessage: 'Bounty record is missing network alias',
+          severity: 'critical',
+          bountyId: bounty.bountyId,
+          recipientAddress: walletMapping.walletAddress,
+          prNumber: pull_request.number,
+          username: pull_request.user.login,
+          context: 'This bounty was created without a network alias. Manual intervention required to identify the correct network and process payment.'
+        });
+        continue;
+      }
+      
       let result;
       try {
         result = await resolveBountyOnNetwork(
           bounty.bountyId,
           walletMapping.walletAddress,
-          bounty.network || 'BASE_SEPOLIA'
+          bounty.network
         );
       } catch (error) {
         console.error('Exception during bounty resolution:', error.message);
@@ -526,9 +548,9 @@ ${BRAND_SIGNATURE}`;
       await prClaimQueries.updateStatus(claim.id, 'paid', result.txHash, Date.now());
       
       // Post success comment on PR
-        const tokenSymbol = bounty.tokenSymbol || 'USDC';
+      const tokenSymbol = bounty.tokenSymbol || 'UNKNOWN';
       const amountFormatted = formatAmountByToken(bounty.amount, tokenSymbol);
-      const net = networkMeta(bounty.network || 'BASE_SEPOLIA');
+      const net = networkMeta(bounty.network);
         const successComment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Paid
 
 **Recipient:** @${pull_request.user.login}  
@@ -588,7 +610,7 @@ ${BRAND_SIGNATURE}`;
 **What happened:**  
 ${errorHelp}
 
-**Network:** ${bounty.network || 'BASE_SEPOLIA'}  
+**Network:** ${bounty.network || 'UNKNOWN'}  
 **Recipient:** \`${walletMapping.walletAddress.slice(0, 10)}...${walletMapping.walletAddress.slice(-8)}\`
 
 ${BRAND_SIGNATURE}`;
@@ -598,7 +620,7 @@ ${BRAND_SIGNATURE}`;
         
         // Notify maintainers for critical/high severity errors
         if (shouldNotify) {
-          const tokenSymbol = bounty.tokenSymbol || 'USDC';
+          const tokenSymbol = bounty.tokenSymbol || 'UNKNOWN';
           const amountFormatted = formatAmountByToken(bounty.amount, tokenSymbol);
           
           await notifyMaintainers(octokit, owner, repo, pull_request.number, {
@@ -606,7 +628,7 @@ ${BRAND_SIGNATURE}`;
             errorMessage: result.error,
             severity: notifySeverity,
             bountyId: bounty.bountyId,
-            network: bounty.network || 'BASE_SEPOLIA',
+            network: bounty.network || 'UNKNOWN',
             recipientAddress: walletMapping.walletAddress,
             prNumber: pull_request.number,
             username: pull_request.user.login,
