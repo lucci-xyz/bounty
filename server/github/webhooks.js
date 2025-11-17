@@ -3,6 +3,7 @@ import { bountyQueries, walletQueries, prClaimQueries } from '../db/prisma.js';
 import { resolveBountyOnNetwork } from '../blockchain/contract.js';
 import { ethers } from 'ethers';
 import { CONFIG } from '../config.js';
+import { REGISTRY } from '../../config/chain-registry.js';
 
 const BADGE_BASE = 'https://img.shields.io/badge';
 const BADGE_LABEL_COLOR = '111827';
@@ -105,17 +106,25 @@ function badgeLink(label, value, color, href, extraQuery = '') {
 }
 
 function networkMeta(networkKey) {
-  // Map network key used in DB/API to human/explorer info
-  if (networkKey === 'MEZO_TESTNET') {
-    return {
-      name: 'Mezo Testnet',
-      explorerTx: (hash) => `https://explorer.test.mezo.org/tx/${hash}`,
-    };
+  if (!networkKey) {
+    throw new Error('Missing network alias for bounty notification.');
   }
-  // Default to Base Sepolia
+
+  const config = REGISTRY[networkKey];
+  if (!config) {
+    throw new Error(`Network alias "${networkKey}" is not configured in the registry.`);
+  }
+
+  const explorerBase = config.blockExplorerUrl?.replace(/\/$/, '');
+  if (!explorerBase) {
+    throw new Error(`Block explorer URL is missing for network "${networkKey}".`);
+  }
+
+  const resolvedName = config.name || networkKey;
+
   return {
-    name: 'Base Sepolia',
-    explorerTx: (hash) => `https://sepolia.basescan.org/tx/${hash}`,
+    name: resolvedName,
+    explorerTx: (hash) => `${explorerBase}/tx/${hash}`
   };
 }
 
