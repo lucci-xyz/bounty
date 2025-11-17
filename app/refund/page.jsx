@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ethers } from 'ethers';
-import { useEffect } from 'react';
 import { RefreshIcon, AlertIcon } from '@/components/Icons';
+import { useNetwork } from '@/components/NetworkProvider';
 
 const ESCROW_ABI = [
   'function refundExpired(bytes32 bountyId) external',
@@ -13,8 +13,6 @@ const ESCROW_ABI = [
 ];
 
 export default function Refund() {
-  const [alias, setAlias] = useState(null);
-  const [registry, setRegistry] = useState({});
   const [bountyId, setBountyId] = useState('');
   const [bountyInfo, setBountyInfo] = useState(null);
   const [currentBounty, setCurrentBounty] = useState(null);
@@ -25,57 +23,20 @@ export default function Refund() {
   const { data: walletClient } = useWalletClient();
   const { switchChain } = useSwitchChain();
 
-  // Check if running locally for testing
-  const isLocal = process.env.NEXT_PUBLIC_ENV_TARGET === 'local';
+  const { currentNetwork: network, registry, networkGroup, defaultAlias, selectedAlias, setSelectedAlias } = useNetwork();
 
-  // Fetch registry on mount
   useEffect(() => {
-    async function fetchRegistry() {
-      try {
-        const response = await fetch('/api/registry');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            setRegistry(data.registry);
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching registry:', err);
-      }
+    if (!registry || !networkGroup) {
+      return;
     }
-    fetchRegistry();
-  }, []);
-
-  // Resolve active alias via API (cookie-driven)
-  useEffect(() => {
-    const fetchEnv = async () => {
-      try {
-        const res = await fetch('/api/network/env', { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          const group = data.env === 'mainnet' ? 'mainnet' : 'testnet';
-          // Get default alias from API instead
-          const aliasRes = await fetch(`/api/network/default?group=${group}`);
-          if (aliasRes.ok) {
-            const aliasData = await aliasRes.json();
-            setAlias(aliasData.alias);
-          }
-        } else {
-          // Default to testnet if API fails
-          const aliasRes = await fetch('/api/network/default?group=testnet');
-          if (aliasRes.ok) {
-            const aliasData = await aliasRes.json();
-            setAlias(aliasData.alias);
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching env:', err);
-      }
-    };
-    fetchEnv();
-  }, []);
-
-  const network = alias ? registry[alias] : null;
+    if (!selectedAlias && defaultAlias) {
+      setSelectedAlias(defaultAlias);
+      return;
+    }
+    if (selectedAlias && registry[selectedAlias]?.group !== networkGroup) {
+      setSelectedAlias(defaultAlias);
+    }
+  }, [defaultAlias, networkGroup, registry, selectedAlias, setSelectedAlias]);
 
   const showStatus = (message, type) => {
     setStatus({ message, type });

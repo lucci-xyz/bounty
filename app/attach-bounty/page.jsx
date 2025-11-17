@@ -1,16 +1,15 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useAccount, useWalletClient, useSwitchChain, useDisconnect } from 'wagmi';
+import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ethers } from 'ethers';
 import { MoneyIcon, GitHubIcon } from '@/components/Icons';
+import { useNetwork } from '@/components/NetworkProvider';
 
 function AttachBountyContent() {
   const searchParams = useSearchParams();
-  const [alias, setAlias] = useState(null);
-  const [registry, setRegistry] = useState({});
   const [amount, setAmount] = useState('');
   const [deadline, setDeadline] = useState('');
   const [status, setStatus] = useState({ message: '', type: '' });
@@ -21,67 +20,66 @@ function AttachBountyContent() {
   const { data: walletClient } = useWalletClient();
   const { switchChain } = useSwitchChain();
 
-  // Check if running locally for testing
-  const isLocal = process.env.NEXT_PUBLIC_ENV_TARGET === 'local';
-
   const repoFullName = searchParams.get('repo');
   const issueNumber = searchParams.get('issue');
   const repoId = searchParams.get('repoId');
   const installationId = searchParams.get('installationId');
   const presetAmount = searchParams.get('amount');
 
-  const network = alias ? registry[alias] : null;
+  const {
+    registry,
+    networkGroup,
+    defaultAlias,
+    selectedAlias,
+    setSelectedAlias,
+    supportedNetworks,
+    currentNetwork: network
+  } = useNetwork();
+
+  const supportedNetworkNames = useMemo(
+    () => supportedNetworks.map((config) => config.name),
+    [supportedNetworks]
+  );
+
+  const isChainSupported = useMemo(() => {
+    if (!chain?.id) {
+      return true;
+    }
+    return supportedNetworks.some((config) => config.chainId === chain.id);
+  }, [chain?.id, supportedNetworks]);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Fetch registry on mount
   useEffect(() => {
-    async function fetchRegistry() {
-      try {
-        const response = await fetch('/api/registry');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            setRegistry(data.registry);
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching registry:', err);
-      }
+    if (!registry || Object.keys(registry).length === 0) {
+      return;
     }
-    fetchRegistry();
-  }, []);
 
-  // Resolve active alias from cookie via API
-  useEffect(() => {
-    const fetchEnv = async () => {
-      try {
-        const res = await fetch('/api/network/env', { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          const group = data.env === 'mainnet' ? 'mainnet' : 'testnet';
-          // Get default alias from API instead
-          const aliasRes = await fetch(`/api/network/default?group=${group}`);
-          if (aliasRes.ok) {
-            const aliasData = await aliasRes.json();
-            setAlias(aliasData.alias);
-          }
-        } else {
-          // Default to testnet if API fails
-          const aliasRes = await fetch('/api/network/default?group=testnet');
-          if (aliasRes.ok) {
-            const aliasData = await aliasRes.json();
-            setAlias(aliasData.alias);
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching env:', err);
+    if (!isConnected || !chain?.id) {
+      if (defaultAlias && selectedAlias !== defaultAlias) {
+        setSelectedAlias(defaultAlias);
       }
-    };
-    fetchEnv();
-  }, []);
+      return;
+    }
+
+    const matchingEntry = Object.entries(registry).find(([key, config]) => {
+      if (networkGroup && config.group !== networkGroup) {
+        return false;
+      }
+      return config.chainId === chain.id;
+    });
+
+    if (matchingEntry) {
+      const [matchedAlias] = matchingEntry;
+      if (matchedAlias !== selectedAlias) {
+        setSelectedAlias(matchedAlias);
+      }
+    } else if (defaultAlias && selectedAlias !== defaultAlias) {
+      setSelectedAlias(defaultAlias);
+    }
+  }, [chain?.id, defaultAlias, isConnected, networkGroup, registry, selectedAlias, setSelectedAlias]);
 
   useEffect(() => {
     if (presetAmount) {
@@ -129,24 +127,28 @@ function AttachBountyContent() {
       }
 
       // Check and switch network if needed
-      if (chain?.id !== network.chainId) {
+      let effectiveChainId = chain?.id ?? null;
+
+      if (effectiveChainId === null) {
+        throw new Error('Unable to detect your connected network. Please reconnect your wallet.');
+      }
+
+      if (effectiveChainId !== network.chainId) {
         showStatus(`Switching to ${network.name}...`, 'loading');
         try {
           await switchChain({ chainId: network.chainId });
-          // Wait longer for network switch to complete and wallet state to sync
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          window.location.reload();
-          return;
+          // Give wallets a short window to propagate the new chain
+          await new Promise(resolve => setTimeout(resolve, 800));
+          effectiveChainId = network.chainId;
         } catch (switchError) {
           console.error('Network switch error:', switchError);
-          throw new Error(`Failed to switch to ${network.name}. Please switch manually in your wallet and refresh the page.`);
+          throw new Error(`Failed to switch to ${network.name}. Please switch manually in your wallet and try again.`);
         }
       }
       
       // Double-check we're on the correct network
-      if (chain?.id !== network.chainId) {
-        throw new Error(`Please switch to ${network.name} (Chain ID: ${network.chainId}) in your wallet and refresh the page.`);
+      if (effectiveChainId !== network.chainId) {
+        throw new Error(`Please switch to ${network.name} (Chain ID: ${network.chainId}) in your wallet and try again.`);
       }
 
 
@@ -570,6 +572,12 @@ function AttachBountyContent() {
             <div><strong>Connected:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}</div>
               <div><strong>Network:</strong> {chain?.name || network?.name} ({network?.token.symbol})</div>
           </div>
+
+          {isConnected && !isChainSupported && (
+            <div className="status error" style={{ marginBottom: '24px' }}>
+              Connected network ({chain?.name || `Chain ID ${chain?.id}`}) isn't supported while {networkGroup === 'mainnet' ? 'mainnet' : 'testnet'} mode is active. Supported networks: {supportedNetworkNames.length ? supportedNetworkNames.join(', ') : 'No networks configured'}.
+            </div>
+          )}
 
           <ConnectButton.Custom>
             {({ openAccountModal, openChainModal }) => (

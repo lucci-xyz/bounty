@@ -1,6 +1,7 @@
 import './globals.css';
 import '@rainbow-me/rainbowkit/styles.css';
 import { Providers } from '@/components/Providers';
+import { NetworkProvider } from '@/components/NetworkProvider';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
@@ -22,13 +23,15 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <Providers>
-          <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-            <Navbar />
-            <main style={{ flex: 1 }}>
-              {children}
-            </main>
-            <Footer />
-          </div>
+          <NetworkProvider>
+            <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+              <Navbar />
+              <main style={{ flex: 1 }}>
+                {children}
+              </main>
+              <Footer />
+            </div>
+          </NetworkProvider>
         </Providers>
       </body>
     </html>

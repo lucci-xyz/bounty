@@ -1,17 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { useNetwork } from '@/components/NetworkProvider';
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [githubUser, setGithubUser] = useState(null);
-  const [networkEnv, setNetworkEnv] = useState('testnet');
-  const [switching, setSwitching] = useState(false);
+  const { networkGroup, switchNetworkGroup, isSwitchingGroup } = useNetwork();
+  const networkEnv = networkGroup || 'testnet';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -24,7 +25,6 @@ export default function Navbar() {
 
   useEffect(() => {
     checkAuth();
-    fetchNetworkEnv();
   }, []);
 
   const checkAuth = async () => {
@@ -41,44 +41,17 @@ export default function Navbar() {
     }
   };
 
-  const fetchNetworkEnv = async () => {
-    try {
-      const res = await fetch('/api/network/env', {
-        credentials: 'include'
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setNetworkEnv(data.env || 'testnet');
-      }
-    } catch (error) {
-      console.error('Failed to fetch network env:', error);
-    }
-  };
-
   const handleNetworkSwitch = async () => {
-    setSwitching(true);
+    if (isSwitchingGroup) {
+      return;
+    }
+    const newEnv = networkEnv === 'mainnet' ? 'testnet' : 'mainnet';
     try {
-      const newEnv = networkEnv === 'mainnet' ? 'testnet' : 'mainnet';
-      const res = await fetch('/api/network/env', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ env: newEnv })
-      });
-
-      if (res.ok) {
-        setNetworkEnv(newEnv);
-        router.refresh();
-      } else {
-        const error = await res.json();
-        console.error('Failed to switch network:', error);
-        alert(error.error || `Cannot switch to ${newEnv}: network not configured in .env`);
-      }
+      await switchNetworkGroup(newEnv);
+      router.refresh();
     } catch (error) {
       console.error('Error switching network:', error);
-      alert('Failed to switch network. Check console for details.');
-    } finally {
-      setSwitching(false);
+      alert(error?.message || `Cannot switch to ${newEnv}: network not configured`);
     }
   };
 
@@ -155,7 +128,7 @@ export default function Navbar() {
           
           <button
             onClick={handleNetworkSwitch}
-            disabled={switching}
+            disabled={isSwitchingGroup}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -167,12 +140,12 @@ export default function Navbar() {
               fontWeight: '500',
               background: 'var(--color-background)',
               color: 'var(--color-text)',
-              cursor: switching ? 'not-allowed' : 'pointer',
+              cursor: isSwitchingGroup ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s ease',
-              opacity: switching ? 0.6 : 1
+              opacity: isSwitchingGroup ? 0.6 : 1
             }}
             onMouseEnter={(e) => {
-              if (!switching) {
+              if (!isSwitchingGroup) {
                 e.currentTarget.style.borderColor = 'var(--color-primary)';
                 e.currentTarget.style.background = 'rgba(0, 130, 123, 0.04)';
               }
