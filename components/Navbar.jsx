@@ -40,6 +40,7 @@ export default function Navbar() {
   const isActive = (path) => pathname === path;
 
   const navLinks = githubUser ? [
+    { href: '/home', label: 'Home' },
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/profile', label: 'Profile' }
   ] : [];
