@@ -100,6 +100,10 @@ function AttachBountyContent() {
     if (isProcessing) {
       return;
     }
+    if (!network) {
+      showStatus('Network configuration not ready yet. Please wait a moment and try again.', 'error');
+      return;
+    }
     
     try {
       setIsProcessing(true);
@@ -601,7 +605,9 @@ function AttachBountyContent() {
           </ConnectButton.Custom>
 
           <div style={{ marginBottom: '24px' }}>
-            <label htmlFor="amount">Bounty Amount ({contractConfig.tokenSymbol})</label>
+            <label htmlFor="amount">
+              Bounty Amount ({network?.token.symbol || 'TOKEN'})
+            </label>
             <input
               type="number"
               id="amount"
