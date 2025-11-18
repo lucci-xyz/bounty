@@ -4,6 +4,7 @@ import { resolveBountyOnNetwork } from '../blockchain/contract.js';
 import { ethers } from 'ethers';
 import { CONFIG } from '../config.js';
 import { REGISTRY } from '../../config/chain-registry.js';
+import { sendSystemEmail } from '../notifications/email.js';
 
 const BADGE_BASE = 'https://img.shields.io/badge';
 const BADGE_LABEL_COLOR = '111827';
@@ -90,6 +91,33 @@ ${context ? `\n### Additional Context\n${context}` : ''}
 
 ---
 *This is an automated system notification. The BountyPay team has been alerted.*`;
+
+  const emailSubject = `[BountyPay Alert] ${config.label} - ${errorType}`;
+  const detailsHtml = detailsSection
+    ? `<p><strong>Details:</strong><br/>${detailsSection.replace(/\n/g, '<br/>')}</p>`
+    : '';
+  const contextHtml = context ? `<p><strong>Additional Context:</strong><br/>${context.replace(/\n/g, '<br/>')}</p>` : '';
+  const emailHtml = `
+    <p>${config.emoji} <strong>${errorType}</strong></p>
+    <p><strong>Repository:</strong> ${owner}/${repo}</p>
+    <p><strong>Issue/PR:</strong> #${issueNumber}</p>
+    <p><strong>Severity:</strong> ${config.label}</p>
+    <p><strong>Error ID:</strong> ${errorId}</p>
+    <p><strong>Timestamp:</strong> ${timestamp}</p>
+    <p><strong>Error Details:</strong></p>
+    <pre>${truncatedError}</pre>
+    ${detailsHtml}
+    ${contextHtml}
+  `;
+
+  try {
+    await sendSystemEmail({
+      subject: emailSubject,
+      html: emailHtml
+    });
+  } catch (emailError) {
+    console.error('Failed to send alert email:', emailError);
+  }
 
   try {
     await postIssueComment(octokit, owner, repo, issueNumber, comment);

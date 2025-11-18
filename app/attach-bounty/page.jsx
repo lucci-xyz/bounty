@@ -213,6 +213,24 @@ function AttachBountyContent() {
         }
       }
 
+      showStatus('Fetching resolver address...', 'loading');
+      
+      // Get the resolver address for this network from the backend
+      let resolverAddress;
+      try {
+        const resolverRes = await fetch(`/api/resolver?network=${networkAliasToSend}`);
+        if (!resolverRes.ok) {
+          const resolverError = await resolverRes.json();
+          throw new Error(resolverError.error || 'Failed to get resolver address');
+        }
+        const resolverData = await resolverRes.json();
+        resolverAddress = resolverData.resolver;
+        console.log('🔐 Resolver address for', networkAliasToSend, ':', resolverAddress);
+      } catch (resolverError) {
+        console.error('Resolver fetch error:', resolverError);
+        throw new Error(`Could not fetch resolver address: ${resolverError.message}`);
+      }
+      
       showStatus('Creating bounty on-chain...', 'loading');
 
       const escrow = new ethers.Contract(network.contracts.escrow, [
@@ -290,7 +308,7 @@ function AttachBountyContent() {
               : ethers.parseUnits('1', 'gwei');
 
           const callData = escrow.interface.encodeFunctionData('createBounty', [
-            address,
+            resolverAddress,
             repoIdHash,
             parseInt(issueNumber),
             deadlineTimestamp,
@@ -312,7 +330,7 @@ function AttachBountyContent() {
         } else {
           // Default path uses RPC gas estimation
           tx = await escrow.createBounty(
-            address,
+            resolverAddress,
             repoIdHash,
             parseInt(issueNumber),
             deadlineTimestamp,
