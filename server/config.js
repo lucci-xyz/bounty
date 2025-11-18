@@ -49,7 +49,7 @@ function buildNetworkWallets() {
     const keyEnv =
       process.env[`${alias}_OWNER_PRIVATE_KEY`] || process.env[`${alias}_RESOLVER_PRIVATE_KEY`];
 
-    if (walletEnv || keyEnv) {
+    if (walletEnv && keyEnv) {
       wallets[alias] = {
         address: walletEnv,
         privateKey: normalizePrivateKey(keyEnv)
@@ -86,7 +86,6 @@ export const CONFIG = {
 
   // Blockchain
   blockchain: {
-    resolverPrivateKey: normalizePrivateKey(process.env.RESOLVER_PRIVATE_KEY),
     walletsByAlias: buildNetworkWallets()
   },
 
@@ -141,42 +140,36 @@ export function validateConfig() {
     }
   }
 
-  // Blockchain wallets: either provide a global resolver key or per-alias keys
-  const hasGlobalResolverKey = Boolean(CONFIG.blockchain.resolverPrivateKey);
   const aliasWallets = CONFIG.blockchain.walletsByAlias || {};
-
-  if (hasGlobalResolverKey && !isValidPrivateKey(CONFIG.blockchain.resolverPrivateKey)) {
-    errors.push('Invalid RESOLVER_PRIVATE_KEY format (must be 64 hex characters, prefixed with 0x)');
-  }
-
-  const aliasesMissingPrivateKeys = [];
+  const aliasesMissingWallets = [];
   for (const alias of Object.keys(REGISTRY)) {
     const wallet = aliasWallets[alias];
-    if (wallet) {
-      const walletEnvKey = `${alias}_OWNER_WALLET`;
-      const keyEnvKey = `${alias}_OWNER_PRIVATE_KEY`;
+    const walletEnvKey = `${alias}_OWNER_WALLET`;
+    const keyEnvKey = `${alias}_OWNER_PRIVATE_KEY`;
 
-      if (!wallet.address) {
-        errors.push(`Missing required config: ${walletEnvKey}`);
-      } else if (!isAddress(wallet.address)) {
-        errors.push(`Invalid ${walletEnvKey}: ${wallet.address}`);
-      }
+    if (!wallet) {
+      aliasesMissingWallets.push(alias);
+      continue;
+    }
 
-      if (!wallet.privateKey) {
-        errors.push(`Missing required config: ${keyEnvKey}`);
-      } else if (!isValidPrivateKey(wallet.privateKey)) {
-        errors.push(`Invalid ${keyEnvKey} format (must be 64 hex characters, prefixed with 0x)`);
-      }
-    } else if (!hasGlobalResolverKey) {
-      aliasesMissingPrivateKeys.push(alias);
+    if (!wallet.address) {
+      errors.push(`Missing required config: ${walletEnvKey}`);
+    } else if (!isAddress(wallet.address)) {
+      errors.push(`Invalid ${walletEnvKey}: ${wallet.address}`);
+    }
+
+    if (!wallet.privateKey) {
+      errors.push(`Missing required config: ${keyEnvKey}`);
+    } else if (!isValidPrivateKey(wallet.privateKey)) {
+      errors.push(`Invalid ${keyEnvKey} format (must be 64 hex characters, prefixed with 0x)`);
     }
   }
 
-  if (!hasGlobalResolverKey && aliasesMissingPrivateKeys.length > 0) {
+  if (aliasesMissingWallets.length > 0) {
     errors.push(
-      `Missing per-alias wallet for networks: ${aliasesMissingPrivateKeys.join(
+      `Missing wallet configuration for networks: ${aliasesMissingWallets.join(
         ', '
-      )}. Set ${aliasesMissingPrivateKeys[0]}_OWNER_PRIVATE_KEY (and _WALLET) or provide RESOLVER_PRIVATE_KEY as a fallback.`
+      )}. Set ${aliasesMissingWallets[0]}_OWNER_WALLET and ${aliasesMissingWallets[0]}_OWNER_PRIVATE_KEY.`
     );
   }
 

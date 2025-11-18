@@ -1,3 +1,5 @@
+export const runtime = 'nodejs';
+
 import { NextResponse } from 'next/server';
 import { ethers } from 'ethers';
 import { CONFIG } from '@/server/config';
@@ -31,17 +33,12 @@ export async function GET(request) {
       const wallet = new ethers.Wallet(aliasWallet.privateKey);
       resolverAddress = wallet.address;
     }
-    // Fallback to global resolver private key
-    else if (CONFIG.blockchain.resolverPrivateKey) {
-      const wallet = new ethers.Wallet(CONFIG.blockchain.resolverPrivateKey);
-      resolverAddress = wallet.address;
-    }
     
     if (!resolverAddress) {
       return NextResponse.json(
         { 
           success: false, 
-          error: `No resolver configured for network ${alias}. Set ${alias}_OWNER_WALLET (and _PRIVATE_KEY) or RESOLVER_PRIVATE_KEY.` 
+          error: `No resolver configured for network ${alias}. Set ${alias}_OWNER_WALLET and ${alias}_OWNER_PRIVATE_KEY.` 
         },
         { status: 500 }
       );

@@ -104,7 +104,6 @@ async function testConfig() {
       console.log('✓ Server config validation passed');
       console.log(`  Session secret: ${CONFIG.sessionSecret ? '✓ Set' : '✗ Missing'}`);
       console.log(`  Frontend URL: ${CONFIG.frontendUrl}`);
-      console.log(`  Resolver key fallback: ${CONFIG.blockchain.resolverPrivateKey ? '✓ Set' : '✗ Missing'}`);
       const aliasWallets = Object.keys(CONFIG.blockchain.walletsByAlias || {});
       console.log(`  Alias wallets: ${aliasWallets.length ? aliasWallets.join(', ') : 'none'}`);
       

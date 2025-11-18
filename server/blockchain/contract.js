@@ -8,11 +8,8 @@ function getPrivateKeyForAlias(alias) {
   if (aliasWallet?.privateKey) {
     return aliasWallet.privateKey;
   }
-  if (CONFIG.blockchain.resolverPrivateKey) {
-    return CONFIG.blockchain.resolverPrivateKey;
-  }
   throw new Error(
-    `No private key configured for network ${alias}. Set ${alias}_OWNER_PRIVATE_KEY (and wallet) or RESOLVER_PRIVATE_KEY.`
+    `No private key configured for network ${alias}. Set ${alias}_OWNER_WALLET and ${alias}_OWNER_PRIVATE_KEY.`
   );
 }
 
