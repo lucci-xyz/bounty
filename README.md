@@ -89,8 +89,7 @@ BountyPay supports multiple networks. You can choose your preferred network when
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| BountyEscrow | [`0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD`](https://sepolia.basescan.org/address/0xb30283b5412B89d8B8dE3C6614aE2754a4545aFD) | Main escrow contract for bounty funds |
-| FeeVault | [`0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3`](https://sepolia.basescan.org/address/0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3) | Protocol fee collection vault |
+| BountyEscrow | [`0x3C1AF89cf9773744e0DAe9EBB7e3289e1AeCF0E7`](https://sepolia.basescan.org/address/0x3C1AF89cf9773744e0DAe9EBB7e3289e1AeCF0E7) | Main escrow contract (holds user funds + protocol fees) |
 | USDC (Test) | [`0x036CbD53842c5426634e7929541eC2318f3dCF7e`](https://sepolia.basescan.org/address/0x036CbD53842c5426634e7929541eC2318f3dCF7e) | Test USDC token (6 decimals) |
 
 ### Mezo Testnet
@@ -111,8 +110,7 @@ BountyPay supports multiple networks. You can choose your preferred network when
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| BountyEscrow | [`0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3`](https://explorer.test.mezo.org/address/0xA6fe4832D8eBdB3AAfca86438a813BBB0Bd4c6A3) | Main escrow contract for bounty funds |
-| FeeVault | [`0xa8Fc9DC3383E9E64FF9F7552a5A6B25885e5b094`](https://explorer.test.mezo.org/address/0xa8Fc9DC3383E9E64FF9F7552a5A6B25885e5b094) | Protocol fee collection vault |
+| BountyEscrow | [`0xcBaf5066aDc2299C14112E8A79645900eeb3A76a`](https://explorer.test.mezo.org/address/0xcBaf5066aDc2299C14112E8A79645900eeb3A76a) | Main escrow contract (holds user funds + protocol fees) |
 | MUSD (Test) | [`0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503`](https://explorer.test.mezo.org/address/0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503) | Mezo USD stablecoin (18 decimals) |
 
 > **Note:** Each network operates independently. Bounties created on Base Sepolia use USDC, while bounties on Mezo Testnet use MUSD. There is no bridging between networks.

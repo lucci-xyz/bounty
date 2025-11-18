@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ethers } from 'ethers';
-import { NETWORKS, CONTRACTS } from '@/config/networks';
 import { RefreshIcon, AlertIcon } from '@/components/Icons';
+import { useNetwork } from '@/components/NetworkProvider';
 
 const ESCROW_ABI = [
   'function refundExpired(bytes32 bountyId) external',
@@ -13,7 +13,6 @@ const ESCROW_ABI = [
 ];
 
 export default function Refund() {
-  const [selectedNetwork, setSelectedNetwork] = useState('BASE_SEPOLIA');
   const [bountyId, setBountyId] = useState('');
   const [bountyInfo, setBountyInfo] = useState(null);
   const [currentBounty, setCurrentBounty] = useState(null);
@@ -24,11 +23,20 @@ export default function Refund() {
   const { data: walletClient } = useWalletClient();
   const { switchChain } = useSwitchChain();
 
-  // Check if running locally for testing
-  const isLocal = process.env.NEXT_PUBLIC_ENV_TARGET === 'local';
+  const { currentNetwork: network, registry, networkGroup, defaultAlias, selectedAlias, setSelectedAlias } = useNetwork();
 
-  const networkConfig = NETWORKS[selectedNetwork];
-  const contractConfig = CONTRACTS[selectedNetwork];
+  useEffect(() => {
+    if (!registry || !networkGroup) {
+      return;
+    }
+    if (!selectedAlias && defaultAlias) {
+      setSelectedAlias(defaultAlias);
+      return;
+    }
+    if (selectedAlias && registry[selectedAlias]?.group !== networkGroup) {
+      setSelectedAlias(defaultAlias);
+    }
+  }, [defaultAlias, networkGroup, registry, selectedAlias, setSelectedAlias]);
 
   const showStatus = (message, type) => {
     setStatus({ message, type });
@@ -36,6 +44,9 @@ export default function Refund() {
 
   const checkBounty = async () => {
     try {
+      if (!network) {
+        throw new Error('Network not initialized. Please try again.');
+      }
       if (!bountyId || !bountyId.startsWith('0x')) {
         throw new Error('Please enter a valid bounty ID (0x...)');
       }
@@ -49,19 +60,19 @@ export default function Refund() {
       }
 
       // Check and switch network if needed
-      if (chain?.id !== networkConfig.chainId) {
-        showStatus(`Switching to ${networkConfig.name}...`, 'loading');
-        await switchChain({ chainId: networkConfig.chainId });
+      if (chain?.id !== network.chainId) {
+        showStatus(`Switching to ${network.name}...`, 'loading');
+        await switchChain({ chainId: network.chainId });
       }
 
       showStatus('Checking bounty...', 'loading');
 
       // Create provider for reading contract
       const provider = new ethers.BrowserProvider(walletClient);
-      const escrow = new ethers.Contract(contractConfig.escrow, ESCROW_ABI, provider);
+      const escrow = new ethers.Contract(network.contracts.escrow, ESCROW_ABI, provider);
       const bounty = await escrow.getBounty(bountyId);
 
-      const amount = ethers.formatUnits(bounty.amount, contractConfig.tokenDecimals);
+      const amount = ethers.formatUnits(bounty.amount, network.token.decimals);
       const deadline = new Date(Number(bounty.deadline) * 1000);
       const statusText = ['None', 'Open', 'Resolved', 'Refunded', 'Canceled'][Number(bounty.status)];
       const now = new Date();
@@ -97,6 +108,9 @@ export default function Refund() {
 
   const requestRefund = async () => {
     try {
+      if (!network) {
+        throw new Error('Network not initialized. Please try again.');
+      }
       if (!currentBounty) {
         throw new Error('Please check bounty status first');
       }
@@ -109,11 +123,11 @@ export default function Refund() {
 
       const provider = new ethers.BrowserProvider(walletClient);
       const signer = await provider.getSigner();
-      const escrow = new ethers.Contract(contractConfig.escrow, ESCROW_ABI, signer);
+      const escrow = new ethers.Contract(network.contracts.escrow, ESCROW_ABI, signer);
       
-      // Mezo testnet doesn't support EIP-1559, use legacy transactions
+      // Networks without EIP-1559: use legacy transactions
       let txOverrides = {};
-      if (selectedNetwork === 'MEZO_TESTNET') {
+      if (!network.supports1559) {
         const feeData = await provider.getFeeData();
         txOverrides = {
           type: 0, // Legacy transaction
@@ -181,53 +195,7 @@ export default function Refund() {
 
       {!isConnected ? (
         <>
-          <div className="animate-fade-in-up delay-200" style={{ marginBottom: '24px' }}>
-            <label style={{ marginBottom: '8px' }}>Select Network</label>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => {
-                  console.log('Base Sepolia selected');
-                  setSelectedNetwork('BASE_SEPOLIA');
-                }}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: selectedNetwork === 'BASE_SEPOLIA' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  background: selectedNetwork === 'BASE_SEPOLIA' ? 'rgba(0, 130, 123, 0.1)' : 'var(--color-card)',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: selectedNetwork === 'BASE_SEPOLIA' ? 'var(--color-primary)' : 'var(--color-text-primary)',
-                  transition: 'all 0.2s'
-                }}
-              >
-                Base Sepolia
-                <div style={{ fontSize: '12px', fontWeight: 400, marginTop: '4px', color: 'var(--color-text-secondary)' }}>USDC</div>
-              </button>
-              <button
-                onClick={() => {
-                  console.log('Mezo Testnet selected');
-                  setSelectedNetwork('MEZO_TESTNET');
-                }}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: selectedNetwork === 'MEZO_TESTNET' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  background: selectedNetwork === 'MEZO_TESTNET' ? 'rgba(0, 130, 123, 0.1)' : 'var(--color-card)',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: selectedNetwork === 'MEZO_TESTNET' ? 'var(--color-primary)' : 'var(--color-text-primary)',
-                  transition: 'all 0.2s'
-                }}
-              >
-                Mezo Testnet
-                <div style={{ fontSize: '12px', fontWeight: 400, marginTop: '4px', color: 'var(--color-text-secondary)' }}>MUSD</div>
-              </button>
-            </div>
-          </div>
+          {/* Network selection is now handled globally via Navbar toggle */}
 
           <ConnectButton.Custom>
             {({ openConnectModal }) => (
@@ -247,7 +215,7 @@ export default function Refund() {
         <>
           <div className="wallet-info" style={{ marginBottom: '24px' }}>
             <div><strong>Connected:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}</div>
-            <div><strong>Network:</strong> {networkConfig.name} ({contractConfig.tokenSymbol})</div>
+            <div><strong>Network:</strong> {network?.name} ({network?.token.symbol})</div>
           </div>
 
           <ConnectButton.Custom>
@@ -288,7 +256,7 @@ export default function Refund() {
 
           {bountyInfo && (
             <div className="info-box" style={{ marginBottom: '24px' }}>
-              <p><strong>Amount:</strong> {bountyInfo.amount} {contractConfig.tokenSymbol}</p>
+              <p><strong>Amount:</strong> {bountyInfo.amount} {network?.token.symbol}</p>
               <p><strong>Deadline:</strong> {bountyInfo.deadline}</p>
               <p><strong>Status:</strong> {bountyInfo.status}</p>
               <p><strong>Sponsor:</strong> <code>{bountyInfo.sponsor}</code></p>

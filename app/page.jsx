@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { dummyBounties } from '@/dummy-data/bounties';
-import { NETWORKS } from '@/config/networks';
+import { useNetwork } from '@/components/NetworkProvider';
 
 export default function Home() {
   const [bounties, setBounties] = useState([]);
@@ -16,6 +16,7 @@ export default function Home() {
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [showLabelDropdown, setShowLabelDropdown] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const { registry } = useNetwork();
 
   useEffect(() => {
     async function fetchBounties() {
@@ -149,9 +150,9 @@ export default function Home() {
   }
 
   function getBlockExplorerUrl(network, txHash) {
-    const networkConfig = NETWORKS[network];
-    if (!networkConfig || !txHash) return null;
-    return `${networkConfig.blockExplorerUrl}/tx/${txHash}`;
+    const config = registry?.[network];
+    if (!config || !txHash) return null;
+    return `${config.blockExplorerUrl}/tx/${txHash}`;
   }
 
   if (loading) {

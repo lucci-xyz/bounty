@@ -1,24 +1,20 @@
+import { cookies } from 'next/headers';
 import { getSession } from '@/lib/session';
 import { bountyQueries, userQueries } from '@/server/db/prisma';
 import { handleBountyCreated } from '@/server/github/webhooks';
 import { computeBountyIdOnNetwork, createRepoIdHash } from '@/server/blockchain/contract';
 import { getGitHubApp, initGitHubApp } from '@/server/github/client';
-import { CONFIG } from '@/server/config';
-
-/**
- * Map network name to chain ID
- */
-function getChainIdFromNetwork(network) {
-  const networkMap = {
-    'BASE_SEPOLIA': 84532,
-    'MEZO_TESTNET': 31611
-  };
-  return networkMap[network] || 84532;
-}
+import { getActiveAliasFromCookies } from '@/lib/network-env';
+import { REGISTRY } from '@/config/chain-registry';
 
 export async function POST(request) {
   try {
     const session = await getSession();
+    const cookieStore = cookies();
+    
+    // Get active network alias from cookie (or use provided one)
+    const defaultAlias = getActiveAliasFromCookies(cookieStore);
+    
     const {
       repoFullName,
       repoId,
@@ -29,16 +25,31 @@ export async function POST(request) {
       deadline,
       txHash,
       installationId,
-      network = 'BASE_SEPOLIA',
-      tokenSymbol = 'USDC'
+      network,
+      tokenSymbol
     } = await request.json();
+
+    // Use provided network or default from cookie
+    const alias = network || defaultAlias;
+    
+    console.log('📡 Creating bounty with network alias:', alias);
+    console.log('📦 Received network param:', network);
+    console.log('🔧 Default alias from cookie:', defaultAlias);
+    
+    const networkConfig = REGISTRY[alias];
+    
+    if (!networkConfig) {
+      throw new Error(`Invalid network alias: ${alias}`);
+    }
 
     // Compute bountyId
     const repoIdHash = createRepoIdHash(repoId);
-    const bountyId = await computeBountyIdOnNetwork(sponsorAddress, repoIdHash, issueNumber, network);
+    const bountyId = await computeBountyIdOnNetwork(sponsorAddress, repoIdHash, issueNumber, alias);
 
-    // Derive chainId from network
-    const chainId = getChainIdFromNetwork(network);
+    // Derive chainId and token info from network config
+    const chainId = networkConfig.chainId;
+    const tokenAddress = token || networkConfig.token.address;
+    const tokenSymbolFinal = tokenSymbol || networkConfig.token.symbol;
 
     // Auto-create or update user if session exists (backward compatible)
     if (session && session.githubId) {
@@ -63,14 +74,14 @@ export async function POST(request) {
       issueNumber,
       sponsorAddress,
       sponsorGithubId: session.githubId || null,
-      token: token || CONFIG.blockchain.usdcContract,
+      token: tokenAddress,
       amount,
       deadline,
       status: 'open',
       txHash,
-      network,
+      network: alias,
       chainId,
-      tokenSymbol
+      tokenSymbol: tokenSymbolFinal
     });
 
     // Post GitHub comment (skip in local mode or if no installation)
@@ -93,8 +104,8 @@ export async function POST(request) {
           sponsorAddress,
           txHash,
           installationId,
-          network,
-          tokenSymbol
+          network: alias,
+          tokenSymbol: tokenSymbolFinal
         });
       } catch (githubError) {
         console.warn('⚠️ Failed to post GitHub comment (non-critical):', githubError.message);

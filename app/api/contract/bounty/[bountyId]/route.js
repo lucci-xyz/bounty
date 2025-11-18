@@ -6,7 +6,13 @@ export async function GET(request, { params }) {
     const { bountyId } = await params;
     // Determine network from DB
     const row = await bountyQueries.findById(bountyId);
-    const network = row?.network || 'BASE_SEPOLIA';
+    if (!row?.network) {
+      return Response.json(
+        { error: 'Bounty has no network configured. Cannot fetch on-chain data.' },
+        { status: 400 }
+      );
+    }
+    const network = row.network;
     const bounty = await getBountyFromContract(bountyId, network);
     return Response.json(bounty);
   } catch (error) {

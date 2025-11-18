@@ -3,6 +3,8 @@ import { bountyQueries, walletQueries, prClaimQueries } from '../db/prisma.js';
 import { resolveBountyOnNetwork } from '../blockchain/contract.js';
 import { ethers } from 'ethers';
 import { CONFIG } from '../config.js';
+import { REGISTRY } from '../../config/chain-registry.js';
+import { sendSystemEmail } from '../notifications/email.js';
 
 const BADGE_BASE = 'https://img.shields.io/badge';
 const BADGE_LABEL_COLOR = '111827';
@@ -90,6 +92,33 @@ ${context ? `\n### Additional Context\n${context}` : ''}
 ---
 *This is an automated system notification. The BountyPay team has been alerted.*`;
 
+  const emailSubject = `[BountyPay Alert] ${config.label} - ${errorType}`;
+  const detailsHtml = detailsSection
+    ? `<p><strong>Details:</strong><br/>${detailsSection.replace(/\n/g, '<br/>')}</p>`
+    : '';
+  const contextHtml = context ? `<p><strong>Additional Context:</strong><br/>${context.replace(/\n/g, '<br/>')}</p>` : '';
+  const emailHtml = `
+    <p>${config.emoji} <strong>${errorType}</strong></p>
+    <p><strong>Repository:</strong> ${owner}/${repo}</p>
+    <p><strong>Issue/PR:</strong> #${issueNumber}</p>
+    <p><strong>Severity:</strong> ${config.label}</p>
+    <p><strong>Error ID:</strong> ${errorId}</p>
+    <p><strong>Timestamp:</strong> ${timestamp}</p>
+    <p><strong>Error Details:</strong></p>
+    <pre>${truncatedError}</pre>
+    ${detailsHtml}
+    ${contextHtml}
+  `;
+
+  try {
+    await sendSystemEmail({
+      subject: emailSubject,
+      html: emailHtml
+    });
+  } catch (emailError) {
+    console.error('Failed to send alert email:', emailError);
+  }
+
   try {
     await postIssueComment(octokit, owner, repo, issueNumber, comment);
     console.log(`Maintainer notification posted: ${errorId}`);
@@ -105,17 +134,25 @@ function badgeLink(label, value, color, href, extraQuery = '') {
 }
 
 function networkMeta(networkKey) {
-  // Map network key used in DB/API to human/explorer info
-  if (networkKey === 'MEZO_TESTNET') {
-    return {
-      name: 'Mezo Testnet',
-      explorerTx: (hash) => `https://explorer.test.mezo.org/tx/${hash}`,
-    };
+  if (!networkKey) {
+    throw new Error('Missing network alias for bounty notification.');
   }
-  // Default to Base Sepolia
+
+  const config = REGISTRY[networkKey];
+  if (!config) {
+    throw new Error(`Network alias "${networkKey}" is not configured in the registry.`);
+  }
+
+  const explorerBase = config.blockExplorerUrl?.replace(/\/$/, '');
+  if (!explorerBase) {
+    throw new Error(`Block explorer URL is missing for network "${networkKey}".`);
+  }
+
+  const resolvedName = config.name || networkKey;
+
   return {
-    name: 'Base Sepolia',
-    explorerTx: (hash) => `https://sepolia.basescan.org/tx/${hash}`,
+    name: resolvedName,
+    explorerTx: (hash) => `${explorerBase}/tx/${hash}`
   };
 }
 
@@ -154,7 +191,14 @@ ${BRAND_SIGNATURE}`;
  * Handle bounty creation (called from frontend after funding)
  */
 export async function handleBountyCreated(bountyData) {
-  const { repoFullName, issueNumber, bountyId, amount, deadline, sponsorAddress, txHash, installationId, network = 'BASE_SEPOLIA', tokenSymbol = 'USDC' } = bountyData;
+  const { repoFullName, issueNumber, bountyId, amount, deadline, sponsorAddress, txHash, installationId, network, tokenSymbol } = bountyData;
+  
+  if (!network) {
+    throw new Error('Network alias is required for bounty creation');
+  }
+  if (!tokenSymbol) {
+    throw new Error('Token symbol is required for bounty creation');
+  }
   
   try {
   const octokit = await getOctokit(installationId);
@@ -499,12 +543,27 @@ ${BRAND_SIGNATURE}`;
       continue;
     }
       
+      if (!bounty.network) {
+        console.error('Bounty has no network configured:', bounty.bountyId);
+        await notifyMaintainers(octokit, owner, repo, pull_request.number, {
+          errorType: 'Missing Network Configuration',
+          errorMessage: 'Bounty record is missing network alias',
+          severity: 'critical',
+          bountyId: bounty.bountyId,
+          recipientAddress: walletMapping.walletAddress,
+          prNumber: pull_request.number,
+          username: pull_request.user.login,
+          context: 'This bounty was created without a network alias. Manual intervention required to identify the correct network and process payment.'
+        });
+        continue;
+      }
+      
       let result;
       try {
         result = await resolveBountyOnNetwork(
           bounty.bountyId,
           walletMapping.walletAddress,
-          bounty.network || 'BASE_SEPOLIA'
+          bounty.network
         );
       } catch (error) {
         console.error('Exception during bounty resolution:', error.message);
@@ -517,9 +576,9 @@ ${BRAND_SIGNATURE}`;
       await prClaimQueries.updateStatus(claim.id, 'paid', result.txHash, Date.now());
       
       // Post success comment on PR
-        const tokenSymbol = bounty.tokenSymbol || 'USDC';
+      const tokenSymbol = bounty.tokenSymbol || 'UNKNOWN';
       const amountFormatted = formatAmountByToken(bounty.amount, tokenSymbol);
-      const net = networkMeta(bounty.network || 'BASE_SEPOLIA');
+      const net = networkMeta(bounty.network);
         const successComment = `## <img src="${OG_ICON}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Paid
 
 **Recipient:** @${pull_request.user.login}  
@@ -579,7 +638,7 @@ ${BRAND_SIGNATURE}`;
 **What happened:**  
 ${errorHelp}
 
-**Network:** ${bounty.network || 'BASE_SEPOLIA'}  
+**Network:** ${bounty.network || 'UNKNOWN'}  
 **Recipient:** \`${walletMapping.walletAddress.slice(0, 10)}...${walletMapping.walletAddress.slice(-8)}\`
 
 ${BRAND_SIGNATURE}`;
@@ -589,7 +648,7 @@ ${BRAND_SIGNATURE}`;
         
         // Notify maintainers for critical/high severity errors
         if (shouldNotify) {
-          const tokenSymbol = bounty.tokenSymbol || 'USDC';
+          const tokenSymbol = bounty.tokenSymbol || 'UNKNOWN';
           const amountFormatted = formatAmountByToken(bounty.amount, tokenSymbol);
           
           await notifyMaintainers(octokit, owner, repo, pull_request.number, {
@@ -597,7 +656,7 @@ ${BRAND_SIGNATURE}`;
             errorMessage: result.error,
             severity: notifySeverity,
             bountyId: bounty.bountyId,
-            network: bounty.network || 'BASE_SEPOLIA',
+            network: bounty.network || 'UNKNOWN',
             recipientAddress: walletMapping.walletAddress,
             prNumber: pull_request.number,
             username: pull_request.user.login,
