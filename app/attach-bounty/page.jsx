@@ -213,6 +213,23 @@ function AttachBountyContent() {
         }
       }
 
+      // Determine the correct network alias based on the connected chain
+      // This ensures we use the network the user actually transacted on
+      let networkAliasToSend = selectedAlias || defaultAlias;
+      
+      if (chain?.id && registry) {
+        const matchingEntry = Object.entries(registry).find(([, config]) => {
+          if (networkGroup && config.group !== networkGroup) {
+            return false;
+          }
+          return config.chainId === chain.id;
+        });
+        
+        if (matchingEntry) {
+          networkAliasToSend = matchingEntry[0];
+        }
+      }
+
       showStatus('Fetching resolver address...', 'loading');
       
       // Get the resolver address for this network from the backend
@@ -225,7 +242,6 @@ function AttachBountyContent() {
         }
         const resolverData = await resolverRes.json();
         resolverAddress = resolverData.resolver;
-        console.log('🔐 Resolver address for', networkAliasToSend, ':', resolverAddress);
       } catch (resolverError) {
         console.error('Resolver fetch error:', resolverError);
         throw new Error(`Could not fetch resolver address: ${resolverError.message}`);
@@ -374,34 +390,6 @@ function AttachBountyContent() {
       }
 
       showStatus('Recording bounty in database...', 'loading');
-
-      // Determine the correct network alias based on the connected chain
-      // This ensures we use the network the user actually transacted on
-      let networkAliasToSend = selectedAlias || defaultAlias;
-      
-      if (chain?.id && registry) {
-        const matchingEntry = Object.entries(registry).find(([, config]) => {
-          if (networkGroup && config.group !== networkGroup) {
-            return false;
-          }
-          return config.chainId === chain.id;
-        });
-        
-        if (matchingEntry) {
-          networkAliasToSend = matchingEntry[0];
-        }
-      }
-      
-      // Debug: Log network information
-      console.log('🔍 Network Debug Info:');
-      console.log('  - Connected chain.id:', chain?.id);
-      console.log('  - Connected chain.name:', chain?.name);
-      console.log('  - selectedAlias:', selectedAlias);
-      console.log('  - defaultAlias:', defaultAlias);
-      console.log('  - currentNetwork name:', network?.name);
-      console.log('  - networkGroup:', networkGroup);
-      console.log('  ➡️  SENDING network:', networkAliasToSend);
-      console.log('  ➡️  SENDING tokenSymbol:', network?.token?.symbol);
 
       try {
         const response = await fetch('/api/bounty/create', {
