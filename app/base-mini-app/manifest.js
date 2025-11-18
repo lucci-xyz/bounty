@@ -23,9 +23,9 @@ const HOME_URL = `${BASE_URL}/base-mini-app`;
 
 export const MINI_APP_MANIFEST = {
   accountAssociation: {
-    header: '',
-    payload: '',
-    signature: '',
+    header: process.env.NEXT_PUBLIC_ACCOUNT_ASSOC_HEADER || '',
+    payload: process.env.NEXT_PUBLIC_ACCOUNT_ASSOC_PAYLOAD || '',
+    signature: process.env.NEXT_PUBLIC_ACCOUNT_ASSOC_SIGNATURE || '',
   },
   baseBuilder: {
     ownerAddress: process.env.NEXT_PUBLIC_BASE_OWNER_ADDRESS || '0x',
