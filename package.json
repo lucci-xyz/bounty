@@ -19,6 +19,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@farcaster/miniapp-sdk": "^0.2.1",
     "@prisma/client": "^6.19.0",
     "@radix-ui/react-avatar": "^1.1.11",
     "@rainbow-me/rainbowkit": "^2.2.9",

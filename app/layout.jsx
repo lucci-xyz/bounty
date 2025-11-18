@@ -4,10 +4,14 @@ import { Providers } from '@/components/Providers';
 import { NetworkProvider } from '@/components/NetworkProvider';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { MINI_APP_EMBED } from '@/app/base-mini-app/manifest';
 
 export const metadata = {
   title: 'BountyPay - Automated GitHub Bounty Payments',
   description: 'Fund GitHub issues with crypto. Contributors get paid automatically when PRs merge.',
+  other: {
+    'fc:miniapp': JSON.stringify(MINI_APP_EMBED),
+  },
 };
 
 export default function RootLayout({ children }) {
