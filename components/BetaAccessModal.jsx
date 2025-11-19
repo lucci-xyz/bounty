@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 
-export default function BetaAccessModal({ isOpen, onClose }) {
+export default function BetaAccessModal({ isOpen, onClose, onAccessGranted }) {
   const [step, setStep] = useState('signin'); // signin, apply, pending, approved, rejected
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -44,10 +44,10 @@ export default function BetaAccessModal({ isOpen, onClose }) {
         setStep('apply');
       } else if (data.hasAccess) {
         setStep('approved');
-        // Close modal and refresh page after a delay
+        onAccessGranted?.();
+        // Close modal after a delay
         setTimeout(() => {
           onClose?.();
-          window.location.reload();
         }, 2000);
       } else {
         setStep(data.status || 'pending');
@@ -258,21 +258,6 @@ export default function BetaAccessModal({ isOpen, onClose }) {
 
         {step === 'pending' && (
           <>
-            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-              <div style={{
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%',
-                background: 'rgba(0, 130, 123, 0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto',
-                fontSize: '40px'
-              }}>
-                ⏳
-              </div>
-            </div>
             <h2 style={{ 
               fontSize: '28px', 
               fontWeight: '600', 
@@ -284,32 +269,16 @@ export default function BetaAccessModal({ isOpen, onClose }) {
             </h2>
             <p style={{ 
               color: 'var(--color-text-secondary)', 
-              marginBottom: '32px',
               textAlign: 'center',
               lineHeight: '1.6'
             }}>
-              Thank you for applying! We'll review your application and notify you once you've been approved.
+              Thank you for applying. We'll review your application and notify you once you've been approved.
             </p>
           </>
         )}
 
         {step === 'approved' && (
           <>
-            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-              <div style={{
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%',
-                background: 'rgba(0, 130, 123, 0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto',
-                fontSize: '40px'
-              }}>
-                ✓
-              </div>
-            </div>
             <h2 style={{ 
               fontSize: '28px', 
               fontWeight: '600', 
@@ -317,35 +286,20 @@ export default function BetaAccessModal({ isOpen, onClose }) {
               marginBottom: '12px',
               textAlign: 'center'
             }}>
-              Welcome to the Beta!
+              Welcome to Beta
             </h2>
             <p style={{ 
               color: 'var(--color-text-secondary)', 
               textAlign: 'center',
               lineHeight: '1.6'
             }}>
-              Your access has been approved. Enjoy using BountyPay!
+              Your access has been approved.
             </p>
           </>
         )}
 
         {step === 'rejected' && (
           <>
-            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-              <div style={{
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%',
-                background: 'rgba(255, 59, 48, 0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto',
-                fontSize: '40px'
-              }}>
-                ✕
-              </div>
-            </div>
             <h2 style={{ 
               fontSize: '28px', 
               fontWeight: '600', 
@@ -360,7 +314,7 @@ export default function BetaAccessModal({ isOpen, onClose }) {
               textAlign: 'center',
               lineHeight: '1.6'
             }}>
-              Unfortunately, we cannot provide beta access at this time. Thank you for your interest!
+              We cannot provide beta access at this time. Thank you for your interest.
             </p>
           </>
         )}

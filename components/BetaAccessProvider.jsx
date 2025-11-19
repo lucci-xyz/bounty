@@ -51,6 +51,11 @@ export function BetaAccessProvider({ children }) {
     }
   };
 
+  const handleAccessGranted = () => {
+    setHasAccess(true);
+    setShowModal(false);
+  };
+
   // Block rendering of children until access is verified
   if (loading || !hasAccess) {
     return (
@@ -58,6 +63,7 @@ export function BetaAccessProvider({ children }) {
         <BetaAccessModal 
           isOpen={showModal} 
           onClose={handleModalClose}
+          onAccessGranted={handleAccessGranted}
         />
       </BetaAccessContext.Provider>
     );
@@ -69,6 +75,7 @@ export function BetaAccessProvider({ children }) {
       <BetaAccessModal 
         isOpen={showModal} 
         onClose={handleModalClose}
+        onAccessGranted={handleAccessGranted}
       />
     </BetaAccessContext.Provider>
   );
