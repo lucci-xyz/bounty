@@ -2,6 +2,13 @@ import { getSession } from '@/lib/session';
 import { prisma } from '@/server/db/prisma';
 import { NextResponse } from 'next/server';
 
+// List of admin GitHub IDs - admins automatically get beta access
+const ADMIN_GITHUB_IDS = (process.env.ADMIN_GITHUB_IDS || '')
+  .split(',')
+  .map(id => id.trim())
+  .filter(id => id)
+  .map(id => BigInt(id));
+
 export async function GET() {
   try {
     const session = await getSession();
@@ -10,6 +17,16 @@ export async function GET() {
       return NextResponse.json({ 
         hasAccess: false, 
         needsAuth: true 
+      });
+    }
+    
+    // Admins automatically have beta access
+    const isAdmin = ADMIN_GITHUB_IDS.includes(BigInt(session.githubId));
+    if (isAdmin) {
+      return NextResponse.json({
+        hasAccess: true,
+        status: 'approved',
+        isAdmin: true
       });
     }
     
