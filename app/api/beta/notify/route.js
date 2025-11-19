@@ -1,6 +1,8 @@
 import { getSession } from '@/lib/session';
 import { prisma } from '@/server/db/prisma';
 import { NextResponse } from 'next/server';
+import { sendUserEmail } from '@/server/notifications/email';
+import { betaApprovedTemplate, betaRejectedTemplate } from '@/server/notifications/templates';
 
 // List of admin GitHub IDs - configure in environment
 const ADMIN_GITHUB_IDS = (process.env.ADMIN_GITHUB_IDS || '')
@@ -49,35 +51,36 @@ export async function POST(request) {
       );
     }
     
-    // TODO: Implement actual notification system
-    // This could integrate with:
-    // - Email service (SendGrid, AWS SES, etc.)
-    // - In-app notifications
-    // - GitHub notifications
-    // For now, this is a placeholder that logs the notification
-    
+    // Send email notification to user
     console.log(`[NOTIFICATION] Sending ${status} notification to ${betaAccess.githubUsername} (${betaAccess.email})`);
     
-    // Example email notification structure:
-    const notificationData = {
-      to: betaAccess.email,
-      subject: status === 'approved' 
-        ? 'Welcome to BountyPay Beta!' 
-        : 'BountyPay Beta Application Update',
-      template: status === 'approved' ? 'beta-approved' : 'beta-rejected',
-      data: {
-        username: betaAccess.githubUsername,
-        status: status
-      }
-    };
+    // Get frontend URL from environment
+    const frontendUrl = process.env.FRONTEND_URL || 'https://bountypay.luccilabs.xyz';
     
-    // In a real implementation, you would call your email service here
-    // await sendEmail(notificationData);
+    // Select appropriate template based on status
+    const template = status === 'approved' 
+      ? betaApprovedTemplate({ username: betaAccess.githubUsername, frontendUrl })
+      : betaRejectedTemplate({ username: betaAccess.githubUsername, frontendUrl });
+    
+    // Send email if user has provided an email address
+    let emailResult = { skipped: true, reason: 'no_email' };
+    if (betaAccess.email) {
+      emailResult = await sendUserEmail({
+        to: betaAccess.email,
+        subject: template.subject,
+        html: template.html,
+        text: template.text
+      });
+    } else {
+      console.warn(`[NOTIFICATION] No email address for user ${betaAccess.githubUsername}`);
+    }
     
     return NextResponse.json({
       success: true,
       message: 'Notification sent successfully',
-      notificationData
+      emailSent: emailResult.success === true,
+      emailSkipped: emailResult.skipped === true,
+      recipient: betaAccess.email || null
     });
   } catch (error) {
     console.error('Error sending notification:', error);

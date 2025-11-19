@@ -45,6 +45,57 @@ export async function sendSystemEmail({ subject, html, text }) {
   }
 }
 
+/**
+ * Send an email to a specific user via Resend.
+ * Gracefully no-ops if credentials are missing to avoid throwing inside critical paths.
+ * @param {Object} params
+ * @param {string} params.to - Recipient email address
+ * @param {string} params.subject
+ * @param {string} params.html
+ * @param {string} [params.text]
+ */
+export async function sendUserEmail({ to, subject, html, text }) {
+  if (!RESEND_API_KEY) {
+    console.warn(`[email] RESEND_API_KEY not configured. Skipping user email: ${subject}`);
+    return { skipped: true };
+  }
+
+  if (!to) {
+    console.warn(`[email] No recipient provided for email: ${subject}`);
+    return { skipped: true, reason: 'no_recipient' };
+  }
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${RESEND_API_KEY}`
+      },
+      body: JSON.stringify({
+        from: RESEND_FROM_EMAIL,
+        to: [to],
+        subject,
+        html,
+        text: text || html.replace(/<[^>]+>/g, '')
+      })
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error('[email] Failed to send user email:', response.status, errorBody);
+      return { success: false };
+    }
+
+    const result = await response.json();
+    console.log(`[email] User email sent successfully to ${to}`);
+    return { success: true, id: result.id };
+  } catch (error) {
+    console.error('[email] Exception while sending user email:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 export function getAlertEmailAddress() {
   return ALERT_EMAIL;
 }

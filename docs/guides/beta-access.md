@@ -95,34 +95,47 @@ Access the admin dashboard at `/admin/beta` (only visible to configured admins).
 
 ## Notification System
 
-The beta access system includes a notification framework that can be extended to send emails or other notifications when applications are reviewed.
+The beta access system includes a fully implemented email notification system that sends professional emails to applicants when their applications are reviewed.
 
-### Current Implementation
+### Implementation
 
-The notification system is currently a placeholder that logs notifications to the console. To implement actual notifications:
+Email notifications are sent using [Resend](https://resend.com) via organized templates:
 
-1. Edit `/app/api/beta/notify/route.js`
-2. Integrate your email service (SendGrid, AWS SES, etc.)
-3. Update the notification logic in the `POST` handler
+**Files:**
+- `/server/notifications/email.js` - Core email functions
+- `/server/notifications/templates/beta-approved.js` - Approval email template
+- `/server/notifications/templates/beta-rejected.js` - Rejection email template
+- `/app/api/beta/notify/route.js` - Notification endpoint
 
-### Example Email Integration
+**How it works:**
 
-```javascript
-// In /app/api/beta/notify/route.js
-import { sendEmail } from '@/server/notifications/email';
+1. Admin reviews application in `/admin/beta`
+2. Admin approves or rejects the application
+3. System loads the appropriate email template
+4. Email is sent to the applicant's email address
+5. Response confirms email delivery status
 
-// Replace the console.log with:
-await sendEmail({
-  to: betaAccess.email,
-  subject: status === 'approved' 
-    ? 'Welcome to BountyPay Beta!' 
-    : 'BountyPay Beta Application Update',
-  template: status === 'approved' ? 'beta-approved' : 'beta-rejected',
-  data: {
-    username: betaAccess.githubUsername,
-    status: status
-  }
-});
+**Setup:**
+
+To enable email notifications, configure these environment variables:
+
+```bash
+RESEND_API_KEY=re_xxxxxxxxxxxxx
+RESEND_FROM_EMAIL=alerts@luccilabs.xyz
+```
+
+See the [Email Setup Guide](./email-setup.md) for detailed configuration instructions.
+
+### Email Templates
+
+Templates are designed with:
+- Professional, modern design
+- Mobile-responsive layout
+- BountyPay brand colors (#00827B, #39BEB7, #83EEE8)
+- Plain text fallback for accessibility
+- Clear call-to-action buttons
+
+To customize templates, edit files in `/server/notifications/templates/`
 ```
 
 ## Security Considerations
