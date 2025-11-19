@@ -246,83 +246,55 @@ export default function Navbar() {
 
                   <div style={{ padding: '8px' }}>
                     <Link
-                      href="/dashboard"
+                      href="/account?tab=sponsored"
                       onClick={() => setShowDropdown(false)}
                       style={{
                         display: 'block',
                         padding: '10px 12px',
                         fontSize: '14px',
-                        color: isActive('/dashboard') ? 'var(--color-primary)' : 'var(--color-text-primary)',
-                        background: isActive('/dashboard') ? 'rgba(0, 130, 123, 0.08)' : 'transparent',
+                        color: isActive('/account') ? 'var(--color-primary)' : 'var(--color-text-primary)',
+                        background: isActive('/account') ? 'rgba(0, 130, 123, 0.08)' : 'transparent',
                         textDecoration: 'none',
                         borderRadius: '8px',
                         transition: 'all 0.2s ease',
-                        fontWeight: isActive('/dashboard') ? '600' : '500'
+                        fontWeight: isActive('/account') ? '600' : '500'
                       }}
                       onMouseEnter={(e) => {
-                        if (!isActive('/dashboard')) {
+                        if (!isActive('/account')) {
                           e.currentTarget.style.background = 'var(--color-background-secondary)';
                         }
                       }}
                       onMouseLeave={(e) => {
-                        if (!isActive('/dashboard')) {
+                        if (!isActive('/account')) {
                           e.currentTarget.style.background = 'transparent';
                         }
                       }}
                     >
-                      Dashboard
-                    </Link>
-
-                    <Link
-                      href="/profile"
-                      onClick={() => setShowDropdown(false)}
-                      style={{
-                        display: 'block',
-                        padding: '10px 12px',
-                        fontSize: '14px',
-                        color: isActive('/profile') ? 'var(--color-primary)' : 'var(--color-text-primary)',
-                        background: isActive('/profile') ? 'rgba(0, 130, 123, 0.08)' : 'transparent',
-                        textDecoration: 'none',
-                        borderRadius: '8px',
-                        transition: 'all 0.2s ease',
-                        fontWeight: isActive('/profile') ? '600' : '500'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isActive('/profile')) {
-                          e.currentTarget.style.background = 'var(--color-background-secondary)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isActive('/profile')) {
-                          e.currentTarget.style.background = 'transparent';
-                        }
-                      }}
-                    >
-                      Profile
+                      Account
                     </Link>
 
                     {isAdmin && (
                       <Link
-                        href="/admin/beta"
+                        href="/account?tab=admin"
                         onClick={() => setShowDropdown(false)}
                         style={{
                           display: 'block',
                           padding: '10px 12px',
                           fontSize: '14px',
-                          color: isActive('/admin/beta') ? 'var(--color-primary)' : 'var(--color-text-primary)',
-                          background: isActive('/admin/beta') ? 'rgba(0, 130, 123, 0.08)' : 'transparent',
+                          color: isActive('/account') && pathname.includes('admin') ? 'var(--color-primary)' : 'var(--color-text-primary)',
+                          background: isActive('/account') && pathname.includes('admin') ? 'rgba(0, 130, 123, 0.08)' : 'transparent',
                           textDecoration: 'none',
                           borderRadius: '8px',
                           transition: 'all 0.2s ease',
-                          fontWeight: isActive('/admin/beta') ? '600' : '500'
+                          fontWeight: isActive('/account') && pathname.includes('admin') ? '600' : '500'
                         }}
                         onMouseEnter={(e) => {
-                          if (!isActive('/admin/beta')) {
+                          if (!(isActive('/account') && pathname.includes('admin'))) {
                             e.currentTarget.style.background = 'var(--color-background-secondary)';
                           }
                         }}
                         onMouseLeave={(e) => {
-                          if (!isActive('/admin/beta')) {
+                          if (!(isActive('/account') && pathname.includes('admin'))) {
                             e.currentTarget.style.background = 'transparent';
                           }
                         }}
