@@ -11,6 +11,7 @@ export default function Navbar() {
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [githubUser, setGithubUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { networkGroup, switchNetworkGroup, isSwitchingGroup } = useNetwork();
   const networkEnv = networkGroup || 'testnet';
 
@@ -35,6 +36,13 @@ export default function Navbar() {
       if (res.ok) {
         const user = await res.json();
         setGithubUser(user);
+        
+        // Check if user is admin
+        const adminRes = await fetch('/api/admin/check');
+        if (adminRes.ok) {
+          const { isAdmin: adminStatus } = await adminRes.json();
+          setIsAdmin(adminStatus);
+        }
       }
     } catch (error) {
       // User not logged in
@@ -59,7 +67,8 @@ export default function Navbar() {
 
   const navLinks = githubUser ? [
     { href: '/dashboard', label: 'Dashboard' },
-    { href: '/profile', label: 'Profile' }
+    { href: '/profile', label: 'Profile' },
+    ...(isAdmin ? [{ href: '/admin/beta', label: 'Admin' }] : [])
   ] : [];
 
   return (

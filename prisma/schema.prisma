@@ -111,3 +111,18 @@ model NotificationPreference {
   @@map("notification_preferences")
 }
 
+model BetaAccess {
+  id             Int     @id @default(autoincrement())
+  githubId       BigInt  @unique @map("github_id")
+  githubUsername String  @map("github_username")
+  email          String?
+  status         String  @default("pending") // pending, approved, rejected
+  appliedAt      BigInt  @map("applied_at")
+  reviewedAt     BigInt? @map("reviewed_at")
+  reviewedBy     BigInt? @map("reviewed_by")
+  
+  @@index([status], name: "idx_beta_access_status")
+  @@index([githubId], name: "idx_beta_access_github")
+  @@map("beta_access")
+}
+

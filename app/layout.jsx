@@ -2,6 +2,7 @@ import './globals.css';
 import '@rainbow-me/rainbowkit/styles.css';
 import { Providers } from '@/components/Providers';
 import { NetworkProvider } from '@/components/NetworkProvider';
+import { BetaAccessProvider } from '@/components/BetaAccessProvider';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { MINI_APP_EMBED } from '@/app/base-mini-app/manifest';
@@ -28,13 +29,15 @@ export default function RootLayout({ children }) {
       <body>
         <Providers>
           <NetworkProvider>
-            <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-              <Navbar />
-              <main style={{ flex: 1 }}>
-                {children}
-              </main>
-              <Footer />
-            </div>
+            <BetaAccessProvider>
+              <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+                <Navbar />
+                <main style={{ flex: 1 }}>
+                  {children}
+                </main>
+                <Footer />
+              </div>
+            </BetaAccessProvider>
           </NetworkProvider>
         </Providers>
       </body>
