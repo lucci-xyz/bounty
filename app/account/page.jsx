@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { TargetIcon, PlusIcon, WalletIcon, GitHubIcon, CheckCircleIcon, AlertIcon, SettingsIcon } from '@/components/Icons';
@@ -26,7 +26,7 @@ function createSiweMessage({ domain, address, statement, uri, version, chainId, 
   return message;
 }
 
-export default function Account() {
+function AccountContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') || 'sponsored';
@@ -2000,6 +2000,18 @@ export default function Account() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function Account() {
+  return (
+    <Suspense fallback={
+      <div className="container" style={{ maxWidth: '1200px', padding: '32px 24px' }}>
+        <p style={{ color: 'var(--color-text-secondary)' }}>Loading...</p>
+      </div>
+    }>
+      <AccountContent />
+    </Suspense>
   );
 }
 
