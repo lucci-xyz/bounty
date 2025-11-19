@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { dummyBounties } from '@/dummy-data/bounties';
 import { useNetwork } from '@/components/NetworkProvider';
+import { BetaGate } from '@/components/BetaGate';
 
 export default function Home() {
   const [bounties, setBounties] = useState([]);
@@ -191,17 +192,54 @@ export default function Home() {
       padding: isMobile ? '24px 16px' : '40px 20px',
       width: '100%'
     }}>
-      <div style={{ marginBottom: isMobile ? '20px' : '32px' }}>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light leading-tight animate-fade-in-up" style={{ 
-          fontFamily: 'Georgia, Times New Roman, serif',
-          color: '#00827B',
-          marginBottom: isMobile ? '8px' : '12px'
-        }}>
-          Bounties
-        </h1>
-        <p className="text-sm md:text-base" style={{ color: 'var(--color-text-secondary)' }}>
-          {filteredBounties.length} {filteredBounties.length === 1 ? 'bounty' : 'bounties'} available
-        </p>
+      <div style={{ 
+        marginBottom: isMobile ? '20px' : '32px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        gap: '16px',
+        flexWrap: 'wrap'
+      }}>
+        <div>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light leading-tight animate-fade-in-up" style={{ 
+            fontFamily: 'Georgia, Times New Roman, serif',
+            color: '#00827B',
+            marginBottom: isMobile ? '8px' : '12px'
+          }}>
+            Bounties
+          </h1>
+          <p className="text-sm md:text-base" style={{ color: 'var(--color-text-secondary)' }}>
+            {filteredBounties.length} {filteredBounties.length === 1 ? 'bounty' : 'bounties'} available
+          </p>
+        </div>
+
+        <div className="animate-fade-in-up delay-100">
+          <BetaGate>
+            <Link href="/attach-bounty" style={{ textDecoration: 'none' }}>
+              <button
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  background: '#00827B',
+                  color: 'white',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#39BEB7';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#00827B';
+                }}
+              >
+                + Create Bounty
+              </button>
+            </Link>
+          </BetaGate>
+        </div>
       </div>
 
       {/* Filter Bar */}

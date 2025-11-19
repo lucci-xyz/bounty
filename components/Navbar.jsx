@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useNetwork } from '@/components/NetworkProvider';
+import { useAccount } from 'wagmi';
+import UserAvatar from '@/components/UserAvatar';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -12,7 +14,10 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [githubUser, setGithubUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
   const { networkGroup, switchNetworkGroup, isSwitchingGroup } = useNetwork();
+  const { address, isConnected } = useAccount();
   const networkEnv = networkGroup || 'testnet';
 
   useEffect(() => {
@@ -27,6 +32,19 @@ export default function Navbar() {
   useEffect(() => {
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    }
+    
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showDropdown]);
 
   const checkAuth = async () => {
     try {
@@ -65,11 +83,17 @@ export default function Navbar() {
 
   const isActive = (path) => pathname === path;
 
-  const navLinks = githubUser ? [
-    { href: '/dashboard', label: 'Dashboard' },
-    { href: '/profile', label: 'Profile' },
-    ...(isAdmin ? [{ href: '/admin/beta', label: 'Admin' }] : [])
-  ] : [];
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/oauth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   return (
     <nav style={{
@@ -111,30 +135,9 @@ export default function Navbar() {
 
         <div style={{ 
           display: 'flex', 
-          gap: '4px',
+          gap: '12px',
           alignItems: 'center'
         }}>
-          {navLinks.map((link) => (
-            <Link 
-              key={link.href}
-              href={link.href} 
-              style={{
-                padding: '8px 16px',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: isActive(link.href) ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                background: isActive(link.href) ? 'rgba(0, 130, 123, 0.08)' : 'transparent',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              {link.label}
-            </Link>
-          ))}
-          
-          <div style={{ width: '1px', height: '24px', background: 'var(--color-border)', margin: '0 8px' }} />
-          
           <button
             onClick={handleNetworkSwitch}
             disabled={isSwitchingGroup}
@@ -177,11 +180,191 @@ export default function Navbar() {
             {networkEnv === 'mainnet' ? 'Mainnet' : 'Testnet'}
           </button>
           
-          {githubUser && (
-            <div style={{ width: '1px', height: '24px', background: 'var(--color-border)', margin: '0 8px' }} />
-          )}
-          
-          {!githubUser && (
+          {githubUser ? (
+            <div style={{ position: 'relative' }} ref={dropdownRef}>
+              <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '0.7';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                }}
+              >
+                <UserAvatar 
+                  username={githubUser.githubUsername}
+                  avatarUrl={githubUser.avatarUrl}
+                  size={36}
+                />
+              </button>
+
+              {showDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  right: 0,
+                  background: 'white',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '12px',
+                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+                  minWidth: '240px',
+                  zIndex: 1000,
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    padding: '16px',
+                    borderBottom: '1px solid var(--color-border)'
+                  }}>
+                    <div style={{ 
+                      fontSize: '14px', 
+                      fontWeight: '600',
+                      marginBottom: '4px',
+                      color: 'var(--color-text-primary)'
+                    }}>
+                      @{githubUser.githubUsername}
+                    </div>
+                    {isConnected && address && (
+                      <div style={{ 
+                        fontSize: '12px', 
+                        color: 'var(--color-text-secondary)',
+                        fontFamily: "'JetBrains Mono', monospace"
+                      }}>
+                        {address.slice(0, 6)}...{address.slice(-4)}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ padding: '8px' }}>
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setShowDropdown(false)}
+                      style={{
+                        display: 'block',
+                        padding: '10px 12px',
+                        fontSize: '14px',
+                        color: isActive('/dashboard') ? 'var(--color-primary)' : 'var(--color-text-primary)',
+                        background: isActive('/dashboard') ? 'rgba(0, 130, 123, 0.08)' : 'transparent',
+                        textDecoration: 'none',
+                        borderRadius: '8px',
+                        transition: 'all 0.2s ease',
+                        fontWeight: isActive('/dashboard') ? '600' : '500'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive('/dashboard')) {
+                          e.currentTarget.style.background = 'var(--color-background-secondary)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive('/dashboard')) {
+                          e.currentTarget.style.background = 'transparent';
+                        }
+                      }}
+                    >
+                      Dashboard
+                    </Link>
+
+                    <Link
+                      href="/profile"
+                      onClick={() => setShowDropdown(false)}
+                      style={{
+                        display: 'block',
+                        padding: '10px 12px',
+                        fontSize: '14px',
+                        color: isActive('/profile') ? 'var(--color-primary)' : 'var(--color-text-primary)',
+                        background: isActive('/profile') ? 'rgba(0, 130, 123, 0.08)' : 'transparent',
+                        textDecoration: 'none',
+                        borderRadius: '8px',
+                        transition: 'all 0.2s ease',
+                        fontWeight: isActive('/profile') ? '600' : '500'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive('/profile')) {
+                          e.currentTarget.style.background = 'var(--color-background-secondary)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive('/profile')) {
+                          e.currentTarget.style.background = 'transparent';
+                        }
+                      }}
+                    >
+                      Profile
+                    </Link>
+
+                    {isAdmin && (
+                      <Link
+                        href="/admin/beta"
+                        onClick={() => setShowDropdown(false)}
+                        style={{
+                          display: 'block',
+                          padding: '10px 12px',
+                          fontSize: '14px',
+                          color: isActive('/admin/beta') ? 'var(--color-primary)' : 'var(--color-text-primary)',
+                          background: isActive('/admin/beta') ? 'rgba(0, 130, 123, 0.08)' : 'transparent',
+                          textDecoration: 'none',
+                          borderRadius: '8px',
+                          transition: 'all 0.2s ease',
+                          fontWeight: isActive('/admin/beta') ? '600' : '500'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isActive('/admin/beta')) {
+                            e.currentTarget.style.background = 'var(--color-background-secondary)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive('/admin/beta')) {
+                            e.currentTarget.style.background = 'transparent';
+                          }
+                        }}
+                      >
+                        Admin
+                      </Link>
+                    )}
+                  </div>
+
+                  <div style={{
+                    padding: '8px',
+                    borderTop: '1px solid var(--color-border)'
+                  }}>
+                    <button
+                      onClick={handleLogout}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        fontSize: '14px',
+                        color: 'var(--color-error)',
+                        background: 'transparent',
+                        border: 'none',
+                        textAlign: 'left',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        fontWeight: '500'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 50, 0, 0.05)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
             <button
               onClick={() => {
                 window.location.href = `/api/oauth/github?returnTo=${encodeURIComponent('/')}`;
@@ -198,14 +381,10 @@ export default function Navbar() {
                 transition: 'all 0.2s ease'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'var(--color-primary-medium)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 130, 123, 0.25)';
+                e.currentTarget.style.background = '#39BEB7';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = 'var(--color-primary)';
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'none';
               }}
             >
               Sign In

@@ -7,6 +7,8 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ethers } from 'ethers';
 import { MoneyIcon, GitHubIcon } from '@/components/Icons';
 import { useNetwork } from '@/components/NetworkProvider';
+import { useBetaAccess } from '@/components/BetaAccessProvider';
+import BetaAccessModal from '@/components/BetaAccessModal';
 
 function AttachBountyContent() {
   const searchParams = useSearchParams();
@@ -15,10 +17,12 @@ function AttachBountyContent() {
   const [status, setStatus] = useState({ message: '', type: '' });
   const [isProcessing, setIsProcessing] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [showBetaModal, setShowBetaModal] = useState(false);
 
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
   const { switchChain } = useSwitchChain();
+  const { hasAccess, betaStatus, loading: betaLoading } = useBetaAccess();
 
   const repoFullName = searchParams.get('repo');
   const issueNumber = searchParams.get('issue');
@@ -51,6 +55,12 @@ function AttachBountyContent() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (isMounted && !betaLoading && !hasAccess) {
+      setShowBetaModal(true);
+    }
+  }, [isMounted, betaLoading, hasAccess]);
 
   useEffect(() => {
     if (!registry || Object.keys(registry).length === 0) {
@@ -457,11 +467,92 @@ function AttachBountyContent() {
   };
 
   // Don't render wallet controls until mounted (prevents hydration mismatch)
-  if (!isMounted) {
+  if (!isMounted || betaLoading) {
     return (
       <div className="container" style={{ maxWidth: '600px', textAlign: 'center', padding: '100px 20px' }}>
         <div style={{ fontSize: '16px', color: 'var(--color-text-secondary)' }}>Loading...</div>
       </div>
+    );
+  }
+
+  // Show beta gate if no access
+  if (!hasAccess) {
+    return (
+      <>
+        <div className="container" style={{ maxWidth: '600px', textAlign: 'center', padding: '100px 20px' }}>
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '24px'
+          }}>
+            <div style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '20px',
+              background: 'rgba(131, 238, 232, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <MoneyIcon size={40} color="var(--color-primary)" />
+            </div>
+            
+            <div>
+              <h1 style={{ 
+                fontSize: '28px',
+                fontFamily: "'Space Grotesk', sans-serif",
+                letterSpacing: '-0.02em',
+                marginBottom: '12px',
+                fontWeight: '600'
+              }}>
+                Beta Access Required
+              </h1>
+              <p style={{ 
+                fontSize: '15px',
+                color: 'var(--color-text-secondary)',
+                lineHeight: '1.6',
+                maxWidth: '420px',
+                margin: '0 auto'
+              }}>
+                Join our beta to start funding GitHub issues and automate contributor payments.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowBetaModal(true)}
+              style={{
+                padding: '12px 24px',
+                borderRadius: '8px',
+                border: 'none',
+                fontSize: '15px',
+                fontWeight: '600',
+                background: '#00827B',
+                color: 'white',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#39BEB7';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#00827B';
+              }}
+            >
+              Apply for Beta Access
+            </button>
+          </div>
+        </div>
+
+        <BetaAccessModal 
+          isOpen={showBetaModal} 
+          onClose={() => setShowBetaModal(false)}
+          onAccessGranted={() => {
+            setShowBetaModal(false);
+            window.location.reload();
+          }}
+        />
+      </>
     );
   }
 

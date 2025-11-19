@@ -1,12 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 
 export default function BetaAccessModal({ isOpen, onClose, onAccessGranted }) {
   const [step, setStep] = useState('signin'); // signin, apply, pending, approved, rejected
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Check beta access status when modal opens
   useEffect(() => {
@@ -86,9 +92,9 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted }) {
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
+  const modalContent = (
     <div
       style={{
         position: 'fixed',
@@ -105,9 +111,12 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted }) {
         padding: '20px'
       }}
       onClick={(e) => {
-        // Prevent closing unless approved
-        e.preventDefault();
-        e.stopPropagation();
+        if (step === 'pending' || step === 'rejected') {
+          onClose?.();
+        } else {
+          e.preventDefault();
+          e.stopPropagation();
+        }
       }}
     >
       <div
@@ -120,7 +129,40 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted }) {
           boxShadow: '0 24px 48px rgba(0, 0, 0, 0.2)',
           position: 'relative'
         }}
+        onClick={(e) => e.stopPropagation()}
       >
+        {/* Close button */}
+        <button
+          onClick={() => onClose?.()}
+          style={{
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            width: '32px',
+            height: '32px',
+            borderRadius: '8px',
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--color-text-secondary)',
+            fontSize: '20px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--color-background-secondary)';
+            e.currentTarget.style.color = 'var(--color-text-primary)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = 'var(--color-text-secondary)';
+          }}
+        >
+          ×
+        </button>
+
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <Image 
@@ -321,5 +363,7 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted }) {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
 

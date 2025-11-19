@@ -1,7 +1,6 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import BetaAccessModal from './BetaAccessModal';
 
 const BetaAccessContext = createContext({});
 
@@ -11,8 +10,8 @@ export function useBetaAccess() {
 
 export function BetaAccessProvider({ children }) {
   const [hasAccess, setHasAccess] = useState(null);
-  const [showModal, setShowModal] = useState(true); // Show immediately
   const [loading, setLoading] = useState(true);
+  const [betaStatus, setBetaStatus] = useState(null);
 
   useEffect(() => {
     checkBetaAccess();
@@ -26,14 +25,19 @@ export function BetaAccessProvider({ children }) {
       const approved = data.hasAccess === true;
       setHasAccess(approved);
       
-      // Hide modal only if user has access
-      if (approved) {
-        setShowModal(false);
+      if (data.needsAuth) {
+        setBetaStatus('needsAuth');
+      } else if (data.needsApplication) {
+        setBetaStatus('needsApplication');
+      } else if (data.hasAccess) {
+        setBetaStatus('approved');
+      } else {
+        setBetaStatus(data.status || 'pending');
       }
     } catch (error) {
       console.error('Error checking beta access:', error);
-      // On error, show the modal to be safe
-      setShowModal(true);
+      setHasAccess(false);
+      setBetaStatus('needsAuth');
     } finally {
       setLoading(false);
     }
@@ -44,39 +48,9 @@ export function BetaAccessProvider({ children }) {
     checkBetaAccess();
   };
 
-  const handleModalClose = () => {
-    // Only allow closing if user has access
-    if (hasAccess) {
-      setShowModal(false);
-    }
-  };
-
-  const handleAccessGranted = () => {
-    setHasAccess(true);
-    setShowModal(false);
-  };
-
-  // Block rendering of children until access is verified
-  if (loading || !hasAccess) {
-    return (
-      <BetaAccessContext.Provider value={{ hasAccess, refreshAccess, loading }}>
-        <BetaAccessModal 
-          isOpen={showModal} 
-          onClose={handleModalClose}
-          onAccessGranted={handleAccessGranted}
-        />
-      </BetaAccessContext.Provider>
-    );
-  }
-
   return (
-    <BetaAccessContext.Provider value={{ hasAccess, refreshAccess, loading }}>
+    <BetaAccessContext.Provider value={{ hasAccess, betaStatus, refreshAccess, loading }}>
       {children}
-      <BetaAccessModal 
-        isOpen={showModal} 
-        onClose={handleModalClose}
-        onAccessGranted={handleAccessGranted}
-      />
     </BetaAccessContext.Provider>
   );
 }
