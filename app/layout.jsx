@@ -5,6 +5,7 @@ import { NetworkProvider } from '@/components/NetworkProvider';
 import { BetaAccessProvider } from '@/components/BetaAccessProvider';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { Analytics } from '@vercel/analytics/react';
 import { MINI_APP_EMBED } from '@/app/base-mini-app/manifest';
 
 export const metadata = {
@@ -37,6 +38,7 @@ export default function RootLayout({ children }) {
                 </main>
                 <Footer />
               </div>
+              <Analytics />
             </BetaAccessProvider>
           </NetworkProvider>
         </Providers>
