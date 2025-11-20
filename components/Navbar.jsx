@@ -13,7 +13,6 @@ export default function Navbar() {
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [githubUser, setGithubUser] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
   const { networkGroup, switchNetworkGroup, isSwitchingGroup } = useNetwork();
@@ -54,13 +53,6 @@ export default function Navbar() {
       if (res.ok) {
         const user = await res.json();
         setGithubUser(user);
-        
-        // Check if user is admin
-        const adminRes = await fetch('/api/admin/check');
-        if (adminRes.ok) {
-          const { isAdmin: adminStatus } = await adminRes.json();
-          setIsAdmin(adminStatus);
-        }
       }
     } catch (error) {
       // User not logged in
@@ -272,36 +264,6 @@ export default function Navbar() {
                     >
                       Account
                     </Link>
-
-                    {isAdmin && (
-                      <Link
-                        href="/account?tab=admin"
-                        onClick={() => setShowDropdown(false)}
-                        style={{
-                          display: 'block',
-                          padding: '10px 12px',
-                          fontSize: '14px',
-                          color: isActive('/account') && pathname.includes('admin') ? 'var(--color-primary)' : 'var(--color-text-primary)',
-                          background: isActive('/account') && pathname.includes('admin') ? 'rgba(0, 130, 123, 0.08)' : 'transparent',
-                          textDecoration: 'none',
-                          borderRadius: '8px',
-                          transition: 'all 0.2s ease',
-                          fontWeight: isActive('/account') && pathname.includes('admin') ? '600' : '500'
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!(isActive('/account') && pathname.includes('admin'))) {
-                            e.currentTarget.style.background = 'var(--color-background-secondary)';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!(isActive('/account') && pathname.includes('admin'))) {
-                            e.currentTarget.style.background = 'transparent';
-                          }
-                        }}
-                      >
-                        Admin
-                      </Link>
-                    )}
                   </div>
 
                   <div style={{
