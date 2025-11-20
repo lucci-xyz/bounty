@@ -24,7 +24,7 @@ export default function BountyDetail({ params }) {
       });
 
       if (!authRes.ok) {
-        router.push('/dashboard');
+        router.push('/account?tab=sponsored');
         return;
       }
 
@@ -41,7 +41,7 @@ export default function BountyDetail({ params }) {
         
         // Verify user owns this bounty
         if (bountyData.sponsorGithubId !== user.githubId) {
-          router.push('/dashboard');
+          router.push('/account?tab=sponsored');
           return;
         }
         
@@ -111,8 +111,8 @@ export default function BountyDetail({ params }) {
           <p style={{ fontSize: '16px', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
             Bounty not found
           </p>
-          <Link href="/dashboard" className="btn btn-primary">
-            Back to Dashboard
+          <Link href="/account?tab=sponsored" className="btn btn-primary">
+            Back to Account
           </Link>
         </div>
       </div>
@@ -125,7 +125,7 @@ export default function BountyDetail({ params }) {
     <div className="container" style={{ maxWidth: '900px' }}>
       <div className="animate-fade-in-up" style={{ marginBottom: '32px' }}>
         <Link 
-          href="/dashboard"
+          href="/account?tab=sponsored"
           style={{
             fontSize: '14px',
             color: 'var(--color-text-secondary)',
@@ -134,7 +134,7 @@ export default function BountyDetail({ params }) {
             display: 'inline-block'
           }}
         >
-          ← Back to Dashboard
+          ← Back to Account
         </Link>
         <h1 style={{ 
           fontSize: 'clamp(28px, 5vw, 40px)',

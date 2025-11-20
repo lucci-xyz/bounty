@@ -26,10 +26,11 @@ function createSiweMessage({ domain, address, statement, uri, version, chainId, 
   return message;
 }
 
-function AccountContent() {
+export function AccountContent({ initialTab: initialTabOverride } = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get('tab') || 'sponsored';
+  const queryTab = searchParams?.get('tab');
+  const initialTab = initialTabOverride || queryTab || 'sponsored';
   
   const [activeTab, setActiveTab] = useState(initialTab);
   const [githubUser, setGithubUser] = useState(null);
@@ -216,7 +217,7 @@ function AccountContent() {
   };
 
   const handleManage = (bountyId) => {
-    router.push(`/dashboard/bounty/${bountyId}`);
+    router.push(`/account/bounty/${bountyId}`);
   };
 
   function formatAmount(amount, tokenSymbol) {

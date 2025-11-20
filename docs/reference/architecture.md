@@ -16,9 +16,10 @@
 - Main routes:
   - `app/page.jsx`: public bounty board backed by `/api/bounties/open` (or `dummy-data/bounties.js` when `NEXT_PUBLIC_USE_DUMMY_DATA=true`).
   - `app/attach-bounty/page.jsx`: post-GitHub-App funding wizard that prepares contract parameters before calling `/api/bounty/create`.
-  - `app/dashboard/*`: sponsor console plus `app/dashboard/bounty/[bountyId]` for allowlists and status updates.
+  - `app/account/page.jsx`: combined sponsor + contributor hub with tabs (Sponsored, Earnings, Settings, optional Admin) driven by `?tab=` deep links.
+  - `app/account/bounty/[bountyId]/page.jsx`: sponsor-only detail view for allowlists and bounty status controls.
   - `app/link-wallet/page.jsx`: GitHub OAuth + SIWE + `/api/wallet/link` client flow.
-  - `app/profile/page.jsx` and `app/refund/page.jsx`: contributor hub and sponsor refund utility.
+  - `app/refund/page.jsx`: sponsor refund utility.
 - Shared UI (cards, modals, avatars, icon set) lives in `components/` and keeps the color tokens (primary `#00827B`, secondary `#39BEB7`, tertiary `#83EEE8`) consistent.
 
 ### API Edge Layer
@@ -84,7 +85,7 @@
 4. Failure path: posts troubleshooting guidance, flags the claim as `failed`, and (for critical cases) emails + comments to maintainers.
 
 ### Refunds & Allowlist Management
-- Sponsors can switch to `/dashboard/bounty/[bountyId]` to manage bounty-specific or repo-level allowlists (`server/db/allowlistQueries`) which gate who can claim payouts.
+- Sponsors can switch to `/account/bounty/[bountyId]` to manage bounty-specific or repo-level allowlists (`server/db/allowlistQueries`) which gate who can claim payouts.
 - `/refund` surfaces the `refundExpired` contract method so sponsors can claw back funds after deadlines. Refund events are recorded in the `bounties` table via `updateStatus`.
 
 ## Configuration & Environments

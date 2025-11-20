@@ -14,11 +14,10 @@ Dummy screens can be toggled through `NEXT_PUBLIC_USE_DUMMY_DATA=true`.
 | --- | --- | --- | --- |
 | `/` | `app/page.jsx` | Public bounty board with filters, sorting, and responsive cards. | `/api/bounties/open`, `useNetwork`, optional dummy data |
 | `/attach-bounty` | `app/attach-bounty/page.jsx` | Handles the post-GitHub-App flow for funding an issue; also shows GitHub App install CTA if opened directly. | Query params from GitHub, `useNetwork`, `/api/resolver`, `/api/bounty/create` |
-| `/dashboard` | `app/dashboard/page.jsx` | Sponsor console with stats, pagination, and quick links to bounty detail pages. Redirects to `/` if not authenticated. | `/api/oauth/user`, `/api/user/bounties`, `/api/user/stats`, `/api/wallet/:id` |
-| `/dashboard/bounty/[bountyId]` | `app/dashboard/bounty/[bountyId]/page.jsx` | Owner view for a single bounty plus allowlist management. | `/api/bounty/:id`, `/api/allowlist/:id` |
+| `/account` | `app/account/page.jsx` | Combined sponsor + contributor hub with tabs for Sponsored, Earnings, Settings, and (optionally) Admin. Accepts `?tab=` for deep links. | `/api/oauth/user`, `/api/user/bounties`, `/api/user/stats`, `/api/wallet/:id`, `/api/user/profile`, `/api/user/claimed-bounties`, `/api/github/installations` |
+| `/account/bounty/[bountyId]` | `app/account/bounty/[bountyId]/page.jsx` | Owner view for a single bounty plus allowlist management. | `/api/bounty/:id`, `/api/allowlist/:id` |
 | `/link-wallet` | `app/link-wallet/page.jsx` | Guides contributors or sponsors through GitHub auth, wallet connect, SIWE verification, and `/api/wallet/link`. Supports `returnTo` and `action=change`. | `/api/oauth/user`, `/api/user/profile`, `/api/nonce`, `/api/verify-wallet`, `/api/wallet/link` |
-| `/profile` | `app/profile/page.jsx` | Contributor hub: claimed bounties, wallet status, repo installs, danger zone actions. Includes modals for wallet changes and repo management. | `/api/oauth/user`, `/api/user/profile`, `/api/user/claimed-bounties`, `/api/github/installations`, `/api/wallet/delete` |
-| `/refund` | `app/refund/page.jsx` | Lets sponsors run `refundExpired` on the escrow contract after a deadline lapses. | `useNetwork`, on-chain contract via wagmi wallet, optional `/dashboard/bounty` deep link |
+| `/refund` | `app/refund/page.jsx` | Lets sponsors run `refundExpired` on the escrow contract after a deadline lapses. | `useNetwork`, on-chain contract via wagmi wallet, optional `/account/bounty` deep link |
 
 ## Supporting Files
 

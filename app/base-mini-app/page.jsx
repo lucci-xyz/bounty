@@ -1,10 +1,31 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
 import HomePage from '@/app/page';
-import DashboardPage from '@/app/dashboard/page';
-import ProfilePage from '@/app/profile/page';
+import { AccountContent } from '@/app/account/page';
+
+function AccountSection({ initialTab }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="container" style={{ maxWidth: '1200px', padding: '32px 24px' }}>
+          <p style={{ color: 'var(--color-text-secondary)' }}>Loading...</p>
+        </div>
+      }
+    >
+      <AccountContent initialTab={initialTab} />
+    </Suspense>
+  );
+}
+
+function DashboardSection() {
+  return <AccountSection initialTab="sponsored" />;
+}
+
+function ProfileSection() {
+  return <AccountSection initialTab="settings" />;
+}
 
 const MINI_APP_SECTIONS = [
   {
@@ -17,13 +38,13 @@ const MINI_APP_SECTIONS = [
     id: 'dashboard',
     label: 'Dashboard',
     description: 'Manage funded issues',
-    Component: DashboardPage,
+    Component: DashboardSection,
   },
   {
     id: 'profile',
     label: 'Profile',
     description: 'Track your payouts',
-    Component: ProfilePage,
+    Component: ProfileSection,
   },
 ];
 

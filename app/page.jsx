@@ -163,9 +163,21 @@ export default function Home() {
     <div className="max-w-7xl mx-auto px-6 py-12">
       {/* Header */}
       <div className="mb-10">
-        <h1 className="text-4xl md:text-5xl font-light tracking-tight mb-2 text-foreground/90">
-            Bounties
-          </h1>
+        <h1
+          className="text-xs font-light leading-snug text-foreground/90"
+          style={{
+            fontSize: '2.2rem',
+            display: '-webkit-box',
+            WebkitLineClamp: 1,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            letterSpacing: '-0.02em',
+            marginBottom: '12px'
+          }}
+        >
+          Bounties
+        </h1>
         <p className="text-base text-muted-foreground">
           Contributing to open source, rewarded in crypto
           </p>
@@ -258,7 +270,7 @@ export default function Home() {
                 </div>
 
                 <Link
-                  href={`/dashboard/bounty/${bounty.bountyId}`}
+                  href={`/account/bounty/${bounty.bountyId}`}
                   className="mt-auto inline-flex w-full items-center justify-center rounded-full border border-border/70 bg-muted/80 px-6 py-3 text-sm font-medium text-foreground/90 transition-all hover:bg-gray-100"
                   style={{ color: 'inherit' }}
                 >
