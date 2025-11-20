@@ -93,38 +93,22 @@ export default function BetaAdminPage() {
 
   if (loading) {
     return (
-      <div className="container" style={{ maxWidth: '1200px', padding: '40px 20px' }}>
-        <h1 style={{ 
-          fontSize: '36px', 
-          fontWeight: '600', 
-          color: '#00827B',
-          marginBottom: '32px'
-        }}>
+      <div className="container" style={{ maxWidth: '1200px', padding: '40px 24px' }}>
+        <h1 className="text-foreground mb-2" style={{ fontSize: 'clamp(24px, 4vw, 32px)', fontWeight: '500', letterSpacing: '-0.02em' }}>
           Beta Access Management
         </h1>
-        <p style={{ color: 'var(--color-text-secondary)' }}>Loading applications...</p>
+        <p className="text-muted-foreground" style={{ fontSize: '14px', fontWeight: '300' }}>Loading applications...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="container" style={{ maxWidth: '1200px', padding: '40px 20px' }}>
-        <h1 style={{ 
-          fontSize: '36px', 
-          fontWeight: '600', 
-          color: '#00827B',
-          marginBottom: '32px'
-        }}>
+      <div className="container" style={{ maxWidth: '1200px', padding: '40px 24px' }}>
+        <h1 className="text-foreground mb-8" style={{ fontSize: 'clamp(24px, 4vw, 32px)', fontWeight: '500', letterSpacing: '-0.02em' }}>
           Beta Access Management
         </h1>
-        <div style={{
-          padding: '20px',
-          background: 'rgba(255, 59, 48, 0.1)',
-          border: '1px solid rgba(255, 59, 48, 0.3)',
-          borderRadius: '12px',
-          color: '#ff3b30'
-        }}>
+        <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-5 text-destructive">
           {error}
         </div>
       </div>
@@ -132,77 +116,47 @@ export default function BetaAdminPage() {
   }
 
   return (
-    <div className="container" style={{ maxWidth: '1200px', padding: '40px 20px' }}>
-      <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ 
-          fontSize: '36px', 
-          fontWeight: '600', 
-          color: '#00827B',
-          marginBottom: '8px'
-        }}>
+    <div className="container" style={{ maxWidth: '1200px', padding: '40px 24px' }}>
+      <div className="mb-8">
+        <h1 className="text-foreground mb-2" style={{ fontSize: 'clamp(24px, 4vw, 32px)', fontWeight: '500', letterSpacing: '-0.02em' }}>
           Beta Access Management
         </h1>
-        <p style={{ color: 'var(--color-text-secondary)' }}>
+        <p className="text-muted-foreground" style={{ fontSize: '14px', fontWeight: '300' }}>
           Review and manage beta access applications
         </p>
       </div>
 
       {/* Stats */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '16px',
-        marginBottom: '32px'
-      }}>
-        <div style={{
-          padding: '20px',
-          background: 'var(--color-card)',
-          border: '1px solid var(--color-border)',
-          borderRadius: '12px'
-        }}>
-          <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="stat-card animate-fade-in-up delay-100">
+          <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             Total Applications
           </div>
-          <div style={{ fontSize: '32px', fontWeight: '600', color: 'var(--color-text)' }}>
+          <div className="text-foreground" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
             {applications.length}
           </div>
         </div>
-        <div style={{
-          padding: '20px',
-          background: 'var(--color-card)',
-          border: '1px solid var(--color-border)',
-          borderRadius: '12px'
-        }}>
-          <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>
+        <div className="stat-card animate-fade-in-up delay-200">
+          <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             Pending Review
           </div>
-          <div style={{ fontSize: '32px', fontWeight: '600', color: '#FFA500' }}>
+          <div style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em', color: '#FFA500' }}>
             {pendingApplications.length}
           </div>
         </div>
-        <div style={{
-          padding: '20px',
-          background: 'var(--color-card)',
-          border: '1px solid var(--color-border)',
-          borderRadius: '12px'
-        }}>
-          <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>
+        <div className="stat-card animate-fade-in-up delay-300">
+          <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             Approved
           </div>
-          <div style={{ fontSize: '32px', fontWeight: '600', color: '#00827B' }}>
+          <div style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em', color: 'var(--primary)' }}>
             {applications.filter(app => app.status === 'approved').length}
           </div>
         </div>
-        <div style={{
-          padding: '20px',
-          background: 'var(--color-card)',
-          border: '1px solid var(--color-border)',
-          borderRadius: '12px'
-        }}>
-          <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>
+        <div className="stat-card animate-fade-in-up delay-400">
+          <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             Rejected
           </div>
-          <div style={{ fontSize: '32px', fontWeight: '600', color: '#ff3b30' }}>
+          <div style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em', color: 'var(--destructive)' }}>
             {applications.filter(app => app.status === 'rejected').length}
           </div>
         </div>
@@ -210,124 +164,54 @@ export default function BetaAdminPage() {
 
       {/* Pending Applications */}
       {pendingApplications.length > 0 && (
-        <div style={{ marginBottom: '40px' }}>
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: '600',
-            color: 'var(--color-text)',
-            marginBottom: '16px'
-          }}>
+        <div className="mb-8">
+          <h2 className="text-foreground mb-4" style={{ fontSize: '18px', fontWeight: '400' }}>
             Pending Applications
           </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className="space-y-3">
             {pendingApplications.map(app => (
               <div
                 key={app.id}
-                style={{
-                  padding: '20px',
-                  background: 'var(--color-card)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: '20px'
-                }}
+                className="bg-card border border-border/40 rounded-2xl p-5 flex justify-between items-center gap-5 animate-fade-in-up"
               >
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                  <div className="flex items-center gap-3 mb-2">
                     <a
                       href={`https://github.com/${app.githubUsername}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{
-                        fontSize: '18px',
-                        fontWeight: '600',
-                        color: 'var(--color-primary)',
-                        textDecoration: 'none'
-                      }}
+                      className="text-primary hover:underline"
+                      style={{ fontSize: '16px', fontWeight: '400', textDecoration: 'none' }}
                     >
                       @{app.githubUsername}
                     </a>
-                    <span
-                      style={{
-                        padding: '4px 10px',
-                        background: 'rgba(255, 165, 0, 0.1)',
-                        color: '#FFA500',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        textTransform: 'uppercase'
-                      }}
-                    >
+                    <span className="bounty-tag" style={{ background: 'rgba(255, 165, 0, 0.1)', color: '#FFA500', fontSize: '11px' }}>
                       {app.status}
                     </span>
                   </div>
-                  <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
+                  <div className="text-muted-foreground" style={{ fontSize: '13px', fontWeight: '300' }}>
                     Applied: {formatDate(app.appliedAt)}
                   </div>
                   {app.email && (
-                    <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+                    <div className="text-muted-foreground" style={{ fontSize: '13px', fontWeight: '300', marginTop: '2px' }}>
                       Email: {app.email}
                     </div>
                   )}
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div className="flex gap-2">
                   <button
                     onClick={() => handleReview(app.id, 'approve')}
                     disabled={processing[app.id]}
-                    style={{
-                      padding: '10px 20px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      background: processing[app.id] ? 'var(--color-background-secondary)' : 'var(--color-primary)',
-                      color: processing[app.id] ? 'var(--color-text-secondary)' : 'white',
-                      cursor: processing[app.id] ? 'not-allowed' : 'pointer',
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!processing[app.id]) {
-                        e.currentTarget.style.background = 'var(--color-secondary)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!processing[app.id]) {
-                        e.currentTarget.style.background = 'var(--color-primary)';
-                      }
-                    }}
+                    className="premium-btn bg-primary text-primary-foreground"
+                    style={{ padding: '8px 16px', fontSize: '13px' }}
                   >
                     ✓ Approve
                   </button>
                   <button
                     onClick={() => handleReview(app.id, 'reject')}
                     disabled={processing[app.id]}
-                    style={{
-                      padding: '10px 20px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--color-border)',
-                      background: 'var(--color-background)',
-                      color: 'var(--color-text-secondary)',
-                      cursor: processing[app.id] ? 'not-allowed' : 'pointer',
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!processing[app.id]) {
-                        e.currentTarget.style.background = 'rgba(255, 59, 48, 0.1)';
-                        e.currentTarget.style.borderColor = '#ff3b30';
-                        e.currentTarget.style.color = '#ff3b30';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!processing[app.id]) {
-                        e.currentTarget.style.background = 'var(--color-background)';
-                        e.currentTarget.style.borderColor = 'var(--color-border)';
-                        e.currentTarget.style.color = 'var(--color-text-secondary)';
-                      }
-                    }}
+                    className="premium-btn"
+                    style={{ padding: '8px 16px', fontSize: '13px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
                   >
                     ✕ Reject
                   </button>
@@ -341,63 +225,46 @@ export default function BetaAdminPage() {
       {/* Reviewed Applications */}
       {reviewedApplications.length > 0 && (
         <div>
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: '600',
-            color: 'var(--color-text)',
-            marginBottom: '16px'
-          }}>
+          <h2 className="text-foreground mb-4" style={{ fontSize: '18px', fontWeight: '400' }}>
             Reviewed Applications
           </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className="space-y-3">
             {reviewedApplications.map(app => (
               <div
                 key={app.id}
-                style={{
-                  padding: '20px',
-                  background: 'var(--color-card)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '12px'
-                }}
+                className="bg-card border border-border/40 rounded-2xl p-5 animate-fade-in-up"
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                <div className="flex items-center gap-3 mb-2">
                   <a
                     href={`https://github.com/${app.githubUsername}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{
-                      fontSize: '18px',
-                      fontWeight: '600',
-                      color: 'var(--color-primary)',
-                      textDecoration: 'none'
-                    }}
+                    className="text-primary hover:underline"
+                    style={{ fontSize: '16px', fontWeight: '400', textDecoration: 'none' }}
                   >
                     @{app.githubUsername}
                   </a>
                   <span
+                    className="bounty-tag"
                     style={{
-                      padding: '4px 10px',
                       background: `${getStatusColor(app.status)}15`,
                       color: getStatusColor(app.status),
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      textTransform: 'uppercase'
+                      fontSize: '11px'
                     }}
                   >
                     {app.status}
                   </span>
                 </div>
-                <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
+                <div className="text-muted-foreground" style={{ fontSize: '13px', fontWeight: '300' }}>
                   Applied: {formatDate(app.appliedAt)}
                 </div>
                 {app.reviewedAt && (
-                  <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+                  <div className="text-muted-foreground" style={{ fontSize: '13px', fontWeight: '300', marginTop: '2px' }}>
                     Reviewed: {formatDate(app.reviewedAt)}
                   </div>
                 )}
                 {app.email && (
-                  <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+                  <div className="text-muted-foreground" style={{ fontSize: '13px', fontWeight: '300', marginTop: '2px' }}>
                     Email: {app.email}
                   </div>
                 )}
@@ -408,14 +275,8 @@ export default function BetaAdminPage() {
       )}
 
       {applications.length === 0 && (
-        <div style={{
-          padding: '60px 20px',
-          textAlign: 'center',
-          background: 'var(--color-card)',
-          border: '1px solid var(--color-border)',
-          borderRadius: '12px'
-        }}>
-          <p style={{ fontSize: '18px', color: 'var(--color-text-secondary)' }}>
+        <div className="bg-card border border-border/40 rounded-2xl p-16 text-center">
+          <p className="text-muted-foreground" style={{ fontSize: '16px', fontWeight: '300' }}>
             No applications yet
           </p>
         </div>

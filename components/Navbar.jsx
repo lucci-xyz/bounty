@@ -88,209 +88,90 @@ export default function Navbar() {
   };
 
   return (
-    <nav style={{
-      borderBottom: scrolled ? '1px solid var(--color-border)' : '1px solid transparent',
-      background: scrolled ? 'rgba(250, 250, 250, 0.95)' : 'var(--color-background)',
-      position: 'sticky',
-      top: 0,
-      zIndex: 1000,
-      backdropFilter: 'blur(12px)',
-      transition: 'all 0.3s ease'
-    }}>
-      <div style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '24px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '32px'
-      }}>
-        <Link href="/" style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '10px',
-          textDecoration: 'none',
-          transition: 'opacity 0.2s'
-        }}>
+    <nav className={`sticky top-0 z-50 backdrop-blur-md transition-all duration-200 ${
+      scrolled ? 'border-b border-border bg-background/80' : 'border-b border-transparent'
+    }`}>
+      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2.5 group">
           <Image 
             src="/icons/og.png" 
             alt="BountyPay" 
-            width={32} 
-            height={32}
-            style={{ borderRadius: '8px' }}
+            width={50} 
+            height={50}
+            className="rounded-lg"
           />
-          <span className="text-2xl font-normal" style={{ color: '#00827B' }}>
+          {/* <span className="text-xl font-medium tracking-tight text-primary group-hover:opacity-80 transition-opacity">
             BountyPay
-          </span>
+          </span> */}
         </Link>
 
-        <div style={{ 
-          display: 'flex', 
-          gap: '12px',
-          alignItems: 'center'
-        }}>
-          <button
-            onClick={handleNetworkSwitch}
-            disabled={isSwitchingGroup}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              border: '1px solid var(--color-border)',
-              fontSize: '13px',
-              fontWeight: '500',
-              background: 'var(--color-background)',
-              color: 'var(--color-text)',
-              cursor: isSwitchingGroup ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease',
-              opacity: isSwitchingGroup ? 0.6 : 1
-            }}
-            onMouseEnter={(e) => {
-              if (!isSwitchingGroup) {
-                e.currentTarget.style.borderColor = 'var(--color-primary)';
-                e.currentTarget.style.background = 'rgba(0, 130, 123, 0.04)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'var(--color-border)';
-              e.currentTarget.style.background = 'var(--color-background)';
-            }}
-            title={`Switch to ${networkEnv === 'mainnet' ? 'testnet' : 'mainnet'}`}
-          >
-            <span style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              background: networkEnv === 'mainnet' ? '#00827B' : '#39BEB7',
-              boxShadow: networkEnv === 'mainnet' 
-                ? '0 0 8px rgba(0, 130, 123, 0.5)' 
-                : '0 0 8px rgba(57, 190, 183, 0.5)'
-            }} />
-            {networkEnv === 'mainnet' ? 'Mainnet' : 'Testnet'}
+        <div className="flex items-center gap-3">
+          {/* Post Button */}
+          <Link href="/attach-bounty">
+            <button className="px-4 py-2 rounded-lg text-sm font-normal bg-secondary text-foreground hover:bg-muted transition-colors">
+              + Post
           </button>
+          </Link>
           
-          {githubUser ? (
-            <div style={{ position: 'relative' }} ref={dropdownRef}>
+          {/* Connect/User Button */}
+          {githubUser && isConnected ? (
+            <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
-                style={{
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.opacity = '0.7';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.opacity = '1';
-                }}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all"
               >
                 <UserAvatar 
                   username={githubUser.githubUsername}
                   avatarUrl={githubUser.avatarUrl}
-                  size={36}
+                  size={18}
                 />
+                <span className="font-mono text-xs">
+                  {address.slice(0, 6)}...{address.slice(-4)}
+                </span>
               </button>
 
               {showDropdown && (
-                <div style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 8px)',
-                  right: 0,
-                  background: 'white',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '12px',
-                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
-                  minWidth: '240px',
-                  zIndex: 1000,
-                  overflow: 'hidden'
-                }}>
-                  <div style={{
-                    padding: '16px',
-                    borderBottom: '1px solid var(--color-border)'
-                  }}>
-                    <div style={{ 
-                      fontSize: '14px', 
-                      fontWeight: '600',
-                      marginBottom: '4px',
-                      color: 'var(--color-text-primary)'
-                    }}>
+                <div className="absolute top-full mt-2 right-0 w-64 bg-card border border-border rounded-xl shadow-lg overflow-hidden z-50">
+                  <div className="p-4 border-b border-border">
+                    <div className="text-sm font-medium mb-1">
                       @{githubUser.githubUsername}
                     </div>
-                    {isConnected && address && (
-                      <div style={{ 
-                        fontSize: '12px', 
-                        color: 'var(--color-text-secondary)',
-                        fontFamily: "'JetBrains Mono', monospace"
-                      }}>
+                    <div className="text-xs text-muted-foreground font-mono">
                         {address.slice(0, 6)}...{address.slice(-4)}
                       </div>
-                    )}
+                    <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-secondary text-xs text-muted-foreground">
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        networkEnv === 'mainnet' ? 'bg-primary' : 'bg-accent'
+                      }`} />
+                      {networkEnv === 'mainnet' ? 'Mainnet' : 'Testnet'}
+                    </div>
                   </div>
 
-                  <div style={{ padding: '8px' }}>
+                  <div className="p-2">
                     <Link
                       href="/account?tab=sponsored"
                       onClick={() => setShowDropdown(false)}
-                      style={{
-                        display: 'block',
-                        padding: '10px 12px',
-                        fontSize: '14px',
-                        color: isActive('/account') ? 'var(--color-primary)' : 'var(--color-text-primary)',
-                        background: isActive('/account') ? 'rgba(0, 130, 123, 0.08)' : 'transparent',
-                        textDecoration: 'none',
-                        borderRadius: '8px',
-                        transition: 'all 0.2s ease',
-                        fontWeight: isActive('/account') ? '600' : '500'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isActive('/account')) {
-                          e.currentTarget.style.background = 'var(--color-background-secondary)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isActive('/account')) {
-                          e.currentTarget.style.background = 'transparent';
-                        }
-                      }}
+                      className={`block px-3 py-2 text-sm rounded-lg transition-colors ${
+                        isActive('/account')
+                          ? 'bg-primary/10 text-primary font-medium'
+                          : 'text-foreground hover:bg-secondary'
+                      }`}
                     >
                       Account
                     </Link>
+                    <button
+                      onClick={handleNetworkSwitch}
+                      disabled={isSwitchingGroup}
+                      className="w-full px-3 py-2 text-sm text-left rounded-lg text-foreground hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Switch to {networkEnv === 'mainnet' ? 'Testnet' : 'Mainnet'}
+                    </button>
                   </div>
 
-                  <div style={{
-                    padding: '8px',
-                    borderTop: '1px solid var(--color-border)'
-                  }}>
+                  <div className="p-2 border-t border-border">
                     <button
                       onClick={handleLogout}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        fontSize: '14px',
-                        color: 'var(--color-error)',
-                        background: 'transparent',
-                        border: 'none',
-                        textAlign: 'left',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        fontWeight: '500'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 50, 0, 0.05)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
+                      className="w-full px-3 py-2 text-sm text-left rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
                     >
                       Logout
                     </button>
@@ -303,25 +184,9 @@ export default function Navbar() {
               onClick={() => {
                 window.location.href = `/api/oauth/github?returnTo=${encodeURIComponent('/')}`;
               }}
-              style={{
-                padding: '8px 20px',
-                borderRadius: '8px',
-                border: 'none',
-                fontSize: '14px',
-                fontWeight: '600',
-                background: 'var(--color-primary)',
-                color: 'white',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#39BEB7';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'var(--color-primary)';
-              }}
+              className="px-5 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
             >
-              Sign In
+              Connect
             </button>
           )}
         </div>
