@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { LinkIcon, GitHubIcon, CheckCircleIcon } from '@/components/Icons';
+import { GitHubIcon, CheckCircleIcon } from '@/components/Icons';
 
 function createSiweMessage({ domain, address, statement, uri, version, chainId, nonce }) {
   const message = [
@@ -225,9 +225,6 @@ export default function LinkWallet() {
   if (!isMounted) {
     return (
       <div className="max-w-3xl mx-auto px-6 py-24 text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <LinkIcon size={28} color="currentColor" />
-        </div>
         <p className="text-sm text-muted-foreground">Preparing your workspace...</p>
       </div>
     );
@@ -363,33 +360,28 @@ export default function LinkWallet() {
     if (!isConnected) {
       return (
         <section className={cardClasses}>
-          <div className="flex items-start gap-4">
-            <div className={iconBubbleClasses}>
-              <LinkIcon size={20} color="currentColor" />
+          <div className="space-y-4">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground/70">Step 2</p>
+              <h2 className="text-lg font-medium text-foreground">Connect your wallet</h2>
+              <p className="text-sm text-muted-foreground">
+                Link a wallet to receive bounty payouts. You'll only sign a verification message—no gas required.
+              </p>
             </div>
-            <div className="flex-1 space-y-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground/70">Step 2</p>
-                <h2 className="text-lg font-medium text-foreground">Connect your wallet</h2>
-                <p className="text-sm text-muted-foreground">
-                  Link a wallet to receive bounty payouts. You'll only sign a verification message—no gas required.
-                </p>
-              </div>
-              <ConnectButton.Custom>
-                {({ openConnectModal }) => (
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (openConnectModal) openConnectModal();
-                    }}
-                    disabled={!isMounted || !openConnectModal}
-                    className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Connect Wallet
-                  </button>
-                )}
-              </ConnectButton.Custom>
-            </div>
+            <ConnectButton.Custom>
+              {({ openConnectModal }) => (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (openConnectModal) openConnectModal();
+                  }}
+                  disabled={!isMounted || !openConnectModal}
+                  className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Connect Wallet
+                </button>
+              )}
+            </ConnectButton.Custom>
           </div>
         </section>
       );
@@ -410,16 +402,11 @@ export default function LinkWallet() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12 space-y-6">
-      <header className="text-center space-y-4">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <LinkIcon size={28} color="currentColor" />
-        </div>
-        <div className="space-y-2">
-          <h1 className="text-4xl font-light text-foreground/90">Claim Bounties</h1>
-          <p className="text-sm text-muted-foreground">
-            Link your GitHub account and wallet to receive automatic bounty payouts.
-          </p>
-        </div>
+      <header className="text-center space-y-3">
+        <h1 className="text-4xl font-light text-foreground/90">Claim Bounties</h1>
+        <p className="text-sm text-muted-foreground">
+          Link your GitHub account and wallet to receive automatic bounty payouts.
+        </p>
       </header>
 
       {(githubUser || address) && (

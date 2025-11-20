@@ -42,7 +42,7 @@ export default function Socials() {
           target="_blank"
           rel="noopener noreferrer"
           className="transition-opacity hover:opacity-70"
-          style={{ color: 'var(--color-primary)' }}
+          style={{ color: 'var(--muted-foreground)' }}
           aria-label={social.name}
         >
           {social.icon}

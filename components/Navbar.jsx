@@ -93,16 +93,16 @@ export default function Navbar() {
     }`}>
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <Image 
+          {/* <Image 
             src="/icons/og.png" 
             alt="BountyPay" 
             width={50} 
             height={50}
             className="rounded-lg"
-          />
-          {/* <span className="text-xl font-medium tracking-tight text-primary group-hover:opacity-80 transition-opacity">
+          /> */}
+          <span className="text-l font-sm tracking-tight text-primary group-hover:opacity-80 transition-opacity">
             BountyPay
-          </span> */}
+          </span>
         </Link>
 
         <div className="flex items-center gap-3">

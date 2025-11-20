@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { TargetIcon, PlusIcon, WalletIcon, GitHubIcon, CheckCircleIcon, AlertIcon, SettingsIcon } from '@/components/Icons';
+import { TargetIcon, PlusIcon, WalletIcon, GitHubIcon, CheckCircleIcon, AlertIcon, SettingsIcon, MoneyIcon } from '@/components/Icons';
 import UserAvatar from '@/components/UserAvatar';
 import { useAccount, useWalletClient } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
@@ -223,6 +223,27 @@ function AccountContent() {
     const decimals = tokenSymbol === 'MUSD' ? 18 : 6;
     const value = Number(amount) / Math.pow(10, decimals);
     return value.toFixed(0);
+  }
+
+  function formatStatusLabel(status) {
+    if (!status) return 'Unknown';
+    return status
+      .split('-')
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  }
+
+  function getStatusStyles(status) {
+    switch ((status || '').toLowerCase()) {
+      case 'open':
+        return { badge: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' };
+      case 'in-progress':
+        return { badge: 'bg-amber-50 text-amber-700', dot: 'bg-amber-500' };
+      case 'resolved':
+        return { badge: 'bg-slate-100 text-slate-700', dot: 'bg-slate-500' };
+      default:
+        return { badge: 'bg-muted text-foreground/70', dot: 'bg-foreground/60' };
+    }
   }
 
   function formatTimeLeft(deadline) {
@@ -578,64 +599,27 @@ function AccountContent() {
       {activeTab === 'sponsored' && (
         <>
           {showEmptyState ? (
-            <div className="animate-fade-in-up delay-100" style={{ 
-              textAlign: 'center',
-              padding: '80px 20px'
-            }}>
-              <div style={{
-                width: '80px',
-                height: '80px',
-                borderRadius: '16px',
-                background: 'rgba(131, 238, 232, 0.15)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 24px'
-              }}>
-                <TargetIcon size={40} color="var(--color-primary)" />
-              </div>
-
-              <h2 style={{ 
-                fontSize: '28px',
-                marginBottom: '12px',
-                fontFamily: "'Space Grotesk', sans-serif"
-              }}>
-                Create Your First Bounty
-              </h2>
-              
-              <p style={{ 
-                fontSize: '16px', 
-                color: 'var(--color-text-secondary)', 
-                maxWidth: '500px',
-                margin: '0 auto 32px',
-                lineHeight: '1.6'
-              }}>
-                Fund GitHub issues with crypto and start attracting contributors.
-              </p>
-
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <Link href="/link-wallet?type=funding">
-                  <button className="btn btn-primary" style={{ fontSize: '15px', padding: '12px 24px' }}>
+            <div className="min-h-[420px] flex items-center justify-center animate-fade-in-up delay-100">
+              <div className="w-full max-w-lg rounded-[36px] border border-border/60 bg-card p-10 text-center shadow-[0_50px_140px_rgba(15,23,42,0.18)] space-y-6">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <MoneyIcon size={32} color="currentColor" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-light text-foreground/90">Connect Wallet</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Link a wallet to start funding issues and automating contributor rewards.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <Link href="/link-wallet?type=funding" className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90">
                     <WalletIcon size={18} />
-                    Connect Wallet
-                  </button>
-                </Link>
-                
-                <Link href="/attach-bounty">
-                  <button 
-                    className="btn"
-                    style={{
-                      fontSize: '15px',
-                      padding: '12px 24px',
-                      background: 'white',
-                      border: '2px solid var(--color-border)',
-                      color: 'var(--color-text-primary)'
-                    }}
-                  >
+                    <span className="ml-2">Link Wallet</span>
+                  </Link>
+                  <Link href="/attach-bounty" className="inline-flex w-full items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary">
                     <PlusIcon size={18} />
-                    Create Bounty
-                  </button>
-                </Link>
+                    <span className="ml-2">Learn more about funding</span>
+                  </Link>
+                </div>
               </div>
             </div>
           ) : (
@@ -646,7 +630,7 @@ function AccountContent() {
                     VALUE LOCKED
                   </div>
                   <div className="text-foreground" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
-                    {stats?.totalValueLocked?.toLocaleString() || '0'}
+                    ${stats?.totalValueLocked?.toLocaleString() || '0'}
                   </div>
                   <div className="text-muted-foreground" style={{ fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
                     Across {stats?.openBounties || 0} open bounties
@@ -658,7 +642,7 @@ function AccountContent() {
                     TOTAL PAID
                   </div>
                   <div className="text-foreground" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
-                    {stats?.totalValuePaid?.toLocaleString() || '0'}
+                    ${stats?.totalValuePaid?.toLocaleString() || '0'}
                   </div>
                   <div className="text-muted-foreground" style={{ fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
                     {stats?.resolvedBounties || 0} contributors
@@ -688,7 +672,10 @@ function AccountContent() {
                     </div>
                   ) : (
               <div className="space-y-3 mt-1">
-                {displayBounties.map((bounty) => (
+                {displayBounties.map((bounty) => {
+                  const statusStyles = getStatusStyles(bounty.status);
+                  const statusLabel = formatStatusLabel(bounty.status);
+                  return (
                       <div 
                         key={bounty.bountyId}
                     className="group bg-card border border-border/40 rounded-[32px] p-6 flex flex-col md:flex-row md:items-center gap-4 shadow-sm transition-all duration-200 hover:border-primary/40 hover:shadow-md cursor-pointer"
@@ -708,13 +695,14 @@ function AccountContent() {
                       >
                     <div
                       className="text-foreground"
-                            style={{
+                      style={{
                         fontSize: '16px',
-                        fontWeight: '500',
-                        letterSpacing: '-0.01em',
-                              transition: 'all 0.2s ease'
-                            }}
-                          >
+                        fontWeight: '300',
+                        letterSpacing: '-0.02em',
+                        opacity: 0.9,
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
                       {bounty.repoFullName}#{bounty.issueNumber}
                     </div>
                           </button>
@@ -722,36 +710,24 @@ function AccountContent() {
                         {formatTimeLeft(bounty.deadline)}
                       </div>
                       </div>
-                      
-                    <div className="flex items-center gap-2">
-                      <div
-                        style={{
-                          width: '10px',
-                          height: '10px',
-                          borderRadius: '999px',
-                          background:
-                            bounty.status === 'open'
-                              ? '#00D084'
-                              : bounty.status === 'in-progress'
-                              ? '#3B82F6'
-                              : '#6B7280'
-                        }}
-                      ></div>
-                      <span className="text-foreground" style={{ fontSize: '13px', fontWeight: '400', textTransform: 'capitalize' }}>
-                        {bounty.status === 'open' ? 'open' : bounty.status}
-                      </span>
-                    </div>
-
+                    
                     <div className="ml-auto flex flex-col items-end gap-1">
-                      <div className="text-foreground" style={{ fontSize: '16px', fontWeight: '600' }}>
+                      <div className="text-foreground" style={{ fontSize: '16px', fontWeight: '300', letterSpacing: '-0.03em', color: '#0D473F' }}>
                         {formatAmount(bounty.amount, bounty.tokenSymbol)} {bounty.tokenSymbol}
                       </div>
-                      <div className="text-muted-foreground" style={{ fontSize: '12px', fontWeight: '300' }}>
-                        {(bounty.claimCount || 0).toString()} claims
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${statusStyles.badge}`}>
+                          <span className={`h-2.5 w-2.5 rounded-full ${statusStyles.dot}`} />
+                          {statusLabel}
+                        </span>
+                        <span className="text-muted-foreground" style={{ fontSize: '12px', fontWeight: '300' }}>
+                          {(bounty.claimCount || 0).toString()} claims
+                        </span>
                       </div>
                     </div>
                   </div>
-                ))}
+                );
+              })}
                   </div>
                 )}
           </div>
@@ -765,32 +741,38 @@ function AccountContent() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div className="stat-card animate-fade-in-up delay-100">
-              <div className="text-muted-foreground text-xs uppercase tracking-[0.2em]">
-                Total Earned
+              <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                TOTAL EARNED
               </div>
-              <div className="text-foreground text-3xl font-semibold mt-3">
+              <div className="text-foreground" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
                 ${totalEarned.toLocaleString()}
               </div>
-              <div className="text-muted-foreground text-sm mt-1">
+              <div className="text-muted-foreground" style={{ fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
                 {claimedBounties.filter(b => b.claimStatus === 'resolved' || b.claimStatus === 'paid').length} bounties
               </div>
             </div>
 
             <div className="stat-card animate-fade-in-up delay-200">
-              <div className="text-muted-foreground text-xs uppercase tracking-[0.2em]">
-                Active claims
+              <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                ACTIVE CLAIMS
               </div>
-              <div className="text-foreground text-3xl font-semibold mt-3">
+              <div className="text-foreground" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
                 {claimedBounties.filter(b => b.claimStatus === 'pending').length}
+              </div>
+              <div className="text-muted-foreground" style={{ fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
+                Awaiting payout
               </div>
             </div>
 
             <div className="stat-card animate-fade-in-up delay-300">
-              <div className="text-muted-foreground text-xs uppercase tracking-[0.2em]">
-                Completed
+              <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                COMPLETED
               </div>
-              <div className="text-foreground text-3xl font-semibold mt-3">
+              <div className="text-foreground" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
                 {claimedBounties.filter(b => b.claimStatus === 'resolved' || b.claimStatus === 'paid').length}
+              </div>
+              <div className="text-muted-foreground" style={{ fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
+                Paid submissions
               </div>
             </div>
           </div>
@@ -825,10 +807,17 @@ function AccountContent() {
                       <div>
                         <a
                           href={issueUrl}
-                        target="_blank"
+                          target="_blank"
                           rel="noreferrer"
                           className="text-foreground hover:text-primary transition-colors"
-                          style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px', display: 'inline-block' }}
+                          style={{
+                            fontSize: '14px',
+                            fontWeight: '300',
+                            letterSpacing: '-0.02em',
+                            marginBottom: '4px',
+                            display: 'inline-block',
+                            opacity: 0.9
+                          }}
                         >
                           {repoName}
                         </a>
@@ -836,7 +825,7 @@ function AccountContent() {
                           {bounty.paidAt ? `Paid ${new Date(bounty.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'Paid Recent'}
                       </div>
                     </div>
-                      <div className="text-foreground" style={{ fontSize: '16px', fontWeight: '500' }}>
+                      <div className="text-foreground" style={{ fontSize: '16px', fontWeight: '300', letterSpacing: '-0.03em', color: '#0D473F' }}>
                         {formatAmount(bounty.amount, bounty.tokenSymbol)} {bounty.tokenSymbol}
                         </div>
                         </div>

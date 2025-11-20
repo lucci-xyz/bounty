@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ethers } from 'ethers';
@@ -10,8 +10,54 @@ import { useNetwork } from '@/components/NetworkProvider';
 import { useBetaAccess } from '@/components/BetaAccessProvider';
 import BetaAccessModal from '@/components/BetaAccessModal';
 
+const STATUS_VARIANTS = {
+  success: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  error: 'bg-destructive/10 text-destructive border border-destructive/30',
+  loading: 'bg-primary/5 text-primary border border-primary/20',
+  info: 'bg-muted/40 text-foreground/80 border border-border/60'
+};
+
+const STATUS_ICONS = {
+  success: (
+    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">
+      ✓
+    </span>
+  ),
+  error: (
+    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-destructive/20 text-destructive text-xs font-semibold">
+      !
+    </span>
+  ),
+  loading: (
+    <span className="inline-flex h-5 w-5 items-center justify-center">
+      <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+    </span>
+  ),
+  info: (
+    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/70 text-xs font-semibold text-foreground/70">
+      i
+    </span>
+  )
+};
+
+function StatusBanner({ status }) {
+  if (!status?.message) return null;
+  const variantKey = STATUS_VARIANTS[status.type] ? status.type : 'info';
+  const icon = STATUS_ICONS[variantKey] || STATUS_ICONS.info;
+
+  return (
+    <div className={`rounded-2xl px-4 py-3 text-sm font-medium ${STATUS_VARIANTS[variantKey]}`}>
+      <div className="flex items-center gap-3">
+        {icon}
+        <p className="text-sm leading-snug">{status.message}</p>
+      </div>
+    </div>
+  );
+}
+
 function AttachBountyContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [amount, setAmount] = useState('');
   const [deadline, setDeadline] = useState('');
   const [status, setStatus] = useState({ message: '', type: '' });
@@ -29,6 +75,13 @@ function AttachBountyContent() {
   const repoId = searchParams.get('repoId');
   const installationId = searchParams.get('installationId');
   const presetAmount = searchParams.get('amount');
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/');
+    }
+  };
 
   const {
     registry,
@@ -57,10 +110,10 @@ function AttachBountyContent() {
   }, []);
 
   useEffect(() => {
-    if (isMounted && !betaLoading && !hasAccess) {
-      setShowBetaModal(true);
+    if (!betaLoading) {
+      setShowBetaModal(!hasAccess);
     }
-  }, [isMounted, betaLoading, hasAccess]);
+  }, [betaLoading, hasAccess]);
 
   useEffect(() => {
     if (!registry || Object.keys(registry).length === 0) {
@@ -469,92 +522,29 @@ function AttachBountyContent() {
   // Don't render wallet controls until mounted (prevents hydration mismatch)
   if (!isMounted || betaLoading) {
     return (
-      <div className="container" style={{ maxWidth: '600px', textAlign: 'center', padding: '100px 20px' }}>
-        <div style={{ fontSize: '16px', color: 'var(--color-text-secondary)' }}>Loading...</div>
+      <div className="min-h-screen bg-background/80 px-4 py-10 flex items-center justify-center">
+        <div className="w-full max-w-md rounded-[32px] border border-border/60 bg-card p-10 text-center shadow-[0_40px_120px_rgba(15,23,42,0.12)]">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <MoneyIcon size={24} color="currentColor" />
+          </div>
+          <p className="text-sm text-muted-foreground">Preparing bounty flow...</p>
+        </div>
       </div>
     );
   }
 
-  // Show beta gate if no access
-  if (!hasAccess) {
-    return (
-      <>
-        <div className="container" style={{ maxWidth: '600px', textAlign: 'center', padding: '100px 20px' }}>
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '24px'
-          }}>
-            <div style={{
-              width: '80px',
-              height: '80px',
-              borderRadius: '20px',
-              background: 'rgba(131, 238, 232, 0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <MoneyIcon size={40} color="var(--color-primary)" />
-            </div>
-            
-            <div>
-              <h1 style={{ 
-                fontSize: '28px',
-                fontFamily: "'Space Grotesk', sans-serif",
-                letterSpacing: '-0.02em',
-                marginBottom: '12px',
-                fontWeight: '600'
-              }}>
-                Beta Access Required
-              </h1>
-              <p style={{ 
-                fontSize: '15px',
-                color: 'var(--color-text-secondary)',
-                lineHeight: '1.6',
-                maxWidth: '420px',
-                margin: '0 auto'
-              }}>
-                Join our beta to start funding GitHub issues and automate contributor payments.
-              </p>
-            </div>
-
-            <button
-              onClick={() => setShowBetaModal(true)}
-              style={{
-                padding: '12px 24px',
-                borderRadius: '8px',
-                border: 'none',
-                fontSize: '15px',
-                fontWeight: '600',
-                background: '#00827B',
-                color: 'white',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#39BEB7';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#00827B';
-              }}
-            >
-              Apply for Beta Access
-            </button>
-          </div>
-        </div>
-
-        <BetaAccessModal 
-          isOpen={showBetaModal} 
-          onClose={() => setShowBetaModal(false)}
-          onAccessGranted={() => {
-            setShowBetaModal(false);
-            window.location.reload();
-          }}
-        />
-      </>
-    );
-  }
+  const betaModal = (
+    <BetaAccessModal
+      isOpen={!hasAccess && showBetaModal}
+      onClose={handleBack}
+      onDismiss={handleBack}
+      dismissLabel="Back"
+      onAccessGranted={() => {
+        setShowBetaModal(false);
+        router.refresh();
+      }}
+    />
+  );
 
   // Check if user came from GitHub App or direct visit
   const hasIssueData = repoFullName && issueNumber && repoId;
@@ -562,222 +552,196 @@ function AttachBountyContent() {
   // Direct visit - show setup options
   if (!hasIssueData) {
     return (
-      <div className="container" style={{ maxWidth: '600px' }}>
-        <div className="animate-fade-in-up" style={{ textAlign: 'center', marginBottom: '48px' }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            gap: '12px',
-            marginBottom: '16px'
-          }}>
-            <div style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: '16px',
-              background: 'rgba(131, 238, 232, 0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <MoneyIcon size={32} color="var(--color-primary)" />
+      <>
+        <div className="min-h-screen bg-background/80 px-4 py-10 flex items-center justify-center">
+          <div className="w-full max-w-2xl rounded-[36px] border border-border/60 bg-card p-10 shadow-[0_50px_140px_rgba(15,23,42,0.18)] space-y-8">
+            <button
+              onClick={handleBack}
+              className="inline-flex items-center gap-2 rounded-full border border-border/70 px-4 py-2 text-xs font-medium text-muted-foreground hover:border-primary hover:text-foreground transition-colors"
+            >
+              ← Back
+            </button>
+            <div className="text-center space-y-3">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <MoneyIcon size={26} color="currentColor" />
+              </div>
+              <h1 className="text-4xl font-light text-foreground/90">Create Bounty</h1>
+              <p className="text-sm text-muted-foreground">
+                Install the Lucci GitHub App to start funding issues directly from GitHub.
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-border/60 bg-muted/40 p-6 space-y-4">
+              <div className="space-y-2">
+                <h3 className="text-base font-medium text-foreground">Install GitHub App</h3>
+                <p className="text-sm text-muted-foreground">
+                  Add BountyPay to your repo, then trigger the “Attach Bounty” action from any issue.
+                </p>
+              </div>
+              <a
+                href="https://github.com/apps/bountypay"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+              >
+                <GitHubIcon size={18} color="currentColor" />
+                Install GitHub App
+              </a>
+            </div>
+
+            <div className="rounded-3xl border border-dashed border-border/60 bg-muted/30 p-6 text-sm text-muted-foreground">
+              Once installed, open any issue and hit “Attach Bounty” to land back on this page with the issue pre-filled.
             </div>
           </div>
-          <h1 style={{ 
-            fontSize: 'clamp(32px, 6vw, 40px)',
-            fontFamily: "'Space Grotesk', sans-serif",
-            letterSpacing: '-0.02em'
-          }}>
-            Create Bounty
-          </h1>
-          <p className="subtitle" style={{ fontSize: 'clamp(15px, 2.5vw, 16px)', marginBottom: '0' }}>
-            First, install the GitHub App to attach bounties to issues
-          </p>
         </div>
-
-        <div className="animate-fade-in-up delay-100">
-          <div className="card" style={{ marginBottom: '20px' }}>
-            <h3 style={{ marginBottom: '12px' }}>Install GitHub App</h3>
-            <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
-              Install BountyPay on your repositories, then create bounties directly from any issue.
-            </p>
-            <a 
-              href="https://github.com/apps/bountypay" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="btn btn-primary btn-full"
-            >
-              <GitHubIcon size={18} color="white" />
-              Install GitHub App
-            </a>
-          </div>
-
-          <div className="info-box">
-            <h3 style={{ fontSize: '16px', marginBottom: '12px' }}>After Installation</h3>
-            <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', margin: 0 }}>
-              Once installed, visit any issue in your repository and you'll see an "Attach Bounty" button. 
-              Click it to fund the issue with crypto.
-            </p>
-          </div>
-        </div>
-      </div>
+        {betaModal}
+      </>
     );
   }
 
   // From GitHub App - existing flow
   return (
-    <div className="container" style={{ maxWidth: '600px' }}>
-      <div className="animate-fade-in-up" style={{ textAlign: 'center', marginBottom: '48px' }}>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          gap: '12px',
-          marginBottom: '16px'
-        }}>
-          <div style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '16px',
-            background: 'rgba(131, 238, 232, 0.15)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <MoneyIcon size={32} color="var(--color-primary)" />
+    <div className="min-h-screen bg-background/80 px-4 py-10 flex items-center justify-center">
+      <div className="w-full max-w-3xl rounded-[36px] border border-border/60 bg-card p-6 md:p-10 shadow-[0_50px_140px_rgba(15,23,42,0.18)] space-y-6">
+        <button
+          onClick={handleBack}
+          className="inline-flex items-center gap-2 rounded-full border border-border/70 px-4 py-2 text-xs font-medium text-muted-foreground hover:border-primary hover:text-foreground transition-colors"
+        >
+          ← Back
+        </button>
+        <div className="text-center space-y-3">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <MoneyIcon size={32} color="currentColor" />
+          </div>
+          <h1 className="text-4xl font-light text-foreground/90">Attach Bounty</h1>
+          <p className="text-sm text-muted-foreground">
+            Fund this GitHub issue in crypto. Funds release automatically when the PR merges.
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-border/60 bg-muted/40 p-6 text-sm text-muted-foreground">
+          <div className="flex flex-col gap-2 text-left">
+            <div className="flex items-center justify-between text-foreground">
+              <span className="text-xs uppercase tracking-[0.35em] text-muted-foreground/70">Repository</span>
+              <span className="font-medium">{repoFullName}</span>
+            </div>
+            <div className="flex items-center justify-between text-foreground">
+              <span className="text-xs uppercase tracking-[0.35em] text-muted-foreground/70">Issue</span>
+              <span className="font-medium">#{issueNumber}</span>
+            </div>
+            <a
+              href={`https://github.com/${repoFullName}/issues/${issueNumber}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-primary hover:opacity-80"
+            >
+              View on GitHub →
+            </a>
           </div>
         </div>
-        <h1 style={{ 
-          fontSize: 'clamp(32px, 6vw, 40px)',
-          fontFamily: "'Space Grotesk', sans-serif",
-          letterSpacing: '-0.02em'
-        }}>
-          Attach Bounty
-        </h1>
-        <p className="subtitle" style={{ fontSize: 'clamp(15px, 2.5vw, 16px)', marginBottom: '0' }}>
-          Fund this issue with crypto. Payment triggers automatically when PR merges.
-        </p>
-      </div>
-
-      <div className="info-box animate-fade-in-up delay-100" style={{ marginBottom: '32px' }}>
-        <p><strong>Repository:</strong> {repoFullName}</p>
-        <p><strong>Issue:</strong> #{issueNumber}</p>
-        <p>
-          <a href={`https://github.com/${repoFullName}/issues/${issueNumber}`} target="_blank" rel="noopener noreferrer">
-            View on GitHub →
-          </a>
-        </p>
-      </div>
 
         {!isConnected ? (
-        <>
-            {/* Network selection handled globally via Navbar toggle */}
-
           <ConnectButton.Custom>
             {({ openConnectModal }) => (
               <button
                 onClick={(e) => {
                   e.preventDefault();
-                  if (openConnectModal) {
-                    openConnectModal();
-                  }
+                  openConnectModal?.();
                 }}
-                className="btn btn-primary btn-full"
+                className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={!isMounted || !openConnectModal}
-                style={{ cursor: (!isMounted || !openConnectModal) ? 'not-allowed' : 'pointer' }}
               >
                 Connect Wallet
               </button>
             )}
           </ConnectButton.Custom>
-        </>
-      ) : (
-        <>
-          <div className="wallet-info" style={{ marginBottom: '24px' }}>
-            <div><strong>Connected:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}</div>
-              <div><strong>Network:</strong> {chain?.name || network?.name} ({network?.token.symbol})</div>
-          </div>
-
-          {isConnected && !isChainSupported && (
-            <div className="status error" style={{ marginBottom: '24px' }}>
-              Connected network ({chain?.name || `Chain ID ${chain?.id}`}) isn't supported while {networkGroup === 'mainnet' ? 'mainnet' : 'testnet'} mode is active. Supported networks: {supportedNetworkNames.length ? supportedNetworkNames.join(', ') : 'No networks configured'}.
+        ) : (
+          <div className="space-y-5">
+            <div className="rounded-3xl border border-border/60 bg-muted/30 p-5 text-sm text-muted-foreground">
+              <div className="flex items-center justify-between text-foreground">
+                <span>Connected</span>
+                <span className="font-medium">{address?.slice(0, 6)}...{address?.slice(-4)}</span>
+              </div>
+              <div className="flex items-center justify-between text-foreground mt-2">
+                <span>Network</span>
+                <span className="font-medium">{chain?.name || network?.name} ({network?.token.symbol})</span>
+              </div>
             </div>
-          )}
 
-          <ConnectButton.Custom>
-            {({ openAccountModal, openChainModal }) => (
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (openAccountModal) {
-                      openAccountModal();
-                    }
-                  }}
-                  className="btn btn-secondary"
-                  disabled={!isMounted || !openAccountModal}
-                  style={{ flex: 1, margin: 0, fontSize: '14px', cursor: (!isMounted || !openAccountModal) ? 'not-allowed' : 'pointer' }}
-                >
-                  Change Wallet
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (openChainModal) {
-                      openChainModal();
-                    }
-                  }}
-                  className="btn btn-secondary"
-                  disabled={!isMounted || !openChainModal}
-                  style={{ flex: 1, margin: 0, fontSize: '14px', cursor: (!isMounted || !openChainModal) ? 'not-allowed' : 'pointer' }}
-                >
-                  Switch Network
-                </button>
+            {!isChainSupported && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Connected network ({chain?.name || `Chain ID ${chain?.id}`}) isn’t supported while {networkGroup === 'mainnet' ? 'mainnet' : 'testnet'} mode is active. Supported networks: {supportedNetworkNames.length ? supportedNetworkNames.join(', ') : 'None'}.
               </div>
             )}
-          </ConnectButton.Custom>
 
-          <div style={{ marginBottom: '24px' }}>
-            <label htmlFor="amount">
-              Bounty Amount ({network?.token.symbol || 'TOKEN'})
-            </label>
-            <input
-              type="number"
-              id="amount"
-              placeholder="500"
-              min="1"
-                step={network?.token.decimals === 18 ? "0.0001" : "0.01"}
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
+            <ConnectButton.Custom>
+              {({ openAccountModal, openChainModal }) => (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      openAccountModal?.();
+                    }}
+                    disabled={!isMounted || !openAccountModal}
+                    className="inline-flex items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Change Wallet
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      openChainModal?.();
+                    }}
+                    disabled={!isMounted || !openChainModal}
+                    className="inline-flex items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Switch Network
+                  </button>
+                </div>
+              )}
+            </ConnectButton.Custom>
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground/70">
+                  Bounty Amount ({network?.token.symbol || 'TOKEN'})
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step={network?.token.decimals === 18 ? '0.0001' : '0.01'}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  placeholder="500"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground/70">
+                  Deadline
+                </label>
+                <input
+                  type="date"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={fundBounty}
+              disabled={isProcessing}
+              className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isProcessing ? 'Processing...' : 'Fund Bounty'}
+            </button>
           </div>
+        )}
 
-          <div style={{ marginBottom: '32px' }}>
-            <label htmlFor="deadline">Deadline</label>
-            <input
-              type="date"
-              id="deadline"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-            />
-          </div>
-
-          <button 
-            className="btn btn-primary btn-full" 
-            onClick={fundBounty}
-            disabled={isProcessing}
-            style={{ opacity: isProcessing ? 0.6 : 1, cursor: isProcessing ? 'not-allowed' : 'pointer' }}
-          >
-            {isProcessing ? 'Processing...' : 'Fund Bounty'}
-          </button>
-        </>
-      )}
-
-      {status.message && (
-        <div className={`status ${status.type}`}>
-          {status.message}
-        </div>
-      )}
+        <StatusBanner status={status} />
+      </div>
+      {betaModal}
     </div>
   );
 }

@@ -4,13 +4,58 @@ import { useEffect, useState } from 'react';
 import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ethers } from 'ethers';
-import { RefreshIcon, AlertIcon } from '@/components/Icons';
+import { AlertIcon } from '@/components/Icons';
 import { useNetwork } from '@/components/NetworkProvider';
 
 const ESCROW_ABI = [
   'function refundExpired(bytes32 bountyId) external',
   'function getBounty(bytes32 bountyId) external view returns (tuple(bytes32 repoIdHash, address sponsor, address resolver, uint96 amount, uint64 deadline, uint64 issueNumber, uint8 status))'
 ];
+
+const STATUS_VARIANTS = {
+  success: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  error: 'bg-destructive/10 text-destructive border border-destructive/30',
+  loading: 'bg-primary/5 text-primary border border-primary/20',
+  info: 'bg-muted/40 text-foreground/80 border border-border/60'
+};
+
+const STATUS_ICONS = {
+  success: (
+    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">
+      ✓
+    </span>
+  ),
+  error: (
+    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-destructive/20 text-destructive text-xs font-semibold">
+      !
+    </span>
+  ),
+  loading: (
+    <span className="inline-flex h-5 w-5 items-center justify-center">
+      <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+    </span>
+  ),
+  info: (
+    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/70 text-xs font-semibold text-foreground/70">
+      i
+    </span>
+  )
+};
+
+function StatusBanner({ status }) {
+  if (!status?.message) return null;
+  const variantKey = STATUS_VARIANTS[status.type] ? status.type : 'info';
+  const icon = STATUS_ICONS[variantKey] || STATUS_ICONS.info;
+
+  return (
+    <div className={`rounded-2xl px-4 py-3 text-sm font-medium ${STATUS_VARIANTS[variantKey]}`}>
+      <div className="flex items-center gap-3">
+        {icon}
+        <p className="text-sm leading-snug">{status.message}</p>
+      </div>
+    </div>
+  );
+}
 
 export default function Refund() {
   const [bountyId, setBountyId] = useState('');
@@ -150,136 +195,122 @@ export default function Refund() {
   };
 
   return (
-    <div className="container" style={{ maxWidth: '600px' }}>
-      <div className="animate-fade-in-up" style={{ textAlign: 'center', marginBottom: '48px' }}>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          gap: '12px',
-          marginBottom: '16px'
-        }}>
-          <div style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '16px',
-            background: 'rgba(131, 238, 232, 0.15)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <RefreshIcon size={32} color="var(--color-primary)" />
+    <div className="min-h-screen bg-background/80 px-4 py-10 flex items-center justify-center">
+      <div className="w-full max-w-3xl rounded-[36px] border border-border/60 bg-card p-6 md:p-10 shadow-[0_50px_140px_rgba(15,23,42,0.18)] space-y-6">
+        <div className="text-center space-y-3">
+          <h1 className="text-4xl font-light text-foreground/90">Refund Bounty</h1>
+          <p className="text-sm text-muted-foreground">
+            Request funds back on expired bounties that were never resolved.
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900 flex gap-3">
+          <AlertIcon size={20} color="#B87D00" />
+          <div>
+            <p className="font-medium text-foreground">Eligibility</p>
+            <p className="text-sm text-amber-900/80 mt-1">
+              Refunds are only available once the deadline has passed without a resolution, and only by the original sponsor.
+            </p>
           </div>
         </div>
-        <h1 style={{ 
-          fontSize: 'clamp(32px, 6vw, 40px)',
-          fontFamily: "'Space Grotesk', sans-serif",
-          letterSpacing: '-0.02em'
-        }}>
-          Refund Bounty
-        </h1>
-        <p className="subtitle" style={{ fontSize: 'clamp(15px, 2.5vw, 16px)', marginBottom: '0' }}>
-          Request refund for expired bounties that were never resolved
-        </p>
-      </div>
 
-      <div className="warning animate-fade-in-up delay-100" style={{ marginBottom: '32px' }}>
-        <AlertIcon size={20} color="#B87D00" />
-        <div>
-          <strong>Eligibility Requirements</strong>
-          <div style={{ marginTop: '8px', fontSize: '13px' }}>
-            Refunds are only available for bounties that have passed their deadline without being resolved. You must be the original sponsor.
-          </div>
-        </div>
-      </div>
-
-      {!isConnected ? (
-        <>
-          {/* Network selection is now handled globally via Navbar toggle */}
-
+        {!isConnected ? (
           <ConnectButton.Custom>
             {({ openConnectModal }) => (
               <button
-                onClick={() => {
-                  console.log('Opening wallet modal for refund...');
-                  openConnectModal();
-                }}
-                className="btn btn-primary btn-full"
+                onClick={() => openConnectModal?.()}
+                className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
               >
                 Connect Wallet
               </button>
             )}
           </ConnectButton.Custom>
-        </>
-      ) : (
-        <>
-          <div className="wallet-info" style={{ marginBottom: '24px' }}>
-            <div><strong>Connected:</strong> {address?.slice(0, 6)}...{address?.slice(-4)}</div>
-            <div><strong>Network:</strong> {network?.name} ({network?.token.symbol})</div>
-          </div>
+        ) : (
+          <div className="space-y-5">
+            <div className="rounded-3xl border border-border/60 bg-muted/30 p-5 text-sm text-muted-foreground">
+              <div className="flex items-center justify-between text-foreground">
+                <span>Connected</span>
+                <span className="font-medium">{address?.slice(0, 6)}...{address?.slice(-4)}</span>
+              </div>
+              <div className="flex items-center justify-between text-foreground mt-2">
+                <span>Network</span>
+                <span className="font-medium">{network?.name} ({network?.token.symbol})</span>
+              </div>
+            </div>
 
-          <ConnectButton.Custom>
-            {({ openAccountModal, openChainModal }) => (
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-                <button
-                  onClick={openAccountModal}
-                  className="btn btn-secondary"
-                  style={{ flex: 1, margin: 0, fontSize: '14px' }}
-                >
-                  Change Wallet
-                </button>
-                <button
-                  onClick={openChainModal}
-                  className="btn btn-secondary"
-                  style={{ flex: 1, margin: 0, fontSize: '14px' }}
-                >
-                  Switch Network
-                </button>
+            <ConnectButton.Custom>
+              {({ openAccountModal, openChainModal }) => (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <button
+                    onClick={() => openAccountModal?.()}
+                    className="inline-flex items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary"
+                  >
+                    Change Wallet
+                  </button>
+                  <button
+                    onClick={() => openChainModal?.()}
+                    className="inline-flex items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary"
+                  >
+                    Switch Network
+                  </button>
+                </div>
+              )}
+            </ConnectButton.Custom>
+
+            <div className="space-y-3">
+              <label className="text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground/70">
+                Bounty ID
+              </label>
+              <input
+                type="text"
+                placeholder="0x..."
+                value={bountyId}
+                onChange={(e) => setBountyId(e.target.value)}
+                className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
+              />
+              <button
+                onClick={checkBounty}
+                className="inline-flex w-full items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary"
+              >
+                Check Bounty Status
+              </button>
+            </div>
+
+            {bountyInfo && (
+              <div className="rounded-3xl border border-border/60 bg-muted/40 p-5 text-sm text-muted-foreground space-y-2">
+                <div className="flex items-center justify-between text-foreground">
+                  <span>Amount</span>
+                  <span className="font-medium">{bountyInfo.amount} {network?.token.symbol}</span>
+                </div>
+                <div className="flex items-center justify-between text-foreground">
+                  <span>Deadline</span>
+                  <span className="font-medium">{bountyInfo.deadline}</span>
+                </div>
+                <div className="flex items-center justify-between text-foreground">
+                  <span>Status</span>
+                  <span className="font-medium">{bountyInfo.status}</span>
+                </div>
+                <div className="flex items-center justify-between text-foreground">
+                  <span>Sponsor</span>
+                  <code className="text-xs">{bountyInfo.sponsor}</code>
+                </div>
               </div>
             )}
-          </ConnectButton.Custom>
 
-          <div style={{ marginBottom: '24px' }}>
-            <label htmlFor="bountyId">Bounty ID</label>
-            <input
-              type="text"
-              id="bountyId"
-              placeholder="0x..."
-              value={bountyId}
-              onChange={(e) => setBountyId(e.target.value)}
-            />
+            {currentBounty && (
+              <button
+                onClick={requestRefund}
+                disabled={refunded}
+                className="inline-flex w-full items-center justify-center rounded-full bg-destructive px-6 py-3 text-sm font-medium text-destructive-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {refunded ? 'Refunded' : 'Request Refund'}
+              </button>
+            )}
           </div>
+        )}
 
-          <button className="btn btn-secondary btn-full" onClick={checkBounty} style={{ marginBottom: '24px' }}>
-            Check Bounty Status
-          </button>
-
-          {bountyInfo && (
-            <div className="info-box" style={{ marginBottom: '24px' }}>
-              <p><strong>Amount:</strong> {bountyInfo.amount} {network?.token.symbol}</p>
-              <p><strong>Deadline:</strong> {bountyInfo.deadline}</p>
-              <p><strong>Status:</strong> {bountyInfo.status}</p>
-              <p><strong>Sponsor:</strong> <code>{bountyInfo.sponsor}</code></p>
-            </div>
-          )}
-
-          {currentBounty && (
-            <button
-              className="btn btn-danger btn-full"
-              onClick={requestRefund}
-              disabled={refunded}
-            >
-              {refunded ? '✓ Refunded' : 'Request Refund'}
-            </button>
-          )}
-        </>
-      )}
-
-      {status.message && (
-        <div className={`status ${status.type}`}>
-          {status.message}
-        </div>
-      )}
+        <StatusBanner status={status} />
+      </div>
     </div>
   );
 }
