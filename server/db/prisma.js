@@ -389,6 +389,29 @@ export const prClaimQueries = {
       createdAt: Number(c.createdAt),
       resolvedAt: c.resolvedAt ? Number(c.resolvedAt) : null
     }));
+  },
+
+  countByBountyIds: async (bountyIds = []) => {
+    if (!Array.isArray(bountyIds) || bountyIds.length === 0) {
+      return {};
+    }
+
+    const counts = await prisma.prClaim.groupBy({
+      by: ['bountyId'],
+      _count: {
+        bountyId: true
+      },
+      where: {
+        bountyId: {
+          in: bountyIds
+        }
+      }
+    });
+
+    return counts.reduce((acc, entry) => {
+      acc[entry.bountyId] = entry._count?.bountyId ? Number(entry._count.bountyId) : 0;
+      return acc;
+    }, {});
   }
 };
 

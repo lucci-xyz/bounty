@@ -114,7 +114,7 @@ export default function Navbar() {
           </Link>
           
           {/* Connect/User Button */}
-          {githubUser && isConnected ? (
+          {githubUser ? (
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
@@ -125,8 +125,8 @@ export default function Navbar() {
                   avatarUrl={githubUser.avatarUrl}
                   size={18}
                 />
-                <span className="font-mono text-xs">
-                  {address.slice(0, 6)}...{address.slice(-4)}
+                <span className="text-xs font-medium">
+                  @{githubUser.githubUsername}
                 </span>
               </button>
 
@@ -137,8 +137,10 @@ export default function Navbar() {
                       @{githubUser.githubUsername}
                     </div>
                     <div className="text-xs text-muted-foreground font-mono">
-                        {address.slice(0, 6)}...{address.slice(-4)}
-                      </div>
+                      {isConnected && address
+                        ? `${address.slice(0, 6)}...${address.slice(-4)}`
+                        : 'Wallet not connected'}
+                    </div>
                     <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-secondary text-xs text-muted-foreground">
                       <span className={`w-1.5 h-1.5 rounded-full ${
                         networkEnv === 'mainnet' ? 'bg-primary' : 'bg-accent'

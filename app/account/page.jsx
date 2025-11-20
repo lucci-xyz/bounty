@@ -8,6 +8,7 @@ import UserAvatar from '@/components/UserAvatar';
 import { useAccount, useWalletClient } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { dummyUserBounties, dummyStats } from '@/dummy-data/dashboard';
+import AllowlistManager from '@/components/AllowlistManager';
 
 function createSiweMessage({ domain, address, statement, uri, version, chainId, nonce }) {
   const message = [
@@ -42,7 +43,11 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
   const [hasWallet, setHasWallet] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-  const bountiesPerPage = 5;
+  const bountiesPerPage = 4;
+  const [expandedBountyId, setExpandedBountyId] = useState(null);
+  const [allowlists, setAllowlists] = useState({});
+  const [allowlistLoading, setAllowlistLoading] = useState({});
+  const [allowlistModalBountyId, setAllowlistModalBountyId] = useState(null);
 
   const [profile, setProfile] = useState(null);
   const [claimedBounties, setClaimedBounties] = useState([]);
@@ -123,7 +128,10 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
 
   const fetchSponsoredData = async () => {
     if (useDummyData) {
-      setSponsoredBounties(dummyUserBounties);
+      setSponsoredBounties(dummyUserBounties.map((b) => ({
+        ...b,
+        claimCount: b.prClaims ? b.prClaims.length : 0
+      })));
       setStats(dummyStats);
       setHasWallet(true);
       return;
@@ -216,8 +224,43 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
     }
   };
 
-  const handleManage = (bountyId) => {
-    router.push(`/account/bounty/${bountyId}`);
+  const fetchAllowlistForBounty = async (bountyId) => {
+    if (!bountyId || allowlistLoading[bountyId]) return;
+    setAllowlistLoading((prev) => ({ ...prev, [bountyId]: true }));
+    try {
+      const res = await fetch(`/api/allowlist/${bountyId}`, {
+        credentials: 'include'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAllowlists((prev) => ({ ...prev, [bountyId]: data }));
+      } else {
+        setAllowlists((prev) => ({ ...prev, [bountyId]: [] }));
+      }
+    } catch (error) {
+      console.error('Error fetching allowlist:', error);
+      setAllowlists((prev) => ({ ...prev, [bountyId]: [] }));
+    } finally {
+      setAllowlistLoading((prev) => ({ ...prev, [bountyId]: false }));
+    }
+  };
+
+  const handleToggleBounty = (bountyId) => {
+    if (expandedBountyId !== bountyId && !allowlists[bountyId]) {
+      fetchAllowlistForBounty(bountyId);
+    }
+    setExpandedBountyId((prev) => (prev === bountyId ? null : bountyId));
+  };
+  
+  const handleOpenAllowlistModal = async (bountyId) => {
+    if (!allowlists[bountyId] && !allowlistLoading[bountyId]) {
+      await fetchAllowlistForBounty(bountyId);
+    }
+    setAllowlistModalBountyId(bountyId);
+  };
+
+  const handleCloseAllowlistModal = () => {
+    setAllowlistModalBountyId(null);
   };
 
   function formatAmount(amount, tokenSymbol) {
@@ -263,6 +306,34 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
     return '< 1h';
   }
 
+  function formatDeadlineDate(deadline) {
+    if (!deadline) return '-';
+    return new Date(Number(deadline) * 1000).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  }
+
+  const ArrowIcon = ({ direction = 'prev' }) => (
+    <svg
+      viewBox="0 0 12 12"
+      className="w-3 h-3"
+      style={direction === 'next' ? { transform: 'scaleX(-1)' } : undefined}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M7.5 2.5 L4.5 6 L7.5 9.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
+  );
+
   const handleSort = (key) => {
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -296,10 +367,22 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
     return 0;
   });
 
-  const totalPages = Math.ceil(sortedBounties.length / bountiesPerPage);
+  const totalPages = Math.max(1, Math.ceil(sortedBounties.length / bountiesPerPage));
   const startIndex = (currentPage - 1) * bountiesPerPage;
   const endIndex = startIndex + bountiesPerPage;
   const displayBounties = sortedBounties.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(prev, totalPages));
+  }, [totalPages]);
+
+  const handlePrevPage = () => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  };
 
   const logout = async () => {
     try {
@@ -556,6 +639,12 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
     ...(isAdmin ? [{ id: 'admin', label: 'Admin' }] : [])
   ];
 
+  const allowlistModalData = allowlistModalBountyId ? (allowlists[allowlistModalBountyId] || []) : [];
+  const allowlistModalLoading = allowlistModalBountyId ? allowlistLoading[allowlistModalBountyId] : false;
+  const allowlistModalBounty = allowlistModalBountyId
+    ? sponsoredBounties.find((b) => b.bountyId === allowlistModalBountyId) || null
+    : null;
+
   return (
     <div className="container" style={{ maxWidth: '1200px', padding: '40px 24px' }}>
       <div className="mb-2 animate-fade-in-up">
@@ -667,71 +756,195 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                 <div>
                   {sponsoredBounties.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                <p className="text-muted-foreground" style={{ fontSize: '14px', fontWeight: '300' }}>
+                      <p className="text-muted-foreground" style={{ fontSize: '14px', fontWeight: '300' }}>
                         No bounties found
                       </p>
                     </div>
                   ) : (
-              <div className="space-y-3 mt-1">
+                    <>
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-end gap-2 pr-4 text-sm text-muted-foreground">
+                          <button
+                            type="button"
+                            onClick={handlePrevPage}
+                            disabled={currentPage === 1}
+                            aria-label="Previous bounties"
+                            className="w-4 h-4 rounded-full bg-muted text-foreground flex items-center justify-center"
+                          >
+                            <ArrowIcon direction="prev" />
+                          </button>
+                          <span className="text-sm font-medium">
+                            {currentPage}/{totalPages}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleNextPage}
+                            disabled={currentPage === totalPages}
+                            aria-label="Next bounties"
+                            className="w-4 h-4 rounded-full bg-muted text-foreground flex items-center justify-center"
+                          >
+                            <ArrowIcon direction="next" />
+                          </button>
+                        </div>
+                      )}
+                      <div className="space-y-3 mt-1">
                 {displayBounties.map((bounty) => {
                   const statusStyles = getStatusStyles(bounty.status);
                   const statusLabel = formatStatusLabel(bounty.status);
+                  const isExpanded = expandedBountyId === bounty.bountyId;
+                  const isExpired = Number(bounty.deadline) < Math.floor(Date.now() / 1000);
+                  const allowlistData = allowlists[bounty.bountyId] || [];
+                  const isAllowlistLoading = !!allowlistLoading[bounty.bountyId];
+
                   return (
-                      <div 
-                        key={bounty.bountyId}
-                    className="group bg-card border border-border/40 rounded-[32px] p-6 flex flex-col md:flex-row md:items-center gap-4 shadow-sm transition-all duration-200 hover:border-primary/40 hover:shadow-md cursor-pointer"
-                  >
-                    <div style={{ flex: '1', minWidth: 0 }}>
-                      <button
-                        type="button"
-                        onClick={() => handleManage(bounty.bountyId)}
-                        className="text-left"
-                        style={{
-                          width: '100%',
-                          background: 'none',
-                          border: 'none',
-                          padding: 0,
-                          textAlign: 'left'
-                        }}
-                      >
-                    <div
-                      className="text-foreground"
-                      style={{
-                        fontSize: '16px',
-                        fontWeight: '300',
-                        letterSpacing: '-0.02em',
-                        opacity: 0.9,
-                        transition: 'all 0.2s ease'
-                      }}
+                    <div 
+                      key={bounty.bountyId}
+                      className="group bg-card border border-border/40 rounded-[32px] p-6 flex flex-col gap-4 shadow-sm transition-all duration-200 hover:border-primary/40 hover:shadow-md"
                     >
-                      {bounty.repoFullName}#{bounty.issueNumber}
-                    </div>
+                      <div className="flex flex-col md:flex-row md:items-center gap-4">
+                        <div style={{ flex: '1', minWidth: 0 }}>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleBounty(bounty.bountyId)}
+                            aria-expanded={isExpanded}
+                            className="text-left cursor-pointer w-full"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              textAlign: 'left'
+                            }}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className="text-foreground"
+                                style={{
+                                  fontSize: '16px',
+                                  fontWeight: '300',
+                                  letterSpacing: '-0.02em',
+                                  opacity: 0.9,
+                                  transition: 'all 0.2s ease'
+                                }}
+                              >
+                                {bounty.repoFullName}#{bounty.issueNumber}
+                              </div>
+                              <span className="text-xs text-muted-foreground">
+                                {isExpanded ? 'Hide details' : 'Show details'}
+                              </span>
+                            </div>
                           </button>
-                      <div className="text-muted-foreground mt-1" style={{ fontSize: '13px', fontWeight: '300' }}>
-                        {formatTimeLeft(bounty.deadline)}
+                          <div className="text-muted-foreground mt-1" style={{ fontSize: '13px', fontWeight: '300' }}>
+                            {formatTimeLeft(bounty.deadline)}
+                          </div>
+                        </div>
+                      
+                        <div className="ml-auto flex flex-col items-end gap-1">
+                          <div className="text-foreground" style={{ fontSize: '16px', fontWeight: '300', letterSpacing: '-0.03em', color: '#0D473F' }}>
+                            {formatAmount(bounty.amount, bounty.tokenSymbol)} {bounty.tokenSymbol}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${statusStyles.badge}`}>
+                              <span className={`h-2.5 w-2.5 rounded-full ${statusStyles.dot}`} />
+                              {statusLabel}
+                            </span>
+                            <span className="text-muted-foreground" style={{ fontSize: '12px', fontWeight: '300' }}>
+                              {(bounty.claimCount || 0).toString()} claims
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      </div>
-                    
-                    <div className="ml-auto flex flex-col items-end gap-1">
-                      <div className="text-foreground" style={{ fontSize: '16px', fontWeight: '300', letterSpacing: '-0.03em', color: '#0D473F' }}>
-                        {formatAmount(bounty.amount, bounty.tokenSymbol)} {bounty.tokenSymbol}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${statusStyles.badge}`}>
-                          <span className={`h-2.5 w-2.5 rounded-full ${statusStyles.dot}`} />
-                          {statusLabel}
-                        </span>
-                        <span className="text-muted-foreground" style={{ fontSize: '12px', fontWeight: '300' }}>
-                          {(bounty.claimCount || 0).toString()} claims
-                        </span>
-                      </div>
+
+                      {isExpanded && (
+                        <div className="rounded-[28px] border border-border/50 bg-muted/40 p-5 space-y-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-3">
+                            <a
+                              href={`https://github.com/${bounty.repoFullName}/issues/${bounty.issueNumber}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-light tracking-tight text-primary hover:text-primary/80 transition-colors"
+                            >
+                              View on GitHub ↗
+                            </a>
+                            <div className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground/80">
+                              {statusLabel}
+                            </div>
+                          </div>
+
+                          <div className="space-y-3 text-sm font-light text-foreground/80">
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground/80">Deadline</span>
+                              <span className="text-foreground">
+                                {formatDeadlineDate(bounty.deadline)} {isExpired ? '(Expired)' : ''}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground/80">Network</span>
+                              <span className="text-foreground">
+                                {bounty.network === 'MEZO_TESTNET' ? 'Mezo Testnet' : 'Base Sepolia'}
+                              </span>
+                            </div>
+                            {bounty.txHash && (
+                              <div className="flex flex-col gap-1">
+                                <span className="text-muted-foreground/80">Transaction</span>
+                                <a
+                                  href={
+                                    bounty.network === 'MEZO_TESTNET'
+                                      ? `https://explorer.test.mezo.org/tx/${bounty.txHash}`
+                                      : `https://sepolia.basescan.org/tx/${bounty.txHash}`
+                                  }
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-mono text-xs break-all text-foreground/90 hover:text-primary"
+                                >
+                                  {bounty.txHash}
+                                </a>
+                              </div>
+                            )}
+                          </div>
+
+                          {bounty.status === 'open' && isExpired && (
+                            <Link
+                              href={`/refund?bountyId=${bounty.bountyId}`}
+                              className="inline-flex items-center justify-center rounded-full border border-border/70 px-4 py-2 text-xs font-medium text-destructive/80 hover:border-destructive/60 hover:text-destructive transition-colors"
+                            >
+                              Request Refund
+                            </Link>
+                          )}
+
+                          {bounty.status === 'open' && (
+                            <div className="rounded-2xl border border-border/60 bg-white/40 p-4 shadow-sm">
+                              <div className="flex items-center justify-between gap-3">
+                                <div>
+                                  <div className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground/80 mb-1">
+                                    Allowlist
+                                  </div>
+                                  <div className="text-sm font-light">
+                                    {isAllowlistLoading && !allowlistData.length
+                                      ? 'Loading allowlist…'
+                                      : allowlistData.length > 0
+                                        ? `${allowlistData.length} address${allowlistData.length === 1 ? '' : 'es'}`
+                                        : 'Open to anyone'}
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenAllowlistModal(bounty.bountyId)}
+                                  className="text-xs font-medium text-foreground/80 hover:text-primary transition-colors"
+                                >
+                                  Manage
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                );
-              })}
-                  </div>
-                )}
-          </div>
+                  );
+                })}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </>
           )}
@@ -1321,6 +1534,54 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                   Add / import repository
                 </button>
               </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Allowlist Modal */}
+      {allowlistModalBountyId && (
+        <div 
+          className="fixed inset-0 bg-background/70 backdrop-blur-md flex items-center justify-center p-5 z-[9999]"
+          onClick={handleCloseAllowlistModal}
+        >
+          <div
+            className="bg-card rounded-2xl max-w-2xl w-full p-8 shadow-lg relative border border-border/40"
+            style={{ maxHeight: '85vh', overflowY: 'auto' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start gap-4 mb-6">
+              <div>
+                <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground/80 mb-2">
+                  Allowlist
+                </p>
+                <h2 className="text-foreground text-xl font-light tracking-tight">
+                  Manage Access
+                </h2>
+                {allowlistModalBounty && (
+                  <p className="text-sm text-muted-foreground/80 mt-1 font-light">
+                    {allowlistModalBounty.repoFullName}#{allowlistModalBounty.issueNumber}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={handleCloseAllowlistModal}
+                className="text-2xl leading-none text-muted-foreground hover:text-foreground transition-colors"
+                style={{ background: 'none', border: 'none' }}
+                aria-label="Close allowlist modal"
+              >
+                ×
+              </button>
+            </div>
+            {allowlistModalLoading && !allowlistModalData.length ? (
+              <div className="py-10 text-center text-sm text-muted-foreground">
+                Loading allowlist…
+              </div>
+            ) : (
+              <AllowlistManager
+                bountyId={allowlistModalBountyId}
+                initialAllowlist={allowlistModalData}
+              />
             )}
           </div>
         </div>

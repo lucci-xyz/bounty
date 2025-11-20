@@ -1,5 +1,5 @@
 import { getSession } from '@/lib/session';
-import { bountyQueries } from '@/server/db/prisma';
+import { bountyQueries, prClaimQueries } from '@/server/db/prisma';
 
 export async function GET(request) {
   try {
@@ -10,6 +10,9 @@ export async function GET(request) {
     }
 
     const bounties = await bountyQueries.findBySponsor(session.githubId);
+    const claimCounts = await prClaimQueries.countByBountyIds(
+      bounties.map((b) => b.bountyId)
+    );
     
     // Calculate stats for each bounty
     const bountiesWithStats = bounties.map(b => {
@@ -20,7 +23,8 @@ export async function GET(request) {
       return {
         ...b,
         isExpired,
-        daysRemaining: isExpired ? 0 : daysRemaining
+        daysRemaining: isExpired ? 0 : daysRemaining,
+        claimCount: claimCounts[b.bountyId] || 0
       };
     });
 
