@@ -3,7 +3,7 @@ import { getSession } from '@/lib/session';
 import { bountyQueries, userQueries } from '@/server/db/prisma';
 import { handleBountyCreated } from '@/server/github/webhooks';
 import { computeBountyIdOnNetwork, createRepoIdHash } from '@/server/blockchain/contract';
-import { getGitHubApp, initGitHubApp } from '@/server/github/client';
+import { getGitHubApp, getOctokit, initGitHubApp } from '@/server/github/client';
 import { getActiveAliasFromCookies } from '@/lib/network-env';
 import { REGISTRY } from '@/config/chain-registry';
 
@@ -66,12 +66,42 @@ export async function POST(request) {
       }
     }
 
+    let issueTitle = null;
+    let issueDescription = null;
+
+    if (installationId && installationId > 0 && repoFullName) {
+      try {
+        try {
+          getGitHubApp();
+        } catch {
+          console.log('📱 Initializing GitHub App...');
+          initGitHubApp();
+        }
+
+        const octokit = await getOctokit(installationId);
+        const [owner, repo] = repoFullName.split('/');
+
+        const { data: issue } = await octokit.rest.issues.get({
+          owner,
+          repo,
+          issue_number: issueNumber
+        });
+
+        issueTitle = issue.title;
+        issueDescription = issue.body;
+      } catch (issueError) {
+        console.warn('⚠️ Failed to fetch issue metadata (non-critical):', issueError.message);
+      }
+    }
+
     // Store in database
     await bountyQueries.create({
       bountyId,
       repoFullName,
       repoId,
       issueNumber,
+      issueTitle,
+      issueDescription,
       sponsorAddress,
       sponsorGithubId: session.githubId || null,
       token: tokenAddress,

@@ -243,7 +243,7 @@ export default function Home() {
                           textOverflow: 'ellipsis'
                         }}
                       >
-                        {bounty.issueDescription || 'Bounty'}
+                        {bounty.issueTitle || bounty.issueDescription || 'Bounty'}
                       </h3>
                       <p className="text-sm text-muted-foreground mt-1">
                         {bounty.repoFullName}
@@ -270,11 +270,13 @@ export default function Home() {
                 </div>
 
                 <Link
-                  href={`/account/bounty/${bounty.bountyId}`}
+                  href={`https://github.com/${bounty.repoFullName}/issues/${bounty.issueNumber}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="mt-auto inline-flex w-full items-center justify-center rounded-full border border-border/70 bg-muted/80 px-6 py-3 text-sm font-medium text-foreground/90 transition-all hover:bg-gray-100"
                   style={{ color: 'inherit' }}
                 >
-                  View
+                  View Issue
                 </Link>
               </div>
             );

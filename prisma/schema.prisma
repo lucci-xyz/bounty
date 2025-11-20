@@ -16,6 +16,8 @@ model Bounty {
   repoFullName      String    @map("repo_full_name")
   repoId            BigInt    @map("repo_id")
   issueNumber       Int       @map("issue_number")
+  issueTitle        String?   @map("issue_title")
+  issueDescription  String?   @map("issue_description")
   sponsorAddress    String    @map("sponsor_address")
   sponsorGithubId   BigInt?   @map("sponsor_github_id")
   token             String

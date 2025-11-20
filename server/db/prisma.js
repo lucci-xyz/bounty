@@ -39,6 +39,8 @@ export const bountyQueries = {
         repoFullName: bountyData.repoFullName,
         repoId: BigInt(bountyData.repoId),
         issueNumber: bountyData.issueNumber,
+        issueTitle: bountyData.issueTitle || null,
+        issueDescription: bountyData.issueDescription || null,
         sponsorAddress: bountyData.sponsorAddress,
         sponsorGithubId: bountyData.sponsorGithubId ? BigInt(bountyData.sponsorGithubId) : null,
         token: bountyData.token,
