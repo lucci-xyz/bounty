@@ -42,8 +42,6 @@ function AccountContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const bountiesPerPage = 5;
-  const [selectedRepo, setSelectedRepo] = useState('all');
-  const [collapsedRepos, setCollapsedRepos] = useState(new Set());
 
   const [profile, setProfile] = useState(null);
   const [claimedBounties, setClaimedBounties] = useState([]);
@@ -252,12 +250,7 @@ function AccountContent() {
     setCurrentPage(1);
   };
 
-  // Filter bounties by selected repository
-  const filteredBounties = selectedRepo === 'all' 
-    ? sponsoredBounties 
-    : sponsoredBounties.filter(b => b.repoFullName === selectedRepo);
-
-  const sortedBounties = [...filteredBounties].sort((a, b) => {
+  const sortedBounties = [...sponsoredBounties].sort((a, b) => {
     if (!sortConfig.key) return 0;
 
     let aValue, bValue;
@@ -280,64 +273,6 @@ function AccountContent() {
     if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
     return 0;
   });
-
-  // Group bounties by repository
-  const bountyGroups = sortedBounties.reduce((groups, bounty) => {
-    const repo = bounty.repoFullName;
-    if (!groups[repo]) {
-      groups[repo] = [];
-    }
-    groups[repo].push(bounty);
-    return groups;
-  }, {});
-
-  // Calculate per-repo stats
-  const repoStats = Object.entries(bountyGroups).map(([repo, bounties]) => {
-    const totalValue = bounties.reduce((sum, b) => {
-      const decimals = b.tokenSymbol === 'MUSD' ? 18 : 6;
-      return sum + (Number(b.amount) / Math.pow(10, decimals));
-    }, 0);
-    
-    return {
-      name: repo,
-      count: bounties.length,
-      totalValue: totalValue,
-      openCount: bounties.filter(b => b.status === 'open').length,
-      resolvedCount: bounties.filter(b => b.status === 'resolved').length
-    };
-  }).sort((a, b) => b.count - a.count); // Sort by bounty count
-
-  // Calculate filtered stats
-  const filteredStats = {
-    totalValueLocked: filteredBounties
-      .filter(b => b.status === 'open')
-      .reduce((sum, b) => {
-        const decimals = b.tokenSymbol === 'MUSD' ? 18 : 6;
-        return sum + (Number(b.amount) / Math.pow(10, decimals));
-      }, 0),
-    totalValuePaid: filteredBounties
-      .filter(b => b.status === 'resolved')
-      .reduce((sum, b) => {
-        const decimals = b.tokenSymbol === 'MUSD' ? 18 : 6;
-        return sum + (Number(b.amount) / Math.pow(10, decimals));
-      }, 0),
-    totalBounties: filteredBounties.length,
-    openBounties: filteredBounties.filter(b => b.status === 'open').length,
-    resolvedBounties: filteredBounties.filter(b => b.status === 'resolved').length,
-    refundedBounties: filteredBounties.filter(b => b.status === 'refunded').length
-  };
-
-  const displayStats = selectedRepo === 'all' ? stats : filteredStats;
-
-  const toggleRepoCollapse = (repo) => {
-    const newCollapsed = new Set(collapsedRepos);
-    if (newCollapsed.has(repo)) {
-      newCollapsed.delete(repo);
-    } else {
-      newCollapsed.add(repo);
-    }
-    setCollapsedRepos(newCollapsed);
-  };
 
   const totalPages = Math.ceil(sortedBounties.length / bountiesPerPage);
   const startIndex = (currentPage - 1) * bountiesPerPage;
@@ -720,53 +655,6 @@ function AccountContent() {
             </div>
           ) : (
             <>
-              {repoStats.length > 1 && (
-                <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-                    {repoStats.length} {repoStats.length === 1 ? 'repository' : 'repositories'}
-                  </div>
-                  <div style={{ position: 'relative' }}>
-                    <select
-                      value={selectedRepo}
-                      onChange={(e) => {
-                        setSelectedRepo(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      style={{
-                        padding: '8px 32px 8px 12px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--color-border)',
-                        background: 'white',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        color: 'var(--color-text-primary)',
-                        cursor: 'pointer',
-                        appearance: 'none',
-                        fontFamily: "'Space Grotesk', sans-serif"
-                      }}
-                    >
-                      <option value="all">All Repositories ({sponsoredBounties.length})</option>
-                      {repoStats.map((repo) => (
-                        <option key={repo.name} value={repo.name}>
-                          {repo.name} ({repo.count})
-                        </option>
-                      ))}
-                    </select>
-                    <div style={{
-                      position: 'absolute',
-                      right: '12px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      pointerEvents: 'none',
-                      color: 'var(--color-text-secondary)',
-                      fontSize: '12px'
-                    }}>
-                      ▼
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" style={{ marginBottom: '24px' }}>
                 <div className="card animate-fade-in-up delay-100" style={{
                   marginBottom: 0,
@@ -778,10 +666,10 @@ function AccountContent() {
                     VALUE LOCKED
                   </div>
                   <div style={{ fontSize: '28px', fontWeight: '700', marginBottom: '4px' }}>
-                    ${Math.round(displayStats?.totalValueLocked || 0).toLocaleString()}
+                    ${stats?.totalValueLocked.toLocaleString() || '0'}
                   </div>
                   <div style={{ fontSize: '12px', opacity: 0.85 }}>
-                    In {displayStats?.openBounties || 0} open bounties
+                    In {stats?.openBounties || 0} open bounties
                   </div>
                 </div>
 
@@ -790,10 +678,10 @@ function AccountContent() {
                     TOTAL PAID
                   </div>
                   <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--color-primary)', marginBottom: '4px' }}>
-                    ${Math.round(displayStats?.totalValuePaid || 0).toLocaleString()}
+                    ${stats?.totalValuePaid.toLocaleString() || '0'}
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-                    To {displayStats?.resolvedBounties || 0} contributors
+                    To {stats?.resolvedBounties || 0} contributors
                   </div>
                 </div>
 
@@ -802,10 +690,10 @@ function AccountContent() {
                     TOTAL BOUNTIES
                   </div>
                   <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--color-text-primary)', marginBottom: '4px' }}>
-                    {displayStats?.totalBounties || 0}
+                    {stats?.totalBounties || 0}
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-                    {displayStats?.openBounties || 0} open · {displayStats?.resolvedBounties || 0} resolved
+                    {stats?.openBounties || 0} open · {stats?.resolvedBounties || 0} resolved
                   </div>
                 </div>
 
@@ -814,7 +702,7 @@ function AccountContent() {
                     REFUNDED
                   </div>
                   <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--color-text-primary)', marginBottom: '4px' }}>
-                    {displayStats?.refundedBounties || 0}
+                    {stats?.refundedBounties || 0}
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
                     Expired bounties
@@ -834,333 +722,194 @@ function AccountContent() {
                   </h2>
                 </div>
 
-                {sponsoredBounties.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                    <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-                      No bounties found
-                    </p>
+                <div className="grid grid-cols-12 gap-4 px-4 py-4" style={{ 
+                  fontSize: '11px', 
+                  fontWeight: '600', 
+                  color: 'var(--color-text-secondary)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  borderBottom: '1px solid var(--color-border)'
+                }}>
+                  <div 
+                    className="col-span-5 flex items-center gap-1 cursor-pointer" 
+                    onClick={() => handleSort('bounty')}
+                    style={{ userSelect: 'none' }}
+                  >
+                    Bounty
+                    <span style={{ fontSize: '10px', opacity: sortConfig.key === 'bounty' ? 1 : 0.3 }}>
+                      {sortConfig.key === 'bounty' && sortConfig.direction === 'asc' ? '↑' : '↓'}
+                    </span>
                   </div>
-                ) : selectedRepo === 'all' && repoStats.length > 1 ? (
-                  // Grouped view by repository
-                  <div>
-                    {repoStats.map((repoStat, repoIndex) => {
-                      const isCollapsed = collapsedRepos.has(repoStat.name);
-                      const repoBounties = bountyGroups[repoStat.name] || [];
+                  <div 
+                    className="col-span-2 flex items-center justify-center gap-1 cursor-pointer"
+                    onClick={() => handleSort('status')}
+                    style={{ userSelect: 'none' }}
+                  >
+                    Status
+                    <span style={{ fontSize: '10px', opacity: sortConfig.key === 'status' ? 1 : 0.3 }}>
+                      {sortConfig.key === 'status' && sortConfig.direction === 'asc' ? '↑' : '↓'}
+                    </span>
+                  </div>
+                  <div 
+                    className="col-span-3 flex items-center gap-1 cursor-pointer"
+                    onClick={() => handleSort('timeLeft')}
+                    style={{ userSelect: 'none' }}
+                  >
+                    Time Left
+                    <span style={{ fontSize: '10px', opacity: sortConfig.key === 'timeLeft' ? 1 : 0.3 }}>
+                      {sortConfig.key === 'timeLeft' && sortConfig.direction === 'asc' ? '↑' : '↓'}
+                    </span>
+                  </div>
+                  <div 
+                    className="col-span-2 text-right flex items-center justify-end gap-1 cursor-pointer"
+                    onClick={() => handleSort('amount')}
+                    style={{ userSelect: 'none' }}
+                  >
+                    Amount
+                    <span style={{ fontSize: '10px', opacity: sortConfig.key === 'amount' ? 1 : 0.3 }}>
+                      {sortConfig.key === 'amount' && sortConfig.direction === 'asc' ? '↑' : '↓'}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  {sponsoredBounties.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                      <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
+                        No bounties found
+                      </p>
+                    </div>
+                  ) : (
+                    displayBounties.map((bounty, index) => (
+                      <div 
+                        key={bounty.bountyId}
+                        className="grid grid-cols-12 gap-4 px-4 cursor-pointer items-center transition-colors"
+                        style={{ 
+                          height: '52px',
+                          borderBottom: index < displayBounties.length - 1 ? '1px solid var(--color-border)' : 'none'
+                        }}
+                        onClick={() => handleManage(bounty.bountyId)}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(0, 130, 123, 0.02)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        <div className="col-span-5">
+                          <div style={{ 
+                            fontSize: '14px', 
+                            fontWeight: '500', 
+                            color: '#00827B'
+                          }}>
+                            {bounty.repoFullName}#{bounty.issueNumber}
+                          </div>
+                        </div>
+                        <div className="col-span-2 flex justify-center">
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '3px 10px',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            background: bounty.status === 'open' 
+                              ? 'rgba(0, 130, 123, 0.1)' 
+                              : 'rgba(131, 238, 232, 0.2)',
+                            color: bounty.status === 'open' 
+                              ? '#00827B' 
+                              : '#39BEB7'
+                          }}>
+                            {bounty.status}
+                          </span>
+                        </div>
+                        <div className="col-span-3">
+                          <div style={{ 
+                            fontSize: '13px',
+                            color: 'var(--color-text-secondary)'
+                          }}>
+                            {formatTimeLeft(bounty.deadline)}
+                          </div>
+                        </div>
+                        <div className="col-span-2 text-right">
+                          <div style={{ 
+                            fontSize: '14px', 
+                            fontWeight: '600', 
+                            color: '#00827B'
+                          }}>
+                            ${formatAmount(bounty.amount, bounty.tokenSymbol)}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {sortedBounties.length > 0 && (
+                  <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid var(--color-border)' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                      Showing {startIndex + 1}-{Math.min(endIndex, sortedBounties.length)} of {sortedBounties.length}
+                    </div>
+                    
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '4px',
+                          border: 'none',
+                          background: 'transparent',
+                          color: currentPage === 1 ? 'var(--color-text-secondary)' : 'var(--color-text-primary)',
+                          fontSize: '12px',
+                          cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                          fontWeight: '500',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        ‹
+                      </button>
                       
-                      return (
-                        <div key={repoStat.name} style={{ marginBottom: '16px' }}>
-                          {/* Repository Header */}
-                          <div
-                            onClick={() => toggleRepoCollapse(repoStat.name)}
+                      <div className="flex gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
                             style={{
-                              padding: '12px 16px',
-                              background: 'rgba(0, 130, 123, 0.03)',
-                              borderRadius: '8px',
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '4px',
+                              border: 'none',
+                              background: currentPage === page ? '#00827B' : 'transparent',
+                              color: currentPage === page ? 'white' : 'var(--color-text-secondary)',
+                              fontSize: '12px',
                               cursor: 'pointer',
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              transition: 'all 0.2s ease',
-                              marginBottom: isCollapsed ? 0 : '8px'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = 'rgba(0, 130, 123, 0.06)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'rgba(0, 130, 123, 0.03)';
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              <div style={{ fontSize: '18px' }}>{isCollapsed ? '📁' : '📂'}</div>
-                              <div>
-                                <div style={{ 
-                                  fontSize: '15px', 
-                                  fontWeight: '600', 
-                                  color: 'var(--color-text-primary)',
-                                  fontFamily: "'Space Grotesk', sans-serif"
-                                }}>
-                                  {repoStat.name}
-                                </div>
-                                <div style={{ 
-                                  fontSize: '12px', 
-                                  color: 'var(--color-text-secondary)',
-                                  marginTop: '2px'
-                                }}>
-                                  {repoStat.count} {repoStat.count === 1 ? 'bounty' : 'bounties'} · 
-                                  ${Math.round(repoStat.totalValue).toLocaleString()} · 
-                                  {repoStat.openCount} open · {repoStat.resolvedCount} resolved
-                                </div>
-                              </div>
-                            </div>
-                            <div style={{ 
-                              fontSize: '14px', 
-                              color: 'var(--color-text-secondary)',
-                              transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
-                              transition: 'transform 0.2s ease'
-                            }}>
-                              ▼
-                            </div>
-                          </div>
-
-                          {/* Repository Bounties */}
-                          {!isCollapsed && (
-                            <div style={{ 
-                              borderLeft: '2px solid rgba(0, 130, 123, 0.1)',
-                              marginLeft: '24px',
-                              paddingLeft: '16px'
-                            }}>
-                              {repoBounties.map((bounty, index) => (
-                                <div 
-                                  key={bounty.bountyId}
-                                  className="grid grid-cols-12 gap-4 px-4 cursor-pointer items-center transition-colors"
-                                  style={{ 
-                                    height: '48px',
-                                    borderBottom: index < repoBounties.length - 1 ? '1px solid var(--color-border)' : 'none'
-                                  }}
-                                  onClick={() => handleManage(bounty.bountyId)}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(0, 130, 123, 0.02)';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'transparent';
-                                  }}
-                                >
-                                  <div className="col-span-4">
-                                    <div style={{ 
-                                      fontSize: '14px', 
-                                      fontWeight: '500', 
-                                      color: '#00827B'
-                                    }}>
-                                      #{bounty.issueNumber}
-                                    </div>
-                                  </div>
-                                  <div className="col-span-3 flex justify-center">
-                                    <span style={{
-                                      display: 'inline-block',
-                                      padding: '3px 10px',
-                                      borderRadius: '4px',
-                                      fontSize: '11px',
-                                      fontWeight: '500',
-                                      background: bounty.status === 'open' 
-                                        ? 'rgba(0, 130, 123, 0.1)' 
-                                        : 'rgba(131, 238, 232, 0.2)',
-                                      color: bounty.status === 'open' 
-                                        ? '#00827B' 
-                                        : '#39BEB7'
-                                    }}>
-                                      {bounty.status}
-                                    </span>
-                                  </div>
-                                  <div className="col-span-3">
-                                    <div style={{ 
-                                      fontSize: '12px',
-                                      color: 'var(--color-text-secondary)'
-                                    }}>
-                                      {formatTimeLeft(bounty.deadline)}
-                                    </div>
-                                  </div>
-                                  <div className="col-span-2 text-right">
-                                    <div style={{ 
-                                      fontSize: '14px', 
-                                      fontWeight: '600', 
-                                      color: '#00827B'
-                                    }}>
-                                      ${formatAmount(bounty.amount, bounty.tokenSymbol)}
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  // Flat view for single repo or filtered view
-                  <div>
-                    <div className="grid grid-cols-12 gap-4 px-4 py-4" style={{ 
-                      fontSize: '11px', 
-                      fontWeight: '600', 
-                      color: 'var(--color-text-secondary)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      borderBottom: '1px solid var(--color-border)'
-                    }}>
-                      <div 
-                        className="col-span-5 flex items-center gap-1 cursor-pointer" 
-                        onClick={() => handleSort('bounty')}
-                        style={{ userSelect: 'none' }}
-                      >
-                        Issue
-                        <span style={{ fontSize: '10px', opacity: sortConfig.key === 'bounty' ? 1 : 0.3 }}>
-                          {sortConfig.key === 'bounty' && sortConfig.direction === 'asc' ? '↑' : '↓'}
-                        </span>
-                      </div>
-                      <div 
-                        className="col-span-2 flex items-center justify-center gap-1 cursor-pointer"
-                        onClick={() => handleSort('status')}
-                        style={{ userSelect: 'none' }}
-                      >
-                        Status
-                        <span style={{ fontSize: '10px', opacity: sortConfig.key === 'status' ? 1 : 0.3 }}>
-                          {sortConfig.key === 'status' && sortConfig.direction === 'asc' ? '↑' : '↓'}
-                        </span>
-                      </div>
-                      <div 
-                        className="col-span-3 flex items-center gap-1 cursor-pointer"
-                        onClick={() => handleSort('timeLeft')}
-                        style={{ userSelect: 'none' }}
-                      >
-                        Time Left
-                        <span style={{ fontSize: '10px', opacity: sortConfig.key === 'timeLeft' ? 1 : 0.3 }}>
-                          {sortConfig.key === 'timeLeft' && sortConfig.direction === 'asc' ? '↑' : '↓'}
-                        </span>
-                      </div>
-                      <div 
-                        className="col-span-2 text-right flex items-center justify-end gap-1 cursor-pointer"
-                        onClick={() => handleSort('amount')}
-                        style={{ userSelect: 'none' }}
-                      >
-                        Amount
-                        <span style={{ fontSize: '10px', opacity: sortConfig.key === 'amount' ? 1 : 0.3 }}>
-                          {sortConfig.key === 'amount' && sortConfig.direction === 'asc' ? '↑' : '↓'}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div>
-                      {displayBounties.map((bounty, index) => (
-                        <div 
-                          key={bounty.bountyId}
-                          className="grid grid-cols-12 gap-4 px-4 cursor-pointer items-center transition-colors"
-                          style={{ 
-                            height: '52px',
-                            borderBottom: index < displayBounties.length - 1 ? '1px solid var(--color-border)' : 'none'
-                          }}
-                          onClick={() => handleManage(bounty.bountyId)}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(0, 130, 123, 0.02)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'transparent';
-                          }}
-                        >
-                          <div className="col-span-5">
-                            <div style={{ 
-                              fontSize: '14px', 
-                              fontWeight: '500', 
-                              color: '#00827B'
-                            }}>
-                              {selectedRepo === 'all' ? `${bounty.repoFullName}#${bounty.issueNumber}` : `#${bounty.issueNumber}`}
-                            </div>
-                          </div>
-                          <div className="col-span-2 flex justify-center">
-                            <span style={{
-                              display: 'inline-block',
-                              padding: '3px 10px',
-                              borderRadius: '4px',
-                              fontSize: '12px',
-                              fontWeight: '500',
-                              background: bounty.status === 'open' 
-                                ? 'rgba(0, 130, 123, 0.1)' 
-                                : 'rgba(131, 238, 232, 0.2)',
-                              color: bounty.status === 'open' 
-                                ? '#00827B' 
-                                : '#39BEB7'
-                            }}>
-                              {bounty.status}
-                            </span>
-                          </div>
-                          <div className="col-span-3">
-                            <div style={{ 
-                              fontSize: '13px',
-                              color: 'var(--color-text-secondary)'
-                            }}>
-                              {formatTimeLeft(bounty.deadline)}
-                            </div>
-                          </div>
-                          <div className="col-span-2 text-right">
-                            <div style={{ 
-                              fontSize: '14px', 
-                              fontWeight: '600', 
-                              color: '#00827B'
-                            }}>
-                              ${formatAmount(bounty.amount, bounty.tokenSymbol)}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {sortedBounties.length > bountiesPerPage && (
-                      <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-                        <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-                          Showing {startIndex + 1}-{Math.min(endIndex, sortedBounties.length)} of {sortedBounties.length}
-                        </div>
-                        
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                            disabled={currentPage === 1}
-                            style={{
-                              padding: '4px 10px',
-                              borderRadius: '4px',
-                              border: 'none',
-                              background: 'transparent',
-                              color: currentPage === 1 ? 'var(--color-text-secondary)' : 'var(--color-text-primary)',
-                              fontSize: '12px',
-                              cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                              fontWeight: '500',
+                              fontWeight: currentPage === page ? '600' : '400',
                               transition: 'all 0.2s ease'
                             }}
                           >
-                            ‹
+                            {page}
                           </button>
-                          
-                          <div className="flex gap-1">
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                              <button
-                                key={page}
-                                onClick={() => setCurrentPage(page)}
-                                style={{
-                                  width: '24px',
-                                  height: '24px',
-                                  borderRadius: '4px',
-                                  border: 'none',
-                                  background: currentPage === page ? '#00827B' : 'transparent',
-                                  color: currentPage === page ? 'white' : 'var(--color-text-secondary)',
-                                  fontSize: '12px',
-                                  cursor: 'pointer',
-                                  fontWeight: currentPage === page ? '600' : '400',
-                                  transition: 'all 0.2s ease'
-                                }}
-                              >
-                                {page}
-                              </button>
-                            ))}
-                          </div>
-                          
-                          <button
-                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                            disabled={currentPage === totalPages}
-                            style={{
-                              padding: '4px 10px',
-                              borderRadius: '4px',
-                              border: 'none',
-                              background: 'transparent',
-                              color: currentPage === totalPages ? 'var(--color-text-secondary)' : 'var(--color-text-primary)',
-                              fontSize: '12px',
-                              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                              fontWeight: '500',
-                              transition: 'all 0.2s ease'
-                            }}
-                          >
-                            ›
-                          </button>
-                        </div>
+                        ))}
                       </div>
-                    )}
+                      
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '4px',
+                          border: 'none',
+                          background: 'transparent',
+                          color: currentPage === totalPages ? 'var(--color-text-secondary)' : 'var(--color-text-primary)',
+                          fontSize: '12px',
+                          cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                          fontWeight: '500',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        ›
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
