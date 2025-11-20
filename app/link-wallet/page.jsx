@@ -22,6 +22,48 @@ function createSiweMessage({ domain, address, statement, uri, version, chainId, 
   return message;
 }
 
+const cardClasses = 'rounded-3xl border border-border/60 bg-card p-6 shadow-sm';
+const iconBubbleClasses = 'flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary';
+const statusVariants = {
+  success: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  error: 'bg-destructive/10 text-destructive border border-destructive/30',
+  loading: 'bg-primary/5 text-primary border border-primary/20',
+  info: 'bg-muted/40 text-foreground/80 border border-border/60'
+};
+
+function StatusNotice({ status, className = '' }) {
+  if (!status?.message) return null;
+  const variant = statusVariants[status.type] || statusVariants.info;
+  const iconMap = {
+    success: <CheckCircleIcon size={16} color="currentColor" />,
+    error: (
+      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-destructive/20 text-[11px] font-semibold text-destructive">
+        !
+      </span>
+    ),
+    loading: (
+      <span className="inline-flex h-5 w-5 items-center justify-center">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+      </span>
+    ),
+    info: (
+      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/70 text-[11px] font-semibold text-foreground/70">
+        i
+      </span>
+    )
+  };
+  const icon = iconMap[status.type] || iconMap.info;
+
+  return (
+    <div className={`rounded-2xl px-4 py-3 text-sm font-medium ${variant} ${className}`}>
+      <div className="flex items-center gap-3">
+        {icon}
+        <p className="text-sm leading-snug">{status.message}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function LinkWallet() {
   const [githubUser, setGithubUser] = useState(null);
   const [hasExistingAccount, setHasExistingAccount] = useState(false);
@@ -182,264 +224,220 @@ export default function LinkWallet() {
 
   if (!isMounted) {
     return (
-      <div className="container" style={{ maxWidth: '600px', textAlign: 'center', padding: '100px 20px' }}>
-        <div style={{ fontSize: '16px', color: 'var(--color-text-secondary)' }}>Loading...</div>
+      <div className="max-w-3xl mx-auto px-6 py-24 text-center">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <LinkIcon size={28} color="currentColor" />
+        </div>
+        <p className="text-sm text-muted-foreground">Preparing your workspace...</p>
       </div>
     );
   }
 
-  return (
-    <div className="container" style={{ maxWidth: '600px', padding: '60px 20px' }}>
-      <div className="animate-fade-in-up" style={{ textAlign: 'center', marginBottom: '48px' }}>
-        <div style={{
-          width: '56px',
-          height: '56px',
-          borderRadius: '16px',
-          background: 'rgba(131, 238, 232, 0.15)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto 16px'
-        }}>
-          <LinkIcon size={32} color="var(--color-primary)" />
-        </div>
-        <h1 style={{ 
-          fontSize: 'clamp(28px, 6vw, 36px)',
-          fontFamily: "'Space Grotesk', sans-serif",
-          letterSpacing: '-0.02em',
-          marginBottom: '8px'
-        }}>
-          Claim Bounties
-        </h1>
-        <p style={{ fontSize: '15px', color: 'var(--color-text-secondary)' }}>
-          Link your account to receive automatic payments for completed bounties
-        </p>
-      </div>
+  const shortAddress = address ? `${address.slice(0, 8)}...${address.slice(-6)}` : '';
 
-      {/* Step 1: GitHub Authentication */}
-      {!githubUser ? (
-        <div className="card animate-fade-in-up delay-100">
-          <h3 style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{
-              width: '24px',
-              height: '24px',
-              borderRadius: '50%',
-              background: 'var(--color-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '12px',
-              fontWeight: 600,
-              color: 'white'
-            }}>1</span>
-            Connect GitHub
-          </h3>
-          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
-            First, authenticate with GitHub to verify your identity
-          </p>
-          
-          <button
-            className="btn btn-primary btn-full"
-            onClick={authenticateGitHub}
-          >
-            <GitHubIcon size={18} />
-            Connect with GitHub
-          </button>
-        </div>
-      ) : checkingAccount ? (
-        // Checking if user has account
-        <div className="card animate-fade-in-up" style={{ textAlign: 'center', padding: '40px 20px' }}>
-          <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-            Checking your account...
-          </div>
-        </div>
-      ) : hasExistingAccount ? (
-        // User already has an account
-        <div className="card animate-fade-in-up" style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
-            background: 'rgba(0, 130, 123, 0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 20px'
-          }}>
-            <CheckCircleIcon size={48} color="var(--color-primary)" />
-          </div>
-          <h3 style={{ 
-            marginBottom: '12px', 
-            color: 'var(--color-primary)', 
-            fontFamily: "'Space Grotesk', sans-serif",
-            fontSize: '22px'
-          }}>
-            You're All Set! ✨
-          </h3>
-          <p style={{ 
-            fontSize: '15px', 
-            color: 'var(--color-text-secondary)', 
-            marginBottom: '20px',
-            lineHeight: '1.6'
-          }}>
-            Your account is already set up and you're eligible to claim bounties.
-          </p>
-          
-          <div style={{ 
-            background: 'var(--color-background-secondary)',
-            padding: '16px',
-            borderRadius: '8px',
-            marginBottom: '24px',
-            textAlign: 'left'
-          }}>
-            <div style={{ fontSize: '13px', marginBottom: '8px' }}>
-              <strong>GitHub:</strong> @{githubUser.githubUsername}
+  const renderFlowCard = () => {
+    if (!githubUser) {
+      return (
+        <section className={cardClasses}>
+          <div className="flex items-start gap-4">
+            <div className={iconBubbleClasses}>
+              <GitHubIcon size={20} color="currentColor" />
             </div>
-            <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
-              ✅ Profile verified and ready for bounty payments
-            </div>
-          </div>
-
-          <button
-            onClick={() => window.close()}
-            className="btn btn-primary btn-full"
-          >
-            Continue
-          </button>
-        </div>
-      ) : profileCreated ? (
-        // Profile successfully created
-        <div className="card animate-fade-in-up" style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
-            background: 'rgba(0, 130, 123, 0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 20px'
-          }}>
-            <CheckCircleIcon size={48} color="var(--color-primary)" />
-          </div>
-          <h3 style={{ 
-            marginBottom: '12px', 
-            color: 'var(--color-primary)', 
-            fontFamily: "'Space Grotesk', sans-serif",
-            fontSize: '22px'
-          }}>
-            Profile Created! 🎉
-          </h3>
-          <p style={{ 
-            fontSize: '15px', 
-            color: 'var(--color-text-secondary)', 
-            marginBottom: '20px',
-            lineHeight: '1.6'
-          }}>
-            Your profile has been created and you're now eligible to claim bounties.
-          </p>
-          
-          <div style={{ 
-            background: 'var(--color-background-secondary)',
-            padding: '16px',
-            borderRadius: '8px',
-            marginBottom: '24px',
-            textAlign: 'left'
-          }}>
-            <div style={{ fontSize: '13px', marginBottom: '8px' }}>
-              <strong>GitHub:</strong> @{githubUser.githubUsername}
-            </div>
-            <div style={{ fontSize: '13px', marginBottom: '8px' }}>
-              <strong>Wallet:</strong> {address.slice(0, 10)}...{address.slice(-8)}
-            </div>
-            <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
-              ✅ Ready to receive bounty payments
-            </div>
-          </div>
-
-          <button
-            onClick={() => window.close()}
-            className="btn btn-primary btn-full"
-          >
-            Continue
-          </button>
-        </div>
-      ) : !isConnected ? (
-        // Step 2: Connect Wallet (only for new users)
-        <div className="card animate-fade-in-up delay-100">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-            <div style={{
-              width: '24px',
-              height: '24px',
-              borderRadius: '50%',
-              background: 'var(--color-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <CheckCircleIcon size={16} color="white" />
-            </div>
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: 600 }}>GitHub Connected</div>
-              <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>@{githubUser.githubUsername}</div>
-            </div>
-          </div>
-          
-          <div className="divider" style={{ margin: '20px 0' }}>
-            <span>Next</span>
-          </div>
-          
-          <h3 style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{
-              width: '24px',
-              height: '24px',
-              borderRadius: '50%',
-              background: 'var(--color-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '12px',
-              fontWeight: 600,
-              color: 'white'
-            }}>2</span>
-            Connect Your Wallet
-          </h3>
-          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
-            Connect a wallet to receive bounty payments. You'll sign a message to verify ownership (no fees).
-          </p>
-          
-          <ConnectButton.Custom>
-            {({ openConnectModal }) => (
+            <div className="flex-1 space-y-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground/70">Step 1</p>
+                <h2 className="text-lg font-medium text-foreground">Connect GitHub</h2>
+                <p className="text-sm text-muted-foreground">
+                  Authenticate with GitHub to verify your identity.
+                </p>
+              </div>
               <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (openConnectModal) openConnectModal();
-                }}
-                disabled={!isMounted || !openConnectModal}
-                className="btn btn-primary btn-full"
+                onClick={authenticateGitHub}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
               >
-                Connect Wallet
+                <GitHubIcon size={18} color="currentColor" />
+                Connect with GitHub
               </button>
-            )}
-          </ConnectButton.Custom>
-        </div>
-      ) : (
-        // Wallet connected, processing...
-        <div className="card animate-fade-in-up" style={{ textAlign: 'center' }}>
-          <div style={{ padding: '40px 20px' }}>
-            <div style={{ fontSize: '32px', marginBottom: '16px' }}>⏳</div>
-            <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-              {status.message || 'Setting up your profile...'}
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    if (checkingAccount) {
+      return (
+        <section className={`${cardClasses} text-center`}>
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+          </div>
+          <p className="text-sm text-muted-foreground">Checking your account...</p>
+        </section>
+      );
+    }
+
+    if (hasExistingAccount) {
+      return (
+        <section className={`${cardClasses} text-center space-y-5`}>
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+            <CheckCircleIcon size={28} color="currentColor" />
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2 text-primary">
+              <CheckCircleIcon size={20} color="currentColor" />
+              <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground/70">
+                Ready
+              </span>
+            </div>
+            <h3 className="text-xl font-medium text-foreground">You’re all set</h3>
+            <p className="text-sm text-muted-foreground">
+              Your account is already verified and ready for bounty payouts.
             </p>
           </div>
+          <div className="rounded-2xl border border-border/50 bg-muted/40 p-4 text-left text-sm text-muted-foreground">
+            <div className="flex items-center justify-between text-foreground/80">
+              <span>GitHub</span>
+              <span>@{githubUser.githubUsername}</span>
+            </div>
+            <hr className="my-3 border-border/40" />
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
+              Ready to receive payments
+            </p>
+          </div>
+          <button
+            onClick={() => window.close()}
+            className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            Continue
+          </button>
+        </section>
+      );
+    }
+
+    if (profileCreated) {
+      return (
+        <section className={`${cardClasses} text-center space-y-5`}>
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+            <CheckCircleIcon size={28} color="currentColor" />
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2 text-primary">
+              <CheckCircleIcon size={20} color="currentColor" />
+              <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground/70">
+                Linked
+              </span>
+            </div>
+            <h3 className="text-xl font-medium text-foreground">Profile created</h3>
+            <p className="text-sm text-muted-foreground">
+              You're now eligible to claim bounties automatically.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-border/50 bg-muted/40 p-4 text-left text-sm text-muted-foreground">
+            <div className="flex items-center justify-between text-foreground/80">
+              <span>GitHub</span>
+              <span>@{githubUser.githubUsername}</span>
+            </div>
+            {address && (
+              <>
+                <hr className="my-3 border-border/40" />
+                <div className="flex items-center justify-between text-foreground/80">
+                  <span>Wallet</span>
+                  <span>{shortAddress}</span>
+                </div>
+              </>
+            )}
+            <hr className="my-3 border-border/40" />
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
+              Ready to receive payments
+            </p>
+          </div>
+          <button
+            onClick={() => window.close()}
+            className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            Continue
+          </button>
+        </section>
+      );
+    }
+
+    if (!isConnected) {
+      return (
+        <section className={cardClasses}>
+          <div className="flex items-start gap-4">
+            <div className={iconBubbleClasses}>
+              <LinkIcon size={20} color="currentColor" />
+            </div>
+            <div className="flex-1 space-y-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground/70">Step 2</p>
+                <h2 className="text-lg font-medium text-foreground">Connect your wallet</h2>
+                <p className="text-sm text-muted-foreground">
+                  Link a wallet to receive bounty payouts. You'll only sign a verification message—no gas required.
+                </p>
+              </div>
+              <ConnectButton.Custom>
+                {({ openConnectModal }) => (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (openConnectModal) openConnectModal();
+                    }}
+                    disabled={!isMounted || !openConnectModal}
+                    className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Connect Wallet
+                  </button>
+                )}
+              </ConnectButton.Custom>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    return (
+      <section className={`${cardClasses} text-center space-y-3`}>
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+        </div>
+        <h3 className="text-lg font-medium text-foreground">Finishing up</h3>
+        <p className="text-sm text-muted-foreground">
+          {status.message || 'Setting up your profile...'}
+        </p>
+      </section>
+    );
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto px-6 py-12 space-y-6">
+      <header className="text-center space-y-4">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <LinkIcon size={28} color="currentColor" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-4xl font-light text-foreground/90">Claim Bounties</h1>
+          <p className="text-sm text-muted-foreground">
+            Link your GitHub account and wallet to receive automatic bounty payouts.
+          </p>
+        </div>
+      </header>
+
+      {(githubUser || address) && (
+        <div className={`${cardClasses} flex items-center justify-between text-sm text-muted-foreground`}>
+          <div>
+            <p className="text-foreground/80">GitHub</p>
+            <p className="text-foreground font-medium">{githubUser ? `@${githubUser.githubUsername}` : 'Not connected'}</p>
+          </div>
+          <div>
+            <p className="text-foreground/80">Wallet</p>
+            <p className="text-foreground font-medium">{address ? shortAddress : 'Not connected'}</p>
+          </div>
         </div>
       )}
 
-      {status.type === 'error' && (
-        <div className="status error" style={{ marginTop: '20px' }}>
-          {status.message}
-        </div>
-      )}
+      <StatusNotice status={status} />
+
+      {renderFlowCard()}
     </div>
   );
 }
