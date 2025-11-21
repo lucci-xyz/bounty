@@ -70,7 +70,7 @@ System alerts are automatically sent when critical issues occur:
 
 **Implementation:**
 ```javascript
-import { sendSystemEmail } from '@/server/notifications/email';
+import { sendSystemEmail } from '@/shared/server/notifications/email';
 
 await sendSystemEmail({
   subject: 'Critical Error: Bounty Payout Failed',
@@ -89,8 +89,8 @@ User notifications are sent to beta applicants when their application is reviewe
 
 **Implementation:**
 ```javascript
-import { sendUserEmail } from '@/server/notifications/email';
-import { betaApprovedTemplate } from '@/server/notifications/templates';
+import { sendUserEmail } from '@/shared/server/notifications/email';
+import { betaApprovedTemplate } from '@/shared/server/notifications/templates';
 
 const template = betaApprovedTemplate({
   username: 'johndoe',
@@ -165,7 +165,7 @@ Trigger a test error to verify system alerts work:
 
 ```javascript
 // In a test endpoint or console
-import { sendSystemEmail } from '@/server/notifications/email';
+import { sendSystemEmail } from '@/shared/server/notifications/email';
 
 await sendSystemEmail({
   subject: '[TEST] Email System Check',

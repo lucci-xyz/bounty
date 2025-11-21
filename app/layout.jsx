@@ -1,12 +1,12 @@
 import './globals.css';
 import '@rainbow-me/rainbowkit/styles.css';
-import { Providers } from '@/components/Providers';
-import { NetworkProvider } from '@/components/NetworkProvider';
-import { BetaAccessProvider } from '@/components/BetaAccessProvider';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
+import { Providers } from '@/shared/components/Providers';
+import { NetworkProvider } from '@/shared/components/NetworkProvider';
+import { BetaAccessProvider } from '@/features/beta-access/providers/BetaAccessProvider';
+import Navbar from '@/shared/components/Navbar';
+import Footer from '@/shared/components/Footer';
 import { Analytics } from '@vercel/analytics/react';
-import { MINI_APP_EMBED } from '@/app/base-mini-app/manifest';
+import { MINI_APP_EMBED } from '@/app/(public)/base-mini-app/manifest';
 
 export const metadata = {
   title: 'BountyPay - Automated GitHub Bounty Payments',
