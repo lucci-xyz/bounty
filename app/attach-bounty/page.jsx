@@ -562,9 +562,6 @@ function AttachBountyContent() {
               ← Back
             </button>
             <div className="text-center space-y-3">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                <MoneyIcon size={26} color="currentColor" />
-              </div>
               <h1 className="text-4xl font-light text-foreground/90">Create Bounty</h1>
               <p className="text-sm text-muted-foreground">
                 Install the Lucci GitHub App to start funding issues directly from GitHub.
@@ -584,8 +581,8 @@ function AttachBountyContent() {
                 rel="noopener noreferrer"
                 className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
               >
-                <GitHubIcon size={18} color="currentColor" />
-                Install GitHub App
+                <GitHubIcon size={18} color="white" />
+                <span className="text-white">Install GitHub App</span>
               </a>
             </div>
 

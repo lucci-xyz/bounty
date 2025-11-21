@@ -175,10 +175,9 @@ export default function Navbar() {
               onClick={() => {
                 window.location.href = `/api/oauth/github?returnTo=${encodeURIComponent('/')}`;
               }}
-              className="flex items-center justify-center w-10 h-10 rounded-full border border-border bg-card hover:bg-card/80 transition-all"
-              aria-label="Connect GitHub"
+              className="px-5 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
             >
-              <UserAvatar username="+" avatarUrl={null} size={34} />
+              Connect
             </button>
           )}
         </div>

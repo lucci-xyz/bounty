@@ -67,6 +67,7 @@ function StatusNotice({ status, className = '' }) {
 export default function LinkWallet() {
   const [githubUser, setGithubUser] = useState(null);
   const [hasExistingAccount, setHasExistingAccount] = useState(false);
+  const [hasLinkedWallet, setHasLinkedWallet] = useState(false);
   const [profileCreated, setProfileCreated] = useState(false);
   const [status, setStatus] = useState({ message: '', type: '' });
   const [isProcessing, setIsProcessing] = useState(false);
@@ -94,12 +95,12 @@ export default function LinkWallet() {
     }
   }, []);
 
-  // Auto-link wallet when both conditions met and user doesn't have account
+  // Auto-link wallet when both conditions met and user doesn't have wallet linked
   useEffect(() => {
-    if (githubUser && !hasExistingAccount && isConnected && address && walletClient && !profileCreated && !isProcessing) {
+    if (githubUser && !hasLinkedWallet && isConnected && address && walletClient && !profileCreated && !isProcessing) {
       createProfileWithWallet();
     }
-  }, [githubUser, hasExistingAccount, isConnected, address, walletClient, profileCreated, isProcessing]);
+  }, [githubUser, hasLinkedWallet, isConnected, address, walletClient, profileCreated, isProcessing]);
 
   const checkGitHubAuth = async () => {
     try {
@@ -114,18 +115,23 @@ export default function LinkWallet() {
       const user = await authRes.json();
       setGithubUser(user);
       
-      // Check if user already has an account
+      // Check if user already has a wallet linked
       setCheckingAccount(true);
       const profileRes = await fetch('/api/user/profile', {
         credentials: 'include'
       });
 
       if (profileRes.ok) {
-        const { user: dbUser } = await profileRes.json();
+        const { user: dbUser, wallet } = await profileRes.json();
         
         // User has an existing account
         if (dbUser) {
           setHasExistingAccount(true);
+        }
+        
+        // User has a wallet linked
+        if (wallet && wallet.walletAddress) {
+          setHasLinkedWallet(true);
         }
       }
       setCheckingAccount(false);
@@ -272,12 +278,9 @@ export default function LinkWallet() {
       );
     }
 
-    if (hasExistingAccount) {
+    if (hasLinkedWallet) {
       return (
         <section className={`${cardClasses} text-center space-y-5`}>
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-            <CheckCircleIcon size={28} color="currentColor" />
-          </div>
           <div className="flex flex-col items-center gap-2">
             <div className="flex items-center gap-2 text-primary">
               <CheckCircleIcon size={20} color="currentColor" />
@@ -285,7 +288,7 @@ export default function LinkWallet() {
                 Ready
               </span>
             </div>
-            <h3 className="text-xl font-medium text-foreground">You’re all set</h3>
+            <h3 className="text-xl font-medium text-foreground">You're all set</h3>
             <p className="text-sm text-muted-foreground">
               Your account is already verified and ready for bounty payouts.
             </p>
@@ -313,9 +316,6 @@ export default function LinkWallet() {
     if (profileCreated) {
       return (
         <section className={`${cardClasses} text-center space-y-5`}>
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-            <CheckCircleIcon size={28} color="currentColor" />
-          </div>
           <div className="flex flex-col items-center gap-2">
             <div className="flex items-center gap-2 text-primary">
               <CheckCircleIcon size={20} color="currentColor" />
