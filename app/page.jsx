@@ -239,7 +239,8 @@ export default function Home() {
                           WebkitLineClamp: 1,
                           WebkitBoxOrient: 'vertical',
                           overflow: 'hidden',
-                          textOverflow: 'ellipsis'
+                          textOverflow: 'ellipsis',
+                          textTransform: 'capitalize'
                         }}
                       >
                         {bounty.issueTitle || bounty.issueDescription || 'Bounty'}
