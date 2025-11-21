@@ -17,10 +17,74 @@ export async function initDB() {
   }
 }
 
+let hasIssueMetadataColumns;
+
+async function supportsIssueMetadata() {
+  if (hasIssueMetadataColumns !== undefined) return hasIssueMetadataColumns;
+  try {
+    const result = await prisma.$queryRaw`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_name = 'bounties'
+      AND table_schema = current_schema()
+      AND column_name IN ('issue_title', 'issue_description')
+    `;
+    hasIssueMetadataColumns = result.length > 0;
+  } catch {
+    hasIssueMetadataColumns = false;
+  }
+  return hasIssueMetadataColumns;
+}
+
+async function getBountySelect() {
+  const includeIssueMetadata = await supportsIssueMetadata();
+  return {
+    bountyId: true,
+    repoFullName: true,
+    repoId: true,
+    issueNumber: true,
+    sponsorAddress: true,
+    sponsorGithubId: true,
+    token: true,
+    amount: true,
+    deadline: true,
+    status: true,
+    txHash: true,
+    network: true,
+    chainId: true,
+    tokenSymbol: true,
+    environment: true,
+    createdAt: true,
+    updatedAt: true,
+    pinnedCommentId: true,
+    ...(includeIssueMetadata
+      ? {
+          issueTitle: true,
+          issueDescription: true
+        }
+      : {})
+  };
+}
+
+function normalizeBounty(bounty) {
+  if (!bounty) return null;
+  return {
+    ...bounty,
+    repoId: Number(bounty.repoId),
+    sponsorGithubId: bounty.sponsorGithubId ? Number(bounty.sponsorGithubId) : null,
+    deadline: Number(bounty.deadline),
+    createdAt: Number(bounty.createdAt),
+    updatedAt: Number(bounty.updatedAt),
+    pinnedCommentId: bounty.pinnedCommentId ? Number(bounty.pinnedCommentId) : null
+  };
+}
+
 // Bounty queries
 export const bountyQueries = {
   create: async (bountyData) => {
     const environment = CONFIG.envTarget || 'stage';
+    const includeIssueMetadata = await supportsIssueMetadata();
+    const bountySelect = await getBountySelect();
     
     // Validate required fields
     if (!bountyData.network) {
@@ -33,44 +97,42 @@ export const bountyQueries = {
       throw new Error('Token symbol is required to create bounty');
     }
     
+    const data = {
+      bountyId: bountyData.bountyId,
+      repoFullName: bountyData.repoFullName,
+      repoId: BigInt(bountyData.repoId),
+      issueNumber: bountyData.issueNumber,
+      sponsorAddress: bountyData.sponsorAddress,
+      sponsorGithubId: bountyData.sponsorGithubId ? BigInt(bountyData.sponsorGithubId) : null,
+      token: bountyData.token,
+      amount: bountyData.amount,
+      deadline: BigInt(bountyData.deadline),
+      status: bountyData.status,
+      txHash: bountyData.txHash || null,
+      network: bountyData.network,
+      chainId: bountyData.chainId,
+      tokenSymbol: bountyData.tokenSymbol,
+      environment: environment,
+      createdAt: BigInt(Date.now()),
+      updatedAt: BigInt(Date.now())
+    };
+
+    if (includeIssueMetadata) {
+      data.issueTitle = bountyData.issueTitle || null;
+      data.issueDescription = bountyData.issueDescription || null;
+    }
+
     const bounty = await prisma.bounty.create({
-      data: {
-        bountyId: bountyData.bountyId,
-        repoFullName: bountyData.repoFullName,
-        repoId: BigInt(bountyData.repoId),
-        issueNumber: bountyData.issueNumber,
-        issueTitle: bountyData.issueTitle || null,
-        issueDescription: bountyData.issueDescription || null,
-        sponsorAddress: bountyData.sponsorAddress,
-        sponsorGithubId: bountyData.sponsorGithubId ? BigInt(bountyData.sponsorGithubId) : null,
-        token: bountyData.token,
-        amount: bountyData.amount,
-        deadline: BigInt(bountyData.deadline),
-        status: bountyData.status,
-        txHash: bountyData.txHash || null,
-        network: bountyData.network,
-        chainId: bountyData.chainId,
-        tokenSymbol: bountyData.tokenSymbol,
-        environment: environment,
-        createdAt: BigInt(Date.now()),
-        updatedAt: BigInt(Date.now())
-      }
+      data,
+      select: bountySelect
     });
     
-    // Convert BigInt to numbers for JSON serialization
-    return {
-      ...bounty,
-      repoId: Number(bounty.repoId),
-      sponsorGithubId: bounty.sponsorGithubId ? Number(bounty.sponsorGithubId) : null,
-      deadline: Number(bounty.deadline),
-      createdAt: Number(bounty.createdAt),
-      updatedAt: Number(bounty.updatedAt),
-      pinnedCommentId: bounty.pinnedCommentId ? Number(bounty.pinnedCommentId) : null
-    };
+    return normalizeBounty(bounty);
   },
 
   findByIssue: async (repoId, issueNumber) => {
     const environment = CONFIG.envTarget || 'stage';
+    const bountySelect = await getBountySelect();
     
     const bounties = await prisma.bounty.findMany({
       where: {
@@ -81,102 +143,70 @@ export const bountyQueries = {
       },
       orderBy: {
         createdAt: 'desc'
-      }
+      },
+      select: bountySelect
     });
     
-    return bounties.map(b => ({
-      ...b,
-      repoId: Number(b.repoId),
-      sponsorGithubId: b.sponsorGithubId ? Number(b.sponsorGithubId) : null,
-      deadline: Number(b.deadline),
-      createdAt: Number(b.createdAt),
-      updatedAt: Number(b.updatedAt),
-      pinnedCommentId: b.pinnedCommentId ? Number(b.pinnedCommentId) : null
-    }));
+    return bounties.map(normalizeBounty);
   },
 
   findById: async (bountyId) => {
+    const bountySelect = await getBountySelect();
     const bounty = await prisma.bounty.findUnique({
-      where: { bountyId }
+      where: { bountyId },
+      select: bountySelect
     });
     
-    if (!bounty) return null;
-    
-    return {
-      ...bounty,
-      repoId: Number(bounty.repoId),
-      sponsorGithubId: bounty.sponsorGithubId ? Number(bounty.sponsorGithubId) : null,
-      deadline: Number(bounty.deadline),
-      createdAt: Number(bounty.createdAt),
-      updatedAt: Number(bounty.updatedAt),
-      pinnedCommentId: bounty.pinnedCommentId ? Number(bounty.pinnedCommentId) : null
-    };
+    return normalizeBounty(bounty);
   },
 
   updateStatus: async (bountyId, status, txHash = null) => {
+    const bountySelect = await getBountySelect();
     const bounty = await prisma.bounty.update({
       where: { bountyId },
       data: {
         status,
         txHash: txHash || undefined,
         updatedAt: BigInt(Date.now())
-      }
+      },
+      select: bountySelect
     });
     
-    return {
-      ...bounty,
-      repoId: Number(bounty.repoId),
-      sponsorGithubId: bounty.sponsorGithubId ? Number(bounty.sponsorGithubId) : null,
-      deadline: Number(bounty.deadline),
-      createdAt: Number(bounty.createdAt),
-      updatedAt: Number(bounty.updatedAt),
-      pinnedCommentId: bounty.pinnedCommentId ? Number(bounty.pinnedCommentId) : null
-    };
+    return normalizeBounty(bounty);
   },
 
   updatePinnedComment: async (bountyId, commentId) => {
+    const bountySelect = await getBountySelect();
     const bounty = await prisma.bounty.update({
       where: { bountyId },
       data: {
         pinnedCommentId: BigInt(commentId),
         updatedAt: BigInt(Date.now())
-      }
+      },
+      select: bountySelect
     });
     
-    return {
-      ...bounty,
-      repoId: Number(bounty.repoId),
-      sponsorGithubId: bounty.sponsorGithubId ? Number(bounty.sponsorGithubId) : null,
-      deadline: Number(bounty.deadline),
-      createdAt: Number(bounty.createdAt),
-      updatedAt: Number(bounty.updatedAt),
-      pinnedCommentId: bounty.pinnedCommentId ? Number(bounty.pinnedCommentId) : null
-    };
+    return normalizeBounty(bounty);
   },
 
   getExpired: async () => {
     const now = Math.floor(Date.now() / 1000);
+    const bountySelect = await getBountySelect();
     const bounties = await prisma.bounty.findMany({
       where: {
         status: 'open',
         deadline: {
           lt: BigInt(now)
         }
-      }
+      },
+      select: bountySelect
     });
     
-    return bounties.map(b => ({
-      ...b,
-      repoId: Number(b.repoId),
-      sponsorGithubId: b.sponsorGithubId ? Number(b.sponsorGithubId) : null,
-      deadline: Number(b.deadline),
-      createdAt: Number(b.createdAt),
-      updatedAt: Number(b.updatedAt),
-      pinnedCommentId: b.pinnedCommentId ? Number(b.pinnedCommentId) : null
-    }));
+    return bounties.map(normalizeBounty);
   },
 
   getAllOpen: async (repoId, environment) => {
+    const bountySelect = await getBountySelect();
     const bounties = await prisma.bounty.findMany({
       where: {
         repoId: BigInt(repoId),
@@ -185,22 +215,16 @@ export const bountyQueries = {
       },
       orderBy: {
         amount: 'desc' // Show highest bounties first
-      }
+      },
+      select: bountySelect
     });
     
-    return bounties.map(b => ({
-      ...b,
-      repoId: Number(b.repoId),
-      sponsorGithubId: b.sponsorGithubId ? Number(b.sponsorGithubId) : null,
-      deadline: Number(b.deadline),
-      createdAt: Number(b.createdAt),
-      updatedAt: Number(b.updatedAt),
-      pinnedCommentId: b.pinnedCommentId ? Number(b.pinnedCommentId) : null
-    }));
+    return bounties.map(normalizeBounty);
   },
 
   findAllOpen: async () => {
     const environment = CONFIG.envTarget || 'stage';
+    const bountySelect = await getBountySelect();
     const bounties = await prisma.bounty.findMany({
       where: {
         status: 'open',
@@ -208,22 +232,16 @@ export const bountyQueries = {
       },
       orderBy: {
         createdAt: 'desc'
-      }
+      },
+      select: bountySelect
     });
     
-    return bounties.map(b => ({
-      ...b,
-      repoId: Number(b.repoId),
-      sponsorGithubId: b.sponsorGithubId ? Number(b.sponsorGithubId) : null,
-      deadline: Number(b.deadline),
-      createdAt: Number(b.createdAt),
-      updatedAt: Number(b.updatedAt),
-      pinnedCommentId: b.pinnedCommentId ? Number(b.pinnedCommentId) : null
-    }));
+    return bounties.map(normalizeBounty);
   },
 
   findBySponsor: async (sponsorGithubId) => {
     const environment = CONFIG.envTarget || 'stage';
+    const bountySelect = await getBountySelect();
     const bounties = await prisma.bounty.findMany({
       where: {
         sponsorGithubId: BigInt(sponsorGithubId),
@@ -231,18 +249,11 @@ export const bountyQueries = {
       },
       orderBy: {
         createdAt: 'desc'
-      }
+      },
+      select: bountySelect
     });
     
-    return bounties.map(b => ({
-      ...b,
-      repoId: Number(b.repoId),
-      sponsorGithubId: b.sponsorGithubId ? Number(b.sponsorGithubId) : null,
-      deadline: Number(b.deadline),
-      createdAt: Number(b.createdAt),
-      updatedAt: Number(b.updatedAt),
-      pinnedCommentId: b.pinnedCommentId ? Number(b.pinnedCommentId) : null
-    }));
+    return bounties.map(normalizeBounty);
   }
 };
 
