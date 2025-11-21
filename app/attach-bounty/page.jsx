@@ -607,9 +607,6 @@ function AttachBountyContent() {
           ← Back
         </button>
         <div className="text-center space-y-3">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <MoneyIcon size={32} color="currentColor" />
-          </div>
           <h1 className="text-4xl font-light text-foreground/90">Attach Bounty</h1>
           <p className="text-sm text-muted-foreground">
             Fund this GitHub issue in crypto. Funds release automatically when the PR merges.
