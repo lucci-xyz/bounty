@@ -719,7 +719,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                   <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                     VALUE LOCKED
                   </div>
-                  <div className="text-foreground" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
+                  <div className="text-primary" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
                     ${stats?.totalValueLocked?.toLocaleString() || '0'}
                   </div>
                   <div className="text-muted-foreground" style={{ fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
@@ -731,7 +731,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                   <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                     TOTAL PAID
                   </div>
-                  <div className="text-foreground" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
+                  <div className="text-primary" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
                     ${stats?.totalValuePaid?.toLocaleString() || '0'}
                   </div>
                   <div className="text-muted-foreground" style={{ fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
@@ -743,7 +743,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                   <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                     REFUNDED
                   </div>
-                  <div className="text-foreground" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
+                  <div className="text-primary" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
                     {stats?.refundedBounties || 0}
                   </div>
                   <div className="text-muted-foreground" style={{ fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
@@ -951,7 +951,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
               <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 TOTAL EARNED
               </div>
-              <div className="text-foreground" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
+              <div className="text-primary" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
                 ${totalEarned.toLocaleString()}
               </div>
               <div className="text-muted-foreground" style={{ fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
@@ -963,7 +963,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
               <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 ACTIVE CLAIMS
               </div>
-              <div className="text-foreground" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
+              <div className="text-primary" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
                 {claimedBounties.filter(b => b.claimStatus === 'pending').length}
               </div>
               <div className="text-muted-foreground" style={{ fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
@@ -975,7 +975,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
               <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 COMPLETED
               </div>
-              <div className="text-foreground" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
+              <div className="text-primary" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
                 {claimedBounties.filter(b => b.claimStatus === 'resolved' || b.claimStatus === 'paid').length}
               </div>
               <div className="text-muted-foreground" style={{ fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
