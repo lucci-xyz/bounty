@@ -1,3 +1,4 @@
+import './schema';
 import { getSession } from '@/lib/session';
 import { prisma } from '@/server/db/prisma';
 import { NextResponse } from 'next/server';

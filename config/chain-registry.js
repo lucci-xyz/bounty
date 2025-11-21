@@ -1,5 +1,7 @@
 import { isAddress } from 'ethers';
 
+let hasLoggedSkippedAliases = false;
+
 // Curated network aliases with baseline configuration
 const CURATED_ALIASES = {
   BASE_MAINNET: {
@@ -103,6 +105,7 @@ export const ABIS = {
  */
 function buildRegistry() {
   const registry = {};
+  const skippedAliases = [];
   const groups = ['mainnet', 'testnet'];
 
   for (const group of groups) {
@@ -132,10 +135,18 @@ function buildRegistry() {
 
       const escrowAddress = escrowEnv || (isTestnet ? curated.defaultContracts?.escrow : undefined);
       if (!escrowAddress) {
-        throw new Error(`Missing required configuration for ${alias}: ${alias}_ESCROW_ADDRESS`);
+        skippedAliases.push({
+          alias,
+          reason: `Missing required configuration ${alias}_ESCROW_ADDRESS`
+        });
+        continue;
       }
       if (!isAddress(escrowAddress)) {
-        throw new Error(`Invalid escrow address for ${alias}: ${escrowAddress}`);
+        skippedAliases.push({
+          alias,
+          reason: `Invalid escrow address: ${escrowAddress}`
+        });
+        continue;
       }
 
       const tokenAddress = tokenEnv || (isTestnet ? curated.defaultToken?.address : undefined);
@@ -145,16 +156,32 @@ function buildRegistry() {
         : (isTestnet ? curated.defaultToken?.decimals : undefined);
 
       if (!tokenAddress || !tokenSymbol || tokenDecimals === undefined || tokenDecimals === null) {
-        throw new Error(`Missing token configuration for ${alias}: set ${alias}_TOKEN_ADDRESS, ${alias}_TOKEN_SYMBOL, ${alias}_TOKEN_DECIMALS`);
+        skippedAliases.push({
+          alias,
+          reason: `Missing token configuration. Set ${alias}_TOKEN_ADDRESS, ${alias}_TOKEN_SYMBOL, ${alias}_TOKEN_DECIMALS`
+        });
+        continue;
       }
       if (!isAddress(tokenAddress)) {
-        throw new Error(`Invalid token address for ${alias}: ${tokenAddress}`);
+        skippedAliases.push({
+          alias,
+          reason: `Invalid token address: ${tokenAddress}`
+        });
+        continue;
       }
       if (typeof tokenSymbol !== 'string' || tokenSymbol.length < 2 || tokenSymbol.length > 12) {
-        throw new Error(`Invalid token symbol for ${alias}: ${tokenSymbol}`);
+        skippedAliases.push({
+          alias,
+          reason: `Invalid token symbol: ${tokenSymbol}`
+        });
+        continue;
       }
       if (isNaN(tokenDecimals) || tokenDecimals < 0 || tokenDecimals > 18) {
-        throw new Error(`Invalid token decimals for ${alias}: ${tokenDecimals} (must be 0-18)`);
+        skippedAliases.push({
+          alias,
+          reason: `Invalid token decimals: ${tokenDecimals} (must be 0-18)`
+        });
+        continue;
       }
 
       // Build complete network config
@@ -180,6 +207,14 @@ function buildRegistry() {
   }
 
   // Validate at least one network is configured
+  if (skippedAliases.length > 0 && !hasLoggedSkippedAliases) {
+    console.warn('[chain-registry] Skipping misconfigured network aliases:');
+    for (const { alias, reason } of skippedAliases) {
+      console.warn(`  - ${alias}: ${reason}`);
+    }
+    hasLoggedSkippedAliases = true;
+  }
+
   if (Object.keys(registry).length === 0) {
     throw new Error('No networks configured. Set BLOCKCHAIN_SUPPORTED_MAINNET_ALIASES and/or BLOCKCHAIN_SUPPORTED_TESTNET_ALIASES');
   }

@@ -1,3 +1,4 @@
+import './schema';
 import { getSession } from '@/lib/session';
 import { generateNonce } from '@/server/auth/siwe';
 

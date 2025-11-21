@@ -6,6 +6,7 @@ import { computeBountyIdOnNetwork, createRepoIdHash } from '@/server/blockchain/
 import { getGitHubApp, getOctokit, initGitHubApp } from '@/server/github/client';
 import { getActiveAliasFromCookies } from '@/lib/network-env';
 import { REGISTRY } from '@/config/chain-registry';
+import { CreateBountyBodySchema } from './schema';
 
 export async function POST(request) {
   try {
@@ -15,6 +16,8 @@ export async function POST(request) {
     // Get active network alias from cookie (or use provided one)
     const defaultAlias = getActiveAliasFromCookies(cookieStore);
     
+    const body = CreateBountyBodySchema.parse(await request.json());
+
     const {
       repoFullName,
       repoId,
@@ -27,7 +30,7 @@ export async function POST(request) {
       installationId,
       network,
       tokenSymbol
-    } = await request.json();
+    } = body;
 
     // Use provided network or default from cookie
     const alias = network || defaultAlias;

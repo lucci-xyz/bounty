@@ -1,3 +1,4 @@
+import './schema';
 import { bountyQueries } from '@/server/db/prisma';
 import { getBountyFromContract } from '@/server/blockchain/contract';
 

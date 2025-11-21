@@ -1,3 +1,4 @@
+import './schema';
 import { bountyQueries } from '@/server/db/prisma';
 
 export async function GET(request) {

@@ -1,3 +1,4 @@
+import './schema';
 import { CONFIG } from '@/server/config';
 
 export const runtime = 'nodejs';

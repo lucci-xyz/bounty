@@ -1,3 +1,4 @@
+import './schema';
 import { NextResponse } from 'next/server';
 import { REGISTRY } from '@/config/chain-registry';
 

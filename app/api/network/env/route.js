@@ -1,3 +1,4 @@
+import './schema';
 import { cookies } from 'next/headers';
 import { NETWORK_ENV_COOKIE } from '@/lib/network-env';
 import { getDefaultAliasForGroup } from '@/config/chain-registry';

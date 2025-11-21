@@ -1,3 +1,4 @@
+import './schema';
 import { getSession } from '@/lib/session';
 import { getGitHubApp } from '@/server/github/client';
 

@@ -1,3 +1,4 @@
+import './schema';
 import { getSession } from '@/lib/session';
 import { userQueries, walletQueries } from '@/server/db/prisma';
 

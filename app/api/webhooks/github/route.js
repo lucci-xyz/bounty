@@ -1,3 +1,4 @@
+import './schema';
 import { getGitHubApp, initGitHubApp } from '@/server/github/client';
 import { handleWebhook } from '@/server/github/webhooks';
 

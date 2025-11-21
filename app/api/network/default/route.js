@@ -1,3 +1,4 @@
+import './schema';
 import { NextResponse } from 'next/server';
 import { getDefaultAliasForGroup } from '@/config/chain-registry';
 

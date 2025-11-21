@@ -1,3 +1,4 @@
+import './schema';
 import { getSession } from '@/lib/session';
 import { CONFIG } from '@/server/config';
 import { NextResponse } from 'next/server';

@@ -1,3 +1,4 @@
+import './schema';
 import { walletQueries } from '@/server/db/prisma';
 
 export async function GET(request, { params }) {

@@ -1,3 +1,4 @@
+import './schema';
 import { getSession } from '@/lib/session';
 import { bountyQueries } from '@/server/db/prisma';
 import { ethers } from 'ethers';

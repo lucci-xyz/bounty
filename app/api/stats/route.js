@@ -1,3 +1,4 @@
+import './schema';
 import { statsQueries } from '@/server/db/prisma';
 import { CONFIG } from '@/server/config';
 

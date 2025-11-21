@@ -1,3 +1,4 @@
+import './schema';
 import { getSession } from '@/lib/session';
 import { bountyQueries, prClaimQueries } from '@/server/db/prisma';
 
