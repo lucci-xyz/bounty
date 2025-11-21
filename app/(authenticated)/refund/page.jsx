@@ -6,56 +6,9 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ethers } from 'ethers';
 import { AlertIcon } from '@/shared/components/Icons';
 import { useNetwork } from '@/shared/components/NetworkProvider';
-
-const ESCROW_ABI = [
-  'function refundExpired(bytes32 bountyId) external',
-  'function getBounty(bytes32 bountyId) external view returns (tuple(bytes32 repoIdHash, address sponsor, address resolver, uint96 amount, uint64 deadline, uint64 issueNumber, uint8 status))'
-];
-
-const STATUS_VARIANTS = {
-  success: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  error: 'bg-destructive/10 text-destructive border border-destructive/30',
-  loading: 'bg-primary/5 text-primary border border-primary/20',
-  info: 'bg-muted/40 text-foreground/80 border border-border/60'
-};
-
-const STATUS_ICONS = {
-  success: (
-    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">
-      ✓
-    </span>
-  ),
-  error: (
-    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-destructive/20 text-destructive text-xs font-semibold">
-      !
-    </span>
-  ),
-  loading: (
-    <span className="inline-flex h-5 w-5 items-center justify-center">
-      <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
-    </span>
-  ),
-  info: (
-    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/70 text-xs font-semibold text-foreground/70">
-      i
-    </span>
-  )
-};
-
-function StatusBanner({ status }) {
-  if (!status?.message) return null;
-  const variantKey = STATUS_VARIANTS[status.type] ? status.type : 'info';
-  const icon = STATUS_ICONS[variantKey] || STATUS_ICONS.info;
-
-  return (
-    <div className={`rounded-2xl px-4 py-3 text-sm font-medium ${STATUS_VARIANTS[variantKey]}`}>
-      <div className="flex items-center gap-3">
-        {icon}
-        <p className="text-sm leading-snug">{status.message}</p>
-      </div>
-    </div>
-  );
-}
+import { useErrorModal } from '@/shared/components/ErrorModalProvider';
+import StatusNotice from '@/shared/components/StatusNotice';
+import { ABIS } from '@/config/chain-registry';
 
 export default function Refund() {
   const [bountyId, setBountyId] = useState('');
@@ -67,6 +20,7 @@ export default function Refund() {
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
   const { switchChain } = useSwitchChain();
+  const { showError } = useErrorModal();
 
   const { currentNetwork: network, registry, networkGroup, defaultAlias, selectedAlias, setSelectedAlias } = useNetwork();
 
@@ -114,7 +68,7 @@ export default function Refund() {
 
       // Create provider for reading contract
       const provider = new ethers.BrowserProvider(walletClient);
-      const escrow = new ethers.Contract(network.contracts.escrow, ESCROW_ABI, provider);
+      const escrow = new ethers.Contract(network.contracts.escrow, ABIS.escrow, provider);
       const bounty = await escrow.getBounty(bountyId);
 
       const amount = ethers.formatUnits(bounty.amount, network.token.decimals);
@@ -145,7 +99,10 @@ export default function Refund() {
       showStatus('✓ Eligible for refund', 'success');
     } catch (error) {
       console.error(error);
-      showStatus(error.message || 'An error occurred', 'error');
+      showError({
+        title: 'Bounty Check Failed',
+        message: error.message || 'An error occurred while checking the bounty',
+      });
       setBountyInfo(null);
       setCurrentBounty(null);
     }
@@ -168,7 +125,7 @@ export default function Refund() {
 
       const provider = new ethers.BrowserProvider(walletClient);
       const signer = await provider.getSigner();
-      const escrow = new ethers.Contract(network.contracts.escrow, ESCROW_ABI, signer);
+      const escrow = new ethers.Contract(network.contracts.escrow, ABIS.escrow, signer);
       
       // Networks without EIP-1559: use legacy transactions
       let txOverrides = {};
@@ -190,7 +147,12 @@ export default function Refund() {
       setRefunded(true);
     } catch (error) {
       console.error(error);
-      showStatus(error.message || 'Refund failed', 'error');
+      showError({
+        title: 'Refund Failed',
+        message: error.message || 'An error occurred while processing the refund',
+        primaryActionLabel: 'Try Again',
+        onPrimaryAction: requestRefund,
+      });
     }
   };
 
@@ -309,7 +271,7 @@ export default function Refund() {
           </div>
         )}
 
-        <StatusBanner status={status} />
+        <StatusNotice status={status} />
       </div>
     </div>
   );

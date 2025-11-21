@@ -9,51 +9,8 @@ import { MoneyIcon, GitHubIcon } from '@/shared/components/Icons';
 import { useNetwork } from '@/shared/components/NetworkProvider';
 import { useBetaAccess } from '@/features/beta-access/providers/BetaAccessProvider';
 import BetaAccessModal from '@/features/beta-access/components/BetaAccessModal';
-
-const STATUS_VARIANTS = {
-  success: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  error: 'bg-destructive/10 text-destructive border border-destructive/30',
-  loading: 'bg-primary/5 text-primary border border-primary/20',
-  info: 'bg-muted/40 text-foreground/80 border border-border/60'
-};
-
-const STATUS_ICONS = {
-  success: (
-    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">
-      ✓
-    </span>
-  ),
-  error: (
-    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-destructive/20 text-destructive text-xs font-semibold">
-      !
-    </span>
-  ),
-  loading: (
-    <span className="inline-flex h-5 w-5 items-center justify-center">
-      <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
-    </span>
-  ),
-  info: (
-    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/70 text-xs font-semibold text-foreground/70">
-      i
-    </span>
-  )
-};
-
-function StatusBanner({ status }) {
-  if (!status?.message) return null;
-  const variantKey = STATUS_VARIANTS[status.type] ? status.type : 'info';
-  const icon = STATUS_ICONS[variantKey] || STATUS_ICONS.info;
-
-  return (
-    <div className={`rounded-2xl px-4 py-3 text-sm font-medium ${STATUS_VARIANTS[variantKey]}`}>
-      <div className="flex items-center gap-3">
-        {icon}
-        <p className="text-sm leading-snug">{status.message}</p>
-      </div>
-    </div>
-  );
-}
+import { useErrorModal } from '@/shared/components/ErrorModalProvider';
+import StatusNotice from '@/shared/components/StatusNotice';
 
 function AttachBountyContent() {
   const searchParams = useSearchParams();
@@ -69,6 +26,7 @@ function AttachBountyContent() {
   const { data: walletClient } = useWalletClient();
   const { switchChain } = useSwitchChain();
   const { hasAccess, betaStatus, loading: betaLoading } = useBetaAccess();
+  const { showError } = useErrorModal();
 
   const repoFullName = searchParams.get('repo');
   const issueNumber = searchParams.get('issue');
@@ -505,15 +463,22 @@ function AttachBountyContent() {
       
       // Format error message for user display
       let userMessage = error.message || 'Failed to create bounty';
+      let details = null;
       
       // Add helpful context
       if (userMessage.includes('network')) {
-        userMessage += ` Make sure you're connected to ${network?.name}.`;
+        details = `Make sure you're connected to ${network?.name}.`;
       } else if (userMessage.includes('balance')) {
-        userMessage += ' Please add more funds to your wallet.';
+        details = 'Please add more funds to your wallet.';
       }
       
-      showStatus(userMessage, 'error');
+      showError({
+        title: 'Bounty Creation Failed',
+        message: userMessage,
+        details,
+        primaryActionLabel: 'Try Again',
+        onPrimaryAction: fundBounty,
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -733,7 +698,7 @@ function AttachBountyContent() {
           </div>
         )}
 
-        <StatusBanner status={status} />
+        <StatusNotice status={status} />
       </div>
       {betaModal}
     </div>

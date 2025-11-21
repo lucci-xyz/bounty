@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { getStatusColor, formatDate } from '@/shared/lib/utils';
 
 export default function BetaAdminPage() {
   const [applications, setApplications] = useState([]);
@@ -61,30 +62,6 @@ export default function BetaAdminPage() {
       alert(`Error: ${err.message}`);
     } finally {
       setProcessing({ ...processing, [applicationId]: false });
-    }
-  };
-
-  const formatDate = (timestamp) => {
-    const date = new Date(Number(timestamp));
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending':
-        return '#FFA500';
-      case 'approved':
-        return '#00827B';
-      case 'rejected':
-        return '#ff3b30';
-      default:
-        return 'var(--color-text-secondary)';
     }
   };
 

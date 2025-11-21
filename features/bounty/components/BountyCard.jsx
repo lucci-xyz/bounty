@@ -51,21 +51,6 @@ export default function BountyCard({ bounty, showActions = false, onManage }) {
     return stars.toString();
   }
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'open':
-        return 'var(--color-primary)';
-      case 'resolved':
-        return 'var(--color-success)';
-      case 'refunded':
-        return 'var(--color-warning)';
-      case 'canceled':
-        return 'var(--color-text-secondary)';
-      default:
-        return 'var(--color-text-secondary)';
-    }
-  };
-
   return (
     <div className="bounty-card"
     >

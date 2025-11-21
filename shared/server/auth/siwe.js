@@ -2,6 +2,7 @@ import { SiweMessage } from 'siwe';
 import { randomBytes } from 'crypto';
 import { CONFIG } from '../config.js';
 import { getDefaultAliasForGroup, REGISTRY } from '../../../config/chain-registry.js';
+import { createSiweMessageInstance } from '../../lib/siwe-message.js';
 
 /**
  * Generate a cryptographically secure SIWE nonce
@@ -57,17 +58,25 @@ function getDefaultChainId() {
  * @param {string} nonce - Unique nonce for this message
  * @param {number} [chainId] - Optional chainId, defaults to testnet default
  */
-export function createSIWEMessage(address, nonce, chainId) {
+const DEFAULT_SERVER_STATEMENT =
+  'Sign in to BountyPay to link your GitHub account with your wallet.';
+
+export function createSIWEMessage(address, nonce, chainId, overrides = {}) {
   const finalChainId = chainId || getDefaultChainId();
-  
-  return new SiweMessage({
-    domain: new URL(CONFIG.frontendUrl).host,
+
+  return createSiweMessageInstance({
     address,
-    statement: 'Sign in to BountyPay to link your GitHub account with your wallet.',
-    uri: CONFIG.frontendUrl,
-    version: '1',
+    nonce,
     chainId: finalChainId,
-    nonce
+    statement: overrides.statement || DEFAULT_SERVER_STATEMENT,
+    domain: overrides.domain || new URL(CONFIG.frontendUrl).host,
+    uri: overrides.uri || CONFIG.frontendUrl,
+    issuedAt: overrides.issuedAt,
+    resources: overrides.resources
   });
+}
+
+export function createSIWEMessageText(address, nonce, chainId, overrides) {
+  return createSIWEMessage(address, nonce, chainId, overrides).prepareMessage();
 }
 

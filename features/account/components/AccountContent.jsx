@@ -9,23 +9,9 @@ import { useAccount, useWalletClient } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { dummyUserBounties, dummyStats } from '@/shared/data/dashboard';
 import AllowlistManager from '@/features/account/components/AllowlistManager';
-
-function createSiweMessage({ domain, address, statement, uri, version, chainId, nonce }) {
-  const message = [
-    `${domain} wants you to sign in with your Ethereum account:`,
-    address,
-    '',
-    statement,
-    '',
-    `URI: ${uri}`,
-    `Version: ${version}`,
-    `Chain ID: ${chainId}`,
-    `Nonce: ${nonce}`,
-    `Issued At: ${new Date().toISOString()}`
-  ].join('\n');
-
-  return message;
-}
+import { createSiweMessageText } from '@/shared/lib/siwe-message';
+import { getStatusColor, formatDate } from '@/shared/lib/utils';
+import { useErrorModal } from '@/shared/components/ErrorModalProvider';
 
 export function AccountContent({ initialTab: initialTabOverride } = {}) {
   const router = useRouter();
@@ -69,6 +55,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
 
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
+  const { showError } = useErrorModal();
 
   const isLocal = process.env.NEXT_PUBLIC_ENV_TARGET === 'local';
   const useDummyData = process.env.NEXT_PUBLIC_USE_DUMMY_DATA === 'true';
@@ -513,14 +500,13 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
 
       const { nonce } = await nonceRes.json();
 
-      const message = createSiweMessage({
+      const message = createSiweMessageText({
         domain: window.location.host,
-        address: address,
+        address,
         statement: 'Sign in with Ethereum to link your wallet to BountyPay',
         uri: window.location.origin,
-        version: '1',
         chainId: chain.id,
-        nonce: nonce
+        nonce
       });
 
       setChangeWalletStatus({ message: 'Please sign the message in your wallet...', type: 'info' });
@@ -559,7 +545,12 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
       }, 1500);
     } catch (error) {
       console.error('Error changing wallet:', error);
-      setChangeWalletStatus({ message: error.message || 'An error occurred', type: 'error' });
+      showError({
+        title: 'Wallet Update Failed',
+        message: error.message || 'An error occurred while updating your wallet',
+        primaryActionLabel: 'Try Again',
+        onPrimaryAction: handleChangeWallet,
+      });
       setIsProcessingChange(false);
     }
   };
@@ -588,33 +579,12 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
       
       await fetchAdminData();
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      showError({
+        title: 'Review Failed',
+        message: err.message || 'Failed to review application',
+      });
     } finally {
       setProcessing({ ...processing, [applicationId]: false });
-    }
-  };
-
-  const formatDate = (timestamp) => {
-    const date = new Date(Number(timestamp));
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending':
-        return '#FFA500';
-      case 'approved':
-        return '#00827B';
-      case 'rejected':
-        return '#ff3b30';
-      default:
-        return 'var(--color-text-secondary)';
     }
   };
 
@@ -1188,7 +1158,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
               <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 Pending Review
               </div>
-              <div style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em', color: '#FFA500' }}>
+              <div style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em', color: getStatusColor('pending') }}>
                 {betaApplications.filter(app => app.status === 'pending').length}
               </div>
             </div>
@@ -1196,7 +1166,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
               <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 Approved
               </div>
-              <div style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em', color: 'var(--primary)' }}>
+              <div style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em', color: getStatusColor('approved') }}>
                 {betaApplications.filter(app => app.status === 'approved').length}
               </div>
             </div>
@@ -1204,7 +1174,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
               <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 Rejected
               </div>
-              <div style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em', color: 'var(--destructive)' }}>
+              <div style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em', color: getStatusColor('rejected') }}>
                 {betaApplications.filter(app => app.status === 'rejected').length}
               </div>
             </div>
@@ -1232,7 +1202,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                         >
                           @{app.githubUsername}
                         </a>
-                        <span className="bounty-tag" style={{ background: 'rgba(255, 165, 0, 0.1)', color: '#FFA500', fontSize: '11px' }}>
+                        <span className="bounty-tag" style={{ background: `${getStatusColor(app.status)}15`, color: getStatusColor(app.status), fontSize: '11px' }}>
                           {app.status}
                         </span>
                       </div>

@@ -6,6 +6,7 @@ import { injectedWallet, metaMaskWallet, coinbaseWallet, walletConnectWallet, ra
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { baseSepolia } from 'wagmi/chains';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+import { ErrorModalProvider } from '@/shared/components/ErrorModalProvider';
 
 // Define custom Mezo Testnet chain
 const mezoTestnet = {
@@ -83,7 +84,9 @@ export function Providers({ children }) {
           theme={customTheme} 
           modalSize="compact"
         >
-          {children}
+          <ErrorModalProvider>
+            {children}
+          </ErrorModalProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

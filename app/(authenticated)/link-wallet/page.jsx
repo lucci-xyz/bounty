@@ -3,66 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { GitHubIcon, CheckCircleIcon } from '@/shared/components/Icons';
-
-function createSiweMessage({ domain, address, statement, uri, version, chainId, nonce }) {
-  const message = [
-    `${domain} wants you to sign in with your Ethereum account:`,
-    address,
-    '',
-    statement,
-    '',
-    `URI: ${uri}`,
-    `Version: ${version}`,
-    `Chain ID: ${chainId}`,
-    `Nonce: ${nonce}`,
-    `Issued At: ${new Date().toISOString()}`
-  ].join('\n');
-
-  return message;
-}
+import { GitHubIcon } from '@/shared/components/Icons';
+import { createSiweMessageText } from '@/shared/lib/siwe-message';
+import { useErrorModal } from '@/shared/components/ErrorModalProvider';
+import StatusNotice from '@/shared/components/StatusNotice';
 
 const cardClasses = 'rounded-3xl border border-border/60 bg-card p-6 shadow-sm';
-const iconBubbleClasses = 'flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary';
-const statusVariants = {
-  success: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  error: 'bg-destructive/10 text-destructive border border-destructive/30',
-  loading: 'bg-primary/5 text-primary border border-primary/20',
-  info: 'bg-muted/40 text-foreground/80 border border-border/60'
-};
-
-function StatusNotice({ status, className = '' }) {
-  if (!status?.message) return null;
-  const variant = statusVariants[status.type] || statusVariants.info;
-  const iconMap = {
-    success: <CheckCircleIcon size={16} color="currentColor" />,
-    error: (
-      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-destructive/20 text-[11px] font-semibold text-destructive">
-        !
-      </span>
-    ),
-    loading: (
-      <span className="inline-flex h-5 w-5 items-center justify-center">
-        <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
-      </span>
-    ),
-    info: (
-      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/70 text-[11px] font-semibold text-foreground/70">
-        i
-      </span>
-    )
-  };
-  const icon = iconMap[status.type] || iconMap.info;
-
-  return (
-    <div className={`rounded-2xl px-4 py-3 text-sm font-medium ${variant} ${className}`}>
-      <div className="flex items-center gap-3">
-        {icon}
-        <p className="text-sm leading-snug">{status.message}</p>
-      </div>
-    </div>
-  );
-}
 
 export default function LinkWallet() {
   const [githubUser, setGithubUser] = useState(null);
@@ -77,6 +23,7 @@ export default function LinkWallet() {
 
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
+  const { showError } = useErrorModal();
 
   const isLocal = process.env.NEXT_PUBLIC_ENV_TARGET === 'local';
   const useDummyData = process.env.NEXT_PUBLIC_USE_DUMMY_DATA === 'true';
@@ -171,12 +118,11 @@ export default function LinkWallet() {
       const { nonce } = await nonceRes.json();
 
       // Create and sign message
-      const messageText = createSiweMessage({
+      const messageText = createSiweMessageText({
         domain: window.location.host,
-        address: address,
+        address,
         statement: 'Link your wallet to receive BountyPay payments.',
         uri: window.location.origin,
-        version: '1',
         chainId: chain?.id || 1,
         nonce
       });
@@ -226,7 +172,12 @@ export default function LinkWallet() {
       
     } catch (error) {
       console.error(error);
-      setStatus({ message: error.message || 'An error occurred', type: 'error' });
+      showError({
+        title: 'Wallet Link Failed',
+        message: error.message || 'An error occurred while linking your wallet',
+        primaryActionLabel: 'Try Again',
+        onPrimaryAction: createProfileWithWallet,
+      });
       setIsProcessing(false);
     }
   };
