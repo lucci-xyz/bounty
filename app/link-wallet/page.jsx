@@ -73,6 +73,7 @@ export default function LinkWallet() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [checkingAccount, setCheckingAccount] = useState(false);
+  const [linkedWalletAddress, setLinkedWalletAddress] = useState('');
 
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -132,6 +133,7 @@ export default function LinkWallet() {
         // User has a wallet linked
         if (wallet && wallet.walletAddress) {
           setHasLinkedWallet(true);
+          setLinkedWalletAddress(wallet.walletAddress);
         }
       }
       setCheckingAccount(false);
@@ -219,6 +221,7 @@ export default function LinkWallet() {
       }
 
       setProfileCreated(true);
+      setLinkedWalletAddress(address);
       setStatus({ message: '', type: '' });
       
     } catch (error) {
@@ -236,32 +239,28 @@ export default function LinkWallet() {
     );
   }
 
-  const shortAddress = address ? `${address.slice(0, 8)}...${address.slice(-6)}` : '';
+  const displayWalletAddress = address || linkedWalletAddress;
+  const shortAddress = displayWalletAddress ? `${displayWalletAddress.slice(0, 8)}...${displayWalletAddress.slice(-6)}` : '';
 
   const renderFlowCard = () => {
     if (!githubUser) {
       return (
         <section className={cardClasses}>
-          <div className="flex items-start gap-4">
-            <div className={iconBubbleClasses}>
-              <GitHubIcon size={20} color="currentColor" />
+          <div className="space-y-4">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground/70">Step 1</p>
+              <h2 className="text-lg font-medium text-foreground">Connect GitHub</h2>
+              <p className="text-sm text-muted-foreground">
+                Authenticate with GitHub to verify your identity.
+              </p>
             </div>
-            <div className="flex-1 space-y-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground/70">Step 1</p>
-                <h2 className="text-lg font-medium text-foreground">Connect GitHub</h2>
-                <p className="text-sm text-muted-foreground">
-                  Authenticate with GitHub to verify your identity.
-                </p>
-              </div>
-              <button
-                onClick={authenticateGitHub}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-              >
-                <GitHubIcon size={18} color="currentColor" />
-                Connect with GitHub
-              </button>
-            </div>
+            <button
+              onClick={authenticateGitHub}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              <GitHubIcon size={18} color="currentColor" />
+              Connect with GitHub
+            </button>
           </div>
         </section>
       );
@@ -333,7 +332,7 @@ export default function LinkWallet() {
               <span>GitHub</span>
               <span>@{githubUser.githubUsername}</span>
             </div>
-            {address && (
+            {shortAddress && (
               <>
                 <hr className="my-3 border-border/40" />
                 <div className="flex items-center justify-between text-foreground/80">
@@ -417,7 +416,13 @@ export default function LinkWallet() {
           </div>
           <div>
             <p className="text-foreground/80">Wallet</p>
-            <p className="text-foreground font-medium">{address ? shortAddress : 'Not connected'}</p>
+            <p className="text-foreground font-medium">
+              {shortAddress
+                ? shortAddress
+                : hasLinkedWallet
+                  ? 'Linked'
+                  : 'Not connected'}
+            </p>
           </div>
         </div>
       )}
