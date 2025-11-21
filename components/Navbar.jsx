@@ -118,30 +118,21 @@ export default function Navbar() {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all"
+                className="flex items-center justify-center w-10 h-10 rounded-full border border-border bg-card hover:bg-card/80 transition-all"
+                aria-label="User menu"
               >
                 <UserAvatar 
                   username={githubUser.githubUsername}
                   avatarUrl={githubUser.avatarUrl}
-                  size={18}
+                  size={34}
                 />
-                <span className="text-xs font-medium">
-                  @{githubUser.githubUsername}
-                </span>
               </button>
 
               {showDropdown && (
                 <div className="absolute top-full mt-2 right-0 w-64 bg-card border border-border rounded-xl shadow-lg overflow-hidden z-50">
-                  <div className="p-4 border-b border-border">
-                    <div className="text-sm font-medium mb-1">
-                      @{githubUser.githubUsername}
-                    </div>
-                    <div className="text-xs text-muted-foreground font-mono">
-                      {isConnected && address
-                        ? `${address.slice(0, 6)}...${address.slice(-4)}`
-                        : 'Wallet not connected'}
-                    </div>
-                    <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-secondary text-xs text-muted-foreground">
+                  <div className="p-4 border-b border-border flex items-center justify-between gap-2">
+                    <div className="text-sm font-medium">@{githubUser.githubUsername}</div>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-secondary text-xs text-muted-foreground">
                       <span className={`w-1.5 h-1.5 rounded-full ${
                         networkEnv === 'mainnet' ? 'bg-primary' : 'bg-accent'
                       }`} />
@@ -153,10 +144,8 @@ export default function Navbar() {
                     <Link
                       href="/account?tab=sponsored"
                       onClick={() => setShowDropdown(false)}
-                      className={`block px-3 py-2 text-sm rounded-lg transition-colors ${
-                        isActive('/account')
-                          ? 'bg-primary/10 text-primary font-medium'
-                          : 'text-foreground hover:bg-secondary'
+                      className={`block px-3 py-2 text-sm rounded-lg transition-colors text-foreground hover:bg-secondary ${
+                        isActive('/account') ? 'font-medium' : ''
                       }`}
                     >
                       Account
@@ -186,9 +175,10 @@ export default function Navbar() {
               onClick={() => {
                 window.location.href = `/api/oauth/github?returnTo=${encodeURIComponent('/')}`;
               }}
-              className="px-5 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+              className="flex items-center justify-center w-10 h-10 rounded-full border border-border bg-card hover:bg-card/80 transition-all"
+              aria-label="Connect GitHub"
             >
-              Connect
+              <UserAvatar username="+" avatarUrl={null} size={34} />
             </button>
           )}
         </div>
