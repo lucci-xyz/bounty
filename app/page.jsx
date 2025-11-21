@@ -222,8 +222,7 @@ export default function Home() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
           {filteredBounties.map((bounty) => {
-            const statusStyles = getStatusStyles(bounty.status);
-            const statusLabel = formatStatusLabel(bounty.status);
+            const timeRemaining = formatDeadline(bounty.deadline);
             return (
               <div 
                 key={bounty.bountyId} 
@@ -262,10 +261,9 @@ export default function Home() {
 
                 <div className="flex items-center gap-2">
                   <span
-                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${statusStyles.badge}`}
+                    className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium bg-primary/10 text-primary"
                   >
-                    <span className={`h-2.5 w-2.5 rounded-full ${statusStyles.dot}`} />
-                    {statusLabel}
+                    {timeRemaining} left
                   </span>
                 </div>
 

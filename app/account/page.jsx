@@ -756,7 +756,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                 <div>
                   {sponsoredBounties.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                      <p className="text-muted-foreground" style={{ fontSize: '14px', fontWeight: '300' }}>
+                <p className="text-muted-foreground" style={{ fontSize: '14px', fontWeight: '300' }}>
                         No bounties found
                       </p>
                     </div>
@@ -787,88 +787,79 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                           </button>
                         </div>
                       )}
-                      <div className="space-y-3 mt-1">
+              <div className="space-y-3 mt-1">
                 {displayBounties.map((bounty) => {
-                  const statusStyles = getStatusStyles(bounty.status);
-                  const statusLabel = formatStatusLabel(bounty.status);
                   const isExpanded = expandedBountyId === bounty.bountyId;
                   const isExpired = Number(bounty.deadline) < Math.floor(Date.now() / 1000);
                   const allowlistData = allowlists[bounty.bountyId] || [];
                   const isAllowlistLoading = !!allowlistLoading[bounty.bountyId];
 
                   return (
-                    <div 
-                      key={bounty.bountyId}
+                      <div 
+                        key={bounty.bountyId}
                       className="group bg-card border border-border/40 rounded-[32px] p-6 flex flex-col gap-4 shadow-sm transition-all duration-200 hover:border-primary/40 hover:shadow-md"
-                    >
+                  >
                       <div className="flex flex-col md:flex-row md:items-center gap-4">
-                        <div style={{ flex: '1', minWidth: 0 }}>
-                          <button
-                            type="button"
+                    <div style={{ flex: '1', minWidth: 0 }}>
+                      <button
+                        type="button"
                             onClick={() => handleToggleBounty(bounty.bountyId)}
                             aria-expanded={isExpanded}
                             className="text-left cursor-pointer w-full"
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              padding: 0,
-                              textAlign: 'left'
-                            }}
-                          >
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          textAlign: 'left'
+                        }}
+                      >
                             <div className="flex items-center gap-3">
-                              <div
-                                className="text-foreground"
-                                style={{
-                                  fontSize: '16px',
-                                  fontWeight: '300',
-                                  letterSpacing: '-0.02em',
-                                  opacity: 0.9,
-                                  transition: 'all 0.2s ease'
-                                }}
-                              >
-                                {bounty.repoFullName}#{bounty.issueNumber}
+                    <div
+                      className="text-foreground"
+                      style={{
+                        fontSize: '16px',
+                        fontWeight: '300',
+                        letterSpacing: '-0.02em',
+                        opacity: 0.9,
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      {bounty.repoFullName}#{bounty.issueNumber}
                               </div>
                               <span className="text-xs text-muted-foreground">
                                 {isExpanded ? 'Hide details' : 'Show details'}
                               </span>
-                            </div>
+                    </div>
                           </button>
-                          <div className="text-muted-foreground mt-1" style={{ fontSize: '13px', fontWeight: '300' }}>
-                            {formatTimeLeft(bounty.deadline)}
-                          </div>
-                        </div>
-                      
-                        <div className="ml-auto flex flex-col items-end gap-1">
-                          <div className="text-foreground" style={{ fontSize: '16px', fontWeight: '300', letterSpacing: '-0.03em', color: '#0D473F' }}>
-                            {formatAmount(bounty.amount, bounty.tokenSymbol)} {bounty.tokenSymbol}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${statusStyles.badge}`}>
-                              <span className={`h-2.5 w-2.5 rounded-full ${statusStyles.dot}`} />
-                              {statusLabel}
-                            </span>
-                            <span className="text-muted-foreground" style={{ fontSize: '12px', fontWeight: '300' }}>
-                              {(bounty.claimCount || 0).toString()} claims
-                            </span>
-                          </div>
-                        </div>
+                      <div className="text-muted-foreground mt-1" style={{ fontSize: '13px', fontWeight: '300' }}>
+                        {formatTimeLeft(bounty.deadline) === 'Expired' ? 'Expired' : `${formatTimeLeft(bounty.deadline)} left`}
+                      </div>
+                      </div>
+                    
+                    <div className="ml-auto flex flex-col items-end gap-1">
+                      <div className="text-foreground" style={{ fontSize: '16px', fontWeight: '300', letterSpacing: '-0.03em', color: '#0D473F' }}>
+                        {formatAmount(bounty.amount, bounty.tokenSymbol)} {bounty.tokenSymbol}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground" style={{ fontSize: '12px', fontWeight: '300' }}>
+                          {(bounty.claimCount || 0).toString()} claims
+                        </span>
+                      </div>
+                    </div>
                       </div>
 
                       {isExpanded && (
-                        <div className="rounded-[28px] border border-border/50 bg-muted/40 p-5 space-y-4">
-                          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-3">
-                            <a
-                              href={`https://github.com/${bounty.repoFullName}/issues/${bounty.issueNumber}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm font-light tracking-tight text-primary hover:text-primary/80 transition-colors"
-                            >
-                              View on GitHub ↗
-                            </a>
-                            <div className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground/80">
-                              {statusLabel}
-                            </div>
-                          </div>
+                      <div className="rounded-[28px] border border-border/50 bg-muted/40 p-5 space-y-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-3">
+                          <a
+                            href={`https://github.com/${bounty.repoFullName}/issues/${bounty.issueNumber}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-light tracking-tight text-primary hover:text-primary/80 transition-colors"
+                          >
+                            View on GitHub ↗
+                          </a>
+                        </div>
 
                           <div className="space-y-3 text-sm font-light text-foreground/80">
                             <div className="flex items-center justify-between">
@@ -884,20 +875,22 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                               </span>
                             </div>
                             {bounty.txHash && (
-                              <div className="flex flex-col gap-1">
-                                <span className="text-muted-foreground/80">Transaction</span>
-                                <a
-                                  href={
-                                    bounty.network === 'MEZO_TESTNET'
-                                      ? `https://explorer.test.mezo.org/tx/${bounty.txHash}`
-                                      : `https://sepolia.basescan.org/tx/${bounty.txHash}`
-                                  }
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="font-mono text-xs break-all text-foreground/90 hover:text-primary"
-                                >
-                                  {bounty.txHash}
-                                </a>
+                              <div className="grid grid-cols-2 gap-2 items-center">
+                                <span className="text-muted-foreground/80 text-sm text-left">Transaction</span>
+                                <div className="text-right">
+                                  <a
+                                    href={
+                                      bounty.network === 'MEZO_TESTNET'
+                                        ? `https://explorer.test.mezo.org/tx/${bounty.txHash}`
+                                        : `https://sepolia.basescan.org/tx/${bounty.txHash}`
+                                    }
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-mono text-xs break-all text-foreground/90 hover:text-primary inline-block text-right"
+                                  >
+                                    {bounty.txHash}
+                                  </a>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -938,13 +931,13 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                           )}
                         </div>
                       )}
-                    </div>
-                  );
-                })}
-                      </div>
+                  </div>
+                );
+              })}
+                  </div>
                     </>
-                  )}
-                </div>
+                )}
+          </div>
               </div>
             </>
           )}

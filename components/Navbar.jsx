@@ -108,8 +108,8 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           {/* Post Button */}
           <Link href="/attach-bounty">
-            <button className="px-4 py-2 rounded-lg text-sm font-normal bg-secondary text-foreground hover:bg-muted transition-colors">
-              + Post
+          <button className="px-4 py-2 rounded-lg text-sm font-normal bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+          + Post
           </button>
           </Link>
           
