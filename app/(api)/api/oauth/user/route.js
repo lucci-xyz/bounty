@@ -1,4 +1,3 @@
-import './schema';
 import { getSession } from '@/shared/lib/session';
 
 export async function GET() {

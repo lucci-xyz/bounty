@@ -56,9 +56,13 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
     <div className="container max-w-5xl px-6 py-10">
       {/* Header with greeting */}
       <div className="mb-2 animate-fade-in-up">
-        <h1 className="mb-2 text-[clamp(24px,4vw,32px)] font-medium tracking-[-0.02em] text-foreground">
+        <p
+          role="heading"
+          aria-level={1}
+          className="mb-2 text-[clamp(20px,2.4vw,24px)] font-medium tracking-[-0.02em] text-foreground"
+        >
           Hello @{githubUser.githubUsername}
-        </h1>
+        </p>
         <p className="text-sm font-light text-muted-foreground">
           Manage your bounties, earnings, and settings
         </p>

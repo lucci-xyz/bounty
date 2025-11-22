@@ -3,11 +3,10 @@ import { logger } from '@/shared/lib/logger';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
-import { createSiweMessageText } from '@/shared/lib/siwe-message';
 import { useErrorModal } from '@/shared/providers/ErrorModalProvider';
 import { useGithubUser } from '@hooks/useGithubUser';
 import { getUserProfile } from '@/shared/api/user';
-import { getNonce, verifyWalletSignature, linkWallet } from '@/shared/api/wallet';
+import { getNonce, verifyWalletSignature, linkWallet, buildSiweMessage } from '@/shared/api/wallet';
 
 /**
  * Hook for managing the wallet linking flow for users.
@@ -79,14 +78,18 @@ export function useLinkWalletFlow() {
       const { nonce } = await getNonce();
 
       // Prepare SIWE message
-      const messageText = createSiweMessageText({
-        domain: window.location.host,
+      const { message: messageText } = await buildSiweMessage({
         address,
-        statement: 'Link your wallet to receive BountyPay payments.',
-        uri: window.location.origin,
+        nonce,
         chainId: chain?.id || 1,
-        nonce
+        domain: window.location.host,
+        uri: window.location.origin,
+        statement: 'Link your wallet to receive BountyPay payments.'
       });
+
+      if (!messageText) {
+        throw new Error('Failed to build SIWE message');
+      }
 
       // Ask for wallet signature
       const signature = await walletClient.signMessage({

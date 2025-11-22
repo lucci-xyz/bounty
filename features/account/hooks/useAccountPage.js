@@ -33,6 +33,7 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminChecked, setAdminChecked] = useState(false);
 
   // Wallet/account info
   const { address, isConnected, chain } = useAccount();
@@ -82,21 +83,42 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
 
   // Check and update admin status when dependencies change
   useEffect(() => {
+    let cancelled = false;
+
     async function determineAdminStatus() {
-      if (githubUserLoading || !githubUser) return;
-      if (useDummyData || isLocalMode) {
-        setIsAdmin(true);
+      if (githubUserLoading) return;
+
+      if (!githubUser) {
+        if (!cancelled) {
+          setIsAdmin(false);
+          setAdminChecked(true);
+        }
         return;
       }
+
       try {
         const adminStatus = await checkAdminAccess();
-        setIsAdmin(adminStatus);
+        if (!cancelled) {
+          setIsAdmin(adminStatus);
+        }
       } catch (error) {
+        if (!cancelled) {
+          setIsAdmin(false);
+        }
         logger.error('Admin check error:', error);
+      } finally {
+        if (!cancelled) {
+          setAdminChecked(true);
+        }
       }
     }
+
     determineAdminStatus();
-  }, [githubUser, githubUserLoading, isLocalMode, useDummyData]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [githubUser, githubUserLoading]);
 
   // Log out and redirect to home
   const logout = useCallback(async () => {
@@ -129,7 +151,7 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
     { id: 'sponsored', label: 'Sponsored' },
     { id: 'earnings', label: 'Earnings' },
     { id: 'settings', label: 'Settings' },
-    ...(isAdmin ? [{ id: 'admin', label: 'Admin' }] : [])
+    ...(adminChecked && isAdmin ? [{ id: 'admin', label: 'Admin' }] : [])
   ];
 
   // Expose all state and actions needed by the account page

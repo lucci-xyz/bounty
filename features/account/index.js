@@ -3,7 +3,7 @@ export { useSponsorDashboard } from './hooks/useSponsorDashboard';
 export { useEarningsDashboard } from './hooks/useEarningsDashboard';
 export { useRepoManager } from './hooks/useRepoManager';
 export { useAccountPage } from './hooks/useAccountPage';
-export { default as AccountContent } from './components/AccountContent';
+export { AccountContent } from './components/AccountContent';
 export { AdminTab } from './components/tabs/AdminTab';
 export { AllowlistModal } from './components/modals/AllowlistModal';
 export { ChangeWalletModal } from './components/modals/ChangeWalletModal';

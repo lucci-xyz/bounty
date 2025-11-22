@@ -1,5 +1,4 @@
 import { logger } from '@/shared/lib/logger';
-import './schema';
 import { CONFIG } from '@/shared/server/config';
 
 export const runtime = 'nodejs';

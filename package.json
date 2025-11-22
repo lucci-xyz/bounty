@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "cross-env NODE_ENV=production prisma generate && cross-env NODE_ENV=production next build",
+    "build": "cross-env NODE_ENV=production prisma generate --schema shared/server/db/schema.prisma && cross-env NODE_ENV=production next build",
     "start": "next start",
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate --schema shared/server/db/schema.prisma",
     "test": "node --test tests/",
     "lint:links": "node scripts/check-links.mjs"
   },

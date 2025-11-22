@@ -1,5 +1,4 @@
 import { logger } from '@/shared/lib/logger';
-import './schema';
 import { cookies } from 'next/headers';
 import { NETWORK_ENV_COOKIE } from '@/shared/lib/network';
 import { getDefaultAliasForGroup } from '@/shared/config/chain-registry';

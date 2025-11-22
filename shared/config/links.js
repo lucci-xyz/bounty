@@ -47,8 +47,11 @@ export const LINKS = Object.freeze({
       return `https://github.com/${repo}/issues/${issue}`;
     }),
     pullRequest: externalDynamic(({ repoFullName, prNumber }) => {
-      const { repoFullName: repo, prNumber } = requireParams({ repoFullName, prNumber }, ['repoFullName', 'prNumber']);
-      return `https://github.com/${repo}/pull/${prNumber}`;
+      const {
+        repoFullName: repo,
+        prNumber: pullNumber
+      } = requireParams({ repoFullName, prNumber }, ['repoFullName', 'prNumber']);
+      return `https://github.com/${repo}/pull/${pullNumber}`;
     }),
     oauthAuthorize: externalDynamic(({ queryString }) => {
       const { queryString: qs } = requireParams({ queryString }, ['queryString']);

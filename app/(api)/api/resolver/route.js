@@ -1,5 +1,4 @@
 import { logger } from '@/shared/lib/logger';
-import './schema';
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';

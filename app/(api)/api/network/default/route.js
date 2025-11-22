@@ -1,5 +1,4 @@
 import { logger } from '@/shared/lib/logger';
-import './schema';
 import { NextResponse } from 'next/server';
 import { getDefaultAliasForGroup } from '@/shared/config/chain-registry';
 

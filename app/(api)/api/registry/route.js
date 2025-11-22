@@ -1,5 +1,4 @@
 import { logger } from '@/shared/lib/logger';
-import './schema';
 import { NextResponse } from 'next/server';
 import { REGISTRY } from '@/shared/config/chain-registry';
 

@@ -1,5 +1,4 @@
 import { logger } from '@/shared/lib/logger';
-import './schema';
 import { bountyQueries } from '@/shared/server/db/prisma';
 
 export async function GET(request) {

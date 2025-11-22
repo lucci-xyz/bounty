@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { REGISTRY } from '../../config/chain-registry.js';
+import { REGISTRY } from '../../../config/chain-registry.js';
 
 export function networkMeta(networkKey) {
   if (!networkKey) {

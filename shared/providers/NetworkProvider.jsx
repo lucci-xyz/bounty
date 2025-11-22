@@ -146,7 +146,24 @@ export function NetworkProvider({ children }) {
           } catch (jsonError) {
             // ignore
           }
-          throw new Error(details.error || `Cannot switch to ${targetGroup}`);
+
+          const fallbackMessage =
+            targetGroup === 'mainnet'
+              ? 'Mainnet is not available yet. Please stay on Testnet for now.'
+              : `Cannot switch to ${targetGroup}`;
+
+          const errorMessage =
+            typeof details.error === 'string'
+              ? details.error
+              : fallbackMessage;
+
+          const friendlyMessage =
+            targetGroup === 'mainnet' &&
+            /default mainnet alias|BLOCKCHAIN_DEFAULT_MAINNET_ALIAS/i.test(errorMessage)
+              ? 'Mainnet is not configured yet. We will enable it soon.'
+              : errorMessage || fallbackMessage;
+
+          throw new Error(friendlyMessage);
         }
 
         setNetworkGroup(targetGroup);

@@ -1,5 +1,4 @@
 import { logger } from '@/shared/lib/logger';
-import './schema';
 import { statsQueries } from '@/shared/server/db/prisma';
 import { CONFIG } from '@/shared/server/config';
 

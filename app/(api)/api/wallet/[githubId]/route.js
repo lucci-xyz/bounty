@@ -1,5 +1,4 @@
 import { logger } from '@/shared/lib/logger';
-import './schema';
 import { walletQueries } from '@/shared/server/db/prisma';
 
 export async function GET(request, { params }) {

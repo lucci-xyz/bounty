@@ -47,9 +47,13 @@ export default function Home() {
     <div className="max-w-7xl mx-auto px-6 py-12">
       {/* Page header */}
       <div className="mb-10">
-        <h1 className="mb-3 text-[2.2rem] font-light tracking-[-0.02em] text-foreground/90">
+        <p
+          role="heading"
+          aria-level={1}
+          className="mb-3 text-[clamp(22px,3vw,30px)] font-light tracking-[-0.02em] text-foreground/90"
+        >
           Bounties
-        </h1>
+        </p>
         <p className="text-base text-muted-foreground">
           Contributing to open source, rewarded in crypto
         </p>
@@ -144,7 +148,7 @@ export default function Home() {
                   section="github"
                   link="issue"
                   params={{ repoFullName: bounty.repoFullName, issueNumber: bounty.issueNumber }}
-                  className="mt-auto inline-flex w-full items-center justify-center rounded-full border border-border/70 bg-muted/80 px-6 py-3 text-sm font-medium text-foreground/90 transition-all hover:bg-gray-100"
+                  className="mt-auto inline-flex w-full items-center justify-center rounded-full border border-border/70 bg-muted/80 px-6 py-3 text-sm font-medium !text-black transition-all hover:bg-gray-100 hover:!text-black"
                 >
                   View Issue
                 </LinkFromCatalog>

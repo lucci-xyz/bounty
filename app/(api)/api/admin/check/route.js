@@ -1,5 +1,4 @@
 import { logger } from '@/shared/lib/logger';
-import './schema';
 import { getSession } from '@/shared/lib/session';
 import { NextResponse } from 'next/server';
 

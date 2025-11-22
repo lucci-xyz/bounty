@@ -45,7 +45,7 @@ export default function Socials() {
           key={social.name}
           section={social.section}
           link={social.link}
-          className="text-muted-foreground transition-opacity hover:opacity-70"
+          className="text-muted-foreground transition-opacity hover:opacity-70 !text-muted-foreground"
           aria-label={social.name}
         >
           {social.icon}

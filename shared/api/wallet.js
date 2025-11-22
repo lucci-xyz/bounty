@@ -28,3 +28,12 @@ export function linkWallet(payload) {
   return postJson('/api/wallet/link', payload);
 }
 
+/**
+ * Requests the server to build a SIWE message with canonical logic.
+ * @param {object} payload - Fields required to build the message.
+ * @returns {Promise<{message: string}>}
+ */
+export function buildSiweMessage(payload) {
+  return postJson('/api/siwe/message', payload);
+}
+

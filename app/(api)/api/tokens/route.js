@@ -1,4 +1,3 @@
-import './schema';
 import { CONFIG } from '@/shared/server/config';
 
 export async function GET() {

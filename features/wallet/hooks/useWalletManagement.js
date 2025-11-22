@@ -2,8 +2,7 @@
 import { logger } from '@/shared/lib/logger';
 
 import { useCallback, useEffect, useState } from 'react';
-import { createSiweMessageText } from '@/shared/lib/siwe-message';
-import { getNonce, linkWallet } from '@/shared/api/wallet';
+import { getNonce, linkWallet, buildSiweMessage } from '@/shared/api/wallet';
 
 const DELETE_CONFIRMATION_TEXT = 'i want to remove my wallet';
 
@@ -157,14 +156,18 @@ export function useWalletManagement({
       });
       const { nonce } = await getNonce();
 
-      const message = createSiweMessageText({
-        domain: window.location.host,
+      const { message } = await buildSiweMessage({
         address,
-        statement: 'Sign in with Ethereum to link your wallet to BountyPay',
-        uri: window.location.origin,
+        nonce,
         chainId: chain?.id || 1,
-        nonce
+        domain: window.location.host,
+        uri: window.location.origin,
+        statement: 'Sign in with Ethereum to link your wallet to BountyPay'
       });
+
+      if (!message) {
+        throw new Error('Failed to build SIWE message');
+      }
 
       setChangeWalletStatus({
         message: 'Please sign the message in your wallet...',

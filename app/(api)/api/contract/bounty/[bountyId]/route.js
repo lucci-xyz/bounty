@@ -1,5 +1,4 @@
 import { logger } from '@/shared/lib/logger';
-import './schema';
 import { bountyQueries } from '@/shared/server/db/prisma';
 import { getBountyFromContract } from '@/shared/server/blockchain/contract';
 

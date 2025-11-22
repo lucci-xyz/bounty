@@ -1,5 +1,4 @@
 import { logger } from '@/shared/lib/logger';
-import './schema';
 import { getGitHubApp, initGitHubApp } from '@/shared/server/github/client';
 import { handleWebhook } from '@/shared/server/github/webhooks';
 
