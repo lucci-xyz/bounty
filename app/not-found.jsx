@@ -3,22 +3,7 @@ import Link from 'next/link';
 export default function NotFound() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-24 text-center">
-      <p
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '8px 18px',
-          borderRadius: '999px',
-          fontSize: '12px',
-          letterSpacing: '0.4em',
-          textTransform: 'uppercase',
-          fontWeight: 600,
-          background: 'rgba(0,130,123,0.12)',
-          color: '#00827B',
-          marginBottom: '32px'
-        }}
-      >
+      <p className="mb-8 inline-flex items-center justify-center rounded-full bg-primary/10 px-5 py-2 text-[12px] font-semibold uppercase tracking-[0.4em] text-primary">
         404
       </p>
 

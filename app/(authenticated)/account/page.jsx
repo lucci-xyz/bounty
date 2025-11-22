@@ -9,8 +9,8 @@ export default function Account() {
   return (
     <Suspense
       fallback={
-        <div className="container" style={{ maxWidth: '1200px', padding: '32px 24px' }}>
-          <p style={{ color: 'var(--color-text-secondary)' }}>Loading...</p>
+        <div className="mx-auto w-full max-w-5xl px-6 py-8 text-muted-foreground">
+          <p>Loading...</p>
         </div>
       }
     >

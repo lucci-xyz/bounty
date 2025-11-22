@@ -68,37 +68,32 @@ export default function AllowlistManager({ bountyId, initialAllowlist = [] }) {
 
   return (
     <div>
-      <h3 style={{ 
-        marginBottom: '16px',
-        fontSize: '20px',
-        fontFamily: "'Space Grotesk', sans-serif"
-      }}>
+      <h3 className="mb-4 text-xl font-semibold text-foreground">
         Allowlist Management
       </h3>
       
-      <div className="info-box" style={{ marginBottom: '24px', fontSize: '13px' }}>
-        <p style={{ margin: 0 }}>
+      <div className="info-box mb-6 text-sm">
+        <p className="m-0">
           <strong>Optional:</strong> Restrict who can claim this bounty by adding wallet addresses to the allowlist.
           If the allowlist is empty, anyone can claim.
         </p>
       </div>
 
-      <div style={{ marginBottom: '24px' }}>
+      <div className="mb-6">
         <label htmlFor="newAddress">Add Wallet Address</label>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="flex gap-2">
           <input
             id="newAddress"
             type="text"
             placeholder="0x..."
             value={newAddress}
             onChange={(e) => setNewAddress(e.target.value)}
-            style={{ marginBottom: 0, flex: 1 }}
+            className="mb-0 flex-1"
           />
           <button
             onClick={addAddress}
             disabled={isProcessing}
-            className="btn btn-primary"
-            style={{ margin: 0, whiteSpace: 'nowrap' }}
+            className="btn btn-primary whitespace-nowrap"
           >
             {isProcessing ? 'Adding...' : 'Add'}
           </button>
@@ -106,50 +101,28 @@ export default function AllowlistManager({ bountyId, initialAllowlist = [] }) {
       </div>
 
       {status.message && (
-        <div className={`status ${status.type}`} style={{ marginBottom: '20px' }}>
+        <div className={`status ${status.type} mb-5`}>
           {status.message}
         </div>
       )}
 
       {allowlist.length > 0 ? (
         <div>
-          <h4 style={{ fontSize: '16px', marginBottom: '12px', color: 'var(--color-text-primary)' }}>
+          <h4 className="mb-3 text-base font-semibold text-foreground">
             Allowed Addresses ({allowlist.length})
           </h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div className="flex flex-col gap-2">
             {allowlist.map((entry) => (
               <div
                 key={entry.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '12px 16px',
-                  background: 'var(--color-background-secondary)',
-                  borderRadius: '8px',
-                  gap: '12px'
-                }}
+                className="flex items-center justify-between gap-3 rounded-lg bg-muted px-4 py-3"
               >
-                <code style={{ 
-                  fontSize: '13px',
-                  wordBreak: 'break-all',
-                  flex: 1
-                }}>
+                <code className="flex-1 break-all text-sm font-mono text-primary">
                   {entry.allowedAddress}
                 </code>
                 <button
                   onClick={() => removeAddress(entry.id)}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    background: 'rgba(255, 50, 0, 0.1)',
-                    color: 'var(--color-error)',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    fontWeight: '500',
-                    whiteSpace: 'nowrap'
-                  }}
+                  className="whitespace-nowrap rounded-md bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive transition-colors hover:bg-destructive/20"
                 >
                   Remove
                 </button>
@@ -158,14 +131,7 @@ export default function AllowlistManager({ bountyId, initialAllowlist = [] }) {
           </div>
         </div>
       ) : (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '32px',
-          background: 'var(--color-background-secondary)',
-          borderRadius: '12px',
-          color: 'var(--color-text-secondary)',
-          fontSize: '14px'
-        }}>
+        <div className="rounded-xl bg-muted/60 p-8 text-center text-sm text-muted-foreground">
           No addresses in allowlist. Anyone can claim this bounty.
         </div>
       )}

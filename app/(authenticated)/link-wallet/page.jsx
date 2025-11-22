@@ -3,16 +3,17 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { GitHubIcon } from '@/shared/components/Icons';
+import { GitHubIcon, CheckCircleIcon } from '@/shared/components/Icons';
 import { createSiweMessageText } from '@/shared/lib/siwe-message';
 import { useErrorModal } from '@/shared/components/ErrorModalProvider';
 import StatusNotice from '@/shared/components/StatusNotice';
+import { useGithubUser } from '@/shared/hooks/useGithubUser';
+import { getUserProfile } from '@/shared/lib/api/user';
+import { getNonce, verifyWalletSignature, linkWallet } from '@/shared/lib/api/wallet';
 
 const cardClasses = 'rounded-3xl border border-border/60 bg-card p-6 shadow-sm';
 
 export default function LinkWallet() {
-  const [githubUser, setGithubUser] = useState(null);
-  const [hasExistingAccount, setHasExistingAccount] = useState(false);
   const [hasLinkedWallet, setHasLinkedWallet] = useState(false);
   const [profileCreated, setProfileCreated] = useState(false);
   const [status, setStatus] = useState({ message: '', type: '' });
@@ -24,23 +25,10 @@ export default function LinkWallet() {
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
   const { showError } = useErrorModal();
-
-  const isLocal = process.env.NEXT_PUBLIC_ENV_TARGET === 'local';
-  const useDummyData = process.env.NEXT_PUBLIC_USE_DUMMY_DATA === 'true';
+  const { githubUser, githubUserLoading, isLocalMode } = useGithubUser();
 
   useEffect(() => {
     setIsMounted(true);
-    
-    if (isLocal || useDummyData) {
-      setGithubUser({
-        githubId: 123456789,
-        githubUsername: 'local-dev',
-        avatarUrl: null
-      });
-      setHasExistingAccount(false);
-    } else {
-      checkGitHubAuth();
-    }
   }, []);
 
   // Auto-link wallet when both conditions met and user doesn't have wallet linked
@@ -50,45 +38,50 @@ export default function LinkWallet() {
     }
   }, [githubUser, hasLinkedWallet, isConnected, address, walletClient, profileCreated, isProcessing]);
 
-  const checkGitHubAuth = async () => {
-    try {
-      const authRes = await fetch('/api/oauth/user', {
-        credentials: 'include'
-      });
+  useEffect(() => {
+    let cancelled = false;
 
-      if (!authRes.ok) {
+    async function loadProfileStatus() {
+      if (githubUserLoading) return;
+      if (!githubUser) {
+        setHasExistingAccount(false);
+        setHasLinkedWallet(false);
+        setLinkedWalletAddress('');
+        return;
+      }
+      if (isLocalMode) {
+        setHasExistingAccount(false);
+        setHasLinkedWallet(false);
+        setLinkedWalletAddress('');
         return;
       }
 
-      const user = await authRes.json();
-      setGithubUser(user);
-      
-      // Check if user already has a wallet linked
       setCheckingAccount(true);
-      const profileRes = await fetch('/api/user/profile', {
-        credentials: 'include'
-      });
-
-      if (profileRes.ok) {
-        const { user: dbUser, wallet } = await profileRes.json();
-        
-        // User has an existing account
-        if (dbUser) {
-          setHasExistingAccount(true);
-        }
-        
-        // User has a wallet linked
-        if (wallet && wallet.walletAddress) {
+      try {
+        const profile = await getUserProfile();
+        if (cancelled) return;
+        setHasExistingAccount(Boolean(profile?.user));
+        if (profile?.wallet?.walletAddress) {
           setHasLinkedWallet(true);
-          setLinkedWalletAddress(wallet.walletAddress);
+          setLinkedWalletAddress(profile.wallet.walletAddress);
+        } else {
+          setHasLinkedWallet(false);
+          setLinkedWalletAddress('');
+        }
+      } catch (error) {
+        console.error('Profile lookup failed', error);
+      } finally {
+        if (!cancelled) {
+          setCheckingAccount(false);
         }
       }
-      setCheckingAccount(false);
-    } catch (error) {
-      console.error('Auth check error:', error);
-      setCheckingAccount(false);
     }
-  };
+
+    loadProfileStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, [githubUser, githubUserLoading, isLocalMode]);
 
   const authenticateGitHub = () => {
     const returnUrl = window.location.pathname + window.location.search;
@@ -111,11 +104,11 @@ export default function LinkWallet() {
         throw new Error('Wallet client not available');
       }
 
-      // Get nonce
-      const nonceRes = await fetch('/api/nonce', {
-        credentials: 'include'
-      });
-      const { nonce } = await nonceRes.json();
+      if (!githubUser) {
+        throw new Error('Missing GitHub session');
+      }
+
+      const { nonce } = await getNonce();
 
       // Create and sign message
       const messageText = createSiweMessageText({
@@ -133,42 +126,23 @@ export default function LinkWallet() {
 
       setStatus({ message: 'Verifying signature...', type: 'loading' });
 
-      // Verify signature
-      const verifyRes = await fetch('/api/verify-wallet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          message: messageText,
-          signature
-        })
+      await verifyWalletSignature({
+        message: messageText,
+        signature
       });
-
-      if (!verifyRes.ok) {
-        throw new Error('Signature verification failed');
-      }
 
       setStatus({ message: 'Creating your profile...', type: 'loading' });
 
-      // Link wallet (this creates the user if they don't exist)
-      const linkRes = await fetch('/api/wallet/link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          githubId: githubUser.githubId,
-          githubUsername: githubUser.githubUsername,
-          walletAddress: address
-        })
+      await linkWallet({
+        githubId: githubUser.githubId,
+        githubUsername: githubUser.githubUsername,
+        walletAddress: address
       });
-
-      if (!linkRes.ok) {
-        throw new Error('Failed to create profile');
-      }
 
       setProfileCreated(true);
       setLinkedWalletAddress(address);
       setStatus({ message: '', type: '' });
+      setHasLinkedWallet(true);
       
     } catch (error) {
       console.error(error);
@@ -178,6 +152,7 @@ export default function LinkWallet() {
         primaryActionLabel: 'Try Again',
         onPrimaryAction: createProfileWithWallet,
       });
+    } finally {
       setIsProcessing(false);
     }
   };

@@ -163,19 +163,7 @@ export default function Home() {
     <div className="max-w-7xl mx-auto px-6 py-12">
       {/* Header */}
       <div className="mb-10">
-        <h1
-          className="text-xs font-light leading-snug text-foreground/90"
-          style={{
-            fontSize: '2.2rem',
-            display: '-webkit-box',
-            WebkitLineClamp: 1,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            letterSpacing: '-0.02em',
-            marginBottom: '12px'
-          }}
-        >
+        <h1 className="mb-3 text-[2.2rem] font-light tracking-[-0.02em] text-foreground/90">
           Bounties
         </h1>
         <p className="text-base text-muted-foreground">
@@ -191,13 +179,7 @@ export default function Home() {
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-6 rounded-full border border-border/60 bg-white text-sm text-muted-foreground placeholder:text-muted-foreground/70 shadow-[0_6px_18px_rgba(15,23,42,0.08)] focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-            style={{
-              borderRadius: '9999px',
-              height: '44px',
-              paddingLeft: '26px',
-              paddingRight: '26px'
-            }}
+            className="w-full rounded-full border border-border/60 bg-white px-6 text-sm text-muted-foreground placeholder:text-muted-foreground/70 shadow-[0_6px_18px_rgba(15,23,42,0.08)] outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
       </div>
       </div>
@@ -231,18 +213,7 @@ export default function Home() {
                 <div className="flex items-start justify-between gap-8">
                   <div className="space-y-3 min-w-0">
                     <div>
-                      <h3
-                        className="text-xs font-light leading-snug text-foreground/90"
-                        style={{ 
-                          fontSize: '1.2rem',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 1,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          textTransform: 'capitalize'
-                        }}
-                      >
+                      <h3 className="text-[1.2rem] font-light leading-snug text-foreground/90">
                         {bounty.issueTitle || bounty.issueDescription || 'Bounty'}
                       </h3>
                       <p className="text-sm text-muted-foreground mt-1">
@@ -273,7 +244,6 @@ export default function Home() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-auto inline-flex w-full items-center justify-center rounded-full border border-border/70 bg-muted/80 px-6 py-3 text-sm font-medium text-foreground/90 transition-all hover:bg-gray-100"
-                  style={{ color: 'inherit' }}
                 >
                   View Issue
                 </Link>

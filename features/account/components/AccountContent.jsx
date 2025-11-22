@@ -10,19 +10,37 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { dummyUserBounties, dummyStats } from '@/shared/data/dashboard';
 import AllowlistManager from '@/features/account/components/AllowlistManager';
 import { createSiweMessageText } from '@/shared/lib/siwe-message';
-import { getStatusColor, formatDate } from '@/shared/lib/utils';
+import { getStatusColor, formatDate, cn } from '@/shared/lib/utils';
 import { useErrorModal } from '@/shared/components/ErrorModalProvider';
+import { useGithubUser } from '@/shared/hooks/useGithubUser';
+import { checkAdminAccess } from '@/shared/lib/api/admin';
+import { getUserBounties, getUserStats, getUserWalletByGithubId, getUserProfile, getClaimedBounties } from '@/shared/lib/api/user';
+import { getNonce, linkWallet } from '@/shared/lib/api/wallet';
+import { getBetaApplications, reviewBetaApplication } from '@/shared/lib/api/beta';
+import { getAllowlist } from '@/shared/lib/api/allowlist';
+import styles from './account-content.module.css';
+
+const STAT_LABEL_CLASS = 'mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80';
+const STAT_VALUE_CLASS = 'text-[32px] font-light tracking-[-0.02em] text-foreground';
+const STAT_HINT_CLASS = 'text-sm font-light text-muted-foreground';
+
+function StatBlock({ label, value, hint, className, valueClassName }) {
+  return (
+    <div className={cn('stat-card', className)}>
+      <div className={STAT_LABEL_CLASS}>{label}</div>
+      <div className={cn(STAT_VALUE_CLASS, valueClassName)}>{value}</div>
+      {hint && <p className={STAT_HINT_CLASS}>{hint}</p>}
+    </div>
+  );
+}
 
 export function AccountContent({ initialTab: initialTabOverride } = {}) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const queryTab = searchParams?.get('tab');
   const initialTab = initialTabOverride || queryTab || 'sponsored';
   
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [githubUser, setGithubUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
   
   const [sponsoredBounties, setSponsoredBounties] = useState([]);
   const [stats, setStats] = useState(null);
@@ -57,12 +75,32 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
   const { data: walletClient } = useWalletClient();
   const { showError } = useErrorModal();
 
-  const isLocal = process.env.NEXT_PUBLIC_ENV_TARGET === 'local';
   const useDummyData = process.env.NEXT_PUBLIC_USE_DUMMY_DATA === 'true';
+  const { githubUser, githubUserLoading, isLocalMode } = useGithubUser({
+    requireAuth: true,
+  });
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    async function determineAdminStatus() {
+      if (githubUserLoading || !githubUser) {
+        return;
+      }
+
+      if (useDummyData || isLocalMode) {
+        setIsAdmin(true);
+        return;
+      }
+
+      try {
+        const adminStatus = await checkAdminAccess();
+        setIsAdmin(adminStatus);
+      } catch (error) {
+        console.error('Admin check error:', error);
+      }
+    }
+
+    determineAdminStatus();
+  }, [githubUser, githubUserLoading, isLocalMode, useDummyData]);
 
   useEffect(() => {
     if (githubUser) {
@@ -76,43 +114,6 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
     }
   }, [activeTab, githubUser, isAdmin]);
 
-  const checkAuth = async () => {
-    try {
-      if (useDummyData) {
-        setGithubUser({
-          githubId: 123456789,
-          githubUsername: 'local-dev',
-          avatarUrl: null
-        });
-        setIsAdmin(true);
-        setLoading(false);
-        return;
-      }
-
-      const res = await fetch('/api/oauth/user', {
-        credentials: 'include'
-      });
-
-      if (res.ok) {
-        const user = await res.json();
-        setGithubUser(user);
-        
-        const adminRes = await fetch('/api/admin/check');
-        if (adminRes.ok) {
-          const { isAdmin: adminStatus } = await adminRes.json();
-          setIsAdmin(adminStatus);
-        }
-      } else {
-        router.push('/');
-      }
-    } catch (error) {
-      console.error('Auth check error:', error);
-      router.push('/');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const fetchSponsoredData = async () => {
     if (useDummyData) {
       setSponsoredBounties(dummyUserBounties.map((b) => ({
@@ -125,26 +126,17 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
     }
 
     try {
-      const [bountiesRes, statsRes, walletRes] = await Promise.all([
-        fetch('/api/user/bounties', { credentials: 'include' }),
-        fetch('/api/user/stats', { credentials: 'include' }),
-        fetch(`/api/wallet/${githubUser.githubId}`, { credentials: 'include' })
+      const [bountiesData, statsData, walletData] = await Promise.all([
+        getUserBounties().catch(() => []),
+        getUserStats().catch(() => null),
+        getUserWalletByGithubId(githubUser?.githubId).catch(() => null)
       ]);
 
-      if (bountiesRes.ok) {
-        const data = await bountiesRes.json();
-        setSponsoredBounties(Array.isArray(data) ? data : []);
+      setSponsoredBounties(Array.isArray(bountiesData) ? bountiesData : []);
+      if (statsData) {
+        setStats(statsData);
       }
-
-      if (statsRes.ok) {
-        const data = await statsRes.json();
-        setStats(data);
-      }
-
-      if (walletRes.ok) {
-        const data = await walletRes.json();
-        setHasWallet(!!data.walletAddress);
-      }
+      setHasWallet(Boolean(walletData?.walletAddress));
     } catch (error) {
       console.error('Error fetching sponsored data:', error);
     }
@@ -179,20 +171,18 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
     }
 
     try {
-      const [profileRes, claimedRes] = await Promise.all([
-        fetch('/api/user/profile', { credentials: 'include' }),
-        fetch('/api/user/claimed-bounties', { credentials: 'include' })
+      const [profileData, claimedData] = await Promise.all([
+        getUserProfile(),
+        getClaimedBounties()
       ]);
 
-      if (profileRes.ok) {
-        const data = await profileRes.json();
-        setProfile(data);
+      if (profileData) {
+        setProfile(profileData);
       }
 
-      if (claimedRes.ok) {
-        const data = await claimedRes.json();
-        setClaimedBounties(data.bounties);
-        setTotalEarned(data.totalEarned);
+      if (claimedData) {
+        setClaimedBounties(claimedData.bounties || []);
+        setTotalEarned(claimedData.totalEarned || 0);
       }
     } catch (error) {
       console.error('Error fetching earnings data:', error);
@@ -201,11 +191,8 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
 
   const fetchAdminData = async () => {
     try {
-      const res = await fetch('/api/beta/applications');
-      if (res.ok) {
-        const data = await res.json();
-        setBetaApplications(data.applications || []);
-      }
+      const data = await getBetaApplications();
+      setBetaApplications(data.applications || []);
     } catch (error) {
       console.error('Error fetching admin data:', error);
     }
@@ -215,15 +202,8 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
     if (!bountyId || allowlistLoading[bountyId]) return;
     setAllowlistLoading((prev) => ({ ...prev, [bountyId]: true }));
     try {
-      const res = await fetch(`/api/allowlist/${bountyId}`, {
-        credentials: 'include'
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAllowlists((prev) => ({ ...prev, [bountyId]: data }));
-      } else {
-        setAllowlists((prev) => ({ ...prev, [bountyId]: [] }));
-      }
+      const data = await getAllowlist(bountyId);
+      setAllowlists((prev) => ({ ...prev, [bountyId]: data }));
     } catch (error) {
       console.error('Error fetching allowlist:', error);
       setAllowlists((prev) => ({ ...prev, [bountyId]: [] }));
@@ -256,26 +236,6 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
     return value.toFixed(0);
   }
 
-  function formatStatusLabel(status) {
-    if (!status) return 'Unknown';
-    return status
-      .split('-')
-      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ');
-  }
-
-  function getStatusStyles(status) {
-    switch ((status || '').toLowerCase()) {
-      case 'open':
-        return { badge: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' };
-      case 'in-progress':
-        return { badge: 'bg-amber-50 text-amber-700', dot: 'bg-amber-500' };
-      case 'resolved':
-        return { badge: 'bg-slate-100 text-slate-700', dot: 'bg-slate-500' };
-      default:
-        return { badge: 'bg-muted text-foreground/70', dot: 'bg-foreground/60' };
-    }
-  }
 
   function formatTimeLeft(deadline) {
     if (!deadline) return '-';
@@ -305,8 +265,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
   const ArrowIcon = ({ direction = 'prev' }) => (
     <svg
       viewBox="0 0 12 12"
-      className="w-3 h-3"
-      style={direction === 'next' ? { transform: 'scaleX(-1)' } : undefined}
+      className={cn('h-3 w-3', direction === 'next' && 'scale-x-[-1]')}
       aria-hidden="true"
       focusable="false"
     >
@@ -477,7 +436,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
       setIsProcessingChange(true);
       setChangeWalletStatus({ message: 'Connecting...', type: 'info' });
 
-      if (!githubUser && !isLocal) {
+      if (!githubUser && !isLocalMode) {
         throw new Error('GitHub authentication required');
       }
 
@@ -490,54 +449,34 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
       }
 
       setChangeWalletStatus({ message: 'Getting verification nonce...', type: 'info' });
-      const nonceRes = await fetch('/api/nonce', {
-        credentials: 'include'
-      });
-
-      if (!nonceRes.ok) {
-        throw new Error('Failed to get nonce');
-      }
-
-      const { nonce } = await nonceRes.json();
+      const { nonce } = await getNonce();
 
       const message = createSiweMessageText({
         domain: window.location.host,
         address,
         statement: 'Sign in with Ethereum to link your wallet to BountyPay',
         uri: window.location.origin,
-        chainId: chain.id,
+        chainId: chain?.id || 1,
         nonce
       });
 
       setChangeWalletStatus({ message: 'Please sign the message in your wallet...', type: 'info' });
       const signature = await walletClient.signMessage({
-        message: message
+        message
       });
 
       setChangeWalletStatus({ message: 'Verifying signature...', type: 'info' });
-      const linkRes = await fetch('/api/wallet/link', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          address,
-          signature,
-          message,
-          chainId: chain.id
-        })
+      await linkWallet({
+        address,
+        signature,
+        message,
+        chainId: chain?.id || 1
       });
-
-      const linkData = await linkRes.json();
-
-      if (!linkRes.ok) {
-        throw new Error(linkData.error || 'Failed to update wallet');
-      }
 
       setChangeWalletStatus({ message: 'Wallet updated successfully!', type: 'success' });
       
       await fetchEarningsData();
+      await fetchSponsoredData();
       
       setTimeout(() => {
         setShowChangeWalletModal(false);
@@ -551,6 +490,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
         primaryActionLabel: 'Try Again',
         onPrimaryAction: handleChangeWallet,
       });
+    } finally {
       setIsProcessingChange(false);
     }
   };
@@ -565,18 +505,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
     setProcessing({ ...processing, [applicationId]: true });
     
     try {
-      const res = await fetch('/api/beta/review', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ applicationId, action })
-      });
-      
-      if (!res.ok) {
-        throw new Error('Failed to review application');
-      }
-      
+      await reviewBetaApplication(applicationId, action);
       await fetchAdminData();
     } catch (err) {
       showError({
@@ -588,10 +517,10 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
     }
   };
 
-  if (loading) {
+  if (githubUserLoading) {
     return (
-      <div className="container" style={{ maxWidth: '1200px', padding: '32px 24px' }}>
-        <p style={{ color: 'var(--color-text-secondary)' }}>Loading...</p>
+      <div className="mx-auto w-full max-w-5xl px-6 py-8 text-muted-foreground">
+        <p>Loading...</p>
       </div>
     );
   }
@@ -616,40 +545,25 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
     : null;
 
   return (
-    <div className="container" style={{ maxWidth: '1200px', padding: '40px 24px' }}>
+    <div className="container max-w-5xl px-6 py-10">
       <div className="mb-2 animate-fade-in-up">
-        <h1 className="text-foreground" style={{ 
-          fontSize: 'clamp(24px, 4vw, 32px)',
-          marginBottom: '8px',
-          fontWeight: '500',
-          letterSpacing: '-0.02em'
-        }}>
+        <h1 className="mb-2 text-[clamp(24px,4vw,32px)] font-medium tracking-[-0.02em] text-foreground">
           Hello @{githubUser.githubUsername}
         </h1>
-        <p className="text-muted-foreground" style={{ fontSize: '14px', fontWeight: '300' }}>
+        <p className="text-sm font-light text-muted-foreground">
           Manage your bounties, earnings, and settings
         </p>
       </div>
 
-      <div className="flex gap-2 mb-8 pb-0" style={{ borderBottom: '1px solid var(--border)' }}>
+      <div className="mb-8 flex gap-2 border-b border-border pb-0">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className="nav-link"
-            style={{
-              padding: '12px 16px',
-              border: 'none',
-              background: 'transparent',
-              color: activeTab === tab.id ? 'var(--foreground)' : 'var(--muted-foreground)',
-              fontSize: '14px',
-              fontWeight: activeTab === tab.id ? '500' : '400',
-              cursor: 'pointer',
-              position: 'relative',
-              transition: 'all 0.2s ease',
-              borderBottom: activeTab === tab.id ? '2px solid var(--foreground)' : '2px solid transparent',
-              borderRadius: '0'
-            }}
+            className={cn(
+              'px-4 py-3 text-sm font-light transition-colors border-b-2 border-transparent',
+              activeTab === tab.id ? 'border-b-foreground text-foreground font-medium' : 'text-muted-foreground'
+            )}
           >
             {tab.label}
           </button>
@@ -684,49 +598,35 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <div className="stat-card animate-fade-in-up delay-100">
-                  <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                    VALUE LOCKED
-                  </div>
-                  <div className="text-primary" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
-                    ${stats?.totalValueLocked?.toLocaleString() || '0'}
-                  </div>
-                  <div className="text-muted-foreground" style={{ fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
-                    Across {stats?.openBounties || 0} open bounties
-                  </div>
-                </div>
-
-                <div className="stat-card animate-fade-in-up delay-200">
-                  <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                    TOTAL PAID
-                  </div>
-                  <div className="text-primary" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
-                    ${stats?.totalValuePaid?.toLocaleString() || '0'}
-                  </div>
-                  <div className="text-muted-foreground" style={{ fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
-                    {stats?.resolvedBounties || 0} contributors
-                  </div>
-                </div>
-
-                <div className="stat-card animate-fade-in-up delay-300">
-                  <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                    REFUNDED
-                  </div>
-                  <div className="text-primary" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
-                    {stats?.refundedBounties || 0}
-                  </div>
-                  <div className="text-muted-foreground" style={{ fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
-                    Expired bounties
-                  </div>
-                </div>
+              <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+                <StatBlock
+                  className="animate-fade-in-up delay-100"
+                  label="Value Locked"
+                  value={`$${stats?.totalValueLocked?.toLocaleString() || '0'}`}
+                  hint={`Across ${stats?.openBounties || 0} open bounties`}
+                  valueClassName="text-primary"
+                />
+                <StatBlock
+                  className="animate-fade-in-up delay-200"
+                  label="Total Paid"
+                  value={`$${stats?.totalValuePaid?.toLocaleString() || '0'}`}
+                  hint={`${stats?.resolvedBounties || 0} contributors`}
+                  valueClassName="text-primary"
+                />
+                <StatBlock
+                  className="animate-fade-in-up delay-300"
+                  label="Refunded"
+                  value={stats?.refundedBounties || 0}
+                  hint="Expired bounties"
+                  valueClassName="text-primary"
+                />
               </div>
 
-              <div className="animate-fade-in-up delay-400" style={{ marginBottom: 0 }}>
+              <div className="animate-fade-in-up delay-400">
                 <div>
                   {sponsoredBounties.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                <p className="text-muted-foreground" style={{ fontSize: '14px', fontWeight: '300' }}>
+                    <div className={styles.bountyListEmpty}>
+                      <p className={cn('text-muted-foreground', styles.mutedParagraph)}>
                         No bounties found
                       </p>
                     </div>
@@ -769,53 +669,40 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                         key={bounty.bountyId}
                       className="group bg-card border border-border/40 rounded-[32px] p-6 flex flex-col gap-4 shadow-sm transition-all duration-200 hover:border-primary/40 hover:shadow-md"
                   >
-                      <div className="flex flex-col md:flex-row md:items-center gap-4">
-                    <div style={{ flex: '1', minWidth: 0 }}>
-                      <button
-                        type="button"
+                      <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                        <div className={styles.flexGrow}>
+                          <button
+                            type="button"
                             onClick={() => handleToggleBounty(bounty.bountyId)}
                             aria-expanded={isExpanded}
-                            className="text-left cursor-pointer w-full"
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          padding: 0,
-                          textAlign: 'left'
-                        }}
-                      >
+                            className={cn('w-full cursor-pointer text-left', styles.unstyledButton)}
+                          >
                             <div className="flex items-center gap-3">
-                    <div
-                      className="text-foreground"
-                      style={{
-                        fontSize: '16px',
-                        fontWeight: '300',
-                        letterSpacing: '-0.02em',
-                        opacity: 0.9,
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      {bounty.repoFullName}#{bounty.issueNumber}
+                              <div className={cn('text-foreground', styles.repoTitle)}>
+                                {bounty.repoFullName}#{bounty.issueNumber}
                               </div>
                               <span className="text-xs text-muted-foreground">
                                 {isExpanded ? 'Hide details' : 'Show details'}
                               </span>
-                    </div>
+                            </div>
                           </button>
-                      <div className="text-muted-foreground mt-1" style={{ fontSize: '13px', fontWeight: '300' }}>
-                        {formatTimeLeft(bounty.deadline) === 'Expired' ? 'Expired' : `${formatTimeLeft(bounty.deadline)} left`}
-                      </div>
-                      </div>
-                    
-                    <div className="ml-auto flex flex-col items-end gap-1">
-                      <div className="text-foreground" style={{ fontSize: '16px', fontWeight: '300', letterSpacing: '-0.03em', color: '#0D473F' }}>
-                        {formatAmount(bounty.amount, bounty.tokenSymbol)} {bounty.tokenSymbol}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground" style={{ fontSize: '12px', fontWeight: '300' }}>
-                          {(bounty.claimCount || 0).toString()} claims
-                        </span>
-                      </div>
-                    </div>
+                          <div className={cn('mt-1 text-muted-foreground', styles.metaMuted)}>
+                            {formatTimeLeft(bounty.deadline) === 'Expired'
+                              ? 'Expired'
+                              : `${formatTimeLeft(bounty.deadline)} left`}
+                          </div>
+                        </div>
+
+                        <div className="ml-auto flex flex-col items-end gap-1">
+                          <div className={cn('text-foreground', styles.amountValue)}>
+                            {formatAmount(bounty.amount, bounty.tokenSymbol)} {bounty.tokenSymbol}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={cn('text-muted-foreground', styles.claimCount)}>
+                              {(bounty.claimCount || 0).toString()} claims
+                            </span>
+                          </div>
+                        </div>
                       </div>
 
                       {isExpanded && (
@@ -916,53 +803,39 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
 
       {activeTab === 'earnings' && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="stat-card animate-fade-in-up delay-100">
-              <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                TOTAL EARNED
-              </div>
-              <div className="text-primary" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
-                ${totalEarned.toLocaleString()}
-              </div>
-              <div className="text-muted-foreground" style={{ fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
-                {claimedBounties.filter(b => b.claimStatus === 'resolved' || b.claimStatus === 'paid').length} bounties
-              </div>
-            </div>
-
-            <div className="stat-card animate-fade-in-up delay-200">
-              <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                ACTIVE CLAIMS
-              </div>
-              <div className="text-primary" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
-                {claimedBounties.filter(b => b.claimStatus === 'pending').length}
-              </div>
-              <div className="text-muted-foreground" style={{ fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
-                Awaiting payout
-              </div>
-            </div>
-
-            <div className="stat-card animate-fade-in-up delay-300">
-              <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                COMPLETED
-              </div>
-              <div className="text-primary" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
-                {claimedBounties.filter(b => b.claimStatus === 'resolved' || b.claimStatus === 'paid').length}
-              </div>
-              <div className="text-muted-foreground" style={{ fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
-                Paid submissions
-              </div>
-            </div>
+          <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+            <StatBlock
+              className="animate-fade-in-up delay-100"
+              label="Total Earned"
+              value={`$${totalEarned.toLocaleString()}`}
+              hint={`${claimedBounties.filter(b => b.claimStatus === 'resolved' || b.claimStatus === 'paid').length} bounties`}
+              valueClassName="text-primary"
+            />
+            <StatBlock
+              className="animate-fade-in-up delay-200"
+              label="Active Claims"
+              value={claimedBounties.filter(b => b.claimStatus === 'pending').length}
+              hint="Awaiting payout"
+              valueClassName="text-primary"
+            />
+            <StatBlock
+              className="animate-fade-in-up delay-300"
+              label="Completed"
+              value={claimedBounties.filter(b => b.claimStatus === 'resolved' || b.claimStatus === 'paid').length}
+              hint="Paid submissions"
+              valueClassName="text-primary"
+            />
           </div>
 
           <div className="bg-card border border-border/40 rounded-2xl p-6 animate-fade-in-up delay-700">
-            <h3 className="text-foreground mb-6" style={{ fontSize: '18px', fontWeight: '400' }}>
+            <h3 className="mb-6 text-lg font-medium text-foreground">
               Recent Activity
             </h3>
             <div className="border-t border-border/40 mb-3" />
             
             {claimedBounties.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <p className="text-muted-foreground" style={{ fontSize: '14px', fontWeight: '300', marginBottom: '16px' }}>
+              <div className={styles.smallEmptyState}>
+                <p className={cn('text-muted-foreground', styles.mutedParagraph, 'mb-4')}>
                   You haven't claimed any bounties yet
                 </p>
                 <Link href="/">
@@ -986,23 +859,15 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                           href={issueUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-foreground hover:text-primary transition-colors"
-                          style={{
-                            fontSize: '14px',
-                            fontWeight: '300',
-                            letterSpacing: '-0.02em',
-                            marginBottom: '4px',
-                            display: 'inline-block',
-                            opacity: 0.9
-                          }}
+                          className={cn('text-foreground hover:text-primary transition-colors', styles.activityLink)}
                         >
                           {repoName}
                         </a>
-                        <div className="text-muted-foreground" style={{ fontSize: '13px', fontWeight: '300' }}>
+                        <div className={cn('text-muted-foreground', styles.metaMuted)}>
                           {bounty.paidAt ? `Paid ${new Date(bounty.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'Paid Recent'}
                       </div>
                     </div>
-                      <div className="text-foreground" style={{ fontSize: '16px', fontWeight: '300', letterSpacing: '-0.03em', color: '#0D473F' }}>
+                      <div className={cn('text-foreground', styles.amountValue)}>
                         {formatAmount(bounty.amount, bounty.tokenSymbol)} {bounty.tokenSymbol}
                         </div>
                         </div>
@@ -1019,23 +884,14 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="bg-card border border-border/40 rounded-2xl p-6 animate-fade-in-up delay-100">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-foreground flex items-center gap-2" style={{ fontSize: '15px', fontWeight: '500', margin: 0 }}>
+                <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
                   <GitHubIcon size={18} />
                   GitHub Account
                 </h3>
                 
                 <button
                   onClick={handleManageRepos}
-                  className="premium-btn text-sm"
-                  style={{
-                    padding: '6px 12px',
-                    background: 'transparent',
-                    border: '1px solid var(--border)',
-                    color: 'var(--muted-foreground)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
+                  className="premium-btn flex items-center gap-1.5 border border-border bg-transparent px-3 py-1.5 text-sm text-muted-foreground"
                 >
                   <SettingsIcon size={14} />
                   Manage repos
@@ -1049,10 +905,10 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                   size={48}
                 />
                 <div>
-                  <div className="text-foreground" style={{ fontSize: '15px', fontWeight: '400', marginBottom: '2px' }}>
+                  <div className="mb-0.5 text-sm font-medium text-foreground">
                     @{githubUser.githubUsername}
                   </div>
-                  <div className="text-muted-foreground" style={{ fontSize: '13px', fontWeight: '300' }}>
+                  <div className="text-sm font-light text-muted-foreground">
                     ID: {githubUser.githubId}
                   </div>
                 </div>
@@ -1060,51 +916,33 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
             </div>
 
             <div className="bg-card border border-border/40 rounded-2xl p-6 animate-fade-in-up delay-200">
-              <h3 className="text-foreground flex items-center gap-2 mb-4" style={{ fontSize: '15px', fontWeight: '500' }}>
+              <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-foreground">
                 <WalletIcon size={18} />
                 Payout Wallet
               </h3>
               
               {profile.wallet ? (
                 <div>
-                  <div className="text-muted-foreground" style={{ fontSize: '12px', marginBottom: '4px', fontWeight: '400' }}>
+                  <div className="mb-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
                     Address
                   </div>
-                  <div className="text-foreground" style={{ 
-                    fontSize: '13px', 
-                    fontWeight: '400',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    wordBreak: 'break-all',
-                    marginBottom: '8px'
-                  }}>
+                  <div className="mb-2 break-all font-mono text-sm text-foreground">
                     {profile.wallet.walletAddress.slice(0, 10)}...{profile.wallet.walletAddress.slice(-8)}
                   </div>
-                  <div className="text-muted-foreground" style={{ fontSize: '12px', marginBottom: '16px', fontWeight: '300' }}>
+                  <div className="mb-4 text-xs font-light text-muted-foreground">
                     Linked {new Date(profile.wallet.verifiedAt).toLocaleDateString()}
                   </div>
                   
                   <div className="flex gap-2 flex-wrap">
                     <button 
                       onClick={openChangeWalletModal}
-                      className="premium-btn text-sm"
-                      style={{
-                        padding: '6px 12px',
-                        background: 'transparent',
-                        border: '1px solid var(--border)',
-                        color: 'var(--foreground)'
-                      }}
+                      className="premium-btn border border-border bg-transparent px-3 py-1.5 text-sm text-foreground"
                     >
                       Change Wallet
                     </button>
                     <button 
                       onClick={openDeleteWalletModal}
-                      className="premium-btn text-sm"
-                      style={{
-                        padding: '6px 12px',
-                        background: 'transparent',
-                        border: '1px solid var(--destructive)',
-                        color: 'var(--destructive)'
-                      }}
+                      className="premium-btn border border-destructive bg-transparent px-3 py-1.5 text-sm text-destructive"
                     >
                       Delete Wallet
                     </button>
@@ -1112,7 +950,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                 </div>
               ) : (
                 <div className="text-center py-4">
-                  <p className="text-muted-foreground mb-3" style={{ fontSize: '13px', fontWeight: '300' }}>
+                  <p className="mb-3 text-sm font-light text-muted-foreground">
                     No wallet linked
                   </p>
                   <Link href="/link-wallet?type=payout">
@@ -1125,17 +963,16 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
             </div>
           </div>
 
-          <div className="bg-card border border-destructive/30 rounded-2xl p-6 animate-fade-in-up delay-300" style={{ background: 'var(--destructive)/5' }}>
-            <h3 className="text-destructive mb-2" style={{ fontSize: '15px', fontWeight: '500' }}>
+          <div className="bg-destructive/5 border border-destructive/30 rounded-2xl p-6 animate-fade-in-up delay-300">
+            <h3 className="mb-2 text-sm font-medium text-destructive">
               Logout
             </h3>
-            <p className="text-muted-foreground mb-4" style={{ fontSize: '13px', fontWeight: '300' }}>
+            <p className="mb-4 text-sm font-light text-muted-foreground">
               End your session and sign out of your account
             </p>
             <button
               onClick={logout}
-              className="premium-btn bg-destructive text-destructive-foreground"
-              style={{ padding: '8px 20px', fontSize: '13px' }}
+              className="premium-btn bg-destructive px-5 py-2 text-sm text-destructive-foreground"
             >
               Logout
             </button>
@@ -1145,39 +982,27 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
 
       {activeTab === 'admin' && isAdmin && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="stat-card animate-fade-in-up delay-100">
-              <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                Total Applications
-              </div>
-              <div className="text-foreground" style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em' }}>
-                {betaApplications.length}
-              </div>
-            </div>
-            <div className="stat-card animate-fade-in-up delay-200">
-              <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                Pending Review
-              </div>
-              <div style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em', color: getStatusColor('pending') }}>
-                {betaApplications.filter(app => app.status === 'pending').length}
-              </div>
-            </div>
-            <div className="stat-card animate-fade-in-up delay-300">
-              <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                Approved
-              </div>
-              <div style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em', color: getStatusColor('approved') }}>
-                {betaApplications.filter(app => app.status === 'approved').length}
-              </div>
-            </div>
-            <div className="stat-card animate-fade-in-up delay-400">
-              <div className="text-muted-foreground" style={{ fontSize: '11px', marginBottom: '12px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                Rejected
-              </div>
-              <div style={{ fontSize: '32px', fontWeight: '400', letterSpacing: '-0.02em', color: getStatusColor('rejected') }}>
-                {betaApplications.filter(app => app.status === 'rejected').length}
-              </div>
-            </div>
+          <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
+            <StatBlock
+              className="animate-fade-in-up delay-100"
+              label="Total Applications"
+              value={betaApplications.length}
+            />
+            <StatBlock
+              className="animate-fade-in-up delay-200"
+              label="Pending Review"
+              value={betaApplications.filter(app => app.status === 'pending').length}
+            />
+            <StatBlock
+              className="animate-fade-in-up delay-300"
+              label="Approved"
+              value={betaApplications.filter(app => app.status === 'approved').length}
+            />
+            <StatBlock
+              className="animate-fade-in-up delay-400"
+              label="Rejected"
+              value={betaApplications.filter(app => app.status === 'rejected').length}
+            />
           </div>
 
           {betaApplications.filter(app => app.status === 'pending').length > 0 && (

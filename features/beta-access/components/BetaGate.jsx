@@ -20,23 +20,7 @@ export function BetaGate({ children, fallback }) {
     <>
       <button
         onClick={() => setShowModal(true)}
-        style={{
-          padding: '10px 20px',
-          borderRadius: '8px',
-          border: 'none',
-          fontSize: '14px',
-          fontWeight: '600',
-          background: '#00827B',
-          color: 'white',
-          cursor: 'pointer',
-          transition: 'all 0.2s ease'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = '#39BEB7';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = '#00827B';
-        }}
+        className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/80"
       >
         + Create Bounty
       </button>

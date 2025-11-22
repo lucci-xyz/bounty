@@ -4,13 +4,14 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
 import HomePage from '@/features/home/components/HomePage';
 import { AccountContent } from '@/features/account/components/AccountContent';
+import { cn } from '@/shared/lib/utils';
 
 function AccountSection({ initialTab }) {
   return (
     <Suspense
       fallback={
-        <div className="container" style={{ maxWidth: '1200px', padding: '32px 24px' }}>
-          <p style={{ color: 'var(--color-text-secondary)' }}>Loading...</p>
+        <div className="mx-auto w-full max-w-5xl px-6 py-8 text-muted-foreground">
+          <p>Loading...</p>
         </div>
       }
     >
@@ -80,46 +81,21 @@ export default function BaseMiniAppPage() {
   }, [activeSection]);
 
   return (
-    <div
-      className="container"
-      style={{
-        maxWidth: '1200px',
-        padding: '32px 20px 48px',
-        width: '100%',
-      }}
-    >
-      <div style={{ marginBottom: '24px' }}>
-        <p
-          className="text-xs uppercase tracking-wide mb-2"
-          style={{ color: '#39BEB7', fontWeight: 600 }}
-        >
+    <div className="mx-auto w-full max-w-5xl px-5 py-10">
+      <div className="mb-6">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#39BEB7]">
           Base Mini App
         </p>
-        <h1
-          style={{
-            fontSize: 'clamp(28px, 5vw, 40px)',
-            fontWeight: 600,
-            color: '#00827B',
-            marginBottom: '8px',
-            fontFamily: "'Space Grotesk', sans-serif",
-          }}
-        >
+        <h1 className="mb-2 text-[clamp(28px,5vw,40px)] font-semibold text-primary">
           Explore BountyPay in one place
         </h1>
-        <p style={{ color: 'var(--color-text-secondary)', maxWidth: '640px' }}>
+        <p className="max-w-2xl text-sm text-muted-foreground">
           Toggle between the existing home, dashboard, and profile experiences without leaving this page.
           Everything you see here reuses the production-ready screens.
         </p>
       </div>
 
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '12px',
-          marginBottom: '20px',
-        }}
-      >
+      <div className="mb-5 flex flex-wrap gap-3">
         {MINI_APP_SECTIONS.map((section) => {
           const isActive = section.id === activeSection;
           return (
@@ -127,27 +103,19 @@ export default function BaseMiniAppPage() {
               key={section.id}
               type="button"
               onClick={() => setActiveSection(section.id)}
-              style={{
-                flex: '1 1 220px',
-                minWidth: '200px',
-                borderRadius: '12px',
-                border: isActive ? '1px solid transparent' : '1px solid var(--color-border)',
-                background: isActive ? '#00827B' : 'white',
-                color: isActive ? 'white' : 'var(--color-text-primary)',
-                textAlign: 'left',
-                padding: '16px 18px',
-                cursor: 'pointer',
-                boxShadow: isActive ? '0 12px 24px rgba(0, 130, 123, 0.25)' : '0 2px 8px rgba(0,0,0,0.06)',
-                transition: 'all 0.2s ease',
-              }}
+              className={cn(
+                'flex-1 min-w-[200px] rounded-xl border px-5 py-4 text-left shadow-sm transition-all',
+                isActive
+                  ? 'border-transparent bg-primary text-primary-foreground shadow-lg'
+                  : 'border-border bg-card text-foreground'
+              )}
             >
-              <div style={{ fontSize: '15px', fontWeight: 600 }}>{section.label}</div>
+              <div className="text-base font-semibold">{section.label}</div>
               <div
-                style={{
-                  fontSize: '13px',
-                  color: isActive ? 'rgba(255,255,255,0.9)' : 'var(--color-text-secondary)',
-                  marginTop: '2px',
-                }}
+                className={cn(
+                  'mt-0.5 text-sm',
+                  isActive ? 'text-white/80' : 'text-muted-foreground'
+                )}
               >
                 {section.description}
               </div>
@@ -156,15 +124,7 @@ export default function BaseMiniAppPage() {
         })}
       </div>
 
-      <div
-        style={{
-          borderRadius: '16px',
-          border: '1px solid var(--color-border)',
-          boxShadow: '0 16px 40px rgba(0, 0, 0, 0.08)',
-          background: 'var(--color-background)',
-          overflow: 'hidden',
-        }}
-      >
+      <div className="overflow-hidden rounded-2xl border border-border bg-background shadow-[0_16px_40px_rgba(0,0,0,0.08)]">
         <ActiveSectionComponent key={activeSection} />
       </div>
     </div>

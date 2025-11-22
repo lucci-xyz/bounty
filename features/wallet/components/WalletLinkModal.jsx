@@ -26,86 +26,30 @@ export default function WalletLinkModal({ isOpen, onClose, walletType = 'payout'
     : 'You need to connect a wallet to receive bounty payments. This wallet will be used to receive crypto when your PRs are merged.';
 
   return (
-    <div 
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-        padding: '20px'
-      }}
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-5"
       onClick={onClose}
     >
-      <div 
-        style={{
-          background: 'white',
-          borderRadius: '16px',
-          padding: '32px',
-          maxWidth: '480px',
-          width: '100%',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
-        }}
+      <div
+        className="w-full max-w-lg rounded-2xl bg-card p-8 shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{
-          width: '64px',
-          height: '64px',
-          borderRadius: '16px',
-          background: 'rgba(131, 238, 232, 0.15)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto 24px'
-        }}>
-          <WalletIcon size={32} color="var(--color-primary)" />
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <WalletIcon size={32} color="currentColor" />
         </div>
 
-        <h2 style={{
-          fontSize: '24px',
-          fontFamily: "'Space Grotesk', sans-serif",
-          textAlign: 'center',
-          marginBottom: '12px'
-        }}>
+        <h2 className="mb-3 text-center text-2xl font-semibold text-foreground">
           {title}
         </h2>
 
-        <p style={{
-          fontSize: '15px',
-          color: 'var(--color-text-secondary)',
-          textAlign: 'center',
-          lineHeight: '1.6',
-          marginBottom: '32px'
-        }}>
+        <p className="mb-8 text-center text-base text-muted-foreground">
           {description}
         </p>
 
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div className="flex gap-3">
           <button
             onClick={onClose}
-            style={{
-              flex: 1,
-              padding: '12px',
-              borderRadius: '8px',
-              border: '2px solid var(--color-border)',
-              background: 'white',
-              color: 'var(--color-text-primary)',
-              fontSize: '15px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--color-background-secondary)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'white';
-            }}
+            className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted/60"
           >
             Cancel
           </button>
@@ -113,28 +57,7 @@ export default function WalletLinkModal({ isOpen, onClose, walletType = 'payout'
           <button
             onClick={handleLinkWallet}
             disabled={loading}
-            style={{
-              flex: 1,
-              padding: '12px',
-              borderRadius: '8px',
-              border: 'none',
-              background: loading ? 'var(--color-text-secondary)' : 'var(--color-primary)',
-              color: 'white',
-              fontSize: '15px',
-              fontWeight: '600',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) {
-                e.currentTarget.style.background = 'var(--color-primary-medium)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) {
-                e.currentTarget.style.background = 'var(--color-primary)';
-              }
-            }}
+            className="flex-1 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? 'Redirecting...' : 'Link Wallet'}
           </button>

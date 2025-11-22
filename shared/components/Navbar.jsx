@@ -3,21 +3,19 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { useNetwork } from '@/shared/components/NetworkProvider';
-import { useAccount } from 'wagmi';
 import UserAvatar from '@/shared/components/UserAvatar';
+import { useGithubUser } from '@/shared/hooks/useGithubUser';
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
-  const [githubUser, setGithubUser] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
   const { networkGroup, switchNetworkGroup, isSwitchingGroup } = useNetwork();
-  const { address, isConnected } = useAccount();
   const networkEnv = networkGroup || 'testnet';
+  const { githubUser } = useGithubUser();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -26,10 +24,6 @@ export default function Navbar() {
     
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => {
-    checkAuth();
   }, []);
 
   useEffect(() => {
@@ -44,20 +38,6 @@ export default function Navbar() {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [showDropdown]);
-
-  const checkAuth = async () => {
-    try {
-      const res = await fetch('/api/oauth/user', {
-        credentials: 'include'
-      });
-      if (res.ok) {
-        const user = await res.json();
-        setGithubUser(user);
-      }
-    } catch (error) {
-      // User not logged in
-    }
-  };
 
   const handleNetworkSwitch = async () => {
     if (isSwitchingGroup) {

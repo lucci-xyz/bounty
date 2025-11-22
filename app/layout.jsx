@@ -31,9 +31,9 @@ export default function RootLayout({ children }) {
         <Providers>
           <NetworkProvider>
             <BetaAccessProvider>
-              <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+              <div className="flex min-h-screen flex-col">
                 <Navbar />
-                <main style={{ flex: 1 }}>
+                <main className="flex-1">
                   {children}
                 </main>
                 <Footer />
