@@ -1,3 +1,5 @@
+import path from 'path';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
@@ -62,7 +64,7 @@ const nextConfig = {
     // Ensure path aliases are resolved correctly
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': require('path').resolve(__dirname),
+      '@': path.resolve(process.cwd()),
     };
 
     // Externalize pino-pretty for server-side builds to avoid bundling issues
