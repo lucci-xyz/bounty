@@ -23,7 +23,13 @@ const resolveIdentity = cache(async () => {
       anonymous: false
     };
   } catch (error) {
-    logger.warn('Flag identity resolution failed; defaulting to anonymous context.', error);
+    // During static generation, cookies() isn't available, which is expected
+    // Only log warnings for unexpected errors
+    const isStaticGenerationError = error?.message?.includes('Dynamic server usage') || 
+                                    error?.message?.includes('cookies');
+    if (!isStaticGenerationError) {
+      logger.warn('Flag identity resolution failed; defaulting to anonymous context.', error);
+    }
     return {
       key: 'anonymous',
       anonymous: true
