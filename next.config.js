@@ -59,6 +59,12 @@ const nextConfig = {
       '@react-native-async-storage/async-storage': false,
     };
 
+    // Ensure path aliases are resolved correctly
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': require('path').resolve(__dirname),
+    };
+
     // Externalize pino-pretty for server-side builds to avoid bundling issues
     if (isServer) {
       config.externals.push('pino-pretty');

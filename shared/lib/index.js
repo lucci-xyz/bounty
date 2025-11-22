@@ -25,3 +25,6 @@ export {
   getStatusIcon
 } from './style/statusStyles';
 
+export { logger } from './logger';
+export * from './flags';
+
