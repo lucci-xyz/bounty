@@ -59,6 +59,7 @@ const nextConfig = {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       '@react-native-async-storage/async-storage': false,
+      async_hooks: false,
     };
 
     // Ensure path aliases are resolved correctly
