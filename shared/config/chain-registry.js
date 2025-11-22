@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import { isAddress } from 'ethers';
 import { getLinkHref } from '@/shared/config/links';
 
@@ -209,9 +210,9 @@ function buildRegistry() {
 
   // Validate at least one network is configured
   if (skippedAliases.length > 0 && !hasLoggedSkippedAliases) {
-    console.warn('[chain-registry] Skipping misconfigured network aliases:');
+    logger.warn('[chain-registry] Skipping misconfigured network aliases:');
     for (const { alias, reason } of skippedAliases) {
-      console.warn(`  - ${alias}: ${reason}`);
+      logger.warn(`  - ${alias}: ${reason}`);
     }
     hasLoggedSkippedAliases = true;
   }

@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/shared/lib/logger';
 
 import { useCallback, useState } from 'react';
 import { getLinkHref } from '@/shared/config/links';
@@ -36,7 +37,7 @@ export function useRepoManager({ useDummyData = false } = {}) {
       const data = await res.json();
       setRepositories(data.repositories || []);
     } catch (error) {
-      console.error('Error loading repositories:', error);
+      logger.error('Error loading repositories:', error);
       setRepositories([]);
     } finally {
       setLoadingRepos(false);

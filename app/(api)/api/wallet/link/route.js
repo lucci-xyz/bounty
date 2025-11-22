@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { getSession } from '@/shared/lib/session';
 import { walletQueries } from '@/shared/server/db/prisma';
@@ -24,7 +25,7 @@ export async function POST(request) {
       message: 'Wallet linked successfully'
     });
   } catch (error) {
-    console.error('Error linking wallet:', error);
+    logger.error('Error linking wallet:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 }

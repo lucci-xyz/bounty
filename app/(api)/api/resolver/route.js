@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 export const runtime = 'nodejs';
 
@@ -45,7 +46,7 @@ export async function GET(request) {
       );
     }
 
-    console.log(`Resolver address for ${alias}: ${resolverAddress}`);
+    logger.info(`Resolver address for ${alias}: ${resolverAddress}`);
 
     return NextResponse.json({
       success: true,
@@ -53,7 +54,7 @@ export async function GET(request) {
       network: alias
     });
   } catch (error) {
-    console.error('Error fetching resolver address:', error);
+    logger.error('Error fetching resolver address:', error);
     return NextResponse.json(
       { 
         success: false, 

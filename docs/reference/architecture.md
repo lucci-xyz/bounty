@@ -52,7 +52,7 @@
 
 ### Blockchain + Network Registry
 - `config/chain-registry.js` centralizes supported aliases (Base Mainnet/Sepolia, Mezo Mainnet/Testnet). It enforces RPC/token/contract env vars at load time and surfaces utilities (`REGISTRY`, `getDefaultAliasForGroup`, `getAlias`).
-- `contracts/current/BountyEscrow.sol` (Solidity 0.8.24) escrows ERC‑20 funds, enforces resolver-only payouts, supports sponsor refunds after deadlines, and accrues protocol fees. It imports OpenZeppelin 5.0.2 libraries (vendored under `lib/openzeppelin-contracts`).
+- `contracts/current/BountyEscrow.sol` (Solidity 0.8.24) escrows ERC‑20 funds, enforces resolver-only payouts, supports sponsor refunds after deadlines, and accrues protocol fees. It imports OpenZeppelin 5.0.2 libraries (installed via npm in `node_modules/@openzeppelin/contracts`).
 - `shared/server/blockchain/contract.js` creates per-alias clients with ethers v6, computes bounty IDs, formats/parse token amounts, and handles resolver wallet selection. It also handles non-1559 networks (Mezo) by sending legacy gas parameters.
 - The frontend pulls the registry via `/api/registry` and stores per-user env choice via `/api/network/env`, so both wagmi and server-side logic agree on the active chain ID/token metadata.
 
@@ -112,7 +112,7 @@
 - `docs/`: guides and references (this file plus API/server/frontend/database/contract references).
 - `public/`: static assets (logo `public/icons/og.png`, CTA buttons, stats HTML).
 - `shared/data/`: mocked responses for UI development.
-- `shared/lib/`: runtime helpers (session, network env, openapi registry) for both UI and API routes, while `lib/` continues to host vendored Solidity deps.
+- `shared/lib/`: runtime helpers (session, network env, flags, logger) for both UI and API routes, while `lib/` continues to host vendored Solidity deps.
 - Tooling scripts (per `package.json`): `npm run dev` (Next dev server), `npm run build` (Prisma generate + Next build), `npm run test` (Node test runner placeholder).
 
 ## Related Documentation

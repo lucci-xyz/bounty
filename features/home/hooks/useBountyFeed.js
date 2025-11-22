@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/shared/lib/logger';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { dummyBounties } from '@/shared/data/bounties';
@@ -67,7 +68,7 @@ export function useBountyFeed() {
           setBounties(data);
         }
       } catch (err) {
-        console.error('Error fetching bounties:', err);
+        logger.error('Error fetching bounties:', err);
         if (isMounted) {
           setBounties([]);
           setError(err.message || 'Unable to load bounties');

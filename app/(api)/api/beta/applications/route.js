@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { getSession } from '@/shared/lib/session';
 import { prisma } from '@/shared/server/db/prisma';
@@ -50,7 +51,7 @@ export async function GET() {
       }))
     });
   } catch (error) {
-    console.error('Error fetching beta applications:', error);
+    logger.error('Error fetching beta applications:', error);
     return NextResponse.json(
       { error: 'Failed to fetch applications' },
       { status: 500 }

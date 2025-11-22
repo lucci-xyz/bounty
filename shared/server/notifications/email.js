@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import { getLinkHref } from '@/shared/config/links';
 
 const ALERT_EMAIL = 'contact@luccilabs.xyz';
@@ -15,7 +16,7 @@ const RESEND_EMAIL_ENDPOINT = getLinkHref('services', 'resendEmail');
  */
 export async function sendSystemEmail({ subject, html, text }) {
   if (!RESEND_API_KEY) {
-    console.warn(`[email] RESEND_API_KEY not configured. Skipping alert email: ${subject}`);
+    logger.warn(`[email] RESEND_API_KEY not configured. Skipping alert email: ${subject}`);
     return { skipped: true };
   }
 
@@ -37,13 +38,13 @@ export async function sendSystemEmail({ subject, html, text }) {
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error('[email] Failed to send alert email:', response.status, errorBody);
+      logger.error('[email] Failed to send alert email:', response.status, errorBody);
       return { success: false };
     }
 
     return { success: true };
   } catch (error) {
-    console.error('[email] Exception while sending alert email:', error);
+    logger.error('[email] Exception while sending alert email:', error);
     return { success: false, error: error.message };
   }
 }
@@ -59,12 +60,12 @@ export async function sendSystemEmail({ subject, html, text }) {
  */
 export async function sendUserEmail({ to, subject, html, text }) {
   if (!RESEND_API_KEY) {
-    console.warn(`[email] RESEND_API_KEY not configured. Skipping user email: ${subject}`);
+    logger.warn(`[email] RESEND_API_KEY not configured. Skipping user email: ${subject}`);
     return { skipped: true };
   }
 
   if (!to) {
-    console.warn(`[email] No recipient provided for email: ${subject}`);
+    logger.warn(`[email] No recipient provided for email: ${subject}`);
     return { skipped: true, reason: 'no_recipient' };
   }
 
@@ -86,15 +87,15 @@ export async function sendUserEmail({ to, subject, html, text }) {
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error('[email] Failed to send user email:', response.status, errorBody);
+      logger.error('[email] Failed to send user email:', response.status, errorBody);
       return { success: false };
     }
 
     const result = await response.json();
-    console.log(`[email] User email sent successfully to ${to}`);
+    logger.info(`[email] User email sent successfully to ${to}`);
     return { success: true, id: result.id };
   } catch (error) {
-    console.error('[email] Exception while sending user email:', error);
+    logger.error('[email] Exception while sending user email:', error);
     return { success: false, error: error.message };
   }
 }

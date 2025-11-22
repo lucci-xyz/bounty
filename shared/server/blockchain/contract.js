@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import { ethers } from 'ethers';
 import { CONFIG } from '../config.js';
 import { REGISTRY, ABIS, getDefaultAliasForGroup } from '../../config/chain-registry.js';
@@ -62,9 +63,9 @@ export function initBlockchain() {
     escrowContract = clients.escrowContract;
     tokenContract = clients.tokenContract;
 
-    console.log(`Blockchain initialized with ${defaultTestnetAlias}`);
+    logger.info(`Blockchain initialized with ${defaultTestnetAlias}`);
   } catch (error) {
-    console.warn('Could not initialize default blockchain clients:', error.message);
+    logger.warn('Could not initialize default blockchain clients:', error.message);
   }
 }
 
@@ -135,7 +136,7 @@ export async function resolveBounty(bountyId, recipientAddress) {
     recipientAddress = validateAddress(recipientAddress, 'recipientAddress');
     const tx = await escrowContract.resolve(bountyId, recipientAddress);
     const receipt = await tx.wait();
-    console.log(`Bounty resolved: ${bountyId.slice(0, 10)}... -> ${receipt.hash}`);
+    logger.info(`Bounty resolved: ${bountyId.slice(0, 10)}... -> ${receipt.hash}`);
     return {
       success: true,
       txHash: receipt.hash,
@@ -143,7 +144,7 @@ export async function resolveBounty(bountyId, recipientAddress) {
       gasUsed: receipt.gasUsed.toString(),
     };
   } catch (error) {
-    console.error('Error resolving bounty:', error.message);
+    logger.error('Error resolving bounty:', error.message);
     return {
       success: false,
       error: error.message,
@@ -175,7 +176,7 @@ export async function resolveBountyOnNetwork(bountyId, recipientAddress, alias) 
 
     const tx = await escrowContract.resolve(bountyId, recipientAddress, txOverrides);
     const receipt = await tx.wait();
-    console.log(`Bounty resolved on ${alias}: ${bountyId.slice(0, 10)}... -> ${receipt.hash}`);
+    logger.info(`Bounty resolved on ${alias}: ${bountyId.slice(0, 10)}... -> ${receipt.hash}`);
     return {
       success: true,
       txHash: receipt.hash,
@@ -183,7 +184,7 @@ export async function resolveBountyOnNetwork(bountyId, recipientAddress, alias) 
       gasUsed: receipt.gasUsed.toString(),
     };
   } catch (error) {
-    console.error(`Error resolving bounty on ${alias}:`, error.message);
+    logger.error(`Error resolving bounty on ${alias}:`, error.message);
     return {
       success: false,
       error: error.message,

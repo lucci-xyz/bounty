@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { getSession } from '@/shared/lib/session';
 import { allowlistQueries, bountyQueries, userQueries } from '@/shared/server/db/prisma';
@@ -27,7 +28,7 @@ export async function GET(request, { params }) {
     
     return Response.json(allowlist);
   } catch (error) {
-    console.error('Error fetching allowlist:', error);
+    logger.error('Error fetching allowlist:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
@@ -74,7 +75,7 @@ export async function POST(request, { params }) {
     
     return Response.json(entry);
   } catch (error) {
-    console.error('Error adding to allowlist:', error);
+    logger.error('Error adding to allowlist:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
@@ -104,7 +105,7 @@ export async function DELETE(request, { params }) {
     
     return Response.json({ success: true });
   } catch (error) {
-    console.error('Error removing from allowlist:', error);
+    logger.error('Error removing from allowlist:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 }

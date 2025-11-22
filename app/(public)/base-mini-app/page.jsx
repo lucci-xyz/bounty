@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/shared/lib/logger';
 
 /**
  * Main page for the Base Mini App.
@@ -85,7 +86,7 @@ export default function BaseMiniAppPage() {
         await sdk.actions.ready();
       } catch (error) {
         if (mounted) {
-          console.error('Error signalling Base mini app readiness:', error);
+          logger.error('Error signalling Base mini app readiness:', error);
         }
       }
     }

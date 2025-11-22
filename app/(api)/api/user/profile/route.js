@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { getSession } from '@/shared/lib/session';
 import { userQueries, walletQueries } from '@/shared/server/db/prisma';
@@ -22,7 +23,7 @@ export async function GET(request) {
       wallet
     });
   } catch (error) {
-    console.error('Error fetching user profile:', error);
+    logger.error('Error fetching user profile:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
@@ -53,7 +54,7 @@ export async function POST(request) {
     
     return Response.json(updated);
   } catch (error) {
-    console.error('Error updating user profile:', error);
+    logger.error('Error updating user profile:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 }

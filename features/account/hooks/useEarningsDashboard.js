@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/shared/lib/logger';
 
 /**
  * useEarningsDashboard
@@ -55,7 +56,7 @@ export function useEarningsDashboard({ useDummyData, enabled = true } = {}) {
         setTotalEarned(claimedData.totalEarned || 0);
       }
     } catch (error) {
-      console.error('Error fetching earnings data:', error);
+      logger.error('Error fetching earnings data:', error);
     }
   }, [enabled, useDummyData]);
 

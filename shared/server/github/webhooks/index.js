@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import { getOctokit } from '../client.js';
 import { notifyMaintainers } from '../services/maintainerAlerts.js';
 import { handleIssueOpened } from './actions/issues.js';
@@ -24,19 +25,19 @@ export async function handleWebhook(event, payload) {
         break;
 
       case 'ping':
-        console.log('Webhook ping received');
+        logger.info('Webhook ping received');
         break;
 
       case 'installation':
       case 'installation_repositories':
-        console.log('GitHub App installation event');
+        logger.info('GitHub App installation event');
         break;
 
       default:
         break;
     }
   } catch (error) {
-    console.error('Error handling webhook:', error.message);
+    logger.error('Error handling webhook:', error.message);
 
     try {
       const { repository, installation, issue, pull_request } = payload;
@@ -58,7 +59,7 @@ export async function handleWebhook(event, payload) {
         }
       }
     } catch (notifyError) {
-      console.error('Could not notify maintainers of webhook error:', notifyError.message);
+      logger.error('Could not notify maintainers of webhook error:', notifyError.message);
     }
 
     throw error;

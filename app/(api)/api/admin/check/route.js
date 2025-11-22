@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { getSession } from '@/shared/lib/session';
 import { NextResponse } from 'next/server';
@@ -21,7 +22,7 @@ export async function GET() {
     
     return NextResponse.json({ isAdmin });
   } catch (error) {
-    console.error('Error checking admin status:', error);
+    logger.error('Error checking admin status:', error);
     return NextResponse.json({ isAdmin: false });
   }
 }

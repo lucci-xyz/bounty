@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/shared/lib/logger';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
@@ -114,7 +115,7 @@ export function useLinkWalletFlow() {
       setHasLinkedWallet(true);
       setStatus({ message: '', type: '' });
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       showError({
         title: 'Wallet Link Failed',
         message: error.message || 'An error occurred while linking your wallet',
@@ -182,7 +183,7 @@ export function useLinkWalletFlow() {
           setLinkedWalletAddress('');
         }
       } catch (error) {
-        console.error('Profile lookup failed', error);
+        logger.error('Profile lookup failed', error);
       } finally {
         if (!cancelled) {
           setCheckingAccount(false);

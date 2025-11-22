@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/shared/lib/logger';
 
 /**
  * Hook to manage all logic and state for the Account page.
@@ -91,7 +92,7 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
         const adminStatus = await checkAdminAccess();
         setIsAdmin(adminStatus);
       } catch (error) {
-        console.error('Admin check error:', error);
+        logger.error('Admin check error:', error);
       }
     }
     determineAdminStatus();
@@ -106,7 +107,7 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
       });
       window.location.href = '/';
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     }
   }, []);
 

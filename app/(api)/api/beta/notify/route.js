@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { getSession } from '@/shared/lib/session';
 import { prisma } from '@/shared/server/db/prisma';
@@ -54,7 +55,7 @@ export async function POST(request) {
     }
     
     // Send email notification to user
-    console.log(`[NOTIFICATION] Sending ${status} notification to ${betaAccess.githubUsername} (${betaAccess.email})`);
+    logger.info(`[NOTIFICATION] Sending ${status} notification to ${betaAccess.githubUsername} (${betaAccess.email})`);
     
     // Get frontend URL from environment
     const frontendUrl = process.env.FRONTEND_URL || getLinkHref('app', 'marketingSite');
@@ -75,7 +76,7 @@ export async function POST(request) {
         text: template.text
       });
     } else {
-      console.warn(`[NOTIFICATION] No email address for user ${betaAccess.githubUsername}`);
+      logger.warn(`[NOTIFICATION] No email address for user ${betaAccess.githubUsername}`);
     }
     
     return NextResponse.json({
@@ -86,7 +87,7 @@ export async function POST(request) {
       recipient: betaAccess.email || null
     });
   } catch (error) {
-    console.error('Error sending notification:', error);
+    logger.error('Error sending notification:', error);
     return NextResponse.json(
       { error: 'Failed to send notification' },
       { status: 500 }

@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import { App } from 'octokit';
 import { CONFIG } from '../config.js';
 
@@ -15,7 +16,7 @@ export function initGitHubApp() {
     }
   });
 
-  console.log('GitHub App initialized');
+  logger.info('GitHub App initialized');
   return githubApp;
 }
 
@@ -74,7 +75,7 @@ export async function pinComment(octokit, owner, repo, commentId) {
     // For now, we'll just mark it in our DB
     return true;
   } catch (error) {
-    console.error('Error pinning comment:', error);
+    logger.error('Error pinning comment:', error);
     return false;
   }
 }

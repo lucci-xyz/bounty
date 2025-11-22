@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { NextResponse } from 'next/server';
 import { getDefaultAliasForGroup } from '@/shared/config/chain-registry';
@@ -26,7 +27,7 @@ export async function GET(request) {
       group
     });
   } catch (error) {
-    console.error('Error fetching default alias:', error);
+    logger.error('Error fetching default alias:', error);
     return NextResponse.json(
       { 
         success: false, 

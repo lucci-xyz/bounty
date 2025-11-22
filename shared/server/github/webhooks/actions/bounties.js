@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import { getOctokit, postIssueComment, ensureLabel, addLabels } from '../../client.js';
 import { bountyQueries } from '../../../db/prisma.js';
 import { notifyMaintainers } from '../../services/maintainerAlerts.js';
@@ -52,7 +53,7 @@ export async function handleBountyCreated(bountyData) {
     try {
       await bountyQueries.updatePinnedComment(bountyId, comment.id);
     } catch (dbError) {
-      console.error('Failed to update pinned comment ID:', dbError.message);
+      logger.error('Failed to update pinned comment ID:', dbError.message);
 
       await notifyMaintainers(octokit, owner, repo, issueNumber, {
         errorType: 'Database Sync Error',
@@ -67,7 +68,7 @@ export async function handleBountyCreated(bountyData) {
 
     return comment;
   } catch (error) {
-    console.error('Error in handleBountyCreated:', error.message);
+    logger.error('Error in handleBountyCreated:', error.message);
 
     try {
       const octokit = await getOctokit(installationId);
@@ -83,7 +84,7 @@ export async function handleBountyCreated(bountyData) {
         context: `**Sponsor:** ${sponsorAddress}\n**Amount:** ${formatAmountByToken(amount, tokenSymbol)} ${tokenSymbol}\n\nThe bounty was created on-chain (tx: ${txHash}), but posting the notification comment failed. Users may not know about the bounty.`
       });
     } catch (notifyError) {
-      console.error('Could not notify maintainers:', notifyError.message);
+      logger.error('Could not notify maintainers:', notifyError.message);
     }
 
     throw error;

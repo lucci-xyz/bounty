@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { getSession } from '@/shared/lib/session';
 import { prClaimQueries, bountyQueries } from '@/shared/server/db/prisma';
@@ -42,7 +43,7 @@ export async function GET(request) {
       totalEarned: Math.round(totalEarned * 100) / 100
     });
   } catch (error) {
-    console.error('Error fetching claimed bounties:', error);
+    logger.error('Error fetching claimed bounties:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 }

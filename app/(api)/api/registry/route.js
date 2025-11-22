@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { NextResponse } from 'next/server';
 import { REGISTRY } from '@/shared/config/chain-registry';
@@ -14,7 +15,7 @@ export async function GET() {
       registry: REGISTRY
     });
   } catch (error) {
-    console.error('Error fetching registry:', error);
+    logger.error('Error fetching registry:', error);
     return NextResponse.json(
       { 
         success: false, 

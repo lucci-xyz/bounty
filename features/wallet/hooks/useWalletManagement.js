@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/shared/lib/logger';
 
 import { useCallback, useEffect, useState } from 'react';
 import { createSiweMessageText } from '@/shared/lib/siwe-message';
@@ -118,7 +119,7 @@ export function useWalletManagement({
       setShowDeleteWalletModal(false);
       setDeleteConfirmation('');
     } catch (error) {
-      console.error('Error deleting wallet:', error);
+      logger.error('Error deleting wallet:', error);
       setDeleteError(error.message);
     } finally {
       setDeleteLoading(false);
@@ -194,7 +195,7 @@ export function useWalletManagement({
         setChangeWalletStatus({ message: '', type: '' });
       }, 1500);
     } catch (error) {
-      console.error('Error changing wallet:', error);
+      logger.error('Error changing wallet:', error);
       const errorMessage =
         error.message || 'An error occurred while updating your wallet';
       showError?.({

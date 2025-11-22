@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { getSession } from '@/shared/lib/session';
 import { CONFIG } from '@/shared/server/config';
@@ -14,17 +15,17 @@ export async function GET(request) {
     const session = await getSession();
     
     if (error) {
-      console.error('OAuth error from GitHub:', error);
+      logger.error('OAuth error from GitHub:', error);
       return NextResponse.json({ error: `GitHub OAuth error: ${error}` }, { status: 400 });
     }
     
     if (!code) {
-      console.error('No authorization code received');
+      logger.error('No authorization code received');
       return NextResponse.json({ error: 'No authorization code received' }, { status: 400 });
     }
     
     if (state !== session.oauthState) {
-      console.error('State mismatch - CSRF check failed');
+      logger.error('State mismatch - CSRF check failed');
       return NextResponse.json({ error: 'Invalid state parameter - CSRF check failed' }, { status: 400 });
     }
     
@@ -70,7 +71,7 @@ export async function GET(request) {
     const url = new URL(returnTo, request.url);
     return NextResponse.redirect(url);
   } catch (error) {
-    console.error('OAuth error:', error.message);
+    logger.error('OAuth error:', error.message);
     return NextResponse.json({ error: `Authentication failed: ${error.message}` }, { status: 500 });
   }
 }

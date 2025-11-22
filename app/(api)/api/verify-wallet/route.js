@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { getSession } from '@/shared/lib/session';
 import { verifySIWE } from '@/shared/server/auth/siwe';
@@ -28,7 +29,7 @@ export async function POST(request) {
       address: result.address
     });
   } catch (error) {
-    console.error('Error verifying wallet:', error);
+    logger.error('Error verifying wallet:', error);
     return Response.json({ error: 'Verification failed' }, { status: 500 });
   }
 }

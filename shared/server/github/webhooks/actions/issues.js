@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import { getOctokit, postIssueComment } from '../../client.js';
 import { renderBountyButtonComment } from '../../templates/bounties';
 import { CTA_BUTTON, FRONTEND_BASE, BRAND_SIGNATURE } from '../../constants.js';
@@ -21,7 +22,7 @@ export async function handleIssueOpened(payload) {
 
     await postIssueComment(octokit, owner, repo, issue.number, comment);
   } catch (error) {
-    console.error('Failed to post bounty button:', error.message);
+    logger.error('Failed to post bounty button:', error.message);
   }
 }
 

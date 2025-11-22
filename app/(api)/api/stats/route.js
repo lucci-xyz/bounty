@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { statsQueries } from '@/shared/server/db/prisma';
 import { CONFIG } from '@/shared/server/config';
@@ -39,7 +40,7 @@ export async function GET() {
       timestamp: Date.now()
     });
   } catch (error) {
-    console.error('Error generating stats:', error);
+    logger.error('Error generating stats:', error);
     return Response.json({ error: 'Failed to generate stats' }, { status: 500 });
   }
 }

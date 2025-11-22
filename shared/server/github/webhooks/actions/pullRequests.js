@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import {
   getOctokit,
   postIssueComment,
@@ -63,7 +64,7 @@ export async function handlePullRequestOpened(payload) {
 
     await suggestBounties(octokit, owner, repo, pull_request, allOpenBounties);
   } catch (error) {
-    console.error('Error in handlePullRequestOpened:', error.message);
+    logger.error('Error in handlePullRequestOpened:', error.message);
 
     try {
       const octokit = await getOctokit(installation.id);
@@ -78,7 +79,7 @@ export async function handlePullRequestOpened(payload) {
         context: `**Repository:** ${repository.full_name}\n**PR Title:** ${pull_request.title}\n\nFailed to process PR open event. Bounty notifications may not have been posted.`
       });
     } catch (notifyError) {
-      console.error('Could not notify maintainers:', notifyError);
+      logger.error('Could not notify maintainers:', notifyError);
     }
 
     throw error;
@@ -126,7 +127,7 @@ export async function handlePullRequestMerged(payload) {
       }
 
       if (!ethers.isAddress(walletMapping.walletAddress)) {
-        console.error('Invalid wallet address in database');
+        logger.error('Invalid wallet address in database');
         const prUrl = getPullUrl(repository.full_name, pull_request.number);
         const comment = renderInvalidWalletComment({
           iconUrl: OG_ICON,
@@ -155,7 +156,7 @@ export async function handlePullRequestMerged(payload) {
       }
 
       if (!bounty.network) {
-        console.error('Bounty has no network configured:', bounty.bountyId);
+        logger.error('Bounty has no network configured:', bounty.bountyId);
         await notifyMaintainers(octokit, owner, repo, pull_request.number, {
           errorType: 'Missing Network Configuration',
           errorMessage: 'Bounty record is missing network alias',
@@ -173,7 +174,7 @@ export async function handlePullRequestMerged(payload) {
       try {
         result = await resolveBountyOnNetwork(bounty.bountyId, walletMapping.walletAddress, bounty.network);
       } catch (error) {
-        console.error('Exception during bounty resolution:', error.message);
+        logger.error('Exception during bounty resolution:', error.message);
         result = { success: false, error: error.message || 'Unknown error during resolution' };
       }
 
@@ -209,7 +210,7 @@ export async function handlePullRequestMerged(payload) {
           await updateComment(octokit, owner, repo, bounty.pinnedCommentId, updatedSummary);
         }
       } else {
-        console.error('Bounty resolution failed:', result.error);
+        logger.error('Bounty resolution failed:', result.error);
 
         let errorHelp = 'Tag a maintainer to investigate and replay the payout.';
         let notifySeverity = 'high';
@@ -265,7 +266,7 @@ export async function handlePullRequestMerged(payload) {
       }
     }
   } catch (error) {
-    console.error('Error in handlePullRequestMerged:', error.message);
+    logger.error('Error in handlePullRequestMerged:', error.message);
 
     try {
       const octokit = await getOctokit(installation.id);
@@ -280,7 +281,7 @@ export async function handlePullRequestMerged(payload) {
         context: `**Repository:** ${repository.full_name}\n**PR Title:** ${pull_request.title}\n**PR Merged:** Yes\n\nFailed to process merged PR event. Bounty payouts may not have been triggered.`
       });
     } catch (notifyError) {
-      console.error('Could not notify maintainers:', notifyError.message);
+      logger.error('Could not notify maintainers:', notifyError.message);
     }
 
     throw error;
@@ -355,7 +356,7 @@ async function handlePRWithBounties(octokit, owner, repo, pull_request, reposito
     try {
       await prClaimQueries.create(bounty.bountyId, pull_request.number, pull_request.user.id, repository.full_name);
     } catch (claimError) {
-      console.error('Failed to record PR claim:', claimError.message);
+      logger.error('Failed to record PR claim:', claimError.message);
 
       await notifyMaintainers(octokit, owner, repo, pull_request.number, {
         errorType: 'PR Claim Recording Failed',

@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { bountyQueries } from '@/shared/server/db/prisma';
 import { getBountyFromContract } from '@/shared/server/blockchain/contract';
@@ -17,7 +18,7 @@ export async function GET(request, { params }) {
     const bounty = await getBountyFromContract(bountyId, network);
     return Response.json(bounty);
   } catch (error) {
-    console.error('Error fetching contract bounty:', error);
+    logger.error('Error fetching contract bounty:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 }

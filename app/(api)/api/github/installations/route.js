@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { getSession } from '@/shared/lib/session';
 import { getGitHubApp } from '@/shared/server/github/client';
@@ -41,13 +42,13 @@ export async function GET(request) {
           });
         });
       } catch (error) {
-        console.error(`Error fetching repos for installation ${installation.id}:`, error);
+        logger.error(`Error fetching repos for installation ${installation.id}:`, error);
       }
     }
 
     return Response.json({ repositories: allRepos });
   } catch (error) {
-    console.error('Error fetching GitHub installations:', error);
+    logger.error('Error fetching GitHub installations:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 }

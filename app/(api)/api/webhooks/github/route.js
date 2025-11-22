@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { getGitHubApp, initGitHubApp } from '@/shared/server/github/client';
 import { handleWebhook } from '@/shared/server/github/webhooks';
@@ -30,7 +31,7 @@ export async function POST(request) {
 
     return Response.json({ success: true });
   } catch (error) {
-    console.error('Webhook error:', error);
+    logger.error('Webhook error:', error);
     
     if (error.message && error.message.includes('signature')) {
       return Response.json({ error: 'Invalid signature' }, { status: 401 });

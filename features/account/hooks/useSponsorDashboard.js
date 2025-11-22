@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/shared/lib/logger';
 
 /**
  * useSponsorDashboard
@@ -64,7 +65,7 @@ export function useSponsorDashboard({
         setTotalPages(1);
         setShowEmptyState(normalizedBounties.length === 0);
       } catch (error) {
-        console.error('Error loading sponsor dashboard:', error);
+        logger.error('Error loading sponsor dashboard:', error);
         setSponsoredBounties([]);
         setStats(null);
         setShowEmptyState(true);

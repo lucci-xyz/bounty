@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/shared/lib/logger';
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -33,7 +34,7 @@ export function useGithubUser({ requireAuth = false, redirectTo = '/', onUnauthe
       const user = await getGithubUser();
       setGithubUser(user);
     } catch (error) {
-      console.error('Failed to load GitHub user', error);
+      logger.error('Failed to load GitHub user', error);
       setGithubUserError(error);
       setGithubUser(null);
     } finally {

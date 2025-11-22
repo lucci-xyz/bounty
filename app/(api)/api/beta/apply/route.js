@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { getSession } from '@/shared/lib/session';
 import { prisma } from '@/shared/server/db/prisma';
@@ -46,7 +47,7 @@ export async function POST() {
       appliedAt: betaAccess.appliedAt.toString()
     });
   } catch (error) {
-    console.error('Error applying for beta:', error);
+    logger.error('Error applying for beta:', error);
     return NextResponse.json(
       { error: 'Failed to apply for beta access' },
       { status: 500 }

@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { cookies } from 'next/headers';
 import { NETWORK_ENV_COOKIE } from '@/shared/lib/network';
@@ -40,7 +41,7 @@ export async function POST(request) {
       env 
     });
   } catch (error) {
-    console.error('Error setting network env:', error);
+    logger.error('Error setting network env:', error);
     return Response.json(
       { error: error.message },
       { status: 500 }
@@ -55,7 +56,7 @@ export async function GET() {
     
     return Response.json({ env });
   } catch (error) {
-    console.error('Error getting network env:', error);
+    logger.error('Error getting network env:', error);
     return Response.json(
       { error: error.message },
       { status: 500 }

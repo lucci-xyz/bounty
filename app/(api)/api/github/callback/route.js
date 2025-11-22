@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { CONFIG } from '@/shared/server/config';
 
@@ -30,7 +31,7 @@ export async function POST(request) {
     const text = await upstream.text();
     return new Response(text, { status: upstream.status });
   } catch (error) {
-    console.error('Callback proxy error:', error.message);
+    logger.error('Callback proxy error:', error.message);
     return Response.json({ error: 'Upstream callback proxy failed' }, { status: 502 });
   }
 }

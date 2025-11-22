@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/shared/lib/logger';
 
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
@@ -48,7 +49,7 @@ export default function Navbar() {
       await switchNetworkGroup(newEnv);
       router.refresh();
     } catch (error) {
-      console.error('Error switching network:', error);
+      logger.error('Error switching network:', error);
       alert(error?.message || `Cannot switch to ${newEnv}: network not configured`);
     }
   };
@@ -63,7 +64,7 @@ export default function Navbar() {
       });
       window.location.href = '/';
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     }
   };
 

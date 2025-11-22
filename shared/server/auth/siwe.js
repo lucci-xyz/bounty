@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import { SiweMessage } from 'siwe';
 import { randomBytes } from 'crypto';
 import { CONFIG } from '../config.js';
@@ -121,7 +122,7 @@ export async function verifySIWE(message, signature) {
       chainId: fields.data.chainId
     };
   } catch (error) {
-    console.error('SIWE verification failed:', error);
+    logger.error('SIWE verification failed:', error);
     return {
       success: false,
       error: error.message

@@ -34,3 +34,13 @@ export {
   getSelectedGroupFromCookies
 } from './network';
 
+export { logger } from './logger';
+export {
+  getFlags,
+  getFlagValue,
+  getFlagProviderData,
+  flagRegistry,
+  improvedNav,
+  betaWalletFlow
+} from './flags';
+

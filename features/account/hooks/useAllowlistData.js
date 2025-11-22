@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/shared/lib/logger';
 
 import { useCallback, useState } from 'react';
 import { getAllowlist } from '@/shared/api/allowlist';
@@ -52,7 +53,7 @@ export function useAllowlistData({ useDummyData = false } = {}) {
         setAllowlists((prev) => ({ ...prev, [bountyId]: data }));
         return data;
       } catch (error) {
-        console.error('Error fetching allowlist:', error);
+        logger.error('Error fetching allowlist:', error);
         setAllowlists((prev) => ({ ...prev, [bountyId]: [] }));
         return [];
       } finally {

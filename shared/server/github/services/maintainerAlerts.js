@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import { postIssueComment } from '../client.js';
 import { sendSystemEmail } from '../../notifications/email.js';
 import { ALERT_SEVERITY_STYLES, buildShieldsBadge } from '@/shared/lib';
@@ -90,15 +91,15 @@ export async function notifyMaintainers(octokit, owner, repo, issueNumber, error
       html: emailHtml
     });
   } catch (emailError) {
-    console.error('Failed to send alert email:', emailError);
+    logger.error('Failed to send alert email:', emailError);
   }
 
   try {
     await postIssueComment(octokit, owner, repo, issueNumber, comment);
-    console.log(`Maintainer notification posted: ${errorId}`);
+    logger.info(`Maintainer notification posted: ${errorId}`);
     return errorId;
   } catch (notifyError) {
-    console.error('Failed to notify maintainers:', notifyError.message);
+    logger.error('Failed to notify maintainers:', notifyError.message);
     return null;
   }
 }

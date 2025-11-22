@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/shared/lib/logger';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -50,7 +51,7 @@ export function NetworkProvider({ children }) {
             resolvedGroup = envData?.env === 'mainnet' ? 'mainnet' : 'testnet';
           }
         } catch (envError) {
-          console.warn('Unable to fetch network env:', envError);
+          logger.warn('Unable to fetch network env:', envError);
         }
         setNetworkGroup(resolvedGroup);
 
@@ -64,13 +65,13 @@ export function NetworkProvider({ children }) {
             }
           }
         } catch (aliasError) {
-          console.warn('Unable to fetch default alias:', aliasError);
+          logger.warn('Unable to fetch default alias:', aliasError);
         }
 
         setDefaultAlias(resolvedAlias);
         setSelectedAliasState(resolvedAlias);
       } catch (error) {
-        console.error('Network initialization error:', error);
+        logger.error('Network initialization error:', error);
         setInitializationError(error.message || 'Unable to load network configuration');
       } finally {
         setIsLoading(false);
@@ -160,7 +161,7 @@ export function NetworkProvider({ children }) {
             }
           }
         } catch (aliasError) {
-          console.warn('Unable to fetch default alias:', aliasError);
+          logger.warn('Unable to fetch default alias:', aliasError);
         }
 
         setDefaultAlias(nextAlias);

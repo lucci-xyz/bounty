@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { getSession } from '@/shared/lib/session';
 import { bountyQueries } from '@/shared/server/db/prisma';
@@ -40,7 +41,7 @@ export async function GET(request) {
 
     return Response.json(stats);
   } catch (error) {
-    console.error('Error fetching user stats:', error);
+    logger.error('Error fetching user stats:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 }

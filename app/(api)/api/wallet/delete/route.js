@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { getSession } from '@/shared/lib/session';
 import { walletQueries } from '@/shared/server/db/prisma';
@@ -28,7 +29,7 @@ export async function DELETE(request) {
     
     return Response.json({ success: true, message: 'Wallet deleted successfully' });
   } catch (error) {
-    console.error('Error deleting wallet:', error);
+    logger.error('Error deleting wallet:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 }

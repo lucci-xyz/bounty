@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/shared/lib/logger';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
@@ -92,7 +93,7 @@ export function useRefundFlow() {
       setCurrentBounty({ bountyId, ...bounty });
       showStatus('✓ Eligible for refund', 'success');
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       showError({
         title: 'Bounty Check Failed',
         message: error.message || 'An error occurred while checking the bounty',
@@ -128,7 +129,7 @@ export function useRefundFlow() {
           type: 0,
           gasPrice: feeData.gasPrice
         };
-        console.log('Using legacy transaction with gasPrice:', ethers.formatUnits(feeData.gasPrice, 'gwei'), 'gwei');
+        logger.info('Using legacy transaction with gasPrice:', ethers.formatUnits(feeData.gasPrice, 'gwei'), 'gwei');
       }
 
       const tx = await escrow.refundExpired(currentBounty.bountyId, txOverrides);
@@ -139,7 +140,7 @@ export function useRefundFlow() {
       showStatus(`✅ Refund successful! TX: ${receipt.hash}`, 'success');
       setRefunded(true);
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       showError({
         title: 'Refund Failed',
         message: error.message || 'An error occurred while processing the refund',

@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { bountyQueries } from '@/shared/server/db/prisma';
 
@@ -8,7 +9,7 @@ export async function GET(request, { params }) {
 
     return Response.json({ bounties });
   } catch (error) {
-    console.error('Error fetching issue bounties:', error);
+    logger.error('Error fetching issue bounties:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 }

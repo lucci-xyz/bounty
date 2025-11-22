@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { getSession } from '@/shared/lib/session';
 import { prisma } from '@/shared/server/db/prisma';
@@ -64,7 +65,7 @@ export async function POST(request) {
         })
       });
     } catch (notifyError) {
-      console.error('Failed to send notification:', notifyError);
+      logger.error('Failed to send notification:', notifyError);
       // Don't fail the whole request if notification fails
     }
     
@@ -79,7 +80,7 @@ export async function POST(request) {
       }
     });
   } catch (error) {
-    console.error('Error reviewing beta application:', error);
+    logger.error('Error reviewing beta application:', error);
     return NextResponse.json(
       { error: 'Failed to review application' },
       { status: 500 }

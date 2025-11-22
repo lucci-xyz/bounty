@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import { config } from 'dotenv';
 import { readFileSync } from 'fs';
 import { isAddress } from 'ethers';
@@ -200,8 +201,8 @@ export function validateConfig() {
 
   // Report all errors at once
   if (errors.length > 0) {
-    console.error('❌ Configuration validation failed:');
-    errors.forEach(err => console.error(`  - ${err}`));
+    logger.error('❌ Configuration validation failed:');
+    errors.forEach(err => logger.error(`  - ${err}`));
     return false;
   }
 

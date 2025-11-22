@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/shared/lib/logger';
 
 import { createContext, useContext, useEffect, useState } from 'react';
 
@@ -55,7 +56,7 @@ export function BetaAccessProvider({ children }) {
         setBetaStatus(data.status || 'pending');
       }
     } catch (error) {
-      console.error('Error checking beta access:', error);
+      logger.error('Error checking beta access:', error);
       setHasAccess(false);
       setBetaStatus('needsAuth');
     } finally {

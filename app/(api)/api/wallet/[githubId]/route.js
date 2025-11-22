@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 import './schema';
 import { walletQueries } from '@/shared/server/db/prisma';
 
@@ -12,7 +13,7 @@ export async function GET(request, { params }) {
 
     return Response.json(mapping);
   } catch (error) {
-    console.error('Error fetching wallet:', error);
+    logger.error('Error fetching wallet:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
