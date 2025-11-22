@@ -1,5 +1,14 @@
 import { ethers } from 'ethers';
+import { getLinkHref } from '@/shared/config/links';
 
+/**
+ * Ensure the bounty deadline is valid.
+ * Returns at least an hour from now.
+ *
+ * @param {string} deadline - The desired deadline (ISO or date string).
+ * @param {number} currentTimestamp - Current timestamp in seconds.
+ * @returns {number} Valid deadline timestamp in seconds.
+ */
 function ensureDeadline(deadline, currentTimestamp) {
   let deadlineTimestamp = Math.floor(new Date(deadline).getTime() / 1000);
   const minDeadline = currentTimestamp + 3600;
@@ -15,6 +24,13 @@ function ensureDeadline(deadline, currentTimestamp) {
   return deadlineTimestamp;
 }
 
+/**
+ * Fetches the resolver contract address for the given network alias.
+ *
+ * @param {string} networkAlias
+ * @returns {Promise<string>} Resolver contract address.
+ * @throws If request fails.
+ */
 async function fetchResolver(networkAlias) {
   const resolverRes = await fetch(`/api/resolver?network=${networkAlias}`);
   if (!resolverRes.ok) {
@@ -25,6 +41,12 @@ async function fetchResolver(networkAlias) {
   return resolverData.resolver;
 }
 
+/**
+ * Parses common smart contract errors and returns a simple message.
+ *
+ * @param {object} error
+ * @returns {string}
+ */
 function mapContractError(error) {
   if (!error) {
     return 'Unknown error';
@@ -63,6 +85,18 @@ function mapContractError(error) {
   return 'Unknown error';
 }
 
+/**
+ * Creates a bounty on-chain and syncs it to the backend database.
+ *
+ * @param {Object} params
+ * @param {string|number} params.amount - Amount to fund.
+ * @param {string} params.deadline - Deadline date (string).
+ * @param {Object} params.issueData - GitHub issue data.
+ * @param {Object} params.walletContext - Wallet connection information.
+ * @param {Object} params.networkContext - Network and contract info.
+ * @param {Object} params.callbacks - UI callback functions.
+ * @throws If any step fails, throws an Error with a message.
+ */
 export async function fundBounty({
   amount,
   deadline,
@@ -91,7 +125,9 @@ export async function fundBounty({
 
   const { showStatus, showError } = callbacks;
   const { repoFullName, issueNumber, repoId, installationId } = issueData;
+  const issueHref = getLinkHref('github', 'issue', { repoFullName, issueNumber });
 
+  // Basic validations
   if (!isConnected || !address) {
     throw new Error('Please connect your wallet first');
   }
@@ -117,6 +153,7 @@ export async function fundBounty({
     throw new Error('Unable to detect your connected network. Please reconnect your wallet.');
   }
 
+  // Switch to the required chain if necessary
   if (effectiveChainId !== network.chainId) {
     showStatus(`Switching to ${network.name}...`, 'loading');
     try {
@@ -133,6 +170,7 @@ export async function fundBounty({
     throw new Error(`Please switch to ${network.name} (Chain ID: ${network.chainId}) in your wallet and try again.`);
   }
 
+  // Setup providers and contract instances
   const provider = new ethers.BrowserProvider(walletClient);
   const signer = await provider.getSigner();
   const currentBlock = await provider.getBlock('latest');
@@ -140,6 +178,7 @@ export async function fundBounty({
   const deadlineTimestamp = ensureDeadline(deadline, blockTimestamp);
   const amountWei = ethers.parseUnits(amount, network.token.decimals);
 
+  // Check balance and approve escrow contract if needed
   showStatus(`Checking ${network.token.symbol} balance...`, 'loading');
   const token = new ethers.Contract(
     network.token.address,
@@ -173,6 +212,7 @@ export async function fundBounty({
     }
   }
 
+  // Determine the network alias to send
   let networkAliasToSend = selectedAlias || defaultAlias;
   if (chain?.id && registry) {
     const matchingEntry = Object.entries(registry).find(([, config]) => {
@@ -187,11 +227,12 @@ export async function fundBounty({
     }
   }
 
+  // Get the resolver address
   showStatus('Fetching resolver address...', 'loading');
   const resolverAddress = await fetchResolver(networkAliasToSend);
 
+  // Prepare to create the bounty on-chain
   showStatus('Creating bounty on-chain...', 'loading');
-
   const escrow = new ethers.Contract(
     network.contracts.escrow,
     [
@@ -203,13 +244,16 @@ export async function fundBounty({
     signer
   );
 
+  // RepoId is hashed and padded for contract requirements
   const repoIdHash = `0x${parseInt(repoId, 10).toString(16).padStart(64, '0')}`;
 
+  // Check contract code exists at escrow address
   const code = await provider.getCode(network.contracts.escrow);
   if (code === '0x') {
     throw new Error(`No contract found at ${network.contracts.escrow} on ${network.name}. The contract may not be deployed on this network.`);
   }
 
+  // Ensure the contract is not paused
   try {
     const isPaused = await escrow.paused();
     if (isPaused) {
@@ -234,6 +278,7 @@ export async function fundBounty({
     throw new Error('Deadline must be in the future. Please select a later date.');
   }
 
+  // Compute bounty ID and check for existing bounty
   const bountyId = await escrow.computeBountyId(address, repoIdHash, parseInt(issueNumber, 10));
   try {
     const existingBounty = await escrow.getBounty(bountyId);
@@ -249,10 +294,12 @@ export async function fundBounty({
     }
   }
 
+  // Send the bounty creation transaction
   let receipt;
   try {
     let tx;
     if (!network.supports1559) {
+      // Legacy gas mode for certain networks
       const feeData = await provider.getFeeData();
       const legacyGasPrice =
         feeData.gasPrice && feeData.gasPrice > 0n
@@ -280,6 +327,7 @@ export async function fundBounty({
 
       tx = await signer.sendTransaction(txRequest);
     } else {
+      // EIP-1559 path
       tx = await escrow.createBounty(
         resolverAddress,
         repoIdHash,
@@ -295,6 +343,7 @@ export async function fundBounty({
     throw new Error(`Contract call failed: ${mapContractError(contractError)}`);
   }
 
+  // Record the bounty in the backend database
   showStatus('Recording bounty in database...', 'loading');
   try {
     const response = await fetch('/api/bounty/create', {
@@ -319,21 +368,20 @@ export async function fundBounty({
       console.error('Database recording failed:', error);
       showStatus('⚠️ Bounty created on-chain but database sync failed. Redirecting back to GitHub...', 'error');
       setTimeout(() => {
-        window.location.href = `https://github.com/${repoFullName}/issues/${issueNumber}`;
+        window.location.href = issueHref;
       }, 4000);
       return;
     }
 
     showStatus('✅ Bounty created! Redirecting back to GitHub...', 'success');
     setTimeout(() => {
-      window.location.href = `https://github.com/${repoFullName}/issues/${issueNumber}`;
+      window.location.href = issueHref;
     }, 2000);
   } catch (dbError) {
     console.error('Database error:', dbError);
     showStatus('⚠️ Bounty created on-chain but database recording failed. Redirecting back to GitHub...', 'error');
     setTimeout(() => {
-      window.location.href = `https://github.com/${repoFullName}/issues/${issueNumber}`;
+      window.location.href = issueHref;
     }, 4000);
   }
 }
-

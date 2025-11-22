@@ -2,28 +2,43 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { WalletIcon, CheckCircleIcon } from '@/shared/components/Icons';
+import { WalletIcon } from '@/shared/components/Icons';
 
+/**
+ * Modal asking user to connect a crypto wallet for payouts or funding.
+ *
+ * @param {Object} props
+ * @param {boolean} props.isOpen - Whether the modal is open
+ * @param {Function} props.onClose - Function to close the modal
+ * @param {'payout'|'funding'} [props.walletType='payout'] - Type of wallet to connect
+ */
 export default function WalletLinkModal({ isOpen, onClose, walletType = 'payout' }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
+  // Render nothing if modal is closed
   if (!isOpen) return null;
 
+  /**
+   * Handler for redirecting user to wallet linking flow.
+   * Preserves the current page URL for return.
+   */
   const handleLinkWallet = () => {
     setLoading(true);
-    // Preserve current URL to return to after linking
     const returnUrl = window.location.pathname + window.location.search;
     router.push(`/link-wallet?returnTo=${encodeURIComponent(returnUrl)}&type=${walletType}`);
   };
 
-  const title = walletType === 'funding' 
-    ? 'Connect Funding Wallet' 
-    : 'Connect Payout Wallet';
-  
-  const description = walletType === 'funding'
-    ? 'You need to connect a wallet to fund bounties. This wallet will be used to send crypto to the bounty escrow contract.'
-    : 'You need to connect a wallet to receive bounty payments. This wallet will be used to receive crypto when your PRs are merged.';
+  // Determine modal title and description based on wallet type
+  const title =
+    walletType === 'funding'
+      ? 'Connect Funding Wallet'
+      : 'Connect Payout Wallet';
+
+  const description =
+    walletType === 'funding'
+      ? 'You need to connect a wallet to fund bounties. This wallet will be used to send crypto to the bounty escrow contract.'
+      : 'You need to connect a wallet to receive bounty payments. This wallet will be used to receive crypto when your PRs are merged.';
 
   return (
     <div
@@ -32,7 +47,7 @@ export default function WalletLinkModal({ isOpen, onClose, walletType = 'payout'
     >
       <div
         className="w-full max-w-lg rounded-2xl bg-card p-8 shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
-        onClick={(e) => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
       >
         <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <WalletIcon size={32} color="currentColor" />

@@ -3,7 +3,8 @@ import { getSession } from '@/shared/lib/session';
 import { prisma } from '@/shared/server/db/prisma';
 import { NextResponse } from 'next/server';
 import { sendUserEmail } from '@/shared/server/notifications/email';
-import { betaApprovedTemplate, betaRejectedTemplate } from '@/shared/server/notifications/templates';
+import { renderBetaApprovedEmail, renderBetaRejectedEmail } from '@/shared/server/notifications/templates';
+import { getLinkHref } from '@/shared/config/links';
 
 // List of admin GitHub IDs - configure in environment
 const ADMIN_GITHUB_IDS = (process.env.ADMIN_GITHUB_IDS || '')
@@ -56,12 +57,13 @@ export async function POST(request) {
     console.log(`[NOTIFICATION] Sending ${status} notification to ${betaAccess.githubUsername} (${betaAccess.email})`);
     
     // Get frontend URL from environment
-    const frontendUrl = process.env.FRONTEND_URL || 'https://bountypay.luccilabs.xyz';
+    const frontendUrl = process.env.FRONTEND_URL || getLinkHref('app', 'marketingSite');
     
     // Select appropriate template based on status
-    const template = status === 'approved' 
-      ? betaApprovedTemplate({ username: betaAccess.githubUsername, frontendUrl })
-      : betaRejectedTemplate({ username: betaAccess.githubUsername, frontendUrl });
+    const template =
+      status === 'approved'
+        ? renderBetaApprovedEmail({ username: betaAccess.githubUsername, frontendUrl })
+        : renderBetaRejectedEmail({ username: betaAccess.githubUsername, frontendUrl });
     
     // Send email if user has provided an email address
     let emailResult = { skipped: true, reason: 'no_email' };

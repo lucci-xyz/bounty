@@ -3,6 +3,7 @@ import { getSession } from '@/shared/lib/session';
 import { CONFIG } from '@/shared/server/config';
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
+import { getLinkHref } from '@/shared/config/links';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -29,7 +30,7 @@ export async function GET(request) {
   session.oauthState = state;
   await session.save();
   
-  const authUrl = `https://github.com/login/oauth/authorize?${params}`;
+  const authUrl = getLinkHref('github', 'oauthAuthorize', { queryString: params.toString() });
   
   return NextResponse.redirect(authUrl);
 }

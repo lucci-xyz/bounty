@@ -1,12 +1,13 @@
 import './globals.css';
 import '@rainbow-me/rainbowkit/styles.css';
-import { Providers } from '@/shared/components/Providers';
-import { NetworkProvider } from '@/shared/components/NetworkProvider';
+import { Providers } from '@/shared/providers/Providers';
+import { NetworkProvider } from '@/shared/providers/NetworkProvider';
 import { BetaAccessProvider } from '@/features/beta-access/providers/BetaAccessProvider';
 import Navbar from '@/shared/components/Navbar';
 import Footer from '@/shared/components/Footer';
 import { Analytics } from '@vercel/analytics/react';
 import { MINI_APP_EMBED } from '@/app/(public)/base-mini-app/manifest';
+import { getLinkHref } from '@/shared/config/links';
 
 export const metadata = {
   title: 'BountyPay - Automated GitHub Bounty Payments',
@@ -16,14 +17,18 @@ export const metadata = {
   },
 };
 
+const FONT_PRECONNECT = getLinkHref('assets', 'fontsApiPreconnect');
+const FONT_STATIC_PRECONNECT = getLinkHref('assets', 'fontsStaticPreconnect');
+const FONT_STYLESHEET = getLinkHref('assets', 'fontsDmSansAndFriends');
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href={FONT_PRECONNECT} />
+        <link rel="preconnect" href={FONT_STATIC_PRECONNECT} crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Jetbrains+Mono:wght@400;500&display=swap"
+          href={FONT_STYLESHEET}
           rel="stylesheet"
         />
       </head>

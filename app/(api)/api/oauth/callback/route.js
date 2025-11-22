@@ -2,6 +2,7 @@ import './schema';
 import { getSession } from '@/shared/lib/session';
 import { CONFIG } from '@/shared/server/config';
 import { NextResponse } from 'next/server';
+import { getLinkHref } from '@/shared/config/links';
 
 export async function GET(request) {
   try {
@@ -27,7 +28,7 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Invalid state parameter - CSRF check failed' }, { status: 400 });
     }
     
-    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+    const tokenResponse = await fetch(getLinkHref('github', 'oauthAccessToken'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -46,7 +47,7 @@ export async function GET(request) {
       throw new Error(tokenData.error_description || 'OAuth token exchange failed');
     }
     
-    const userResponse = await fetch('https://api.github.com/user', {
+    const userResponse = await fetch(getLinkHref('github', 'apiUser'), {
       headers: {
         'Authorization': `Bearer ${tokenData.access_token}`,
         'Accept': 'application/json'

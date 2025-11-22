@@ -282,3 +282,29 @@ export const dummyContributionsData = [
   { date: '30', value: 0 }
 ];
 
+export const dummyProfile = {
+  user: {
+    githubId: 123456789,
+    githubUsername: 'local-dev',
+    createdAt: Date.now()
+  },
+  wallet: {
+    walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
+    verifiedAt: Date.now()
+  }
+};
+
+export const dummyClaimedBounties = [
+  {
+    bountyId: '0x123',
+    repoFullName: 'test/repo',
+    issueNumber: 42,
+    amount: '100000000',
+    tokenSymbol: 'USDC',
+    claimStatus: 'resolved',
+    paidAt: Date.now()
+  }
+];
+
+export const dummyTotalEarned = 100;
+

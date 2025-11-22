@@ -1,63 +1,59 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+/**
+ * BetaAdminPage displays and manages beta access applications for admins.
+ */
 import { useRouter } from 'next/navigation';
-import { formatDate, cn } from '@/shared/lib/utils';
-import { getBetaApplications, reviewBetaApplication } from '@/shared/lib/api/beta';
+import { cn, formatDate, STATUS_VARIANTS } from '@/shared/lib';
+import { useBetaApplications } from '@/features/beta-access';
+import { LinkFromCatalog } from '@/shared/components/LinkFromCatalog';
 
+/**
+ * Maps application status to CSS classes.
+ */
+const BETA_STATUS_CLASS_MAP = {
+  approved: STATUS_VARIANTS.success,
+  rejected: STATUS_VARIANTS.error,
+  pending: STATUS_VARIANTS.loading
+};
+
+/**
+ * Beta access admin page component.
+ * Allows admins to review, approve, or reject beta access applications.
+ */
 export default function BetaAdminPage() {
-  const [applications, setApplications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [processing, setProcessing] = useState({});
   const router = useRouter();
 
-  useEffect(() => {
-    fetchApplications();
-  }, []);
+  /**
+   * Fetch beta application data and management actions.
+   * Redirects to home if unauthorized.
+   */
+  const {
+    applications,
+    pendingApplications,
+    reviewedApplications,
+    loading,
+    error,
+    processing,
+    handleReview
+  } = useBetaApplications({
+    onUnauthorized: () => router.push('/')
+  });
 
-  const fetchApplications = async () => {
+  /**
+   * Handles approving or rejecting a beta application.
+   * @param {string} applicationId - The application ID
+   * @param {'approve'|'reject'} action - The review action
+   */
+  const handleReviewAction = async (applicationId, action) => {
     try {
-      setLoading(true);
-      const data = await getBetaApplications();
-      setApplications(data.applications || []);
-    } catch (err) {
-      if (err?.status === 401) {
-        router.push('/');
-        return;
-      }
-      if (err?.status === 403) {
-        setError('You do not have admin access');
-        return;
-      }
-      setError(err.message || 'Failed to fetch applications');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleReview = async (applicationId, action) => {
-    setProcessing({ ...processing, [applicationId]: true });
-    
-    try {
-      await reviewBetaApplication(applicationId, action);
-      // Refresh applications list
-      await fetchApplications();
+      await handleReview(applicationId, action);
     } catch (err) {
       alert(`Error: ${err.message}`);
-    } finally {
-      setProcessing({ ...processing, [applicationId]: false });
     }
   };
 
-  const pendingApplications = applications.filter(app => app.status === 'pending');
-  const reviewedApplications = applications.filter(app => app.status !== 'pending');
-  const badgeClassMap = {
-    pending: 'bg-amber-100/70 text-amber-600',
-    approved: 'bg-emerald-100 text-emerald-700',
-    rejected: 'bg-rose-100 text-rose-600',
-  };
-
+  // Render loading state if applications are loading
   if (loading) {
     return (
       <div className="mx-auto w-full max-w-5xl px-6 py-10">
@@ -69,6 +65,7 @@ export default function BetaAdminPage() {
     );
   }
 
+  // Render error state if there is an error loading applications
   if (error) {
     return (
       <div className="mx-auto w-full max-w-5xl px-6 py-10">
@@ -82,6 +79,7 @@ export default function BetaAdminPage() {
     );
   }
 
+  // Render main beta access admin page
   return (
     <div className="mx-auto w-full max-w-5xl px-6 py-10">
       <div className="mb-8">
@@ -93,7 +91,7 @@ export default function BetaAdminPage() {
         </p>
       </div>
 
-      {/* Stats */}
+      {/* Stats: Show summary of beta applications */}
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
         <div className="stat-card animate-fade-in-up delay-100">
           <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
@@ -129,7 +127,7 @@ export default function BetaAdminPage() {
         </div>
       </div>
 
-      {/* Pending Applications */}
+      {/* Pending Applications: Review actions for pending applications */}
       {pendingApplications.length > 0 && (
         <div className="mb-8">
           <h2 className="mb-4 text-lg font-medium text-foreground">
@@ -143,15 +141,20 @@ export default function BetaAdminPage() {
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <a
-                      href={`https://github.com/${app.githubUsername}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <LinkFromCatalog
+                      section="github"
+                      link="userProfile"
+                      params={{ username: app.githubUsername }}
                       className="text-base font-medium text-primary hover:underline"
                     >
                       @{app.githubUsername}
-                    </a>
-                    <span className={cn('bounty-tag text-[11px]', badgeClassMap[app.status] || 'bg-muted text-foreground/70')}>
+                    </LinkFromCatalog>
+                    <span
+                      className={cn(
+                        'bounty-tag text-[11px]',
+                        BETA_STATUS_CLASS_MAP[app.status] || 'bg-muted text-foreground/70 border border-border/40'
+                      )}
+                    >
                       {app.status}
                     </span>
                   </div>
@@ -166,14 +169,14 @@ export default function BetaAdminPage() {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => handleReview(app.id, 'approve')}
+                    onClick={() => handleReviewAction(app.id, 'approve')}
                     disabled={processing[app.id]}
                     className="premium-btn bg-primary px-4 py-2 text-sm text-primary-foreground"
                   >
                     ✓ Approve
                   </button>
                   <button
-                    onClick={() => handleReview(app.id, 'reject')}
+                    onClick={() => handleReviewAction(app.id, 'reject')}
                     disabled={processing[app.id]}
                     className="premium-btn border border-border bg-transparent px-4 py-2 text-sm text-muted-foreground"
                   >
@@ -186,7 +189,7 @@ export default function BetaAdminPage() {
         </div>
       )}
 
-      {/* Reviewed Applications */}
+      {/* Reviewed Applications: List of already reviewed applications */}
       {reviewedApplications.length > 0 && (
         <div>
           <h2 className="mb-4 text-lg font-medium text-foreground">
@@ -199,16 +202,19 @@ export default function BetaAdminPage() {
                 className="bg-card border border-border/40 rounded-2xl p-5 animate-fade-in-up"
               >
                 <div className="flex items-center gap-3 mb-2">
-                  <a
-                    href={`https://github.com/${app.githubUsername}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <LinkFromCatalog
+                    section="github"
+                    link="userProfile"
+                    params={{ username: app.githubUsername }}
                     className="text-base font-medium text-primary hover:underline"
                   >
                     @{app.githubUsername}
-                  </a>
+                  </LinkFromCatalog>
                   <span
-                    className={cn('bounty-tag text-[11px]', badgeClassMap[app.status] || 'bg-muted text-foreground/70')}
+                    className={cn(
+                      'bounty-tag text-[11px]',
+                      BETA_STATUS_CLASS_MAP[app.status] || 'bg-muted text-foreground/70 border border-border/40'
+                    )}
                   >
                     {app.status}
                   </span>
@@ -232,6 +238,7 @@ export default function BetaAdminPage() {
         </div>
       )}
 
+      {/* Display message if there are no applications */}
       {applications.length === 0 && (
         <div className="rounded-2xl border border-border/40 bg-card p-16 text-center">
           <p className="text-base font-light text-muted-foreground">

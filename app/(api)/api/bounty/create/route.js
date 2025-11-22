@@ -4,8 +4,8 @@ import { bountyQueries, userQueries } from '@/shared/server/db/prisma';
 import { handleBountyCreated } from '@/shared/server/github/webhooks';
 import { computeBountyIdOnNetwork, createRepoIdHash } from '@/shared/server/blockchain/contract';
 import { getGitHubApp, getOctokit, initGitHubApp } from '@/shared/server/github/client';
-import { getActiveAliasFromCookies } from '@/shared/lib/network-env';
-import { REGISTRY } from '@/config/chain-registry';
+import { getActiveAliasFromCookies } from '@/shared/lib/network';
+import { REGISTRY } from '@/shared/config/chain-registry';
 import { CreateBountyBodySchema } from './schema';
 
 export async function POST(request) {
@@ -35,9 +35,9 @@ export async function POST(request) {
     // Use provided network or default from cookie
     const alias = network || defaultAlias;
     
-    console.log('📡 Creating bounty with network alias:', alias);
-    console.log('📦 Received network param:', network);
-    console.log('🔧 Default alias from cookie:', defaultAlias);
+    console.log('Creating bounty with network alias:', alias);
+    console.log('Received network param:', network);
+    console.log('Default alias from cookie:', defaultAlias);
     
     const networkConfig = REGISTRY[alias];
     
@@ -77,7 +77,7 @@ export async function POST(request) {
         try {
           getGitHubApp();
         } catch {
-          console.log('📱 Initializing GitHub App...');
+          console.log('Initializing GitHub App...');
           initGitHubApp();
         }
 
@@ -93,7 +93,7 @@ export async function POST(request) {
         issueTitle = issue.title;
         issueDescription = issue.body;
       } catch (issueError) {
-        console.warn('⚠️ Failed to fetch issue metadata (non-critical):', issueError.message);
+        console.warn('Failed to fetch issue metadata (non-critical):', issueError.message);
       }
     }
 
@@ -124,7 +124,7 @@ export async function POST(request) {
         try {
           getGitHubApp();
         } catch {
-          console.log('📱 Initializing GitHub App...');
+          console.log('Initializing GitHub App...');
           initGitHubApp();
         }
 
@@ -141,11 +141,11 @@ export async function POST(request) {
           tokenSymbol: tokenSymbolFinal
         });
       } catch (githubError) {
-        console.warn('⚠️ Failed to post GitHub comment (non-critical):', githubError.message);
+        console.warn('Failed to post GitHub comment (non-critical):', githubError.message);
         // Don't fail the entire request if GitHub comment fails
       }
     } else {
-      console.log('⏭️ Skipping GitHub comment (no installation ID)');
+      console.log('Skipping GitHub comment (no installation ID)');
     }
 
     return Response.json({

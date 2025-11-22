@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.6.2 <0.9.0;
 
-// 💬 ABOUT
+// ABOUT
 // Standard Library's default Script.
 
-// 🧩 MODULES
+// MODULES
 import {ScriptBase} from "./Base.sol";
 import {console} from "./console.sol";
 import {console2} from "./console2.sol";
@@ -16,10 +16,10 @@ import {StdStorage, stdStorageSafe} from "./StdStorage.sol";
 import {StdUtils} from "./StdUtils.sol";
 import {VmSafe} from "./Vm.sol";
 
-// 📦 BOILERPLATE
+// BOILERPLATE
 import {ScriptBase} from "./Base.sol";
 
-// ⭐️ SCRIPT
+// SCRIPT
 abstract contract Script is StdChains, StdCheatsSafe, StdUtils, ScriptBase {
     // Note: IS_SCRIPT() must return true.
     bool public IS_SCRIPT = true;

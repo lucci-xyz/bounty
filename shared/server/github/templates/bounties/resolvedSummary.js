@@ -1,0 +1,17 @@
+export function renderResolvedSummaryComment({
+  iconUrl,
+  username,
+  amountFormatted,
+  tokenSymbol,
+  explorerTxUrl,
+  brandSignature
+}) {
+  return `## <img src="${iconUrl}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Resolved
+
+**Paid to:** @${username}  
+**Amount:** ${amountFormatted} ${tokenSymbol}  
+**Transaction:** <a href="${explorerTxUrl}" target="_blank" rel="noopener noreferrer">View on Explorer</a>
+
+${brandSignature}`;
+}
+

@@ -1,4 +1,6 @@
-const FALLBACK_URL = 'https://example.com';
+import { getLinkHref } from '@/shared/config/links';
+
+const FALLBACK_URL = getLinkHref('app', 'manifestFallback');
 
 function resolveBaseUrl() {
   const envUrl =
@@ -11,7 +13,7 @@ function resolveBaseUrl() {
   }
 
   if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`.replace(/\/$/, '');
+    return getLinkHref('app', 'vercelDeployment', { hostname: process.env.VERCEL_URL });
   }
 
   return FALLBACK_URL;

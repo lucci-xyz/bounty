@@ -1,6 +1,9 @@
+import { getLinkHref } from '@/shared/config/links';
+
 const ALERT_EMAIL = 'contact@luccilabs.xyz';
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'alerts@luccilabs.xyz';
+const RESEND_EMAIL_ENDPOINT = getLinkHref('services', 'resendEmail');
 
 /**
  * Send a system alert email via Resend.
@@ -17,7 +20,7 @@ export async function sendSystemEmail({ subject, html, text }) {
   }
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
+    const response = await fetch(RESEND_EMAIL_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -66,7 +69,7 @@ export async function sendUserEmail({ to, subject, html, text }) {
   }
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
+    const response = await fetch(RESEND_EMAIL_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -1,162 +1,39 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAccount, useWalletClient } from 'wagmi';
+/**
+ * LinkWallet page lets users connect their GitHub account and wallet
+ * to enable automatic bounty payouts.
+ */
+
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { GitHubIcon, CheckCircleIcon } from '@/shared/components/Icons';
-import { createSiweMessageText } from '@/shared/lib/siwe-message';
-import { useErrorModal } from '@/shared/components/ErrorModalProvider';
 import StatusNotice from '@/shared/components/StatusNotice';
-import { useGithubUser } from '@/shared/hooks/useGithubUser';
-import { getUserProfile } from '@/shared/lib/api/user';
-import { getNonce, verifyWalletSignature, linkWallet } from '@/shared/lib/api/wallet';
+import { useLinkWalletFlow } from '@/features/wallet';
 
+// Card container style
 const cardClasses = 'rounded-3xl border border-border/60 bg-card p-6 shadow-sm';
 
+/**
+ * LinkWallet page component.
+ */
 export default function LinkWallet() {
-  const [hasLinkedWallet, setHasLinkedWallet] = useState(false);
-  const [profileCreated, setProfileCreated] = useState(false);
-  const [status, setStatus] = useState({ message: '', type: '' });
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-  const [checkingAccount, setCheckingAccount] = useState(false);
-  const [linkedWalletAddress, setLinkedWalletAddress] = useState('');
+  // Get state and actions for the wallet/GitHub linking flow
+  const {
+    state: {
+      hasLinkedWallet,
+      profileCreated,
+      status,
+      isMounted,
+      checkingAccount,
+      shortAddress,
+      displayWalletAddress,
+    },
+    wallet,
+    github,
+    actions: { authenticateGitHub, createProfileWithWallet },
+  } = useLinkWalletFlow();
 
-  const { address, isConnected, chain } = useAccount();
-  const { data: walletClient } = useWalletClient();
-  const { showError } = useErrorModal();
-  const { githubUser, githubUserLoading, isLocalMode } = useGithubUser();
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  // Auto-link wallet when both conditions met and user doesn't have wallet linked
-  useEffect(() => {
-    if (githubUser && !hasLinkedWallet && isConnected && address && walletClient && !profileCreated && !isProcessing) {
-      createProfileWithWallet();
-    }
-  }, [githubUser, hasLinkedWallet, isConnected, address, walletClient, profileCreated, isProcessing]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadProfileStatus() {
-      if (githubUserLoading) return;
-      if (!githubUser) {
-        setHasExistingAccount(false);
-        setHasLinkedWallet(false);
-        setLinkedWalletAddress('');
-        return;
-      }
-      if (isLocalMode) {
-        setHasExistingAccount(false);
-        setHasLinkedWallet(false);
-        setLinkedWalletAddress('');
-        return;
-      }
-
-      setCheckingAccount(true);
-      try {
-        const profile = await getUserProfile();
-        if (cancelled) return;
-        setHasExistingAccount(Boolean(profile?.user));
-        if (profile?.wallet?.walletAddress) {
-          setHasLinkedWallet(true);
-          setLinkedWalletAddress(profile.wallet.walletAddress);
-        } else {
-          setHasLinkedWallet(false);
-          setLinkedWalletAddress('');
-        }
-      } catch (error) {
-        console.error('Profile lookup failed', error);
-      } finally {
-        if (!cancelled) {
-          setCheckingAccount(false);
-        }
-      }
-    }
-
-    loadProfileStatus();
-    return () => {
-      cancelled = true;
-    };
-  }, [githubUser, githubUserLoading, isLocalMode]);
-
-  const authenticateGitHub = () => {
-    const returnUrl = window.location.pathname + window.location.search;
-    const authUrl = `/api/oauth/github?returnTo=${encodeURIComponent(returnUrl)}`;
-    window.location.href = authUrl;
-  };
-
-  const createProfileWithWallet = async () => {
-    if (isProcessing) return;
-    
-    try {
-      setIsProcessing(true);
-      setStatus({ message: 'Please sign the message in your wallet...', type: 'loading' });
-
-      if (!isConnected || !address) {
-        throw new Error('Please connect your wallet first');
-      }
-
-      if (!walletClient) {
-        throw new Error('Wallet client not available');
-      }
-
-      if (!githubUser) {
-        throw new Error('Missing GitHub session');
-      }
-
-      const { nonce } = await getNonce();
-
-      // Create and sign message
-      const messageText = createSiweMessageText({
-        domain: window.location.host,
-        address,
-        statement: 'Link your wallet to receive BountyPay payments.',
-        uri: window.location.origin,
-        chainId: chain?.id || 1,
-        nonce
-      });
-
-      const signature = await walletClient.signMessage({
-        message: messageText
-      });
-
-      setStatus({ message: 'Verifying signature...', type: 'loading' });
-
-      await verifyWalletSignature({
-        message: messageText,
-        signature
-      });
-
-      setStatus({ message: 'Creating your profile...', type: 'loading' });
-
-      await linkWallet({
-        githubId: githubUser.githubId,
-        githubUsername: githubUser.githubUsername,
-        walletAddress: address
-      });
-
-      setProfileCreated(true);
-      setLinkedWalletAddress(address);
-      setStatus({ message: '', type: '' });
-      setHasLinkedWallet(true);
-      
-    } catch (error) {
-      console.error(error);
-      showError({
-        title: 'Wallet Link Failed',
-        message: error.message || 'An error occurred while linking your wallet',
-        primaryActionLabel: 'Try Again',
-        onPrimaryAction: createProfileWithWallet,
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
+  // Show loading message while mounting
   if (!isMounted) {
     return (
       <div className="max-w-3xl mx-auto px-6 py-24 text-center">
@@ -165,11 +42,12 @@ export default function LinkWallet() {
     );
   }
 
-  const displayWalletAddress = address || linkedWalletAddress;
-  const shortAddress = displayWalletAddress ? `${displayWalletAddress.slice(0, 8)}...${displayWalletAddress.slice(-6)}` : '';
-
+  /**
+   * Render the flow card depending on what step the user is in.
+   */
   const renderFlowCard = () => {
-    if (!githubUser) {
+    // Step 1: Connect GitHub
+    if (!github.user) {
       return (
         <section className={cardClasses}>
           <div className="space-y-4">
@@ -192,6 +70,7 @@ export default function LinkWallet() {
       );
     }
 
+    // Show account check loading state
     if (checkingAccount) {
       return (
         <section className={`${cardClasses} text-center`}>
@@ -203,6 +82,7 @@ export default function LinkWallet() {
       );
     }
 
+    // Show if the account already has a linked wallet
     if (hasLinkedWallet) {
       return (
         <section className={`${cardClasses} text-center space-y-5`}>
@@ -221,7 +101,7 @@ export default function LinkWallet() {
           <div className="rounded-2xl border border-border/50 bg-muted/40 p-4 text-left text-sm text-muted-foreground">
             <div className="flex items-center justify-between text-foreground/80">
               <span>GitHub</span>
-              <span>@{githubUser.githubUsername}</span>
+              <span>@{github.user?.githubUsername}</span>
             </div>
             <hr className="my-3 border-border/40" />
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
@@ -238,6 +118,7 @@ export default function LinkWallet() {
       );
     }
 
+    // Show after profile is created and linked
     if (profileCreated) {
       return (
         <section className={`${cardClasses} text-center space-y-5`}>
@@ -256,7 +137,7 @@ export default function LinkWallet() {
           <div className="rounded-2xl border border-border/50 bg-muted/40 p-4 text-left text-sm text-muted-foreground">
             <div className="flex items-center justify-between text-foreground/80">
               <span>GitHub</span>
-              <span>@{githubUser.githubUsername}</span>
+              <span>@{github.user?.githubUsername}</span>
             </div>
             {shortAddress && (
               <>
@@ -282,7 +163,8 @@ export default function LinkWallet() {
       );
     }
 
-    if (!isConnected) {
+    // Step 2: Connect wallet if not yet connected
+    if (!wallet.isConnected) {
       return (
         <section className={cardClasses}>
           <div className="space-y-4">
@@ -312,6 +194,7 @@ export default function LinkWallet() {
       );
     }
 
+    // Show generic loading step if still in process
     return (
       <section className={`${cardClasses} text-center space-y-3`}>
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -327,6 +210,7 @@ export default function LinkWallet() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12 space-y-6">
+      {/* Page header */}
       <header className="text-center space-y-3">
         <h1 className="text-4xl font-light text-foreground/90">Claim Bounties</h1>
         <p className="text-sm text-muted-foreground">
@@ -334,11 +218,14 @@ export default function LinkWallet() {
         </p>
       </header>
 
-      {(githubUser || address) && (
+      {/* Show connection summary if either GitHub or wallet is present */}
+      {(github.user || wallet.address) && (
         <div className={`${cardClasses} flex items-center justify-between text-sm text-muted-foreground`}>
           <div>
             <p className="text-foreground/80">GitHub</p>
-            <p className="text-foreground font-medium">{githubUser ? `@${githubUser.githubUsername}` : 'Not connected'}</p>
+            <p className="text-foreground font-medium">
+              {github.user ? `@${github.user.githubUsername}` : 'Not connected'}
+            </p>
           </div>
           <div>
             <p className="text-foreground/80">Wallet</p>
@@ -353,8 +240,10 @@ export default function LinkWallet() {
         </div>
       )}
 
+      {/* Show flow status messages */}
       <StatusNotice status={status} />
 
+      {/* Show the main flow card */}
       {renderFlowCard()}
     </div>
   );

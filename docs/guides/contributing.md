@@ -149,6 +149,7 @@ npm run dev:client
 - Use meaningful variable names
 - Add comments for complex logic
 - Keep functions focused and small
+- Reference URLs exclusively through `shared/config/links.js` and run `npm run lint:links` before opening a PR
 
 ### Testing
 
@@ -267,10 +268,10 @@ Contributors who submit merged PRs will be:
 
 ## Questions?
 
-- 💬 Open a discussion on GitHub
-- 📖 Read the [FAQ](../support/faq.md)
-- 🐛 Report issues on [GitHub Issues](https://github.com/lucci-xyz/bounty/issues)
+- Open a discussion on GitHub
+- Read the [FAQ](../support/faq.md)
+- Report issues on [GitHub Issues](https://github.com/lucci-xyz/bounty/issues)
 
 ---
 
-Thank you for contributing to BountyPay! 🎉
+Thank you for contributing to BountyPay!

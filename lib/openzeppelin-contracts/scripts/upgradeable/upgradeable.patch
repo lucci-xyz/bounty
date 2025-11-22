@@ -14,15 +14,15 @@ index 2797a0889..000000000
 -
 -<!-- Remember, this is not a place to ask for help debugging code. For that, we welcome you in the OpenZeppelin Community Forum: https://forum.openzeppelin.com/. -->
 -
--**💻 Environment**
+-**Environment**
 -
 -<!-- Tell us what version of OpenZeppelin Contracts you're using, and how you're using it: Truffle, Remix, etc. -->
 -
--**📝 Details**
+-**Details**
 -
 -<!-- Describe the problem you have been experiencing in more detail. Include as much information as you think is relevant. Keep in mind that transactions can fail for many reasons; context is key here. -->
 -
--**🔢 Code to reproduce bug**
+-**Code to reproduce bug**
 -
 -<!-- We will be able to better help if you provide a minimal example that triggers the bug. -->
 diff --git a/.github/ISSUE_TEMPLATE/config.yml b/.github/ISSUE_TEMPLATE/config.yml
@@ -50,10 +50,10 @@ index ff596b0c3..000000000
 -
 ----
 -
--**🧐 Motivation**
+-**Motivation**
 -<!-- Is your feature request related to a specific problem? Is it just a crazy idea? Tell us about it! -->
 -
--**📝 Details**
+-**Details**
 -<!-- Please describe your feature request in detail. -->
 -
 -<!-- Make sure that you have reviewed the OpenZeppelin Contracts Contributor Guidelines. -->

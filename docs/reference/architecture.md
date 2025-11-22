@@ -80,7 +80,7 @@
 
 ### Automatic Payout
 1. GitHub sends a `pull_request.closed` webhook marked `merged`.
-2. `handlePRMerged` loads all `pr_claims` for that PR, fetches the contributor’s wallet, and calls `resolveBountyOnNetwork`.
+2. `handlePullRequestMerged` loads all `pr_claims` for that PR, fetches the contributor’s wallet, and calls `resolveBountyOnNetwork`.
 3. Success path: `bountyQueries.updateStatus(..., 'resolved')`, `prClaimQueries.updateStatus(..., 'paid')`, success comments in both the PR and issue, and a refreshed pinned bounty summary with transaction links.
 4. Failure path: posts troubleshooting guidance, flags the claim as `failed`, and (for critical cases) emails + comments to maintainers.
 
@@ -91,7 +91,7 @@
 ## Configuration & Environments
 - Environment variables drive everything (`env.txt` documents defaults). `shared/server/config.validateConfig()` ensures essentials (session secret, GitHub keys, wallet keys, registry defaults) exist at boot.
 - Network aliases are toggled per user via the `network_env` cookie and persisted server-side using `/api/network/env`.
-- Sessions rely on `iron-session` (`shared/lib/session.js`), scoped to the domain derived from `FRONTEND_URL`, and marked secure in production.
+- Sessions rely on `iron-session` (`shared/lib/session`), scoped to the domain derived from `FRONTEND_URL`, and marked secure in production.
 - `NEXT_PUBLIC_*` vars configure wallets (WalletConnect project ID), dummy data, and local/testnet toggles.
 
 ## Observability & Safety

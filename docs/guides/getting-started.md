@@ -8,7 +8,7 @@ Complete guide for sponsors and contributors to use BountyPay.
 
 ### 1. Install the GitHub App
 
-👉 [Download BountyPay](https://github.com/apps/bountypay)
+[Download BountyPay](https://github.com/apps/bountypay)
 
 Install the app on your repository or organization to enable bounty creation.
 

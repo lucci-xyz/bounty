@@ -1,7 +1,7 @@
 import './schema';
 import { cookies } from 'next/headers';
-import { NETWORK_ENV_COOKIE } from '@/shared/lib/network-env';
-import { getDefaultAliasForGroup } from '@/config/chain-registry';
+import { NETWORK_ENV_COOKIE } from '@/shared/lib/network';
+import { getDefaultAliasForGroup } from '@/shared/config/chain-registry';
 
 export async function POST(request) {
   try {

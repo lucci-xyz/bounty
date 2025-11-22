@@ -93,7 +93,7 @@ export function validateAmount(amount, fieldName = 'amount') {
  */
 export function validateAlias(alias) {
   // Import REGISTRY - safe to use direct import since validation happens after config build
-  const { REGISTRY } = require('../../../config/chain-registry.js');
+  const { REGISTRY } = require('../../config/chain-registry.js');
   const validAliases = Object.keys(REGISTRY);
   
   if (!alias || !validAliases.includes(alias)) {

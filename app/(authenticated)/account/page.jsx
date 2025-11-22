@@ -1,10 +1,16 @@
 'use client';
 
+/**
+ * Account page for authenticated users.
+ * Wraps AccountContent in a Suspense boundary with a loading fallback.
+ */
 import { Suspense } from 'react';
-import AccountContent from '@/features/account/components/AccountContent';
+import { AccountContent } from '@/features/account/components/AccountContent';
 
-export { AccountContent } from '@/features/account/components/AccountContent';
-
+/**
+ * Renders the account page, showing account details.
+ * Shows a loading indicator while AccountContent is loading.
+ */
 export default function Account() {
   return (
     <Suspense

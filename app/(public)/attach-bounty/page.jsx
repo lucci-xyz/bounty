@@ -1,17 +1,33 @@
 'use client';
 
+/**
+ * Attach Bounty page allows users to fund a GitHub issue with crypto.
+ * Handles main logic and view for connecting wallet, setting bounty amount and deadline.
+ */
+
 import { useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { MoneyIcon, GitHubIcon } from '@/shared/components/Icons';
 import BetaAccessModal from '@/features/beta-access/components/BetaAccessModal';
 import StatusNotice from '@/shared/components/StatusNotice';
-import { useAttachBountyForm } from '@/features/bounty/hooks/useAttachBountyForm';
+import { useAttachBountyForm } from '@/features/bounty';
+import {
+  AttachBountyLoadingState,
+  DirectSetupSection,
+  IssueSummaryCard,
+  WalletSummaryCard,
+  NetworkWarningBanner
+} from '@/features/bounty/components/AttachBountySections';
+import { goBackOrPush } from '@/shared/lib/navigation';
 
+/**
+ * Main content for the Attach Bounty flow.
+ */
 function AttachBountyContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  // Extract issue info from search params
   const issueData = useMemo(
     () => ({
       repoFullName: searchParams.get('repo'),
@@ -23,6 +39,7 @@ function AttachBountyContent() {
     [searchParams]
   );
 
+  // Get state and actions from the attach bounty form hook
   const {
     amount,
     setAmount,
@@ -38,33 +55,19 @@ function AttachBountyContent() {
     supportedNetworkNames,
     isChainSupported,
     network,
+    networkGroup,
     wallet,
     hasIssueData,
     fundBounty
   } = useAttachBountyForm({ issueData });
 
-  const handleBack = () => {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back();
-    } else {
-      router.push('/');
-    }
-  };
+  // Navigate back (or push) handler
+  const handleBack = () => goBackOrPush(router);
 
-  // Don't render wallet controls until mounted (prevents hydration mismatch)
-  if (!isMounted || betaLoading) {
-    return (
-      <div className="min-h-screen bg-background/80 px-4 py-10 flex items-center justify-center">
-        <div className="w-full max-w-md rounded-[32px] border border-border/60 bg-card p-10 text-center shadow-[0_40px_120px_rgba(15,23,42,0.12)]">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <MoneyIcon size={24} color="currentColor" />
-          </div>
-          <p className="text-sm text-muted-foreground">Preparing bounty flow...</p>
-        </div>
-      </div>
-    );
-  }
-
+  /**
+   * Modal for beta access.
+   * Shown if user does not have access.
+   */
   const betaModal = (
     <BetaAccessModal
       isOpen={!hasAccess && showBetaModal}
@@ -78,91 +81,48 @@ function AttachBountyContent() {
     />
   );
 
-  // Direct visit - show setup options
-  if (!hasIssueData) {
+  // Show a loading state while mounting or fetching beta status
+  if (!isMounted || betaLoading) {
     return (
       <>
-        <div className="min-h-screen bg-background/80 px-4 py-10 flex items-center justify-center">
-          <div className="w-full max-w-2xl rounded-[36px] border border-border/60 bg-card p-10 shadow-[0_50px_140px_rgba(15,23,42,0.18)] space-y-8">
-            <button
-              onClick={handleBack}
-              className="inline-flex items-center gap-2 rounded-full border border-border/70 px-4 py-2 text-xs font-medium text-muted-foreground hover:border-primary hover:text-foreground transition-colors"
-            >
-              ← Back
-            </button>
-            <div className="text-center space-y-3">
-              <h1 className="text-4xl font-light text-foreground/90">Create Bounty</h1>
-              <p className="text-sm text-muted-foreground">
-                Install the Lucci GitHub App to start funding issues directly from GitHub.
-              </p>
-            </div>
-
-            <div className="rounded-3xl border border-border/60 bg-muted/40 p-6 space-y-4">
-              <div className="space-y-2">
-                <h3 className="text-base font-medium text-foreground">Install GitHub App</h3>
-                <p className="text-sm text-muted-foreground">
-                  Add BountyPay to your repo, then trigger the “Attach Bounty” action from any issue.
-                </p>
-              </div>
-              <a
-                href="https://github.com/apps/bountypay"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-              >
-                <GitHubIcon size={18} color="white" />
-                <span className="text-white">Install GitHub App</span>
-              </a>
-            </div>
-
-            <div className="rounded-3xl border border-dashed border-border/60 bg-muted/30 p-6 text-sm text-muted-foreground">
-              Once installed, open any issue and hit “Attach Bounty” to land back on this page with the issue pre-filled.
-            </div>
-          </div>
-        </div>
+        <AttachBountyLoadingState />
         {betaModal}
       </>
     );
   }
 
-  // From GitHub App - existing flow
+  // If visiting directly (no issue info), show direct setup section
+  if (!hasIssueData) {
+    return (
+      <>
+        <DirectSetupSection onBack={handleBack} />
+        {betaModal}
+      </>
+    );
+  }
+
+  // Show the Attach Bounty form and flow
   return (
     <div className="min-h-screen bg-background/80 px-4 py-10 flex items-center justify-center">
       <div className="w-full max-w-3xl rounded-[36px] border border-border/60 bg-card p-6 md:p-10 shadow-[0_50px_140px_rgba(15,23,42,0.18)] space-y-6">
+        {/* Back button */}
         <button
           onClick={handleBack}
           className="inline-flex items-center gap-2 rounded-full border border-border/70 px-4 py-2 text-xs font-medium text-muted-foreground hover:border-primary hover:text-foreground transition-colors"
         >
           ← Back
         </button>
+        {/* Page header */}
         <div className="text-center space-y-3">
           <h1 className="text-4xl font-light text-foreground/90">Attach Bounty</h1>
           <p className="text-sm text-muted-foreground">
             Fund this GitHub issue in crypto. Funds release automatically when the PR merges.
           </p>
         </div>
+        {/* Issue summary card */}
+        <IssueSummaryCard repoFullName={issueData.repoFullName} issueNumber={issueData.issueNumber} />
 
-        <div className="rounded-3xl border border-border/60 bg-muted/40 p-6 text-sm text-muted-foreground">
-          <div className="flex flex-col gap-2 text-left">
-            <div className="flex items-center justify-between text-foreground">
-              <span className="text-xs uppercase tracking-[0.35em] text-muted-foreground/70">Repository</span>
-              <span className="font-medium">{repoFullName}</span>
-            </div>
-            <div className="flex items-center justify-between text-foreground">
-              <span className="text-xs uppercase tracking-[0.35em] text-muted-foreground/70">Issue</span>
-              <span className="font-medium">#{issueNumber}</span>
-            </div>
-            <a
-              href={`https://github.com/${repoFullName}/issues/${issueNumber}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-primary hover:opacity-80"
-            >
-              View on GitHub →
-            </a>
-          </div>
-        </div>
-
+        {/* If wallet not connected, show connect button */}
         {!wallet.isConnected ? (
           <ConnectButton.Custom>
             {({ openConnectModal }) => (
@@ -180,23 +140,16 @@ function AttachBountyContent() {
           </ConnectButton.Custom>
         ) : (
           <div className="space-y-5">
-            <div className="rounded-3xl border border-border/60 bg-muted/30 p-5 text-sm text-muted-foreground">
-              <div className="flex items-center justify-between text-foreground">
-                <span>Connected</span>
-                <span className="font-medium">{wallet.address?.slice(0, 6)}...{wallet.address?.slice(-4)}</span>
-              </div>
-              <div className="flex items-center justify-between text-foreground mt-2">
-                <span>Network</span>
-                <span className="font-medium">{wallet.chain?.name || network?.name} ({network?.token.symbol})</span>
-              </div>
-            </div>
+            {/* Wallet/account summary and network info */}
+            <WalletSummaryCard wallet={wallet} network={network} />
+            <NetworkWarningBanner
+              isChainSupported={isChainSupported}
+              chain={wallet.chain}
+              networkGroup={networkGroup}
+              supportedNetworkNames={supportedNetworkNames}
+            />
 
-            {!isChainSupported && (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                Connected network ({chain?.name || `Chain ID ${chain?.id}`}) isn’t supported while {networkGroup === 'mainnet' ? 'mainnet' : 'testnet'} mode is active. Supported networks: {supportedNetworkNames.length ? supportedNetworkNames.join(', ') : 'None'}.
-              </div>
-            )}
-
+            {/* Wallet/account actions (change wallet or network) */}
             <ConnectButton.Custom>
               {({ openAccountModal, openChainModal }) => (
                 <div className="grid gap-3 md:grid-cols-2">
@@ -224,6 +177,7 @@ function AttachBountyContent() {
               )}
             </ConnectButton.Custom>
 
+            {/* Bounty amount and deadline form */}
             <div className="space-y-4">
               <div>
                 <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground/70">
@@ -252,6 +206,7 @@ function AttachBountyContent() {
               </div>
             </div>
 
+            {/* Fund bounty button */}
             <button
               onClick={fundBounty}
               disabled={isProcessing}
@@ -262,6 +217,7 @@ function AttachBountyContent() {
           </div>
         )}
 
+        {/* Status and error/info messages */}
         <StatusNotice status={status} />
       </div>
       {betaModal}
@@ -269,6 +225,9 @@ function AttachBountyContent() {
   );
 }
 
+/**
+ * Wraps AttachBountyContent in a Suspense boundary with a loading fallback.
+ */
 export default function AttachBounty() {
   return (
     <Suspense fallback={<div className="mx-auto w-full max-w-xl px-5 py-24 text-center text-muted-foreground">Loading...</div>}>

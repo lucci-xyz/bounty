@@ -90,9 +90,9 @@ User notifications are sent to beta applicants when their application is reviewe
 **Implementation:**
 ```javascript
 import { sendUserEmail } from '@/shared/server/notifications/email';
-import { betaApprovedTemplate } from '@/shared/server/notifications/templates';
+import { renderBetaApprovedEmail } from '@/shared/server/notifications/templates';
 
-const template = betaApprovedTemplate({
+const template = renderBetaApprovedEmail({
   username: 'johndoe',
   frontendUrl: 'https://bountypay.luccilabs.xyz'
 });

@@ -2,12 +2,30 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 
-const BetaAccessContext = createContext({});
+/**
+ * BetaAccessContext provides beta access status to the app.
+ */
+export const BetaAccessContext = createContext({});
 
+/**
+ * useBetaAccess
+ * 
+ * Custom hook to read beta access context.
+ * Must be used inside BetaAccessProvider.
+ */
 export function useBetaAccess() {
-  return useContext(BetaAccessContext);
+  const context = useContext(BetaAccessContext);
+  if (!context) {
+    throw new Error('useBetaAccess must be used within a BetaAccessProvider');
+  }
+  return context;
 }
 
+/**
+ * BetaAccessProvider
+ * 
+ * Fetches and provides beta access status to descendant components.
+ */
 export function BetaAccessProvider({ children }) {
   const [hasAccess, setHasAccess] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -17,14 +35,16 @@ export function BetaAccessProvider({ children }) {
     checkBetaAccess();
   }, []);
 
+  /**
+   * Checks the user's beta access status from the backend.
+   */
   const checkBetaAccess = async () => {
     try {
       const res = await fetch('/api/beta/check');
       const data = await res.json();
-      
       const approved = data.hasAccess === true;
       setHasAccess(approved);
-      
+
       if (data.needsAuth) {
         setBetaStatus('needsAuth');
       } else if (data.needsApplication) {
@@ -43,6 +63,9 @@ export function BetaAccessProvider({ children }) {
     }
   };
 
+  /**
+   * Refreshes the beta access status from the backend.
+   */
   const refreshAccess = () => {
     setLoading(true);
     checkBetaAccess();

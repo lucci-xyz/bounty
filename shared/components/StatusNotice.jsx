@@ -1,7 +1,6 @@
 'use client';
 
-import { getStatusClassName, getStatusIcon } from '@/shared/lib/statusStyles';
-import { cn } from '@/shared/lib/utils';
+import { cn, getStatusClassName, getStatusIcon } from '@/shared/lib';
 
 export default function StatusNotice({ status, className = '' }) {
   if (!status?.message) return null;

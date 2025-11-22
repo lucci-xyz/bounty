@@ -3,10 +3,10 @@ pragma solidity >=0.6.2 <0.9.0;
 
 pragma experimental ABIEncoderV2;
 
-// 💬 ABOUT
+// ABOUT
 // Forge Std's default Test.
 
-// 🧩 MODULES
+// MODULES
 import {console} from "./console.sol";
 import {console2} from "./console2.sol";
 import {safeconsole} from "./safeconsole.sol";
@@ -24,10 +24,10 @@ import {stdToml} from "./StdToml.sol";
 import {StdUtils} from "./StdUtils.sol";
 import {Vm} from "./Vm.sol";
 
-// 📦 BOILERPLATE
+// BOILERPLATE
 import {TestBase} from "./Base.sol";
 
-// ⭐️ TEST
+// TEST
 abstract contract Test is TestBase, StdAssertions, StdChains, StdCheats, StdInvariant, StdUtils {
     // Note: IS_TEST() must return true.
     bool public IS_TEST = true;

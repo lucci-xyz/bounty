@@ -1,11 +1,21 @@
 'use client';
 
+/**
+ * Main page for the Base Mini App.
+ * Lets users switch between Home, Dashboard, and Profile sections.
+ */
+
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
 import HomePage from '@/features/home/components/HomePage';
 import { AccountContent } from '@/features/account/components/AccountContent';
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@/shared/lib';
 
+/**
+ * Shows an account section inside a suspense boundary.
+ * @param {Object} props
+ * @param {string} props.initialTab - Initial tab to open in AccountContent.
+ */
 function AccountSection({ initialTab }) {
   return (
     <Suspense
@@ -20,14 +30,23 @@ function AccountSection({ initialTab }) {
   );
 }
 
+/**
+ * Dashboard tab content for funded issue management.
+ */
 function DashboardSection() {
   return <AccountSection initialTab="sponsored" />;
 }
 
+/**
+ * Profile tab content for user payouts & settings.
+ */
 function ProfileSection() {
   return <AccountSection initialTab="settings" />;
 }
 
+/**
+ * Configuration for the available mini app sections.
+ */
 const MINI_APP_SECTIONS = [
   {
     id: 'home',
@@ -49,17 +68,19 @@ const MINI_APP_SECTIONS = [
   },
 ];
 
+/**
+ * The main component for the mini app hybrid page.
+ */
 export default function BaseMiniAppPage() {
+  // Controls which section is active (home, dashboard, profile)
   const [activeSection, setActiveSection] = useState(MINI_APP_SECTIONS[0].id);
 
+  // Signal readiness to Farcaster Mini App SDK on mount
   useEffect(() => {
     let mounted = true;
 
     async function signalReady() {
-      if (!sdk?.actions?.ready) {
-        return;
-      }
-
+      if (!sdk?.actions?.ready) return;
       try {
         await sdk.actions.ready();
       } catch (error) {
@@ -75,6 +96,7 @@ export default function BaseMiniAppPage() {
     };
   }, []);
 
+  // Pick the component for the current section
   const ActiveSectionComponent = useMemo(() => {
     const match = MINI_APP_SECTIONS.find((section) => section.id === activeSection);
     return match ? match.Component : MINI_APP_SECTIONS[0].Component;
@@ -82,6 +104,7 @@ export default function BaseMiniAppPage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl px-5 py-10">
+      {/* Header and page info */}
       <div className="mb-6">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#39BEB7]">
           Base Mini App
@@ -95,6 +118,7 @@ export default function BaseMiniAppPage() {
         </p>
       </div>
 
+      {/* Tabs for switching sections */}
       <div className="mb-5 flex flex-wrap gap-3">
         {MINI_APP_SECTIONS.map((section) => {
           const isActive = section.id === activeSection;
@@ -124,11 +148,11 @@ export default function BaseMiniAppPage() {
         })}
       </div>
 
+      {/* Main section render area */}
       <div className="overflow-hidden rounded-2xl border border-border bg-background shadow-[0_16px_40px_rgba(0,0,0,0.08)]">
         <ActiveSectionComponent key={activeSection} />
       </div>
     </div>
   );
 }
-
 

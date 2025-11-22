@@ -1,6 +1,6 @@
 import './schema';
 import { NextResponse } from 'next/server';
-import { getDefaultAliasForGroup } from '@/config/chain-registry';
+import { getDefaultAliasForGroup } from '@/shared/config/chain-registry';
 
 /**
  * GET /api/network/default?group=testnet|mainnet

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Script, console2} from "forge-std/Script.sol";
-import {BountyEscrow} from "../contracts/current/BountyEscrow.sol";
+import {BountyEscrow} from "@/contracts/current/BountyEscrow.sol";
 
 contract DeployBountyEscrow is Script {
     address internal constant BASE_SEPOLIA_USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;

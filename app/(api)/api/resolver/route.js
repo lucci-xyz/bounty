@@ -45,7 +45,7 @@ export async function GET(request) {
       );
     }
 
-    console.log(`🔐 Resolver address for ${alias}: ${resolverAddress}`);
+    console.log(`Resolver address for ${alias}: ${resolverAddress}`);
 
     return NextResponse.json({
       success: true,

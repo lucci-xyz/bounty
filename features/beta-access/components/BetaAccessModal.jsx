@@ -2,89 +2,114 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { MoneyIcon } from '@/shared/components/Icons';
+import { useBetaAccess } from '@/features/beta-access';
+import { redirectToGithubSignIn } from '@/shared/lib/navigation';
 
+/**
+ * Returns the current beta modal step based on status and access.
+ * @param {string} betaStatus
+ * @param {boolean} hasAccess
+ * @returns {string} The name of the step
+ */
+function resolveStep(betaStatus, hasAccess) {
+  if (hasAccess) {
+    return 'approved';
+  }
+
+  switch (betaStatus) {
+    case 'needsAuth':
+      return 'signin';
+    case 'needsApplication':
+      return 'apply';
+    case 'rejected':
+      return 'rejected';
+    case 'pending':
+      return 'pending';
+    default:
+      return 'loading';
+  }
+}
+
+/**
+ * BetaAccessModal
+ *
+ * Displays a modal dialog for beta access application and status.
+ *
+ * @param {object} props
+ * @param {boolean} props.isOpen - If true, the modal is shown.
+ * @param {function} props.onClose - Called to close the modal.
+ * @param {function} [props.onAccessGranted] - Called when access is approved.
+ * @param {function} [props.onDismiss] - Optional dismiss handler.
+ * @param {string} [props.dismissLabel='Close'] - Text for dismiss button.
+ */
 export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDismiss, dismissLabel = 'Close' }) {
-  const [step, setStep] = useState('signin'); // signin, apply, pending, approved, rejected
+  const { hasAccess, betaStatus, loading: betaLoading, refreshAccess } = useBetaAccess();
+  const [step, setStep] = useState('loading');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [mounted, setMounted] = useState(false);
 
+  // Ensure portal rendering only after mount (fixes Next.js hydration)
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Check beta access status when modal opens
+  // Refresh beta status when modal opens
   useEffect(() => {
-    if (isOpen) {
-      checkBetaStatus();
-    }
-  }, [isOpen]);
+    if (!isOpen) return;
+    refreshAccess();
+  }, [isOpen, refreshAccess]);
 
-  // Poll for status updates when in pending state
+  // Set the correct step based on beta status
   useEffect(() => {
-    if (step === 'pending') {
-      const interval = setInterval(() => {
-        checkBetaStatus();
-      }, 5000); // Check every 5 seconds
-      
-      return () => clearInterval(interval);
-    }
-  }, [step]);
+    if (!isOpen) return;
+    const nextStep = resolveStep(betaStatus, hasAccess);
+    setStep(nextStep);
 
-  const checkBetaStatus = async () => {
-    try {
-      const res = await fetch('/api/beta/check');
-      
-      if (!res.ok) {
-        // If there's an error (like session secret missing), default to signin
-        setStep('signin');
-        return;
-      }
-      
-      const data = await res.json();
-      
-      if (data.needsAuth) {
-        setStep('signin');
-      } else if (data.needsApplication) {
-        setStep('apply');
-      } else if (data.hasAccess) {
-        setStep('approved');
-        onAccessGranted?.();
-        // Close modal after a delay
-        setTimeout(() => {
-          onClose?.();
-        }, 2000);
-      } else {
-        setStep(data.status || 'pending');
-      }
-    } catch (err) {
-      console.error('Error checking beta status:', err);
-      // Default to signin step on error
-      setStep('signin');
+    // If access was granted, call onAccessGranted and auto-close shortly after
+    if (nextStep === 'approved') {
+      onAccessGranted?.();
+      const timeout = setTimeout(() => onClose?.(), 2000);
+      return () => clearTimeout(timeout);
     }
-  };
+  }, [betaStatus, hasAccess, isOpen, onAccessGranted, onClose]);
 
+  // Poll while awaiting access approval
+  useEffect(() => {
+    if (!isOpen || step !== 'pending') return;
+    const interval = setInterval(() => {
+      refreshAccess();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isOpen, step, refreshAccess]);
+
+  /**
+   * Redirects the user to GitHub sign in.
+   */
   const handleSignIn = () => {
-    window.location.href = `/api/oauth/github?returnTo=${encodeURIComponent('/')}`;
+    redirectToGithubSignIn('/');
   };
 
+  /**
+   * Submits a beta access application.
+   */
   const handleApply = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const res = await fetch('/api/beta/apply', {
         method: 'POST'
       });
-      
+
       const data = await res.json();
-      
+
       if (!res.ok) {
         throw new Error(data.error || 'Failed to apply');
       }
-      
+
       setStep('pending');
+      refreshAccess();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -92,10 +117,17 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
     }
   };
 
+  // Don't render if the modal is closed or the portal hasn't mounted yet
   if (!isOpen || !mounted) return null;
 
+  // Use beta loading state if relevant
+  const effectiveStep = step === 'loading' && betaLoading ? 'loading' : step;
+
+  /**
+   * Get content for the current step of the modal.
+   */
   const renderContent = () => {
-    switch (step) {
+    switch (effectiveStep) {
       case 'signin':
         return {
           title: 'Welcome to Lucci',
@@ -138,6 +170,11 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
           title: 'Application Not Approved',
           body: 'We can’t provide beta access right now, but appreciate your interest.'
         };
+      case 'loading':
+        return {
+          title: 'Checking access',
+          body: 'Hang tight while we verify your beta status...'
+        };
       default:
         return {
           title: 'Checking access',
@@ -148,6 +185,9 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
 
   const { title, body, actions } = renderContent();
 
+  /**
+   * Dismiss handler for the modal
+   */
   const handleDismiss = () => {
     if (onDismiss) {
       onDismiss();
@@ -156,6 +196,7 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
     }
   };
 
+  // Modal markup
   const modalContent = (
     <div className="fixed inset-0 z-[9999] bg-background/70 backdrop-blur-md flex items-center justify-center p-5">
       <div className="w-full max-w-md rounded-[40px] border border-border/60 bg-card px-8 py-12 shadow-[0_60px_160px_rgba(15,23,42,0.22)] space-y-7">
@@ -184,4 +225,3 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
 
   return createPortal(modalContent, document.body);
 }
-

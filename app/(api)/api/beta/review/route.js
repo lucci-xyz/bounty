@@ -2,6 +2,7 @@ import './schema';
 import { getSession } from '@/shared/lib/session';
 import { prisma } from '@/shared/server/db/prisma';
 import { NextResponse } from 'next/server';
+import { getLinkHref } from '@/shared/config/links';
 
 // List of admin GitHub IDs - configure in environment
 const ADMIN_GITHUB_IDS = (process.env.ADMIN_GITHUB_IDS || '')
@@ -50,7 +51,8 @@ export async function POST(request) {
     
     // Send notification to user
     try {
-      await fetch(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/api/beta/notify`, {
+      const notifyBaseUrl = process.env.FRONTEND_URL || getLinkHref('app', 'frontendLocal');
+      await fetch(`${notifyBaseUrl}/api/beta/notify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

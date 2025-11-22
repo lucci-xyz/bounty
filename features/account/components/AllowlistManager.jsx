@@ -3,38 +3,51 @@
 import { useState } from 'react';
 import { ethers } from 'ethers';
 
+/**
+ * AllowlistManager
+ *
+ * Manage which wallet addresses are allowed to claim a specific bounty.
+ * Lets you add or remove addresses from the allowlist for a given bounty.
+ *
+ * @param {Object} props
+ * @param {string} props.bountyId - The bounty's unique identifier.
+ * @param {Array} [props.initialAllowlist] - Initial list of allowed addresses.
+ */
 export default function AllowlistManager({ bountyId, initialAllowlist = [] }) {
   const [allowlist, setAllowlist] = useState(initialAllowlist);
   const [newAddress, setNewAddress] = useState('');
   const [status, setStatus] = useState({ message: '', type: '' });
   const [isProcessing, setIsProcessing] = useState(false);
 
+  /**
+   * Add a new address to the allowlist
+   */
   const addAddress = async () => {
     if (isProcessing) return;
-    
+
     try {
       setIsProcessing(true);
       setStatus({ message: '', type: '' });
-      
+
       if (!newAddress) {
         throw new Error('Please enter an address');
       }
-      
+
       if (!ethers.isAddress(newAddress)) {
         throw new Error('Invalid Ethereum address');
       }
-      
+
       const response = await fetch(`/api/allowlist/${bountyId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address: newAddress })
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to add address');
       }
-      
+
       const entry = await response.json();
       setAllowlist([...allowlist, entry]);
       setNewAddress('');
@@ -46,6 +59,11 @@ export default function AllowlistManager({ bountyId, initialAllowlist = [] }) {
     }
   };
 
+  /**
+   * Remove an address from the allowlist
+   *
+   * @param {string} allowlistId - The ID of the allowlist entry to remove.
+   */
   const removeAddress = async (allowlistId) => {
     try {
       const response = await fetch(`/api/allowlist/${bountyId}`, {
@@ -53,12 +71,12 @@ export default function AllowlistManager({ bountyId, initialAllowlist = [] }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ allowlistId })
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to remove address');
       }
-      
+
       setAllowlist(allowlist.filter(a => a.id !== allowlistId));
       setStatus({ message: 'Address removed from allowlist', type: 'success' });
     } catch (error) {
@@ -68,10 +86,12 @@ export default function AllowlistManager({ bountyId, initialAllowlist = [] }) {
 
   return (
     <div>
+      {/* Heading */}
       <h3 className="mb-4 text-xl font-semibold text-foreground">
         Allowlist Management
       </h3>
-      
+
+      {/* Info about allowlisting */}
       <div className="info-box mb-6 text-sm">
         <p className="m-0">
           <strong>Optional:</strong> Restrict who can claim this bounty by adding wallet addresses to the allowlist.
@@ -79,6 +99,7 @@ export default function AllowlistManager({ bountyId, initialAllowlist = [] }) {
         </p>
       </div>
 
+      {/* Form to add a new address */}
       <div className="mb-6">
         <label htmlFor="newAddress">Add Wallet Address</label>
         <div className="flex gap-2">
@@ -100,12 +121,14 @@ export default function AllowlistManager({ bountyId, initialAllowlist = [] }) {
         </div>
       </div>
 
+      {/* Success or error banner */}
       {status.message && (
         <div className={`status ${status.type} mb-5`}>
           {status.message}
         </div>
       )}
 
+      {/* Allowlist entries */}
       {allowlist.length > 0 ? (
         <div>
           <h4 className="mb-3 text-base font-semibold text-foreground">

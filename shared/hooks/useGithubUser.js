@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getGithubUser } from '@/shared/lib/api/user';
+import { getGithubUser } from '@/shared/api/user';
 
 const IS_LOCAL_ENV = process.env.NEXT_PUBLIC_ENV_TARGET === 'local';
 const USE_DUMMY_DATA = process.env.NEXT_PUBLIC_USE_DUMMY_DATA === 'true';

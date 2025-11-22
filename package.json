@@ -8,7 +8,8 @@
     "build": "cross-env NODE_ENV=production prisma generate && cross-env NODE_ENV=production next build",
     "start": "next start",
     "postinstall": "prisma generate",
-    "test": "node --test tests/"
+    "test": "node --test tests/",
+    "lint:links": "node scripts/check-links.mjs"
   },
   "keywords": [
     "github",

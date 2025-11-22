@@ -1,4 +1,4 @@
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@/shared/lib';
 
 const SIZE_MAP = {
   34: { wrapper: 'h-[34px] w-[34px]', initials: 'text-[13.6px]' },

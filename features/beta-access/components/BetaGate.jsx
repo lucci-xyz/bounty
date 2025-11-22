@@ -1,21 +1,35 @@
 'use client';
 
 import { useState } from 'react';
-import { useBetaAccess } from '../providers/BetaAccessProvider';
+import { useBetaAccess } from '@/features/beta-access/hooks/useBetaAccess';
 import BetaAccessModal from './BetaAccessModal';
 
+/**
+ * BetaGate
+ *
+ * A component that restricts access to its children unless the user
+ * has beta access. If beta access is not granted, displays a button
+ * that opens a modal for beta access application.
+ *
+ * @param {object} props
+ * @param {React.ReactNode} props.children - Content to render if access is granted.
+ * @param {React.ReactNode} [props.fallback] - Optional fallback while loading.
+ */
 export function BetaGate({ children, fallback }) {
-  const { hasAccess, betaStatus, loading } = useBetaAccess();
+  const { hasAccess, loading } = useBetaAccess();
   const [showModal, setShowModal] = useState(false);
 
+  // Show fallback while beta access status is loading
   if (loading) {
     return fallback || null;
   }
 
+  // Render children if access is granted
   if (hasAccess) {
     return children;
   }
 
+  // Render "Create Bounty" button and BetaAccessModal if not granted
   return (
     <>
       <button
@@ -24,9 +38,9 @@ export function BetaGate({ children, fallback }) {
       >
         + Create Bounty
       </button>
-      
-      <BetaAccessModal 
-        isOpen={showModal} 
+
+      <BetaAccessModal
+        isOpen={showModal}
         onClose={() => setShowModal(false)}
         onAccessGranted={() => {
           setShowModal(false);
@@ -37,3 +51,4 @@ export function BetaGate({ children, fallback }) {
   );
 }
 
+export default BetaGate;

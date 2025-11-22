@@ -17,7 +17,7 @@ _Automated, trust-minimised bounty payouts for open-source contributions. Fund w
 ## Get Started in Minutes
 
 1. **Install the GitHub App**  
-   👉 [Download BountyPay](https://github.com/apps/bountypay)
+   [Download BountyPay](https://github.com/apps/bountypay)
 
 2. **Open a New Issue** and click the `Create a bounty` button from the BountyPay bot.
 
@@ -145,12 +145,12 @@ For more detailed troubleshooting, see the [Troubleshooting Guide](docs/troubles
 
 ## Need Help?
 
-- 📖 Read the [Getting Started Guide](docs/guides/getting-started.md) or [FAQ](docs/support/faq.md)
-- 💬 Join discussions about features and integrations
-- 🐛 Report issues on [GitHub Issues](https://github.com/lucci-xyz/bounty/issues)
+- Read the [Getting Started Guide](docs/guides/getting-started.md) or [FAQ](docs/support/faq.md)
+- Join discussions about features and integrations
+- Report issues on [GitHub Issues](https://github.com/lucci-xyz/bounty/issues)
 
 ---
 
-Built with ❤️ using Base and Mezo.
+Built with love using Base and Mezo.
 
 _**Use at your own risk.** BountyPay is provided "as is" without warranties. You are responsible for the funds you deposit and the security practices you follow._

@@ -1,7 +1,7 @@
 import { config } from 'dotenv';
 import { readFileSync } from 'fs';
 import { isAddress } from 'ethers';
-import { REGISTRY } from '../../config/chain-registry.js';
+import { REGISTRY } from '../config/chain-registry.js';
 
 // Load .env file (only in development)
 if (process.env.NODE_ENV !== 'production') {

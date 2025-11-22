@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useNetwork } from '@/shared/components/NetworkProvider';
+import { useNetwork } from '@/shared/providers/NetworkProvider';
 import UserAvatar from '@/shared/components/UserAvatar';
 import { useGithubUser } from '@/shared/hooks/useGithubUser';
 
@@ -73,13 +73,6 @@ export default function Navbar() {
     }`}>
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 group">
-          {/* <Image 
-            src="/icons/og.png" 
-            alt="BountyPay" 
-            width={50} 
-            height={50}
-            className="rounded-lg"
-          /> */}
           <span className="text-l font-sm tracking-tight text-primary group-hover:opacity-80 transition-opacity">
             BountyPay
           </span>

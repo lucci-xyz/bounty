@@ -1,6 +1,6 @@
 import './schema';
 import { NextResponse } from 'next/server';
-import { REGISTRY } from '@/config/chain-registry';
+import { REGISTRY } from '@/shared/config/chain-registry';
 
 /**
  * GET /api/registry
