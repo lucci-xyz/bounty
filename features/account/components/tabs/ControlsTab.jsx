@@ -114,50 +114,52 @@ export function ControlsTab({ claimedBounties = [], useDummyData = false }) {
 
   return (
     <div className="space-y-8 text-sm font-light text-muted-foreground">
-      <section className="rounded-[32px] border border-border/60 bg-card p-6 shadow-sm">
-        <header className="ml-2 flex items-center justify-between">
-          <div>
-            <h3 className="mb-6 text-lg font-medium text-foreground">Eligible refunds</h3>
-          </div>
-        </header>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <section className="rounded-[32px] border border-border/60 bg-card p-6 shadow-sm">
+          <header className="mb-4">
+            <div>
+              <h3 className="font-light text-foreground">Eligible refunds</h3>
+            </div>
+          </header>
 
-        <EligibleBountiesList
-          bounties={eligibleBounties}
-          loading={loadingBounties}
-          selectedBounty={selectedBountyPreview}
-          onSelectBounty={handleSelectBounty}
-        />
+          <EligibleBountiesList
+            bounties={eligibleBounties}
+            loading={loadingBounties}
+            selectedBounty={selectedBountyPreview}
+            onSelectBounty={handleSelectBounty}
+          />
 
-        {bountyInfoPreview && (
-          <div className="mt-5 space-y-4">
-            <BountyDetails bountyInfo={bountyInfoPreview} network={network} sponsorDisplay={sponsorDisplay} />
-            <button
-              type="button"
-              onClick={useDummyData ? handleDummyRefund : requestRefund}
-              disabled={useDummyData ? dummyRefunded : refunded}
-              className="w-full rounded-full bg-destructive px-6 py-3 text-sm font-semibold text-destructive-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {useDummyData
-                ? dummyRefunded
-                  ? 'Refund simulated'
-                  : 'Simulate refund'
-                : refunded
-                ? 'Refunded'
-                : 'Request Refund'}
-            </button>
-          </div>
-        )}
-      </section>
+          {bountyInfoPreview && (
+            <div className="mt-5 space-y-4">
+              <BountyDetails bountyInfo={bountyInfoPreview} network={network} sponsorDisplay={sponsorDisplay} />
+              <button
+                type="button"
+                onClick={useDummyData ? handleDummyRefund : requestRefund}
+                disabled={useDummyData ? dummyRefunded : refunded}
+                className="w-full rounded-full bg-destructive px-6 py-3 text-sm font-semibold text-destructive-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {useDummyData
+                  ? dummyRefunded
+                    ? 'Refund simulated'
+                    : 'Simulate refund'
+                  : refunded
+                  ? 'Refunded'
+                  : 'Request Refund'}
+              </button>
+            </div>
+          )}
+        </section>
 
-      <section className="rounded-[32px] border border-border/60 bg-card p-6 shadow-sm">
-        <header className="mb-4 flex items-center justify-between">
-          <div>
-            <h3 className="ml-2 text-lg font-medium text-foreground">Failed Payouts</h3>
-          </div>
-        </header>
+        <section className="rounded-[32px] border border-border/60 bg-card p-6 shadow-sm">
+          <header className="mb-4">
+            <div>
+              <h3 className="font-light text-foreground">Failed payouts</h3>
+            </div>
+          </header>
 
-        <FailedPayoutList payouts={failedPayouts} />
-      </section>
+          <FailedPayoutList payouts={failedPayouts} />
+        </section>
+      </div>
     </div>
   );
 }
