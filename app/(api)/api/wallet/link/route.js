@@ -1,0 +1,31 @@
+import { logger } from '@/shared/lib/logger';
+import { getSession } from '@/shared/lib/session';
+import { walletQueries } from '@/shared/server/db/prisma';
+
+export async function POST(request) {
+  try {
+    const session = await getSession();
+    const { githubId, githubUsername, walletAddress } = await request.json();
+
+    if (!githubId || !githubUsername || !walletAddress) {
+      return Response.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Verify wallet is authenticated in session
+    if (session.walletAddress?.toLowerCase() !== walletAddress.toLowerCase()) {
+      return Response.json({ error: 'Wallet not authenticated' }, { status: 401 });
+    }
+
+    // Store mapping
+    await walletQueries.create(githubId, githubUsername, walletAddress);
+
+    return Response.json({
+      success: true,
+      message: 'Wallet linked successfully'
+    });
+  } catch (error) {
+    logger.error('Error linking wallet:', error);
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+}
+

@@ -1,43 +1,132 @@
-# Database Schema Reference
+# Database Reference (Visual)
 
-The Prisma schema (`prisma/schema.prisma`) maps to a Postgres database. Use `npx prisma migrate dev` to apply changes locally and `npx prisma generate` whenever the schema changes so the client stays in sync.
+> Prisma schema: `shared/server/db/schema.prisma`  
+> Migrate: `npx prisma migrate dev`  
+> Generate client: `npx prisma generate`
 
-## Models
+---
 
-### Bounty (`bounties`)
-- Tracks every on-chain bounty the app is aware of.
-- Key fields: `bountyId` (bytes32 hex, unique), `repoFullName`, `repoId`, `issueNumber`, sponsor GitHub/chain data, `token`, `amount`, `deadline`, `status`, `txHash`, `network`, `chainId`, `tokenSymbol`, `environment`.
-- Important constraints:
-  - `@@unique([repoId, issueNumber, sponsorAddress, network, environment])` prevents duplicate funding of the same issue per sponsor + network + env.
-  - Multiple indexes speed up lookups by repo, status, token, and environment.
+## ER Diagram
 
-### WalletMapping (`wallet_mappings`)
-- Maps a GitHub account to a verified wallet address (`walletAddress`, `verifiedAt`).
-- `githubId` is unique so one GitHub account can only point to one wallet at a time.
+```mermaid
+erDiagram
+  Bounty {
+    string bountyId        "PK (bytes32 hex, unique)"
+    string repoFullName
+    bigint repoId
+    int    issueNumber
+    string issueTitle?       "optional"
+    string issueDescription? "optional"
+    string sponsorAddress
+    string sponsorGithubId?  "optional"
+    string token             "ERC-20 address"
+    string amount            "raw units (string)"
+    int    deadline          "unix seconds"
+    string status            "open|resolved|refunded|canceled"
+    string txHash?           "optional"
+    string network           "alias"
+    int    chainId
+    string tokenSymbol
+    string environment       "stage|prod"
+    int    pinnedCommentId?  "optional"
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
-### PrClaim (`pr_claims`)
-- Represents contributor pull-request claims for a bounty.
-- Core fields: `bountyId`, `prNumber`, `prAuthorGithubId`, `status` (default `pending`), optional `resolvedAt` + payout `txHash`.
-- Indexed on `bountyId` for quick lookups when resolving payments.
+  WalletMapping {
+    string githubId        "unique"
+    string githubUsername
+    string walletAddress
+    DateTime verifiedAt
+    DateTime createdAt
+  }
 
-### User (`users`)
-- Stores GitHub profile basics plus arbitrary `preferences` JSON.
-- Links to `Allowlist` records via the `allowlists` relation (cascade delete).
-- `githubId` is unique to mirror GitHub’s user id.
+  PrClaim {
+    int    id              "PK"
+    string bountyId        "logical FK → Bounty"
+    int    prNumber
+    string prAuthorGithubId
+    string repoFullName
+    string status          "pending|paid|failed"
+    string txHash?         "optional"
+    DateTime createdAt
+    DateTime resolvedAt?   "optional"
+  }
 
-### Allowlist (`allowlists`)
-- Optional guardrails for who can claim a bounty or repo-level bounty.
-- Fields: `userId` (FK to `users`), optional `bountyId` or `repoId`, `allowedAddress`.
-- Indexed on `userId`, `bountyId`, and `repoId` for filtering from the dashboard.
+  User {
+    int    id              "PK"
+    string githubId        "unique"
+    string githubUsername
+    string email?          "optional"
+    string avatarUrl?      "optional"
+    json   preferences?    "optional"
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
-### NotificationPreference (`notification_preferences`)
-- Per-user notification toggles (`emailOnClaim`, `emailOnMerge`, `emailOnExpiry`).
-- `userId` is unique so each user has at most one preference row.
+  Allowlist {
+    int    id              "PK"
+    int    userId          "FK → User.id"
+    string bountyId?       "logical link → Bounty"
+    bigint repoId?         "optional"
+    string allowedAddress
+    DateTime createdAt
+  }
 
-## Relationships
-- `User` ↔ `Allowlist`: one-to-many (cascade delete when a user disappears).
-- `Bounty` ties to claims via `PrClaim.bountyId` (handled at the application layer).
-- Wallets and notification preferences reference `User` by `githubId`/`userId` but remain separate tables for simplicity.
+  NotificationPreference {
+    int    id              "PK"
+    int    userId          "unique FK → User.id"
+    bool   emailOnClaim
+    bool   emailOnMerge
+    bool   emailOnExpiry
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
-Keep migrations focused on evolving these models. If you introduce a new relation, update both this file and the schema comments so future contributors understand the data flow.
+  BetaAccess {
+    int    id              "PK"
+    string githubId        "unique"
+    string githubUsername
+    string email?          "optional"
+    string status          "pending|approved|rejected"
+    DateTime appliedAt
+    DateTime reviewedAt?   "optional"
+    string reviewedBy?     "optional"
+  }
 
+  %% Relationships (DB-level + app-level)
+
+  User ||--o{ Allowlist : "userId"
+  User ||--|| NotificationPreference : "userId (1:1)"
+
+  Bounty ||--o{ PrClaim : "bountyId [app-level]"
+  Bounty ||--o{ Allowlist : "bountyId [app-level]"
+
+  User ||--o{ Bounty : "via sponsorGithubId [app-level]"
+  User ||--o{ BetaAccess : "via githubId [app-level]"
+  User ||--o{ WalletMapping : "via githubId [app-level]"
+```
+
+---
+
+## Model Cheat Sheet
+
+| Model                    | Table                     | Key identifier(s)                                                                      | Main role                                      |
+| ------------------------ | ------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `Bounty`                 | `bounties`                | `bountyId` (bytes32 hex, unique), `@@unique([repoId, issueNumber, sponsorAddress, network, environment])` | Core bounty + on-chain + env metadata         |
+| `WalletMapping`          | `wallet_mappings`         | `githubId` (unique)                                                                    | GitHub → wallet address mapping               |
+| `PrClaim`                | `pr_claims`               | `id` (PK), `bountyId`                                                                  | PR-level claims against a bounty              |
+| `User`                   | `users`                   | `id` (PK), `githubId` (unique)                                                         | GitHub user profile for the app               |
+| `Allowlist`              | `allowlists`              | `id` (PK), `userId` (FK → `users.id`)                                                  | Address-level allowlists per user/bounty/repo |
+| `NotificationPreference` | `notification_preferences`| `id` (PK), `userId` (unique FK)                                                        | Email notification toggles                    |
+| `BetaAccess`             | `beta_access`             | `id` (PK), `githubId` (unique)                                                         | Beta access pipeline                          |
+
+---
+
+## Usage Notes
+
+- `CONFIG.envTarget` is written to `Bounty.environment`; always filter queries by it.  
+- Prefer helpers in `shared/server/db/prisma.js` for:
+  - BigInt conversions (`repoId`, etc.).
+  - Optional issue metadata detection.
+- Links by `bountyId` (`PrClaim`, `Allowlist`) are enforced in application logic, not DB FKs.

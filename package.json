@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "cross-env NODE_ENV=production prisma generate --schema shared/server/db/schema.prisma && cross-env NODE_ENV=production next build",
     "start": "next start",
-    "postinstall": "prisma generate",
-    "test": "node --test tests/"
+    "postinstall": "prisma generate --schema shared/server/db/schema.prisma",
+    "test": "node --test tests/",
+    "lint:links": "node scripts/check-links.mjs"
   },
   "keywords": [
     "github",
@@ -26,10 +27,12 @@
     "@tailwindcss/postcss": "^4.1.17",
     "@tanstack/react-query": "^5.90.5",
     "@vercel/analytics": "^1.5.0",
+    "@vercel/edge-config": "^1.4.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^16.3.1",
     "ethers": "^6.15.0",
+    "flags": "^4.0.2",
     "iron-session": "^8.0.3",
     "next": "^15.1.6",
     "octokit": "^3.1.2",
@@ -40,13 +43,17 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "viem": "^2.38.5",
-    "wagmi": "^2.19.2"
+    "wagmi": "^2.19.2",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@openzeppelin/contracts": "^5.0.2",
     "@types/node": "^20.11.5",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
     "autoprefixer": "^10.4.22",
+    "cross-env": "^10.1.0",
+    "forge-std": "github:foundry-rs/forge-std#v1.11.0",
     "markdownlint-cli": "^0.45.0",
     "postcss": "^8.5.6",
     "prisma": "^6.19.0",

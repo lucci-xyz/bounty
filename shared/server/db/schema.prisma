@@ -1,0 +1,130 @@
+// Prisma schema for BountyPay
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+model Bounty {
+  id                Int       @id @default(autoincrement())
+  bountyId          String    @unique @map("bounty_id")
+  repoFullName      String    @map("repo_full_name")
+  repoId            BigInt    @map("repo_id")
+  issueNumber       Int       @map("issue_number")
+  issueTitle        String?   @map("issue_title")
+  issueDescription  String?   @map("issue_description")
+  sponsorAddress    String    @map("sponsor_address")
+  sponsorGithubId   BigInt?   @map("sponsor_github_id")
+  token             String
+  amount            String
+  deadline          BigInt
+  status            String    @default("open")
+  txHash            String?   @map("tx_hash")
+  network           String    @default("BASE_SEPOLIA")
+  chainId           Int       @default(84532) @map("chain_id")
+  tokenSymbol       String    @default("USDC") @map("token_symbol")
+  environment       String    @default("stage")
+  createdAt         BigInt    @map("created_at")
+  updatedAt         BigInt    @map("updated_at")
+  pinnedCommentId   BigInt?   @map("pinned_comment_id")
+
+  @@unique([repoId, issueNumber, sponsorAddress, network, environment])
+  @@index([repoId, issueNumber], name: "idx_bounties_repo")
+  @@index([status], name: "idx_bounties_status")
+  @@index([token], name: "idx_bounties_token")
+  @@index([token, status], name: "idx_bounties_token_status")
+  @@index([environment], name: "idx_bounties_environment")
+  @@map("bounties")
+}
+
+model WalletMapping {
+  id             Int     @id @default(autoincrement())
+  githubId       BigInt  @unique @map("github_id")
+  githubUsername String  @map("github_username")
+  walletAddress  String  @map("wallet_address")
+  verifiedAt     BigInt  @map("verified_at")
+  createdAt      BigInt  @map("created_at")
+
+  @@index([githubId], name: "idx_wallet_github")
+  @@map("wallet_mappings")
+}
+
+model PrClaim {
+  id                 Int     @id @default(autoincrement())
+  bountyId           String  @map("bounty_id")
+  prNumber           Int     @map("pr_number")
+  prAuthorGithubId   BigInt  @map("pr_author_github_id")
+  repoFullName       String  @map("repo_full_name")
+  status             String  @default("pending")
+  createdAt          BigInt  @map("created_at")
+  resolvedAt         BigInt? @map("resolved_at")
+  txHash             String? @map("tx_hash")
+
+  @@index([bountyId], name: "idx_pr_claims_bounty")
+  @@map("pr_claims")
+}
+
+model User {
+  id             Int          @id @default(autoincrement())
+  githubId       BigInt       @unique @map("github_id")
+  githubUsername String       @map("github_username")
+  email          String?
+  avatarUrl      String?      @map("avatar_url")
+  preferences    Json?
+  createdAt      BigInt       @map("created_at")
+  updatedAt      BigInt       @map("updated_at")
+  
+  allowlists     Allowlist[]
+  
+  @@index([githubId], name: "idx_users_github")
+  @@map("users")
+}
+
+model Allowlist {
+  id             Int     @id @default(autoincrement())
+  userId         Int     @map("user_id")
+  bountyId       String? @map("bounty_id")
+  repoId         BigInt? @map("repo_id")
+  allowedAddress String  @map("allowed_address")
+  createdAt      BigInt  @map("created_at")
+  
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId], name: "idx_allowlist_user")
+  @@index([bountyId], name: "idx_allowlist_bounty")
+  @@index([repoId], name: "idx_allowlist_repo")
+  @@map("allowlists")
+}
+
+model NotificationPreference {
+  id             Int     @id @default(autoincrement())
+  userId         Int     @unique @map("user_id")
+  emailOnClaim   Boolean @default(true) @map("email_on_claim")
+  emailOnMerge   Boolean @default(true) @map("email_on_merge")
+  emailOnExpiry  Boolean @default(true) @map("email_on_expiry")
+  createdAt      BigInt  @map("created_at")
+  updatedAt      BigInt  @map("updated_at")
+  
+  @@map("notification_preferences")
+}
+
+model BetaAccess {
+  id             Int     @id @default(autoincrement())
+  githubId       BigInt  @unique @map("github_id")
+  githubUsername String  @map("github_username")
+  email          String?
+  status         String  @default("pending") // pending, approved, rejected
+  appliedAt      BigInt  @map("applied_at")
+  reviewedAt     BigInt? @map("reviewed_at")
+  reviewedBy     BigInt? @map("reviewed_by")
+  
+  @@index([status], name: "idx_beta_access_status")
+  @@index([githubId], name: "idx_beta_access_github")
+  @@map("beta_access")
+}
+

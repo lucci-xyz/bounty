@@ -1,12 +1,16 @@
 import './globals.css';
 import '@rainbow-me/rainbowkit/styles.css';
-import { Providers } from '@/components/Providers';
-import { NetworkProvider } from '@/components/NetworkProvider';
-import { BetaAccessProvider } from '@/components/BetaAccessProvider';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
+import { Providers } from '@/shared/providers/Providers';
+import { NetworkProvider } from '@/shared/providers/NetworkProvider';
+import { BetaAccessProvider } from '@/features/beta-access/providers/BetaAccessProvider';
+import Navbar from '@/shared/components/Navbar';
+import Footer from '@/shared/components/Footer';
 import { Analytics } from '@vercel/analytics/react';
-import { MINI_APP_EMBED } from '@/app/base-mini-app/manifest';
+import { MINI_APP_EMBED } from '@/app/(public)/base-mini-app/manifest';
+import { getLinkHref } from '@/shared/config/links';
+import { FlagProvider } from '@/shared/providers/FlagProvider';
+import { FlagsInspector } from '@/shared/providers/FlagsInspector';
+import { getFlags, getFlagProviderData } from '@/shared/lib/flags';
 
 export const metadata = {
   title: 'BountyPay - Automated GitHub Bounty Payments',
@@ -16,32 +20,61 @@ export const metadata = {
   },
 };
 
-export default function RootLayout({ children }) {
+const FONT_PRECONNECT = getLinkHref('assets', 'fontsApiPreconnect');
+const FONT_STATIC_PRECONNECT = getLinkHref('assets', 'fontsStaticPreconnect');
+const FONT_STYLESHEET = getLinkHref('assets', 'fontsDmSansAndFriends');
+
+function toFlagAttributes(flags) {
+  return Object.entries(flags).reduce((acc, [name, value]) => {
+    const normalizedName = name
+      .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+      .toLowerCase();
+
+    acc[`data-flag-${normalizedName}`] =
+      typeof value === 'boolean' || typeof value === 'number'
+        ? String(value)
+        : JSON.stringify(value);
+
+    return acc;
+  }, {});
+}
+
+export default async function RootLayout({ children }) {
+  const flags = await getFlags();
+  const flagTelemetry = getFlagProviderData();
+  const bodyAttributes = toFlagAttributes(flags);
+
   return (
     <html lang="en">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href={FONT_PRECONNECT} />
+        <link rel="preconnect" href={FONT_STATIC_PRECONNECT} crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Jetbrains+Mono:wght@400;500&display=swap"
+          href={FONT_STYLESHEET}
           rel="stylesheet"
         />
       </head>
-      <body>
-        <Providers>
-          <NetworkProvider>
-            <BetaAccessProvider>
-              <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-                <Navbar />
-                <main style={{ flex: 1 }}>
-                  {children}
-                </main>
-                <Footer />
-              </div>
-              <Analytics />
-            </BetaAccessProvider>
-          </NetworkProvider>
-        </Providers>
+      <body {...bodyAttributes}>
+        <FlagProvider value={flags}>
+          <Providers>
+            <NetworkProvider>
+              <BetaAccessProvider>
+                <div className="flex min-h-screen flex-col">
+                  <Navbar />
+                  <main className="flex-1">
+                    {children}
+                  </main>
+                  <Footer />
+                </div>
+                <Analytics />
+                <FlagsInspector
+                  definitions={flagTelemetry?.definitions}
+                  values={flags}
+                />
+              </BetaAccessProvider>
+            </NetworkProvider>
+          </Providers>
+        </FlagProvider>
       </body>
     </html>
   );
