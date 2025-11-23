@@ -18,7 +18,7 @@ export function useBountyVerification() {
   const [status, setStatus] = useState({ message: '', type: '' });
   const [selectedBounty, setSelectedBounty] = useState(null);
 
-  const { address, isConnected, chain } = useAccount();
+  const { address, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
   const { switchChain } = useSwitchChain();
   const { showError } = useErrorModal();
@@ -41,10 +41,6 @@ export function useBountyVerification() {
    * Validate bounty eligibility
    */
   const validateBounty = useCallback(async (bounty, bountyId, network, address) => {
-    if (!address) {
-      throw new Error('Wallet address not available');
-    }
-
     if (!bounty || !bounty.sponsor) {
       throw new Error('Invalid bounty data');
     }
@@ -82,7 +78,7 @@ export function useBountyVerification() {
     } else {
       showStatus('Connect the funding wallet to self-refund or use custodial flow.', 'warning');
     }
-    
+
     return { bountyId, ...bounty, canSelfRefund };
   }, [showStatus]);
 
@@ -92,14 +88,6 @@ export function useBountyVerification() {
    */
   const verifyBounty = useCallback(async (bounty) => {
     try {
-      if (!isConnected || !address) {
-        throw new Error('Please connect your wallet first');
-      }
-
-      if (!walletClient) {
-        throw new Error('Wallet client not available');
-      }
-
       // Find the network for this bounty and set it as selected
       const bountyNetwork = registry?.[bounty.network];
       if (!bountyNetwork) {
@@ -111,22 +99,35 @@ export function useBountyVerification() {
         setSelectedAlias(bounty.network);
       }
 
-      if (chain?.id !== bountyNetwork.chainId) {
+      // Only attempt a wallet-driven switch when a wallet is actually connected.
+      if (walletClient && chain?.id !== bountyNetwork.chainId) {
         showStatus(`Switching to ${bountyNetwork.name}...`, 'loading');
         await switchChain({ chainId: bountyNetwork.chainId });
       }
 
       showStatus('Verifying bounty...', 'loading');
 
-      const provider = new ethers.BrowserProvider(walletClient);
+      const provider = walletClient
+        ? new ethers.BrowserProvider(walletClient)
+        : new ethers.JsonRpcProvider(bountyNetwork.rpcUrl);
+
       const escrow = new ethers.Contract(bountyNetwork.contracts.escrow, ABIS.escrow, provider);
-      
+
       // bountyId is already a hex string (0x...), ethers will convert it to bytes32
       const onChainBounty = await escrow.getBounty(bounty.bountyId);
 
       const validated = await validateBounty(onChainBounty, bounty.bountyId, bountyNetwork, address);
-      setSelectedBounty(bounty);
-      return validated;
+
+      const refundMeta = {
+        ...bounty.refundMeta,
+        canSelfRefund: validated.canSelfRefund,
+        requiresCustodialRefund: !validated.canSelfRefund,
+        fundingWallet: bounty.refundMeta?.fundingWallet || onChainBounty?.sponsor,
+        connectedWallet: address || null,
+      };
+
+      setSelectedBounty({ ...bounty, refundMeta });
+      return { ...validated, refundMeta };
     } catch (error) {
       logger.error('Bounty verification error:', error);
       // Clear loading status to prevent stuck "Verifying bounty..." message
@@ -138,7 +139,7 @@ export function useBountyVerification() {
       clearBountyState();
       throw error;
     }
-  }, [address, chain?.id, isConnected, registry, selectedAlias, setSelectedAlias, showError, walletClient, switchChain, showStatus, validateBounty, clearBountyState]);
+  }, [address, chain?.id, registry, selectedAlias, setSelectedAlias, showError, walletClient, switchChain, showStatus, validateBounty, clearBountyState]);
 
   return {
     bountyInfo,
