@@ -41,19 +41,36 @@ export function useBountyVerification() {
    * Validate bounty eligibility
    */
   const validateBounty = useCallback(async (bounty, bountyId, network, address) => {
+    if (!address) {
+      throw new Error('Wallet address not available');
+    }
+
+    if (!bounty || !bounty.sponsor) {
+      throw new Error('Invalid bounty data');
+    }
+
     const amount = ethers.formatUnits(bounty.amount, network.token.decimals);
     const deadline = new Date(Number(bounty.deadline) * 1000);
     const statusText = ['None', 'Open', 'Resolved', 'Refunded', 'Canceled'][Number(bounty.status)];
     const now = new Date();
 
+    // Normalize addresses for comparison (handle checksummed addresses)
+    const sponsorAddress = ethers.getAddress(bounty.sponsor);
+    const connectedAddress = ethers.getAddress(address);
+
     setBountyInfo({
       amount,
       deadline: deadline.toISOString().split('T')[0],
       status: statusText,
-      sponsor: bounty.sponsor
+      sponsor: sponsorAddress
     });
 
-    if (bounty.sponsor.toLowerCase() !== address.toLowerCase()) {
+    if (sponsorAddress.toLowerCase() !== connectedAddress.toLowerCase()) {
+      logger.warn('Sponsor address mismatch:', {
+        sponsor: sponsorAddress,
+        connected: connectedAddress,
+        bountyId
+      });
       throw new Error('Only the sponsor can request a refund');
     }
 
@@ -105,6 +122,8 @@ export function useBountyVerification() {
 
       const provider = new ethers.BrowserProvider(walletClient);
       const escrow = new ethers.Contract(bountyNetwork.contracts.escrow, ABIS.escrow, provider);
+      
+      // bountyId is already a hex string (0x...), ethers will convert it to bytes32
       const onChainBounty = await escrow.getBounty(bounty.bountyId);
 
       const validated = await validateBounty(onChainBounty, bounty.bountyId, bountyNetwork, address);
