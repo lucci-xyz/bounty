@@ -115,3 +115,17 @@ export const SettingsIcon = ({ size = 24, color = "currentColor" }) => (
   </svg>
 );
 
+/**
+ * Returns an SVG string for a small northeast-pointing arrow icon.
+ * Useful for inline use in HTML strings (e.g., in GitHub comment templates).
+ * @param {number} size - Size of the icon in pixels (default: 12)
+ * @param {string} color - Color of the arrow (default: "currentColor")
+ * @returns {string} SVG string
+ */
+export function getNEArrowIconSVG(size = 12, color = "currentColor") {
+  const xmlns = SVG_XMLNS;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 12 12" fill="none" xmlns="${xmlns}" style="display: inline-block; vertical-align: middle;">
+    <path d="M4.5 2.5L9.5 7.5M9.5 7.5H4.5M9.5 7.5V2.5" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+

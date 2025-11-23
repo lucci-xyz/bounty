@@ -6,17 +6,17 @@ export function renderSuggestedBountiesComment({
   exampleIssueNumber,
   brandSignature
 }) {
-  return `## <img src="${iconUrl}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Available Issues
+  return `## <img src="${iconUrl}" alt="BountyPay Icon" width="20" height="20" /> Bounty: Open Issues (${bountyCount})
 
-@${username}, there ${bountyCount === 1 ? 'is 1 open bounty' : `are ${bountyCount} open bounties`} in this repository:
+@${username}, these issues currently have bounties:
 
 ${bountyList}
 
-**To claim a bounty:**  
-Edit your PR title or description to reference the issue number (e.g., "Fix #${exampleIssueNumber}" or "Closes #${exampleIssueNumber}").
+**Claim a bounty**
 
-The bounty will be automatically linked and paid when your PR is merged.
+Include the issue in your PR title or description  
+(e.g. \`Fix #${exampleIssueNumber}\` or \`Closes #${exampleIssueNumber}\`).  
+When your PR is merged, the bounty is paid automatically.
 
 ${brandSignature}`;
 }
-
