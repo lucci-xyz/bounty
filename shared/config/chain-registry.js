@@ -218,13 +218,20 @@ function buildRegistry() {
   }
 
   if (Object.keys(registry).length === 0) {
+    // On client-side, return empty registry to prevent crashes
+    // On server-side, throw error to fail fast for misconfiguration
+    const isClient = typeof window !== 'undefined';
+    if (isClient) {
+      logger.warn('[chain-registry] No networks configured. Set BLOCKCHAIN_SUPPORTED_MAINNET_ALIASES and/or BLOCKCHAIN_SUPPORTED_TESTNET_ALIASES');
+      return registry; // Return empty registry
+    }
     throw new Error('No networks configured. Set BLOCKCHAIN_SUPPORTED_MAINNET_ALIASES and/or BLOCKCHAIN_SUPPORTED_TESTNET_ALIASES');
   }
 
   return registry;
 }
 
-// Build registry at module load time (fails fast if misconfigured)
+// Build registry at module load time (fails fast if misconfigured on server, graceful on client)
 export const REGISTRY = buildRegistry();
 
 // Default aliases per group
@@ -247,6 +254,14 @@ export function getAliasesForGroup(group) {
  * @throws {Error} If no default configured or default not in supported list
  */
 export function getDefaultAliasForGroup(group) {
+  // Handle empty registry gracefully on client-side
+  if (Object.keys(REGISTRY).length === 0) {
+    const isClient = typeof window !== 'undefined';
+    if (isClient) {
+      throw new Error('Network configuration is not available. Please contact support or check your environment settings.');
+    }
+  }
+
   const defaultAlias = group === 'mainnet' ? DEFAULT_MAINNET : DEFAULT_TESTNET;
   
   if (!defaultAlias) {
