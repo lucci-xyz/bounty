@@ -5,6 +5,24 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { dummyBounties } from '@/shared/data/bounties';
 
 const FETCH_DELAY_MS = 500;
+const CLOSED_STATUSES = new Set(['closed', 'paid', 'resolved', 'refunded']);
+
+function filterActiveBounties(list) {
+  if (!Array.isArray(list)) return [];
+  const now = Math.floor(Date.now() / 1000);
+  return list.filter((bounty) => {
+    if (!bounty) return false;
+    const status = typeof bounty.status === 'string' ? bounty.status.toLowerCase() : '';
+    if (CLOSED_STATUSES.has(status)) {
+      return false;
+    }
+    const deadline = Number(bounty.deadline);
+    if (Number.isFinite(deadline)) {
+      return deadline > now;
+    }
+    return true;
+  });
+}
 
 /**
  * Fetches open bounties from the API.
@@ -58,14 +76,14 @@ export function useBountyFeed() {
         if (useDummyData) {
           await new Promise((resolve) => setTimeout(resolve, FETCH_DELAY_MS));
           if (isMounted) {
-            setBounties(dummyBounties);
+            setBounties(filterActiveBounties(dummyBounties));
           }
           return;
         }
 
         const data = await fetchOpenBounties();
         if (isMounted) {
-          setBounties(data);
+          setBounties(filterActiveBounties(data));
         }
       } catch (err) {
         logger.error('Error fetching bounties:', err);
