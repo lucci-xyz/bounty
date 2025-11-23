@@ -1,6 +1,7 @@
 "use client";
 
 import AllowlistManager from '@/features/account/components/AllowlistManager';
+import { useFlag } from '@/shared/providers/FlagProvider';
 
 /**
  * Modal for managing the allowlist of a bounty.
@@ -19,8 +20,10 @@ export function AllowlistModal({
   allowlistModalLoading,
   close
 }) {
-  // Hide modal if there is no bountyId
-  if (!bountyId) {
+  const allowlistEnabled = useFlag('allowlistFeature', false);
+
+  // Hide modal if feature flag is disabled or if there is no bountyId
+  if (!allowlistEnabled || !bountyId) {
     return null;
   }
 

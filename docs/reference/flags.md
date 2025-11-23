@@ -15,6 +15,7 @@ flowchart TD
 ## Current flags
 - `improvedNav` (`improved-nav`) — gated UI navigation changes.
 - `betaWalletFlow` (`beta-wallet-flow`) — experimental wallet linking; only true when the user has beta access (transform applies).
+- `allowlistFeature` (`allowlist-feature`) — enables allowlist functionality for restricting bounty claims to specific wallet addresses.
 
 ## Define a new flag
 ```js
@@ -47,7 +48,7 @@ Add the key to Edge Config (or a local override) to enable it without redeployin
 ## Configuring Edge Config
 1. Set `EDGE_CONFIG` to a Vercel Edge Config that contains a JSON item named `flags`, e.g.:
    ```json
-   { "improved-nav": false, "beta-wallet-flow": true }
+   { "improved-nav": false, "beta-wallet-flow": true, "allowlist-feature": false }
    ```
 2. Optional local overrides: `FLAGS_LOCAL_OVERRIDES='{"improved-nav":true}'` or `NEXT_PUBLIC_FLAGS_LOCAL_OVERRIDES` for client-visible toggles.
 

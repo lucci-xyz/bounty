@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ethers } from 'ethers';
+import { useFlag } from '@/shared/providers/FlagProvider';
 
 /**
  * AllowlistManager
@@ -14,6 +15,12 @@ import { ethers } from 'ethers';
  * @param {Array} [props.initialAllowlist] - Initial list of allowed addresses.
  */
 export default function AllowlistManager({ bountyId, initialAllowlist = [] }) {
+  const allowlistEnabled = useFlag('allowlistFeature', false);
+
+  // Hide component if feature flag is disabled
+  if (!allowlistEnabled) {
+    return null;
+  }
   const [allowlist, setAllowlist] = useState(initialAllowlist);
   const [newAddress, setNewAddress] = useState('');
   const [status, setStatus] = useState({ message: '', type: '' });

@@ -10,6 +10,7 @@ import { DeleteWalletModal } from '@/features/account/components/modals/DeleteWa
 import { ManageReposModal } from '@/features/account/components/modals/ManageReposModal';
 import { AllowlistModal } from '@/features/account/components/modals/AllowlistModal';
 import { useAccountPage } from '@/features/account';
+import { useFlag } from '@/shared/providers/FlagProvider';
 
 /**
  * Main component for the user account page.
@@ -19,6 +20,8 @@ import { useAccountPage } from '@/features/account';
  * @param {string} [props.initialTab] - Optional initial tab to show.
  */
 export function AccountContent({ initialTab: initialTabOverride } = {}) {
+  const allowlistEnabled = useFlag('allowlistFeature', false);
+
   // Fetch account data and actions from hook
   const {
     githubUser,
@@ -151,13 +154,15 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
         handleInstallApp={repoManager.handleInstallApp}
       />
       {/* Allowlist management modal */}
-      <AllowlistModal
-        bounty={allowlistModal.bounty}
-        bountyId={allowlistModal.bountyId}
-        allowlistModalData={allowlistModal.data}
-        allowlistModalLoading={allowlistModal.loading}
-        close={allowlistModal.close}
-      />
+      {allowlistEnabled && (
+        <AllowlistModal
+          bounty={allowlistModal.bounty}
+          bountyId={allowlistModal.bountyId}
+          allowlistModalData={allowlistModal.data}
+          allowlistModalLoading={allowlistModal.loading}
+          close={allowlistModal.close}
+        />
+      )}
     </div>
   );
 }

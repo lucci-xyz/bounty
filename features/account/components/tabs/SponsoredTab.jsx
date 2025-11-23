@@ -25,6 +25,7 @@ import { ArrowIcon, MoneyIcon, PlusIcon, WalletIcon } from '@shared/components/I
 import { StatBlock } from '@/features/account/components/StatBlock';
 import { formatAmount, formatDeadlineDate, formatTimeLeft } from '@/shared/lib';
 import { LinkFromCatalog } from '@/shared/components/LinkFromCatalog';
+import { useFlag } from '@/shared/providers/FlagProvider';
 
 export function SponsoredTab({
   showEmptyState,
@@ -40,6 +41,7 @@ export function SponsoredTab({
   allowlistLoading,
   openAllowlistModal
 }) {
+  const allowlistEnabled = useFlag('allowlistFeature', false);
   // If user hasn't connected a wallet yet, show the empty state prompt.
   if (showEmptyState) {
     return (
@@ -252,7 +254,7 @@ export function SponsoredTab({
                           )}
 
                           {/* Allowlist info and manage button */}
-                          {bounty.status === 'open' && (
+                          {allowlistEnabled && bounty.status === 'open' && (
                             <div className="rounded-2xl border border-border/60 bg-white/40 p-4 shadow-sm">
                               <div className="flex items-center justify-between gap-3">
                                 <div>

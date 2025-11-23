@@ -131,12 +131,24 @@ const betaWalletFlow = createFlagDeclaration({
   }
 });
 
+const allowlistFeature = createFlagDeclaration({
+  name: 'allowlistFeature',
+  key: 'allowlist-feature',
+  description: 'Enables allowlist functionality for restricting bounty claims to specific wallet addresses.',
+  defaultValue: false,
+  options: [
+    { label: 'Off', value: false },
+    { label: 'On', value: true }
+  ]
+});
+
 export const flagRegistry = {
   improvedNav,
-  betaWalletFlow
+  betaWalletFlow,
+  allowlistFeature
 };
 
-export { improvedNav, betaWalletFlow };
+export { improvedNav, betaWalletFlow, allowlistFeature };
 
 export async function getFlags({ identity } = {}) {
   const resolvedIdentity = identity ?? (await getIdentity());
