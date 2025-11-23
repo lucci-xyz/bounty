@@ -75,7 +75,9 @@ export function useRefundTransaction({ currentBounty, selectedBounty, onSuccess,
         await onSuccess();
       }
     } catch (error) {
-      logger.error(error);
+      logger.error('Refund transaction error:', error);
+      // Clear loading status to prevent stuck loading messages
+      showStatus('', '');
       showError({
         title: 'Refund Failed',
         message: error.message || 'An error occurred while processing the refund',

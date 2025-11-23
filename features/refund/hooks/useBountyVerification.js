@@ -54,18 +54,19 @@ export function useBountyVerification() {
     const statusText = ['None', 'Open', 'Resolved', 'Refunded', 'Canceled'][Number(bounty.status)];
     const now = new Date();
 
-    // Normalize addresses for comparison (handle checksummed addresses)
-    const sponsorAddress = ethers.getAddress(bounty.sponsor);
-    const connectedAddress = ethers.getAddress(address);
+    // Normalize addresses for comparison using .toLowerCase() pattern (matches codebase pattern)
+    // Pattern used in: useRefundFlow.js:140, useEligibleRefundBounties.js:41
+    const sponsorAddress = (bounty.sponsor || '').toLowerCase();
+    const connectedAddress = (address || '').toLowerCase();
 
     setBountyInfo({
       amount,
       deadline: deadline.toISOString().split('T')[0],
       status: statusText,
-      sponsor: sponsorAddress
+      sponsor: bounty.sponsor // Keep original format for display
     });
 
-    if (sponsorAddress.toLowerCase() !== connectedAddress.toLowerCase()) {
+    if (sponsorAddress !== connectedAddress) {
       logger.warn('Sponsor address mismatch:', {
         sponsor: sponsorAddress,
         connected: connectedAddress,
@@ -130,7 +131,9 @@ export function useBountyVerification() {
       setSelectedBounty(bounty);
       return validated;
     } catch (error) {
-      logger.error(error);
+      logger.error('Bounty verification error:', error);
+      // Clear loading status to prevent stuck "Verifying bounty..." message
+      showStatus('', '');
       showError({
         title: 'Bounty Verification Failed',
         message: error.message || 'An error occurred while verifying the bounty',
