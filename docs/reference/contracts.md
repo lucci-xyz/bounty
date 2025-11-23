@@ -1,109 +1,46 @@
-# Smart Contract Addresses
+# Networks & Contracts
 
-Quick reference for deployed BountyPay contracts on all supported networks.
+Network support is driven by the registry in `shared/config/chain-registry.js`. Each alias declares RPC, chain metadata, escrow address, and token details; ethers ABIs for escrow/erc20 are defined in the same file.
 
----
+```mermaid
+flowchart TD
+  Env["Env vars:\nBLOCKCHAIN_SUPPORTED_*"] --> Builder["buildRegistry()"]
+  Builder --> REGISTRY["REGISTRY (alias -> config)"]
+  REGISTRY --> API["/api/registry"]
+  REGISTRY --> NetworkProvider["NetworkProvider (client)"]
+  REGISTRY --> ContractHelpers["contract.js (ethers)"]
+```
 
-## Base Sepolia Testnet
+## Supported aliases
+- `BASE_MAINNET` (mainnet) — requires env-provided escrow/token addresses.
+- `MEZO_MAINNET` (mainnet) — requires env-provided escrow/token addresses.
+- `BASE_SEPOLIA` (testnet) — defaults: escrow `0x3C1AF89cf9773744e0DAe9EBB7e3289e1AeCF0E7`, token `USDC` at `0x036CbD53842c5426634e7929541eC2318f3dCF7e`.
+- `MEZO_TESTNET` (testnet) — defaults: escrow `0xcBaf5066aDc2299C14112E8A79645900eeb3A76a`, token `MUSD` at `0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503`.
 
-**Network Details:**
-- Chain ID: `84532`
-- Native Currency: ETH
-- RPC URL: `https://sepolia.base.org`
-- Block Explorer: [`https://sepolia.basescan.org`](https://sepolia.basescan.org)
+Testnets fall back to the curated defaults above; mainnets must be fully configured through environment variables.
 
-**Deployed Contracts:**
+## Configuration
+- Choose which aliases are enabled with `BLOCKCHAIN_SUPPORTED_TESTNET_ALIASES` and `BLOCKCHAIN_SUPPORTED_MAINNET_ALIASES` (comma-separated, e.g. `BASE_SEPOLIA,MEZO_TESTNET`).
+- Required per-alias env keys when not using defaults: `<ALIAS>_RPC_URL`, `<ALIAS>_ESCROW_ADDRESS`, `<ALIAS>_TOKEN_ADDRESS`, `<ALIAS>_TOKEN_SYMBOL`, `<ALIAS>_TOKEN_DECIMALS`.
+- Resolver wallet per alias: `<ALIAS>_OWNER_WALLET` and `<ALIAS>_OWNER_PRIVATE_KEY` (hex, 0x-prefixed). These are used by `resolveBountyOnNetwork`.
+- Default alias per group: `BLOCKCHAIN_DEFAULT_TESTNET_ALIAS`, `BLOCKCHAIN_DEFAULT_MAINNET_ALIAS`. The `NetworkProvider` and `/api/network/default` rely on these.
 
-| Contract | Address | Description |
-|----------|---------|-------------|
-| BountyEscrow | [`0x3C1AF89cf9773744e0DAe9EBB7e3289e1AeCF0E7`](https://sepolia.basescan.org/address/0x3C1AF89cf9773744e0DAe9EBB7e3289e1AeCF0E7) | Main escrow contract (holds user funds + protocol fees) |
-| USDC (Test) | [`0x036CbD53842c5426634e7929541eC2318f3dCF7e`](https://sepolia.basescan.org/address/0x036CbD53842c5426634e7929541eC2318f3dCF7e) | Test USDC token (6 decimals) |
+## How the app uses the registry
+- `/api/registry` exposes the full map to the client; `NetworkProvider` uses it to populate dropdowns and guard unsupported selections.
+- Users store their preferred group (`testnet`/`mainnet`) in the `network_env` cookie via `/api/network/env`. Alias selection falls back to the default for that group.
+- Bounty creation stores the alias, chainId, token symbol, and token address alongside the bounty. `/api/contract/bounty/[bountyId]` and payout flows use the saved alias to read/write on-chain.
+- `/api/resolver?network=ALIAS` derives the resolver address from configured wallets; `/api/tokens` returns token metadata derived from the registry.
 
-> Latest BountyEscrow deployment (Nov 17, 2025): [`0xa19fe746a6efee740bf9cd37790368078cd1a93f00702495e1233de4f10a4689`](https://sepolia.basescan.org/tx/0xa19fe746a6efee740bf9cd37790368078cd1a93f00702495e1233de4f10a4689)
+## Escrow ABI surface (summary)
+- `createBounty(address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) returns (bytes32 bountyId)`
+- `resolve(bytes32 bountyId, address recipient)`
+- `getBounty(bytes32 bountyId)` → tuple (`repoIdHash`, `sponsor`, `resolver`, `amount`, `deadline`, `issueNumber`, `status`)
+- `computeBountyId(address sponsor, bytes32 repoIdHash, uint64 issueNumber)`
 
----
+Use `shared/server/blockchain/contract.js` helpers for all contract interactions; they handle non-1559 networks and registry lookups for you.
 
-## Mezo Testnet
-
-**Network Details:**
-- Chain ID: `31611`
-- Native Currency: BTC (Bitcoin)
-- RPC URL: `https://mezo-testnet.drpc.org` (dRPC - reliable)
-- Alternative RPCs:
-  - `https://rpc.test.mezo.org` (Official, may have connectivity issues)
-  - `https://testnet-rpc.lavenderfive.com:443/mezo/` (Lavender.Five)
-- Block Explorer: [`https://explorer.test.mezo.org`](https://explorer.test.mezo.org)
-
-> **Note:** Boar Network (`rpc-http.mezo.boar.network`) is only available for Mezo **Mainnet** (Chain ID 31612), not testnet. You can customize the testnet RPC by setting `NEXT_PUBLIC_MEZO_RPC_URL` in your environment variables.
-
-**Deployed Contracts:**
-
-| Contract | Address | Description |
-|----------|---------|-------------|
-| BountyEscrow | [`0xcBaf5066aDc2299C14112E8A79645900eeb3A76a`](https://explorer.test.mezo.org/address/0xcBaf5066aDc2299C14112E8A79645900eeb3A76a) | Main escrow contract (holds user funds + protocol fees) |
-| MUSD (Test) | [`0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503`](https://explorer.test.mezo.org/address/0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503) | Mezo USD stablecoin (18 decimals) |
-
-> Latest BountyEscrow deployment (Nov 17, 2025): [`0x58ceec0b7579df664edd095756bc96aef8ce0dac2318e0b29d07082572c6ba1d`](https://explorer.test.mezo.org/tx/0x58ceec0b7579df664edd095756bc96aef8ce0dac2318e0b29d07082572c6ba1d)
-
-> **Note:** Each network operates independently. Bounties created on Base Sepolia use USDC, while bounties on Mezo Testnet use MUSD. There is no bridging between networks.
-
----
-
-## Token Details
-
-### USDC (Base Sepolia)
-
-- **Symbol**: USDC
-- **Decimals**: 6
-- **Type**: ERC-20 stablecoin
-- **Value**: $1 USD (testnet)
-
-### MUSD (Mezo Testnet)
-
-- **Symbol**: MUSD
-- **Decimals**: 18
-- **Type**: ERC-20 Bitcoin-backed stablecoin
-- **Value**: $1 USD (testnet)
-- **Backing**: Bitcoin collateral on Mezo
-
----
-
-## Adding Networks to Your Wallet
-
-### Base Sepolia in MetaMask
-
-1. Open MetaMask
-2. Click network dropdown
-3. Select "Add Network"
-4. Enter:
-   - Network Name: Base Sepolia
-   - RPC URL: `https://sepolia.base.org`
-   - Chain ID: `84532`
-   - Currency Symbol: ETH
-   - Block Explorer: `https://sepolia.basescan.org`
-
-### Mezo Testnet in MetaMask
-
-1. Open MetaMask
-2. Click network dropdown
-3. Select "Add Network"
-4. Enter:
-   - Network Name: Mezo Testnet
-   - RPC URL: `https://mezo-testnet.drpc.org`
-   - Chain ID: `31611`
-   - Currency Symbol: BTC
-   - Block Explorer: `https://explorer.test.mezo.org`
-
----
-
-## Audit Reports
-
-Audit reports and deployment history are coming soon.
-
----
-
-## Next Steps
-
-- **[Smart Contracts Documentation](smart-contracts.md)** - Complete technical reference
-- **[Getting Started](../guides/getting-started.md)** - User guide for creating bounties
-- **[API Documentation](api.md)** - Backend integration
+## Add a new network
+1. Add the alias to `CURATED_ALIASES` if it is not already present (or reuse an existing alias).
+2. Set `BLOCKCHAIN_SUPPORTED_MAINNET_ALIASES` or `BLOCKCHAIN_SUPPORTED_TESTNET_ALIASES` to include the alias.
+3. Provide `<ALIAS>_RPC_URL`, `<ALIAS>_ESCROW_ADDRESS`, `<ALIAS>_TOKEN_ADDRESS`, `<ALIAS>_TOKEN_SYMBOL`, `<ALIAS>_TOKEN_DECIMALS`, and owner wallet env vars.
+4. Set `BLOCKCHAIN_DEFAULT_MAINNET_ALIAS`/`BLOCKCHAIN_DEFAULT_TESTNET_ALIAS` so `NetworkProvider` can pick defaults.

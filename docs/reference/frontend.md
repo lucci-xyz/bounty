@@ -1,65 +1,43 @@
 # Frontend Overview
 
-Next.js App Router powers the UI. Global layout wraps every page with `Providers` (wagmi, RainbowKit, TanStack Query) and `NetworkProvider` (registry + cookie-backed env selector), then renders the shared `Navbar` and `Footer`. Styling lives in `globals.css` with the accent palette:
+The UI uses Next.js App Router with Tailwind (in `app/globals.css`). `app/layout.jsx` wraps every page with wallet/network providers, beta access and flag providers, plus `Navbar`/`Footer`. Color tokens are defined in CSS variables; legacy brand colors remain available as `--color-primary` etc.
 
-- Primary `#00827B`
-- Secondary `#39BEB7`
-- Tertiary `#83EEE8`
-
-Dummy screens can be toggled through `NEXT_PUBLIC_USE_DUMMY_DATA=true`.
+```mermaid
+flowchart LR
+  Home["/"] --> Account["/account"]
+  Home --> Attach["/attach-bounty"]
+  Home --> Docs["/docs"]
+  Account --> Bounty["/account/bounty/[id]"]
+  Account --> LinkWallet["/link-wallet"]
+  Account --> Refund["/refund"]
+  Home --> MiniApp["/base-mini-app"]
+```
 
 ## Routes
-
-| Path | File | Purpose | Key data sources |
-| --- | --- | --- | --- |
-| `/` | `app/(public)/page.jsx` | Public bounty board with filters, sorting, and responsive cards. | `/api/bounties/open`, `useNetwork`, optional dummy data |
-| `/attach-bounty` | `app/(public)/attach-bounty/page.jsx` | Handles the post-GitHub-App flow for funding an issue; also shows GitHub App install CTA if opened directly. | Query params from GitHub, `useNetwork`, `/api/resolver`, `/api/bounty/create` |
-| `/account` | `app/(authenticated)/account/page.jsx` | Combined sponsor + contributor hub with tabs for Sponsored, Earnings, Settings, and (optionally) Admin. Accepts `?tab=` for deep links. | `/api/oauth/user`, `/api/user/bounties`, `/api/user/stats`, `/api/wallet/:id`, `/api/user/profile`, `/api/user/claimed-bounties`, `/api/github/installations` |
-| `/account/bounty/[bountyId]` | `app/(authenticated)/account/bounty/[bountyId]/page.jsx` | Owner view for a single bounty plus allowlist management. | `/api/bounty/:id`, `/api/allowlist/:id` |
-| `/link-wallet` | `app/(authenticated)/link-wallet/page.jsx` | Guides contributors or sponsors through GitHub auth, wallet connect, SIWE verification, and `/api/wallet/link`. Supports `returnTo` and `action=change`. | `/api/oauth/user`, `/api/user/profile`, `/api/nonce`, `/api/verify-wallet`, `/api/wallet/link` |
-| `/refund` | `app/(authenticated)/refund/page.jsx` | Lets sponsors run `refundExpired` on the escrow contract after a deadline lapses. | `useNetwork`, on-chain contract via wagmi wallet, optional `/account/bounty` deep link |
-
-## Supporting Files
-
-- `globals.css`: defines typography, spacing, card styles, and the color tokens listed above. Keep UI tweaks consistent with these variables.
-- `shared/data/`: mock responses for the home feed and dashboard screens when `NEXT_PUBLIC_USE_DUMMY_DATA` is enabled.
-
-See `app/api/README.md` for backend route behavior.
-
-# UI Components
-
-All shared UI for the App Router pages lives here. Components follow the same color tokens defined in `globals.css` (primary `#00827B`, secondary `#39BEB7`, tertiary `#83EEE8`) so new screens stay consistent—prefer extending these pieces instead of hand-rolling styles.
-
-## Providers & Context
-
-| Component | File | Responsibility |
+| Path | Purpose | Data sources |
 | --- | --- | --- |
-| `Providers` | `shared/components/Providers.jsx` | Boots wagmi, RainbowKit, and TanStack Query with the accent palette and exposes them to the tree. |
-| `NetworkProvider` / `useNetwork` | `shared/components/NetworkProvider.jsx` | Fetches the registry from `/api/registry`, reads/writes the `mainnet`/`testnet` cookie, and surfaces helpers for switching aliases plus metadata about the active chain. |
+| `/` | Public bounty feed with search and formatted amounts/deadlines. | `/api/bounties/open` via `useBountyFeed` |
+| `/attach-bounty` | Post-GitHub-App funding flow. Shows install CTA if opened directly. | Query params from GitHub, `/api/resolver`, `/api/bounty/create` |
+| `/docs` | In-app pointer to the markdown API reference. | Static content linking to `docs/reference/api.md` |
+| `/base-mini-app` | Hybrid page for the Base mini app—switches between Home/Dashboard/Profile without leaving the page. | Reuses Home + Account components |
+| `/account` | Dashboard tabs: Sponsored, Earnings, Settings, Admin (when allowed). | `/api/oauth/user`, `/api/user/*`, `/api/wallet/[id]`, `/api/github/installations`, `/api/admin/check` |
+| `/link-wallet` | GitHub OAuth + SIWE signing + wallet mapping workflow. | `/api/nonce`, `/api/siwe/message`, `/api/verify-wallet`, `/api/wallet/link`, `/api/oauth/*` |
+| `/refund` | Simple refund utility for expired bounties. | Wallet connection + on-chain call |
+| `/admin/beta` | Admin view for beta applications (uses the same data as the Account admin tab). | `/api/beta/applications`, `/api/beta/review`, `/api/beta/notify` |
 
-## Layout Shell
+## Providers
+- `shared/providers/Providers` — wagmi, RainbowKit, TanStack Query base config.
+- `shared/providers/NetworkProvider` — loads `/api/registry`, manages `network_env` cookie, exposes `useNetwork`.
+- `shared/providers/FlagProvider` + `FlagsInspector` — inject flag values into the client and expose toolbar data attributes.
+- `features/beta-access/providers/BetaAccessProvider` — checks `/api/beta/check` and surfaces gating helpers.
 
-| Component | File | Notes |
-| --- | --- | --- |
-| `Navbar` | `shared/components/Navbar.jsx` | Sticky bar with GitHub session awareness, network toggle, and auth CTA. |
-| `Footer` | `shared/components/Footer.jsx` | Minimal footer with brand text and socials. |
-| `Socials` | `shared/components/Socials.jsx` | Reusable list of external links/icons used inside the footer and hero sections. |
+## UI building blocks
+- Layout components: `Navbar`, `Footer`, `Socials`.
+- Icons and badges: `shared/components/Icons.jsx`, `shared/components/Badge.jsx`, `shared/components/LinkFromCatalog` (centralized external links).
+- Domain components: `features/home/components/HomePage`, `features/bounty/components/AttachBountySections`, `features/account/components/AccountContent` (tabs + modals), `features/wallet` modals.
 
-## Cards & Flows
-
-| Component | File | Primary props / behavior |
-| --- | --- | --- |
-| `BountyCard` | `features/bounty/components/BountyCard.jsx` | Renders a bounty summary, formats amounts/deadlines, and optionally shows management actions (`showActions`, `onManage`). |
-| `AllowlistManager` | `features/account/components/AllowlistManager.jsx` | Sponsor-only editor that calls `/api/allowlist/:bountyId` to add/remove addresses. Props: `bountyId`, `initialAllowlist`. |
-| `WalletLinkModal` | `features/wallet/components/WalletLinkModal.jsx` | Simple modal for kicking users over to `/link-wallet` while preserving `returnTo`. Props: `isOpen`, `onClose`, `walletType` (`funding` or `payout`). |
-
-## Utility Bits
-
-| Component | File | Usage |
-| --- | --- | --- |
-| `UserAvatar` | `shared/components/UserAvatar.jsx` | Circle avatar with GitHub fallback initial. Props: `username`, `avatarUrl`, `size`. |
-| `Avatar`, `AvatarImage`, `AvatarFallback` | `shared/components/ui/avatar.jsx` | Radix-backed primitives for cases that need more control than `UserAvatar`. |
-| Icons | `shared/components/Icons.jsx` | Central export for the inline SVG icon set (GitHub, wallet, target, etc.). Import from here instead of embedding SVGs. |
-
-Add new UI here when it could be reused in more than one page; otherwise keep page-specific elements inside their route directory.
-
+## Adding a screen quickly
+1. Build data-fetching in a feature module (hook/component) under `features/*`.
+2. Create the route file in `app/(public|authenticated)/.../page.jsx` and wrap with the existing layout shell (already applied globally).
+3. Use `useNetwork` when you need chain metadata and `useFlag` for gated UI.
+4. Keep spacing/typography aligned with `globals.css` and reuse shared components before adding new ones.

@@ -1,81 +1,56 @@
 # Feature Flags
 
-The app uses Vercel’s Flags SDK plus Edge Config for all feature rollouts. This file covers the minimal steps required to read or add a flag.
+Flags are defined in `shared/lib/flags/index.js` using Vercel’s `flags/next` package. Values resolve in this order: `FLAGS_LOCAL_OVERRIDES` / `NEXT_PUBLIC_FLAGS_LOCAL_OVERRIDES` (JSON), Edge Config item `flags`, then the declaration’s `defaultValue`.
 
-## 1. Prerequisites
+```mermaid
+flowchart TD
+  Local["FLAGS_LOCAL_OVERRIDES\nNEXT_PUBLIC_FLAGS_LOCAL_OVERRIDES"] --> Decide["createFlagDeclaration().run()"]
+  Edge["Edge Config item: flags"] --> Decide
+  Default["defaultValue"] --> Decide
+  Decide --> getFlags["getFlags / getFlagValue"]
+  getFlags --> Layout["FlagProvider in app/layout"]
+  Layout --> Client["useFlag/useFlags (components)"]
+```
 
-1. **Edge Config item** – In the Vercel dashboard create (or reuse) an Edge Config and add a JSON item named `flags`:
+## Current flags
+- `improvedNav` (`improved-nav`) — gated UI navigation changes.
+- `betaWalletFlow` (`beta-wallet-flow`) — experimental wallet linking; only true when the user has beta access (transform applies).
 
-   ```json
-   {
-     "improved-nav": false,
-     "beta-wallet-flow": true
-   }
-   ```
-
-2. **Environment variable** – Add the Edge Config connection string (from the dashboard) as `EDGE_CONFIG` in every environment and in `.env.local`.
-
-3. **Optional local overrides** – For quick local testing set `FLAGS_LOCAL_OVERRIDES='{"flag-key":true}'` (stringified JSON).
-
-## 2. Defining or editing flags
-
-All definitions live in `shared/lib/flags/index.js`. To add a flag:
-
+## Define a new flag
 ```js
-const newFlag = createFlagDeclaration({
+// shared/lib/flags/index.js
+const newFeature = createFlagDeclaration({
   name: 'newFeature',
   key: 'new-feature',
-  description: 'Short explanation',
+  description: 'Short note on what it gates',
   defaultValue: false,
   options: [
     { label: 'Off', value: false },
     { label: 'On', value: true }
-  ]
+  ],
+  // optional
+  transform(value, identity) {
+    return identity?.betaAccess ? value : false;
+  }
 });
 
-export const flagRegistry = {
-  ...,
-  newFeature
-};
+export const flagRegistry = { ...flagRegistry, newFeature };
+export { newFeature };
 ```
+Add the key to Edge Config (or a local override) to enable it without redeploying.
 
-Values resolve in this order:
+## Reading flags
+- **Server**: `const flags = await getFlags(); const enableBeta = await getFlagValue('betaWalletFlow');`
+- **Client**: `const showNav = useFlag('improvedNav', false);`
+- **Inspector**: `FlagsInspector` (mounted in `app/layout.jsx`) shows definitions/values for quick debugging.
 
-1. `FLAGS_LOCAL_OVERRIDES`
-2. Edge Config `flags` item
-3. `defaultValue`
+## Configuring Edge Config
+1. Set `EDGE_CONFIG` to a Vercel Edge Config that contains a JSON item named `flags`, e.g.:
+   ```json
+   { "improved-nav": false, "beta-wallet-flow": true }
+   ```
+2. Optional local overrides: `FLAGS_LOCAL_OVERRIDES='{"improved-nav":true}'` or `NEXT_PUBLIC_FLAGS_LOCAL_OVERRIDES` for client-visible toggles.
 
-Custom transforms can further tweak the decision (see `betaWalletFlow` for a cohort example).
-
-## 3. Reading flags on the server
-
-```js
-import { getFlags, getFlagValue } from '@/shared/lib/flags';
-
-const flags = await getFlags();              // returns { improvedNav: false, ... }
-const betaWallet = await getFlagValue('betaWalletFlow');
-```
-
-`getFlags()` batches every declaration once per request, so prefer it inside layouts, route handlers, or server actions.
-
-## 4. Reading flags on the client
-
-`app/layout.jsx` injects values into a `FlagProvider`, so client components can call the hook:
-
-```js
-'use client';
-import { useFlag } from '@/shared/providers/FlagProvider';
-
-const showNewNav = useFlag('improvedNav', false);
-```
-
-The current set is also exposed as `data-flag-*` attributes on `<body>` for quick inspection.
-
-## 5. Flags Explorer / Toolbar
-
-- `app/.well-known/vercel/flags/route.js` exposes metadata for Vercel’s Flags Explorer.
-- `FlagsInspector` renders `<FlagDefinitions />` and `<FlagValues />` so overrides show up in the toolbar.
-
-With these pieces in place you can safely gate new UI or API behavior behind Edge-configured flags without shipping new builds.
-
-
+## When to use flags
+- Gate UI experiments or gradual rollouts without code splits.
+- Keep flag reads close to rendering logic (client) or branching (server). Do not thread individual booleans through deep prop chains—use `FlagProvider` + hooks.
