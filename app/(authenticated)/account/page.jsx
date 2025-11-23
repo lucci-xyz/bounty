@@ -6,6 +6,7 @@
  */
 import { Suspense } from 'react';
 import { AccountContent } from '@/features/account/components/AccountContent';
+import { AccountProvider } from '@/shared/providers/AccountProvider';
 
 /**
  * Renders the account page, showing account details.
@@ -20,7 +21,9 @@ export default function Account() {
         </div>
       }
     >
-      <AccountContent />
+      <AccountProvider>
+        <AccountContent />
+      </AccountProvider>
     </Suspense>
   );
 }

@@ -10,20 +10,14 @@ import { logger } from '@/shared/lib/logger';
  * @param {string} [options.initialTab] - Tab id to show initially.
  * @returns {object} Account page state and actions.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAccount, useWalletClient } from 'wagmi';
-import { useGithubUser } from '@hooks/useGithubUser';
 import { useErrorModal } from '@/shared/providers/ErrorModalProvider';
-import { checkAdminAccess } from '@/shared/api/admin';
 import { useBetaApplications } from '@/features/beta-access';
 import { useWalletManagement } from '@/features/wallet';
-import {
-  useAllowlistData,
-  useSponsorDashboard,
-  useEarningsDashboard,
-  useRepoManager
-} from '@/features/account';
+import { useAllowlistData, useRepoManager } from '@/features/account';
+import { useAccountData } from '@/shared/providers/AccountProvider';
 
 export function useAccountPage({ initialTab: initialTabOverride } = {}) {
   // Determine initial tab from override, URL param, or default
@@ -32,8 +26,7 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
   const initialTab = initialTabOverride || queryTab || 'sponsored';
 
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [adminChecked, setAdminChecked] = useState(false);
+  const [expandedBountyId, setExpandedBountyId] = useState(null);
 
   // Wallet/account info
   const { address, isConnected, chain } = useAccount();
@@ -42,20 +35,31 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
 
   // Feature/data hooks
   const useDummyData = process.env.NEXT_PUBLIC_USE_DUMMY_DATA === 'true';
-  const { githubUser, githubUserLoading, isLocalMode } = useGithubUser({ requireAuth: true });
+  const accountData = useAccountData();
+  const { user, sponsor, earnings, profile, admin, actions } = accountData;
+  const githubUser = user.data;
+  const githubUserLoading = user.status === 'loading';
+  const isLocalMode = user.isLocalMode;
 
   const allowlist = useAllowlistData({ useDummyData });
-  const sponsor = useSponsorDashboard({
-    githubUser,
-    useDummyData,
-    enabled: activeTab === 'sponsored',
-    ensureAllowlistLoaded: allowlist.ensureAllowlistLoaded
-  });
-  const earnings = useEarningsDashboard({
-    useDummyData,
-    enabled: activeTab === 'earnings'
-  });
   const repoManager = useRepoManager({ useDummyData });
+
+  const handleToggleBounty = useCallback(
+    (bountyId) => {
+      setExpandedBountyId((prev) => (prev === bountyId ? null : bountyId));
+      allowlist.ensureAllowlistLoaded?.(bountyId);
+    },
+    [allowlist]
+  );
+
+  const sponsorState = useMemo(
+    () => ({
+      ...sponsor,
+      expandedBountyId,
+      handleToggleBounty
+    }),
+    [sponsor, expandedBountyId, handleToggleBounty]
+  );
 
   // Wallet management logic
   const walletManagement = useWalletManagement({
@@ -66,59 +70,41 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
     walletClient,
     chain,
     showError,
-    fetchEarningsData: earnings.fetchEarningsData,
-    fetchSponsoredData: sponsor.fetchSponsoredData
+    fetchEarningsData: actions.refreshEarnings,
+    fetchSponsoredData: actions.refreshSponsor,
+    refreshProfileData: actions.refreshProfile
   });
+
+  const showAdminTab = admin.status === 'ready' && admin.isAdmin;
+  const tabs = useMemo(() => {
+    const baseTabs = [
+      { id: 'sponsored', label: 'Sponsored' },
+      { id: 'earnings', label: 'Earnings' },
+      { id: 'controls', label: 'Controls' },
+      { id: 'settings', label: 'Settings' }
+    ];
+    if (showAdminTab) {
+      baseTabs.push({ id: 'admin', label: 'Admin' });
+    }
+    return baseTabs;
+  }, [showAdminTab]);
+
+  useEffect(() => {
+    if (activeTab === 'admin' && !showAdminTab) {
+      setActiveTab('sponsored');
+    }
+  }, [activeTab, showAdminTab]);
 
   // Handle unauthorized beta access
   const handleBetaUnauthorized = useCallback(() => {
-    setIsAdmin(false);
-  }, []);
+    actions.refreshAdmin?.();
+  }, [actions]);
 
   // Beta applications feature
   const beta = useBetaApplications({
-    enabled: isAdmin && activeTab === 'admin',
+    enabled: showAdminTab && activeTab === 'admin',
     onUnauthorized: handleBetaUnauthorized
   });
-
-  // Check and update admin status when dependencies change
-  useEffect(() => {
-    let cancelled = false;
-
-    async function determineAdminStatus() {
-      if (githubUserLoading) return;
-
-      if (!githubUser) {
-        if (!cancelled) {
-          setIsAdmin(false);
-          setAdminChecked(true);
-        }
-        return;
-      }
-
-      try {
-        const adminStatus = await checkAdminAccess();
-        if (!cancelled) {
-          setIsAdmin(adminStatus);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setIsAdmin(false);
-        }
-        logger.error('Admin check error:', error);
-      } finally {
-        if (!cancelled) {
-          setAdminChecked(true);
-        }
-      }
-    }
-
-    determineAdminStatus();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [githubUser, githubUserLoading]);
 
   // Log out and redirect to home
   const logout = useCallback(async () => {
@@ -135,7 +121,7 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
 
   // Data for allowlist modal
   const allowlistModalBounty = allowlist.allowlistModalBountyId
-    ? sponsor.sponsoredBounties.find(
+    ? sponsorState.sponsoredBounties?.find(
         (bounty) => bounty.bountyId === allowlist.allowlistModalBountyId
       ) ?? null
     : null;
@@ -146,15 +132,6 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
     ? allowlist.allowlistLoading[allowlist.allowlistModalBountyId]
     : false;
 
-  // Tabs for left nav
-  const tabs = [
-    { id: 'sponsored', label: 'Sponsored' },
-    { id: 'earnings', label: 'Earnings' },
-    { id: 'controls', label: 'Controls' },
-    { id: 'settings', label: 'Settings' },
-    ...(adminChecked && isAdmin ? [{ id: 'admin', label: 'Admin' }] : [])
-  ];
-
   // Expose all state and actions needed by the account page
   return {
     githubUser,
@@ -162,9 +139,11 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
     tabs,
     activeTab,
     setActiveTab,
-    isAdmin,
-    sponsor,
+    isAdmin: showAdminTab,
+    sponsor: sponsorState,
     earnings,
+    profile,
+    adminStatus: admin.status,
     allowlist,
     repoManager,
     walletManagement,
@@ -181,6 +160,7 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
       close: allowlist.closeAllowlistModal
     },
     logout,
-    useDummyData
+    useDummyData,
+    accountActions: actions
   };
 }

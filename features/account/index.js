@@ -1,6 +1,4 @@
 export { useAllowlistData } from './hooks/useAllowlistData';
-export { useSponsorDashboard } from './hooks/useSponsorDashboard';
-export { useEarningsDashboard } from './hooks/useEarningsDashboard';
 export { useRepoManager } from './hooks/useRepoManager';
 export { useAccountPage } from './hooks/useAccountPage';
 export { AccountContent } from './components/AccountContent';
