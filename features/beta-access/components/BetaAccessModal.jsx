@@ -85,9 +85,12 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
 
   /**
    * Redirects the user to GitHub sign in.
+   * Preserve the current URL so users resume the flow after authenticating.
    */
   const handleSignIn = () => {
-    redirectToGithubSignIn('/');
+    const returnTo =
+      typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search || ''}` : '/';
+    redirectToGithubSignIn(returnTo || '/');
   };
 
   /**
