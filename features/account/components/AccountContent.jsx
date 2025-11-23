@@ -94,12 +94,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
         <SponsoredTab
           showEmptyState={sponsor.showEmptyState}
           stats={sponsor.stats}
-          hasWallet={sponsor.hasWallet}
-          displayBounties={sponsor.displayBounties}
-          totalPages={sponsor.totalPages}
-          currentPage={sponsor.currentPage}
-          handlePrevPage={sponsor.handlePrevPage}
-          handleNextPage={sponsor.handleNextPage}
+          sponsoredBounties={sponsor.sponsoredBounties}
           expandedBountyId={sponsor.expandedBountyId}
           handleToggleBounty={sponsor.handleToggleBounty}
           allowlists={allowlist.allowlists}

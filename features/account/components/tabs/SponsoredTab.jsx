@@ -9,18 +9,14 @@
  * @param {Object} props
  * @param {boolean} props.showEmptyState - Whether to show the empty state (connect wallet) prompt.
  * @param {Object} props.stats - Stats for sponsored bounties (e.g., totalValueLocked, totalPaid, refundedBounties).
- * @param {Array} props.displayBounties - Array of bounty objects to display.
- * @param {number} props.totalPages - Total number of bounty pages.
- * @param {number} props.currentPage - Current page in the bounties list.
- * @param {function} props.handlePrevPage - Handler to go to the previous page.
- * @param {function} props.handleNextPage - Handler to go to the next page.
+ * @param {Array} props.sponsoredBounties - Full array of bounty objects to display.
  * @param {string|null} props.expandedBountyId - The currently expanded bounty's id or null.
  * @param {function} props.handleToggleBounty - Handler for expanding/collapsing a bounty card.
  * @param {Object} props.allowlists - Allowlist addresses by bounty id.
  * @param {Object} props.allowlistLoading - Loading state for each bounty's allowlist.
  * @param {function} props.openAllowlistModal - Handler to open the manage allowlist modal.
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowIcon, MoneyIcon, PlusIcon, WalletIcon } from '@shared/components/Icons';
 import { StatBlock } from '@/features/account/components/StatBlock';
@@ -28,14 +24,12 @@ import { formatAmount, formatDeadlineDate, formatTimeLeft } from '@/shared/lib';
 import { LinkFromCatalog } from '@/shared/components/LinkFromCatalog';
 import { useFlag } from '@/shared/providers/FlagProvider';
 
+const ITEMS_PER_PAGE = 4;
+
 export function SponsoredTab({
   showEmptyState,
   stats,
-  displayBounties,
-  totalPages,
-  currentPage,
-  handlePrevPage,
-  handleNextPage,
+  sponsoredBounties = [],
   expandedBountyId,
   handleToggleBounty,
   allowlists,
@@ -50,13 +44,13 @@ export function SponsoredTab({
   const [statusFilter, setStatusFilter] = useState('all');
   const [networkFilter, setNetworkFilter] = useState('all');
   const [sortOption, setSortOption] = useState('deadline-asc');
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Client-side filtering and sorting of the displayBounties
-  // Note: If pagination is server-side, this only filters the current page.
+  // Client-side filtering and sorting of the sponsor's bounties
   const filteredBounties = useMemo(() => {
-    if (!displayBounties) return [];
+    if (!sponsoredBounties) return [];
 
-    let result = [...displayBounties];
+    let result = [...sponsoredBounties];
 
     // 1. Search
     if (searchQuery) {
@@ -102,7 +96,25 @@ export function SponsoredTab({
     });
 
     return result;
-  }, [displayBounties, searchQuery, statusFilter, networkFilter, sortOption]);
+  }, [sponsoredBounties, searchQuery, statusFilter, networkFilter, sortOption]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredBounties.length / ITEMS_PER_PAGE));
+  const paginatedBounties = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredBounties.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredBounties, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, networkFilter, sponsoredBounties.length]);
+
+  const handlePrevPage = () => {
+    setCurrentPage((prev) => Math.max(1, prev - 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage((prev) => Math.min(totalPages, prev + 1));
+  };
 
   // If user hasn't connected a wallet yet, show the empty state prompt.
   if (showEmptyState) {
@@ -170,7 +182,7 @@ export function SponsoredTab({
       <div className="animate-fade-in-up delay-400">
         <div>
           {/* Filters and Pagination Toolbar */}
-          {displayBounties.length > 0 && (
+          {sponsoredBounties.length > 0 && (
             <div className="flex flex-wrap items-center justify-between gap-4 mb-4 mx-1 p-1">
               {/* Left side: Filters */}
               <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
@@ -275,17 +287,17 @@ export function SponsoredTab({
           )}
 
           {/* Show empty state if there are no bounties matching filters */}
-          {filteredBounties.length === 0 ? (
+          {paginatedBounties.length === 0 ? (
             <div className="text-center py-[60px] px-5">
               <p className="text-sm font-light text-muted-foreground">
-                {displayBounties.length === 0 ? 'No bounties found' : 'No bounties match your filters'}
+                {sponsoredBounties.length === 0 ? 'No bounties found' : 'No bounties match your filters'}
               </p>
             </div>
           ) : (
             <>
               {/* List of sponsored bounties */}
               <div className="space-y-3">
-                {filteredBounties.map((bounty) => {
+                {paginatedBounties.map((bounty) => {
                   const isExpanded = expandedBountyId === bounty.bountyId;
                   const isClosed = bounty.status === 'closed' || bounty.status === 'paid';
                   const isExpired = !isClosed && Number(bounty.deadline) < Math.floor(Date.now() / 1000);
