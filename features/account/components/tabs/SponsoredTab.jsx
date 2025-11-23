@@ -287,7 +287,8 @@ export function SponsoredTab({
               <div className="space-y-3">
                 {filteredBounties.map((bounty) => {
                   const isExpanded = expandedBountyId === bounty.bountyId;
-                  const isExpired = Number(bounty.deadline) < Math.floor(Date.now() / 1000);
+                  const isClosed = bounty.status === 'closed' || bounty.status === 'paid';
+                  const isExpired = !isClosed && Number(bounty.deadline) < Math.floor(Date.now() / 1000);
                   const allowlistData = allowlists[bounty.bountyId] || [];
                   const isAllowlistLoading = !!allowlistLoading[bounty.bountyId];
                   const issueLinkParams = {
@@ -320,7 +321,7 @@ export function SponsoredTab({
                             </div>
                           </button>
                           <div className="mt-1 text-muted-foreground text-[13px] font-light">
-                            {bounty.status === 'closed' || bounty.status === 'paid'
+                            {isClosed
                               ? 'Closed'
                               : formatTimeLeft(bounty.deadline) === 'Expired'
                               ? 'Expired'
@@ -360,12 +361,7 @@ export function SponsoredTab({
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground/80">Deadline</span>
                               <span className="text-foreground">
-                                {formatDeadlineDate(bounty.deadline)}{' '}
-                                {bounty.status === 'closed' || bounty.status === 'paid'
-                                  ? '(Closed)'
-                                  : isExpired
-                                  ? '(Expired)'
-                                  : ''}
+                                {formatDeadlineDate(bounty.deadline)} {isClosed ? '(Closed)' : isExpired ? '(Expired)' : ''}
                               </span>
                             </div>
                             <div className="flex items-center justify-between">
