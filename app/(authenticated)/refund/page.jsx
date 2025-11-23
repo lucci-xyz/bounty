@@ -8,31 +8,68 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { AlertIcon } from '@/shared/components/Icons';
 import StatusNotice from '@/shared/components/StatusNotice';
-import { useRefundFlow } from '@/shared/hooks/useRefundFlow';
+import { useMemo, useState } from 'react';
+import { useAccount } from 'wagmi';
+import {
+  useEligibleRefundBounties,
+  useBountyVerification,
+  useRefundTransaction,
+  EligibleBountiesList,
+  BountyDetails
+} from '@/features/refund';
+import { useNetwork } from '@/shared/providers/NetworkProvider';
 
 export default function Refund() {
-  /**
-   * useRefundFlow manages refund logic and state:
-   * - bountyId: The entered bounty ID
-   * - bountyInfo: Bounty details returned from status check
-   * - status: Status object for operation/result feedback
-   * - refunded: Whether the refund was already processed
-   * - wallet: Current connected wallet information
-   * - checkBounty: Action to check a bounty by ID
-   * - requestRefund: Action to request refund on checked bounty
-   * - hasCurrentBounty: True if a valid, checked bounty present
-   * - sponsorDisplay: Sponsor short display value
-   */
+  const [refunded, setRefunded] = useState(false);
+
+  // Fetch eligible bounties
+  const { eligibleBounties, loadingBounties, fetchEligibleBounties } = useEligibleRefundBounties();
+
+  // Verify bounties
   const {
-    inputs: { bountyId, setBountyId },
-    info: bountyInfo,
+    bountyInfo,
+    currentBounty,
+    selectedBounty,
     status,
-    refunded,
-    wallet,
-    actions: { checkBounty, requestRefund },
-    hasCurrentBounty,
-    derived: { sponsorDisplay }
-  } = useRefundFlow();
+    verifyBounty,
+    clearBountyState,
+    showStatus
+  } = useBountyVerification();
+
+  // Get wallet info
+  const { address, isConnected } = useAccount();
+  const { currentNetwork: network } = useNetwork();
+
+  // Handle successful refund
+  const handleRefundSuccess = async () => {
+    setRefunded(true);
+    clearBountyState();
+    await fetchEligibleBounties();
+  };
+
+  // Execute refund transaction
+  const { requestRefund } = useRefundTransaction({
+    currentBounty,
+    selectedBounty,
+    onSuccess: handleRefundSuccess,
+    showStatus
+  });
+
+  // Handle bounty selection
+  const handleSelectBounty = async (bounty) => {
+    try {
+      await verifyBounty(bounty);
+      setRefunded(false);
+    } catch (error) {
+      // Error is handled by the hook
+    }
+  };
+
+  // Sponsor display helper
+  const sponsorDisplay = useMemo(() => {
+    if (!bountyInfo?.sponsor) return '';
+    return `${bountyInfo.sponsor.slice(0, 6)}...${bountyInfo.sponsor.slice(-4)}`;
+  }, [bountyInfo]);
 
   return (
     <div className="min-h-screen bg-background/80 px-4 py-10 flex items-center justify-center">
@@ -57,7 +94,7 @@ export default function Refund() {
         </div>
 
         {/* Wallet connection and refund flow */}
-        {!wallet.isConnected ? (
+        {!isConnected ? (
           // Prompt to connect wallet
           <ConnectButton.Custom>
             {({ openConnectModal }) => (
@@ -76,13 +113,13 @@ export default function Refund() {
               <div className="flex items-center justify-between text-foreground">
                 <span>Connected</span>
                 <span className="font-medium">
-                  {wallet.address?.slice(0, 6)}...{wallet.address?.slice(-4)}
+                  {address?.slice(0, 6)}...{address?.slice(-4)}
                 </span>
               </div>
               <div className="flex items-center justify-between text-foreground mt-2">
                 <span>Network</span>
                 <span className="font-medium">
-                  {wallet.network?.name} ({wallet.network?.token.symbol})
+                  {network?.name} ({network?.token?.symbol})
                 </span>
               </div>
             </div>
@@ -107,52 +144,23 @@ export default function Refund() {
               )}
             </ConnectButton.Custom>
 
-            {/* Enter and check bounty ID */}
-            <div className="space-y-3">
-              <label className="text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground/70">
-                Bounty ID
-              </label>
-              <input
-                type="text"
-                placeholder="0x..."
-                value={bountyId}
-                onChange={(e) => setBountyId(e.target.value)}
-                className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
-              />
-              <button
-                onClick={checkBounty}
-                className="inline-flex w-full items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary"
-              >
-                Check Bounty Status
-              </button>
-            </div>
+            {/* Show eligible bounties list */}
+            <EligibleBountiesList
+              bounties={eligibleBounties}
+              selectedBounty={selectedBounty}
+              onSelectBounty={handleSelectBounty}
+              loading={loadingBounties}
+            />
 
             {/* Show checked bounty details if available */}
-            {bountyInfo && (
-              <div className="rounded-3xl border border-border/60 bg-muted/40 p-5 text-sm text-muted-foreground space-y-2">
-                <div className="flex items-center justify-between text-foreground">
-                  <span>Amount</span>
-                  <span className="font-medium">
-                    {bountyInfo.amount} {wallet.network?.token.symbol}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-foreground">
-                  <span>Deadline</span>
-                  <span className="font-medium">{bountyInfo.deadline}</span>
-                </div>
-                <div className="flex items-center justify-between text-foreground">
-                  <span>Status</span>
-                  <span className="font-medium">{bountyInfo.status}</span>
-                </div>
-                <div className="flex items-center justify-between text-foreground">
-                  <span>Sponsor</span>
-                  <code className="text-xs">{sponsorDisplay}</code>
-                </div>
-              </div>
-            )}
+            <BountyDetails
+              bountyInfo={bountyInfo}
+              network={network}
+              sponsorDisplay={sponsorDisplay}
+            />
 
             {/* Request refund button, if eligible */}
-            {hasCurrentBounty && (
+            {currentBounty && (
               <button
                 onClick={requestRefund}
                 disabled={refunded}
