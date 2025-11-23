@@ -114,17 +114,17 @@ export function SponsoredTab({
             <>
               {/* Pagination controls if more than one page */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-end gap-2 pr-4 text-sm text-muted-foreground">
+                <div className="flex items-center justify-end mb-4 text-sm text-muted-foreground">
                   <button
                     type="button"
                     onClick={handlePrevPage}
                     disabled={currentPage === 1}
                     aria-label="Previous bounties"
-                    className="w-4 h-4 rounded-full bg-muted text-foreground flex items-center justify-center"
+                    className="w-6 h-6 rounded-full bg-muted hover:bg-muted/80 text-foreground flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed -mr-1"
                   >
                     <ArrowIcon direction="prev" className="h-3 w-3" />
                   </button>
-                  <span className="text-sm font-medium">
+                  <span className="text-sm font-medium min-w-[3rem] text-center">
                     {currentPage}/{totalPages}
                   </span>
                   <button
@@ -132,7 +132,7 @@ export function SponsoredTab({
                     onClick={handleNextPage}
                     disabled={currentPage === totalPages}
                     aria-label="Next bounties"
-                    className="w-4 h-4 rounded-full bg-muted text-foreground flex items-center justify-center"
+                    className="w-6 h-6 rounded-full bg-muted hover:bg-muted/80 text-foreground flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed -ml-1"
                   >
                     <ArrowIcon direction="next" className="h-3 w-3" />
                   </button>
@@ -140,7 +140,7 @@ export function SponsoredTab({
               )}
 
               {/* List of sponsored bounties */}
-              <div className="space-y-3 mt-1">
+              <div className="space-y-3">
                 {displayBounties.map((bounty) => {
                   const isExpanded = expandedBountyId === bounty.bountyId;
                   const isExpired = Number(bounty.deadline) < Math.floor(Date.now() / 1000);

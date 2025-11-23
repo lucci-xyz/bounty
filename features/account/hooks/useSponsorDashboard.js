@@ -36,7 +36,7 @@ export function useSponsorDashboard({
    * Load sponsor data for the dashboard.
    */
   const loadSponsorData = useCallback(
-    async (page = 1) => {
+    async () => {
       if (!enabled) return;
 
       if (useDummyData) {
@@ -47,8 +47,8 @@ export function useSponsorDashboard({
           activeBounties: dummyUserBounties.filter((b) => b.status === 'open').length
         });
         setHasWallet(true);
-        setTotalPages(1);
         setShowEmptyState(dummyUserBounties.length === 0);
+        setCurrentPage(1);
         return;
       }
 
@@ -61,9 +61,8 @@ export function useSponsorDashboard({
         setSponsoredBounties(normalizedBounties);
         setStats(statsData || {});
         setHasWallet(true);
-        setCurrentPage(page);
-        setTotalPages(1);
         setShowEmptyState(normalizedBounties.length === 0);
+        setCurrentPage(1);
       } catch (error) {
         logger.error('Error loading sponsor dashboard:', error);
         setSponsoredBounties([]);
@@ -79,7 +78,7 @@ export function useSponsorDashboard({
    */
   useEffect(() => {
     if (enabled) {
-      loadSponsorData(1);
+      loadSponsorData();
     }
   }, [enabled, loadSponsorData, githubUser]);
 
@@ -88,18 +87,18 @@ export function useSponsorDashboard({
    */
   const handlePrevPage = useCallback(() => {
     if (currentPage > 1) {
-      loadSponsorData(currentPage - 1);
+      setCurrentPage(currentPage - 1);
     }
-  }, [currentPage, loadSponsorData]);
+  }, [currentPage]);
 
   /**
    * Go to next page.
    */
   const handleNextPage = useCallback(() => {
     if (currentPage < totalPages) {
-      loadSponsorData(currentPage + 1);
+      setCurrentPage(currentPage + 1);
     }
-  }, [currentPage, totalPages, loadSponsorData]);
+  }, [currentPage, totalPages]);
 
   /**
    * Expand or collapse a bounty, and ensure its allowlist is loaded.
@@ -112,10 +111,32 @@ export function useSponsorDashboard({
     [ensureAllowlistLoaded]
   );
 
+  const ITEMS_PER_PAGE = 4;
+
   /**
-   * The bounties to display.
+   * Calculate total pages based on bounties count.
    */
-  const displayBounties = useMemo(() => sponsoredBounties || [], [sponsoredBounties]);
+  const totalPagesCalculated = useMemo(() => {
+    const count = sponsoredBounties?.length || 0;
+    return Math.max(1, Math.ceil(count / ITEMS_PER_PAGE));
+  }, [sponsoredBounties]);
+
+  /**
+   * Update totalPages when calculated value changes.
+   */
+  useEffect(() => {
+    setTotalPages(totalPagesCalculated);
+  }, [totalPagesCalculated]);
+
+  /**
+   * The bounties to display for the current page.
+   */
+  const displayBounties = useMemo(() => {
+    const allBounties = sponsoredBounties || [];
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return allBounties.slice(startIndex, endIndex);
+  }, [sponsoredBounties, currentPage]);
 
   return {
     stats,
