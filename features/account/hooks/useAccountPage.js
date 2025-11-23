@@ -150,6 +150,7 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
   const tabs = [
     { id: 'sponsored', label: 'Sponsored' },
     { id: 'earnings', label: 'Earnings' },
+    { id: 'controls', label: 'Controls' },
     { id: 'settings', label: 'Settings' },
     ...(adminChecked && isAdmin ? [{ id: 'admin', label: 'Admin' }] : [])
   ];
@@ -179,6 +180,7 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
       loading: allowlistModalLoading,
       close: allowlist.closeAllowlistModal
     },
-    logout
+    logout,
+    useDummyData
   };
 }

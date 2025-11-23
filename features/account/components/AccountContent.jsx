@@ -3,6 +3,7 @@
 import { cn } from '@/shared/lib';
 import { SponsoredTab } from '@/features/account/components/tabs/SponsoredTab';
 import { EarningsTab } from '@/features/account/components/tabs/EarningsTab';
+import { ControlsTab } from '@/features/account/components/tabs/ControlsTab';
 import { SettingsTab } from '@/features/account/components/tabs/SettingsTab';
 import { AdminTab } from '@/features/account/components/tabs/AdminTab';
 import { ChangeWalletModal } from '@/features/account/components/modals/ChangeWalletModal';
@@ -38,7 +39,8 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
     beta,
     allowlistModal,
     wallet,
-    logout
+    logout,
+    useDummyData
   } = useAccountPage({ initialTab: initialTabOverride });
 
   // Show loading state while GitHub user data is loading
@@ -112,6 +114,11 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
           claimedBounties={earnings.claimedBounties}
           totalEarned={earnings.totalEarned}
         />
+      )}
+
+      {/* Controls tab */}
+      {activeTab === 'controls' && (
+        <ControlsTab claimedBounties={earnings.claimedBounties} useDummyData={useDummyData} />
       )}
 
       {/* Settings tab */}
