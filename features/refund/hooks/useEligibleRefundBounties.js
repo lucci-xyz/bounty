@@ -3,7 +3,6 @@ import { logger } from '@/shared/lib/logger';
 import { useCallback, useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { getUserBounties } from '@/shared/api/user';
-import { dummyEligibleRefundBounties } from '@data/refund';
 
 /**
  * Hook for fetching and filtering eligible refund bounties.
@@ -15,7 +14,7 @@ import { dummyEligibleRefundBounties } from '@data/refund';
  * 
  * @returns {Object} Eligible bounties state and fetch function
  */
-export function useEligibleRefundBounties({ useDummyData = false } = {}) {
+export function useEligibleRefundBounties() {
   const [eligibleBounties, setEligibleBounties] = useState([]);
   const [loadingBounties, setLoadingBounties] = useState(false);
   const { address, isConnected } = useAccount();
@@ -24,12 +23,6 @@ export function useEligibleRefundBounties({ useDummyData = false } = {}) {
    * Fetch eligible bounties for refund
    */
   const fetchEligibleBounties = useCallback(async () => {
-    if (useDummyData) {
-      setEligibleBounties(dummyEligibleRefundBounties);
-      setLoadingBounties(false);
-      return;
-    }
-
     try {
       setLoadingBounties(true);
       const bounties = await getUserBounties();
@@ -55,7 +48,7 @@ export function useEligibleRefundBounties({ useDummyData = false } = {}) {
 
   // Fetch eligible bounties when wallet connects
   useEffect(() => {
-    if (useDummyData || (isConnected && address)) {
+    if (isConnected && address) {
       fetchEligibleBounties();
     } else {
       setEligibleBounties([]);

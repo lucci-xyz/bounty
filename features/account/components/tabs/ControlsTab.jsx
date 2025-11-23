@@ -10,7 +10,6 @@ import { useRefundTransaction } from '@/features/refund/hooks/useRefundTransacti
 import { useNetwork } from '@/shared/providers/NetworkProvider';
 import { formatAmount } from '@/shared/lib';
 import { LinkFromCatalog } from '@/shared/components/LinkFromCatalog';
-import { dummyFailedPayouts } from '@data/refund';
 
 /**
  * ControlsTab
@@ -19,12 +18,9 @@ import { dummyFailedPayouts } from '@data/refund';
  *
  * @param {Object} props
  * @param {Array} props.claimedBounties - Claimed bounties returned by the earnings dashboard.
- * @param {boolean} props.useDummyData - Show pre-seeded refund content for UX demos.
  */
-export function ControlsTab({ claimedBounties = [], useDummyData = false }) {
-  const { eligibleBounties, loadingBounties, fetchEligibleBounties } = useEligibleRefundBounties({
-    useDummyData
-  });
+export function ControlsTab({ claimedBounties = [] }) {
+  const { eligibleBounties, loadingBounties, fetchEligibleBounties } = useEligibleRefundBounties();
   const {
     bountyInfo,
     currentBounty,
@@ -35,35 +31,14 @@ export function ControlsTab({ claimedBounties = [], useDummyData = false }) {
   } = useBountyVerification();
   const { currentNetwork: network } = useNetwork();
   const [refunded, setRefunded] = useState(false);
-  const [dummyRefunded, setDummyRefunded] = useState(false);
-  const [dummySelectedBounty, setDummySelectedBounty] = useState(null);
-  const [dummyCurrentBounty, setDummyCurrentBounty] = useState(null);
-  const [dummyBountyInfo, setDummyBountyInfo] = useState(null);
-
-  const selectedBountyPreview = useMemo(
-    () => (useDummyData ? dummySelectedBounty : selectedBounty),
-    [dummySelectedBounty, selectedBounty, useDummyData]
-  );
-  const currentBountyPreview = useMemo(
-    () => (useDummyData ? dummyCurrentBounty : currentBounty),
-    [dummyCurrentBounty, currentBounty, useDummyData]
-  );
-  const bountyInfoPreview = useMemo(
-    () => (useDummyData ? dummyBountyInfo : bountyInfo),
-    [dummyBountyInfo, bountyInfo, useDummyData]
-  );
 
   const failedPayouts = useMemo(() => {
-    if (useDummyData) {
-      return dummyFailedPayouts;
-    }
-
     return claimedBounties.filter((bounty) => bounty?.claimStatus === 'failed');
-  }, [claimedBounties, useDummyData]);
+  }, [claimedBounties]);
 
   const { requestRefund } = useRefundTransaction({
-    currentBounty: currentBountyPreview,
-    selectedBounty: selectedBountyPreview,
+    currentBounty,
+    selectedBounty,
     onSuccess: async () => {
       setRefunded(true);
       clearBountyState();
@@ -72,26 +47,7 @@ export function ControlsTab({ claimedBounties = [], useDummyData = false }) {
     showStatus
   });
 
-  const handleDummySelection = (bounty) => {
-    const info = {
-      amount: formatAmount(bounty.amount, bounty.tokenSymbol),
-      deadline: new Date(Number(bounty.deadline) * 1000).toISOString().split('T')[0],
-      status: 'Open',
-      sponsor: bounty.sponsor || '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb'
-    };
-
-    setDummySelectedBounty(bounty);
-    setDummyCurrentBounty(bounty);
-    setDummyBountyInfo(info);
-    setDummyRefunded(false);
-  };
-
   const handleSelectBounty = async (bounty) => {
-    if (useDummyData) {
-      handleDummySelection(bounty);
-      return;
-    }
-
     try {
       await verifyBounty(bounty);
       setRefunded(false);
@@ -100,17 +56,10 @@ export function ControlsTab({ claimedBounties = [], useDummyData = false }) {
     }
   };
 
-  const handleDummyRefund = () => {
-    setDummyRefunded(true);
-    setDummySelectedBounty(null);
-    setDummyCurrentBounty(null);
-    setDummyBountyInfo(null);
-  };
-
   const sponsorDisplay = useMemo(() => {
-    if (!bountyInfoPreview?.sponsor) return '';
-    return `${bountyInfoPreview.sponsor.slice(0, 6)}...${bountyInfoPreview.sponsor.slice(-4)}`;
-  }, [bountyInfoPreview]);
+    if (!bountyInfo?.sponsor) return '';
+    return `${bountyInfo.sponsor.slice(0, 6)}...${bountyInfo.sponsor.slice(-4)}`;
+  }, [bountyInfo]);
 
   return (
     <div className="space-y-8 text-sm font-light text-muted-foreground">
@@ -125,26 +74,20 @@ export function ControlsTab({ claimedBounties = [], useDummyData = false }) {
           <EligibleBountiesList
             bounties={eligibleBounties}
             loading={loadingBounties}
-            selectedBounty={selectedBountyPreview}
+            selectedBounty={selectedBounty}
             onSelectBounty={handleSelectBounty}
           />
 
-          {bountyInfoPreview && (
+          {bountyInfo && (
             <div className="mt-5 space-y-4">
-              <BountyDetails bountyInfo={bountyInfoPreview} network={network} sponsorDisplay={sponsorDisplay} />
+              <BountyDetails bountyInfo={bountyInfo} network={network} sponsorDisplay={sponsorDisplay} />
               <button
                 type="button"
-                onClick={useDummyData ? handleDummyRefund : requestRefund}
-                disabled={useDummyData ? dummyRefunded : refunded}
+                onClick={requestRefund}
+                disabled={refunded}
                 className="w-full rounded-full bg-destructive px-6 py-3 text-sm font-semibold text-destructive-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {useDummyData
-                  ? dummyRefunded
-                    ? 'Refund simulated'
-                    : 'Simulate refund'
-                  : refunded
-                  ? 'Refunded'
-                  : 'Request Refund'}
+                {refunded ? 'Refunded' : 'Request Refund'}
               </button>
             </div>
           )}

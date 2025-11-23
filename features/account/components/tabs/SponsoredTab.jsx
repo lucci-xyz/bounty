@@ -320,7 +320,9 @@ export function SponsoredTab({
                             </div>
                           </button>
                           <div className="mt-1 text-muted-foreground text-[13px] font-light">
-                            {formatTimeLeft(bounty.deadline) === 'Expired'
+                            {bounty.status === 'closed' || bounty.status === 'paid'
+                              ? 'Closed'
+                              : formatTimeLeft(bounty.deadline) === 'Expired'
                               ? 'Expired'
                               : `${formatTimeLeft(bounty.deadline)} left`}
                           </div>
@@ -358,7 +360,12 @@ export function SponsoredTab({
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground/80">Deadline</span>
                               <span className="text-foreground">
-                                {formatDeadlineDate(bounty.deadline)} {isExpired ? '(Expired)' : ''}
+                                {formatDeadlineDate(bounty.deadline)}{' '}
+                                {bounty.status === 'closed' || bounty.status === 'paid'
+                                  ? '(Closed)'
+                                  : isExpired
+                                  ? '(Expired)'
+                                  : ''}
                               </span>
                             </div>
                             <div className="flex items-center justify-between">

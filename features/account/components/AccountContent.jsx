@@ -118,7 +118,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
 
       {/* Controls tab */}
       {activeTab === 'controls' && (
-        <ControlsTab claimedBounties={earnings.claimedBounties} useDummyData={useDummyData} />
+        <ControlsTab claimedBounties={earnings.claimedBounties} />
       )}
 
       {/* Settings tab */}
