@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useBountyFeed } from '@/features/home/hooks/useBountyFeed';
-import { formatAmount, formatTimeLeft } from '@/shared/lib';
+import { formatAmount, formatTimeLeft, capitalizeFirst } from '@/shared/lib';
 import { LinkFromCatalog } from '@/shared/components/LinkFromCatalog';
 
 /**
@@ -116,7 +116,7 @@ export default function Home() {
                   <div className="space-y-3 min-w-0">
                     <div>
                       <h3 className="text-[1.2rem] font-light leading-snug text-foreground/90">
-                        {bounty.issueTitle || bounty.issueDescription || 'Bounty'}
+                        {capitalizeFirst(bounty.issueTitle || bounty.issueDescription || 'Bounty')}
                       </h3>
                       <p className="text-sm text-muted-foreground mt-1">
                         {bounty.repoFullName}

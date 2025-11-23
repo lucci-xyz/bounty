@@ -10,7 +10,8 @@ export {
   formatStarCount,
   encodeBadgeSegment,
   buildShieldsBadge,
-  buildBadgeLink
+  buildBadgeLink,
+  capitalizeFirst
 } from './format';
 
 export { getStatusColor } from './style';
