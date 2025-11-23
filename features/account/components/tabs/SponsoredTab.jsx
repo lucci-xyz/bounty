@@ -25,6 +25,40 @@ import { LinkFromCatalog } from '@/shared/components/LinkFromCatalog';
 import { useFlag } from '@/shared/providers/FlagProvider';
 
 const ITEMS_PER_PAGE = 4;
+const CLOSED_BOUNTY_STATUSES = new Set(['closed', 'paid', 'resolved', 'refunded']);
+
+const deriveLifecycleState = (bounty, nowSeconds = Math.floor(Date.now() / 1000)) => {
+  if (bounty?.lifecycle?.state) {
+    return bounty.lifecycle.state;
+  }
+
+  if (CLOSED_BOUNTY_STATUSES.has(bounty?.status)) {
+    return 'closed';
+  }
+
+  const deadlineSeconds = Number(bounty?.deadline);
+  if (Number.isFinite(deadlineSeconds) && deadlineSeconds <= nowSeconds) {
+    return 'expired';
+  }
+
+  return 'open';
+};
+
+const getLifecycleLabel = (bounty, state) => {
+  if (bounty?.lifecycle?.label) {
+    return bounty.lifecycle.label;
+  }
+  if (state === 'closed') return 'Closed';
+  if (state === 'expired') return 'Expired';
+  return '';
+};
+
+const getCountdownLabel = (bounty, state) => {
+  if (state !== 'open') return null;
+  const label = formatTimeLeft(bounty.deadline);
+  if (!label || label === '-' || label === 'Expired') return null;
+  return label;
+};
 
 export function SponsoredTab({
   showEmptyState,
@@ -64,11 +98,11 @@ export function SponsoredTab({
     // 2. Status Filter
     if (statusFilter !== 'all') {
       const now = Math.floor(Date.now() / 1000);
-      result = result.filter(b => {
-        const isExpired = Number(b.deadline) < now;
-        if (statusFilter === 'expired') return isExpired && b.status === 'open';
-        if (statusFilter === 'open') return !isExpired && b.status === 'open';
-        if (statusFilter === 'closed') return b.status === 'closed' || b.status === 'paid';
+      result = result.filter((bounty) => {
+        const lifecycleState = deriveLifecycleState(bounty, now);
+        if (statusFilter === 'expired') return lifecycleState === 'expired';
+        if (statusFilter === 'open') return lifecycleState === 'open';
+        if (statusFilter === 'closed') return lifecycleState === 'closed';
         return true;
       });
     }
@@ -299,8 +333,12 @@ export function SponsoredTab({
               <div className="space-y-3">
                 {paginatedBounties.map((bounty) => {
                   const isExpanded = expandedBountyId === bounty.bountyId;
-                  const isClosed = bounty.status === 'closed' || bounty.status === 'paid';
-                  const isExpired = !isClosed && Number(bounty.deadline) < Math.floor(Date.now() / 1000);
+                  const lifecycleState = deriveLifecycleState(bounty);
+                  const lifecycleLabel = getLifecycleLabel(bounty, lifecycleState);
+                  const countdownLabel = getCountdownLabel(bounty, lifecycleState);
+                  const timelineLabel = countdownLabel ? `${countdownLabel} left` : lifecycleLabel || 'Open';
+                  const isClosed = lifecycleState === 'closed';
+                  const isExpired = lifecycleState === 'expired';
                   const allowlistData = allowlists[bounty.bountyId] || [];
                   const isAllowlistLoading = !!allowlistLoading[bounty.bountyId];
                   const issueLinkParams = {
@@ -333,11 +371,7 @@ export function SponsoredTab({
                             </div>
                           </button>
                           <div className="mt-1 text-muted-foreground text-[13px] font-light">
-                            {isClosed
-                              ? 'Closed'
-                              : formatTimeLeft(bounty.deadline) === 'Expired'
-                              ? 'Expired'
-                              : `${formatTimeLeft(bounty.deadline)} left`}
+                            {timelineLabel}
                           </div>
                         </div>
 
@@ -373,7 +407,8 @@ export function SponsoredTab({
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground/80">Deadline</span>
                               <span className="text-foreground">
-                                {formatDeadlineDate(bounty.deadline)} {isClosed ? '(Closed)' : isExpired ? '(Expired)' : ''}
+                                {formatDeadlineDate(bounty.deadline)}{' '}
+                                {isClosed ? '(Closed)' : isExpired ? '(Expired)' : ''}
                               </span>
                             </div>
                             <div className="flex items-center justify-between">

@@ -29,9 +29,10 @@ export function useEligibleRefundBounties() {
       
       // Filter for eligible refund bounties
       const now = Math.floor(Date.now() / 1000);
-      const eligible = (bounties || []).filter(bounty => {
+      const eligible = (bounties || []).filter((bounty) => {
         if (!bounty.sponsorAddress) return false;
-        const isExpired = Number(bounty.deadline) < now;
+        const lifecycleState = bounty.lifecycle?.state;
+        const isExpired = lifecycleState ? lifecycleState === 'expired' : Number(bounty.deadline) < now;
         const isOpen = bounty.status === 'open';
         const isSponsor = bounty.sponsorAddress.toLowerCase() === address.toLowerCase();
         return isExpired && isOpen && isSponsor;
