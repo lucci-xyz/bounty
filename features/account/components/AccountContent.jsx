@@ -144,7 +144,11 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
         ) : earningsStatus !== 'ready' ? (
           <TabLoading message="Loading controls..." />
         ) : (
-          <ControlsTab claimedBounties={earnings.claimedBounties} />
+          <ControlsTab
+            claimedBounties={earnings.claimedBounties}
+            githubUser={githubUser}
+            linkedWalletAddress={profile?.data?.wallet?.walletAddress}
+          />
         )
       )}
 

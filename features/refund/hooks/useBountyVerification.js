@@ -58,22 +58,15 @@ export function useBountyVerification() {
     // Pattern used in: useRefundFlow.js:140, useEligibleRefundBounties.js:41
     const sponsorAddress = (bounty.sponsor || '').toLowerCase();
     const connectedAddress = (address || '').toLowerCase();
+    const canSelfRefund = Boolean(sponsorAddress && connectedAddress && sponsorAddress === connectedAddress);
 
     setBountyInfo({
       amount,
       deadline: deadline.toISOString().split('T')[0],
       status: statusText,
-      sponsor: bounty.sponsor // Keep original format for display
+      sponsor: bounty.sponsor, // Keep original format for display
+      canSelfRefund
     });
-
-    if (sponsorAddress !== connectedAddress) {
-      logger.warn('Sponsor address mismatch:', {
-        sponsor: sponsorAddress,
-        connected: connectedAddress,
-        bountyId
-      });
-      throw new Error('Only the sponsor can request a refund');
-    }
 
     if (statusText !== 'Open') {
       throw new Error(`Bounty is not open (status: ${statusText})`);
@@ -83,10 +76,14 @@ export function useBountyVerification() {
       throw new Error('Deadline has not passed yet');
     }
 
-    setCurrentBounty({ bountyId, ...bounty });
-    showStatus('✓ Eligible for refund', 'success');
+    setCurrentBounty({ bountyId, ...bounty, canSelfRefund });
+    if (canSelfRefund) {
+      showStatus('✓ Eligible for refund', 'success');
+    } else {
+      showStatus('Connect the funding wallet to self-refund or use custodial flow.', 'warning');
+    }
     
-    return { bountyId, ...bounty };
+    return { bountyId, ...bounty, canSelfRefund };
   }, [showStatus]);
 
 

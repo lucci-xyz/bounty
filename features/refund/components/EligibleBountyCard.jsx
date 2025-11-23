@@ -14,6 +14,12 @@ export function EligibleBountyCard({ bounty, isSelected, onSelect }) {
   const amount = formatAmount(bounty.amount, bounty.tokenSymbol, { maximumFractionDigits: 4 });
   const deadline = new Date(Number(bounty.deadline) * 1000);
   const deadlineStr = deadline.toLocaleDateString();
+  const refundMeta = bounty.refundMeta;
+  const badgeLabel = refundMeta
+    ? refundMeta.canSelfRefund
+      ? 'Self refund'
+      : 'Custodial required'
+    : null;
 
   return (
     <button
@@ -40,6 +46,15 @@ export function EligibleBountyCard({ bounty, isSelected, onSelect }) {
             <div className="font-mono text-[10px] opacity-70">
               {bounty.bountyId.slice(0, 10)}...{bounty.bountyId.slice(-8)}
             </div>
+            {badgeLabel && (
+              <div
+                className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                  refundMeta.canSelfRefund ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'
+                }`}
+              >
+                {badgeLabel}
+              </div>
+            )}
           </div>
         </div>
         {isSelected && (

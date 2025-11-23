@@ -1,6 +1,12 @@
 "use client";
 
 import { useMemo, useState } from 'react';
+import { logger } from '@/shared/lib/logger';
+
+const formatAddress = (address) => {
+  if (!address) return null;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
 
 import { EligibleBountiesList } from '@/features/refund/components/EligibleBountiesList';
 import { BountyDetails } from '@/features/refund/components/BountyDetails';
@@ -19,8 +25,11 @@ import { LinkFromCatalog } from '@/shared/components/LinkFromCatalog';
  * @param {Object} props
  * @param {Array} props.claimedBounties - Claimed bounties returned by the earnings dashboard.
  */
-export function ControlsTab({ claimedBounties = [] }) {
-  const { eligibleBounties, loadingBounties, fetchEligibleBounties } = useEligibleRefundBounties();
+export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddress }) {
+  const { eligibleBounties, loadingBounties, fetchEligibleBounties } = useEligibleRefundBounties({
+    sessionGithubId: githubUser?.githubId,
+    linkedWalletAddress
+  });
   const {
     bountyInfo,
     currentBounty,
@@ -31,6 +40,8 @@ export function ControlsTab({ claimedBounties = [] }) {
   } = useBountyVerification();
   const { currentNetwork: network } = useNetwork();
   const [refunded, setRefunded] = useState(false);
+  const [custodialStatus, setCustodialStatus] = useState({ message: '', type: '' });
+  const [custodialLoading, setCustodialLoading] = useState(false);
 
   const failedPayouts = useMemo(() => {
     return claimedBounties.filter((bounty) => bounty?.claimStatus === 'failed');
@@ -47,10 +58,51 @@ export function ControlsTab({ claimedBounties = [] }) {
     showStatus
   });
 
+  const selectedRefundMeta = selectedBounty?.refundMeta;
+  const canSelfRefund = selectedRefundMeta?.canSelfRefund;
+
+  const handleCustodialRefund = async () => {
+    if (!selectedBounty) return;
+    try {
+      setCustodialLoading(true);
+      setCustodialStatus({ message: 'Requesting custodial refund...', type: 'loading' });
+      const response = await fetch('/api/refunds/request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ bountyId: selectedBounty.bountyId })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to request refund');
+      }
+      setCustodialStatus({
+        message: data?.txHash
+          ? `Refund requested. TX: ${data.txHash.slice(0, 10)}...${data.txHash.slice(-6)}`
+          : 'Refund request submitted.',
+        type: 'success'
+      });
+      setRefunded(true);
+      clearBountyState();
+      await fetchEligibleBounties();
+    } catch (error) {
+      logger.error('Custodial refund request failed:', error);
+      setCustodialStatus({
+        message: error.message || 'Failed to request custodial refund',
+        type: 'error'
+      });
+    } finally {
+      setCustodialLoading(false);
+    }
+  };
+
   const handleSelectBounty = async (bounty) => {
     try {
       await verifyBounty(bounty);
       setRefunded(false);
+      setCustodialStatus({ message: '', type: '' });
+      setCustodialLoading(false);
     } catch (error) {
       // error handled by hook via modal/status
     }
@@ -80,15 +132,58 @@ export function ControlsTab({ claimedBounties = [] }) {
 
           {bountyInfo && (
             <div className="mt-5 space-y-4">
-              <BountyDetails bountyInfo={bountyInfo} network={network} sponsorDisplay={sponsorDisplay} />
-              <button
-                type="button"
-                onClick={requestRefund}
-                disabled={refunded}
-                className="w-full rounded-full bg-destructive px-6 py-3 text-sm font-semibold text-destructive-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {refunded ? 'Refunded' : 'Request Refund'}
-              </button>
+              <BountyDetails
+                bountyInfo={bountyInfo}
+                network={network}
+                sponsorDisplay={sponsorDisplay}
+                linkedWallet={linkedWalletAddress}
+                refundMeta={selectedRefundMeta}
+              />
+              {selectedRefundMeta?.requiresCustodialRefund && (
+                <div className="rounded-2xl border border-amber-400/50 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                  <p className="font-medium">Connected wallet does not match the funding wallet.</p>
+                  <p>
+                    Connect{' '}
+                    <code className="text-[10px]">
+                      {formatAddress(selectedRefundMeta?.fundingWallet) || 'the funding wallet'}
+                    </code>{' '}
+                    to self-refund, or request a custodial refund below.
+                  </p>
+                </div>
+              )}
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={requestRefund}
+                  disabled={refunded || !canSelfRefund}
+                  className="w-full rounded-full bg-destructive px-6 py-3 text-sm font-semibold text-destructive-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {canSelfRefund ? (refunded ? 'Refunded' : 'Request Refund') : 'Connect funding wallet to self-refund'}
+                </button>
+                {!canSelfRefund && (
+                  <button
+                    type="button"
+                    onClick={handleCustodialRefund}
+                    disabled={custodialLoading}
+                    className="w-full rounded-full border border-border/60 px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {custodialLoading ? 'Requesting...' : 'Request Custodial Refund'}
+                  </button>
+                )}
+                {custodialStatus.message && (
+                  <p
+                    className={`text-xs ${
+                      custodialStatus.type === 'error'
+                        ? 'text-destructive'
+                        : custodialStatus.type === 'success'
+                          ? 'text-green-600'
+                          : 'text-muted-foreground'
+                    }`}
+                  >
+                    {custodialStatus.message}
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </section>

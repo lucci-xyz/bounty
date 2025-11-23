@@ -33,6 +33,11 @@ Base path: `/api/*`. Responses are JSON with either `{ success, ... }` or `{ err
 | POST | `/api/allowlist/[bountyId]` | GitHub session | Sponsor-only add `{ address }` (auto-creates user). |
 | DELETE | `/api/allowlist/[bountyId]` | GitHub session | Sponsor-only delete `{ allowlistId }`. |
 
+## Refunds
+| Method | Path | Auth | Notes |
+| --- | --- | --- | --- |
+| POST | `/api/refunds/request` | GitHub session | Custodial refund path. Body `{ bountyId }`. Requires the caller to own the bounty (by GitHub ID), checks expiry, and submits `refundExpired` using the configured custody wallet for the bounty’s network. |
+
 ## User dashboards
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |

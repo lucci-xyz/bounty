@@ -30,6 +30,10 @@ export function useRefundTransaction({ currentBounty, selectedBounty, onSuccess,
         throw new Error('Please select a bounty first');
       }
 
+      if (!currentBounty.canSelfRefund) {
+        throw new Error('Connect the funding wallet to self-refund this bounty');
+      }
+
       // Get the network for the selected bounty
       const bountyNetwork = selectedBounty 
         ? registry?.[selectedBounty.network]

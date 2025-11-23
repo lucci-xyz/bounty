@@ -193,6 +193,44 @@ export async function resolveBountyOnNetwork(bountyId, recipientAddress, alias) 
 }
 
 /**
+ * Refund an expired bounty on a specific network.
+ * @param {string} bountyId
+ * @param {string} alias
+ * @returns {Promise<object>} Transaction result.
+ */
+export async function refundExpiredOnNetwork(bountyId, alias) {
+  try {
+    bountyId = validateBytes32(bountyId, 'bountyId');
+    const { escrowContract, provider, network } = getNetworkClients(alias);
+
+    let txOverrides = {};
+    if (!network.supports1559) {
+      const gasPrice = await provider.send('eth_gasPrice', []);
+      txOverrides = {
+        type: 0,
+        gasPrice: BigInt(gasPrice),
+      };
+    }
+
+    const tx = await escrowContract.refundExpired(bountyId, txOverrides);
+    const receipt = await tx.wait();
+    logger.info(`Custodial refund on ${alias}: ${bountyId.slice(0, 10)}... -> ${receipt.hash}`);
+    return {
+      success: true,
+      txHash: receipt.hash,
+      blockNumber: receipt.blockNumber,
+      gasUsed: receipt.gasUsed.toString(),
+    };
+  } catch (error) {
+    logger.error(`Error refunding bounty on ${alias}:`, error.message);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+}
+
+/**
  * Format a token amount for display.
  * @param {string|bigint} amount
  * @param {number} decimals
