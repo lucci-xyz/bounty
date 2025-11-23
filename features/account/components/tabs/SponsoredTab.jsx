@@ -42,6 +42,7 @@ export function SponsoredTab({
   openAllowlistModal
 }) {
   const allowlistEnabled = useFlag('allowlistFeature', false);
+  const refundEnabled = useFlag('refundFeature', false);
   // If user hasn't connected a wallet yet, show the empty state prompt.
   if (showEmptyState) {
     return (
@@ -244,7 +245,7 @@ export function SponsoredTab({
                           </div>
 
                           {/* Refund button if the bounty is open and expired */}
-                          {bounty.status === 'open' && isExpired && (
+                          {refundEnabled && bounty.status === 'open' && isExpired && (
                             <Link
                               href={`/refund?bountyId=${bounty.bountyId}`}
                               className="inline-flex items-center justify-center rounded-full border border-border/70 px-4 py-2 text-xs font-medium text-destructive/80 hover:border-destructive/60 hover:text-destructive transition-colors"

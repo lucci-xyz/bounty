@@ -142,13 +142,25 @@ const allowlistFeature = createFlagDeclaration({
   ]
 });
 
+const refundFeature = createFlagDeclaration({
+  name: 'refundFeature',
+  key: 'refund-feature',
+  description: 'Enables refund functionality for requesting refunds on expired bounties.',
+  defaultValue: false,
+  options: [
+    { label: 'Off', value: false },
+    { label: 'On', value: true }
+  ]
+});
+
 export const flagRegistry = {
   improvedNav,
   betaWalletFlow,
-  allowlistFeature
+  allowlistFeature,
+  refundFeature
 };
 
-export { improvedNav, betaWalletFlow, allowlistFeature };
+export { improvedNav, betaWalletFlow, allowlistFeature, refundFeature };
 
 export async function getFlags({ identity } = {}) {
   const resolvedIdentity = identity ?? (await getIdentity());

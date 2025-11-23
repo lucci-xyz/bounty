@@ -18,8 +18,24 @@ import {
   BountyDetails
 } from '@/features/refund';
 import { useNetwork } from '@/shared/providers/NetworkProvider';
+import { useFlag } from '@/shared/providers/FlagProvider';
 
 export default function Refund() {
+  const refundEnabled = useFlag('refundFeature', false);
+
+  // Hide refund page if feature flag is disabled
+  if (!refundEnabled) {
+    return (
+      <div className="min-h-screen bg-background/80 px-4 py-10 flex items-center justify-center">
+        <div className="w-full max-w-3xl rounded-[36px] border border-border/60 bg-card p-6 md:p-10 shadow-[0_50px_140px_rgba(15,23,42,0.18)] text-center">
+          <h1 className="text-4xl font-light text-foreground/90 mb-4">Refund Feature Unavailable</h1>
+          <p className="text-sm text-muted-foreground">
+            The refund feature is currently disabled.
+          </p>
+        </div>
+      </div>
+    );
+  }
   const [refunded, setRefunded] = useState(false);
 
   // Fetch eligible bounties
