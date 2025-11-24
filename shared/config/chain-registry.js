@@ -62,7 +62,7 @@ const CURATED_ALIASES = {
     chainId: 31611,
     chainIdHex: '0x7b7b',
     name: 'Mezo Testnet',
-    rpcUrl: getLinkHref('rpc', 'mezoPublic'),
+    rpcUrl: getLinkHref('rpc', 'mezoDrpc'),
     blockExplorerUrl: getLinkHref('explorers', 'mezoTestnet'),
     supports1559: false,
     nativeCurrency: {

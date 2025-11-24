@@ -275,6 +275,27 @@ export function useRefundFlow() {
       showStatus('Waiting for confirmation...', 'loading');
       const receipt = await tx.wait();
 
+      try {
+        const response = await fetch('/api/refunds/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bountyId: currentBounty.bountyId, txHash: receipt.hash })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data?.success) {
+          throw new Error(data?.error || 'Unable to record refund status');
+        }
+      } catch (persistError) {
+        logger.error('Failed to record refund status after self refund:', persistError);
+        showError({
+          title: 'Refund Recorded On-Chain',
+          message:
+            persistError.message ||
+            'The refund went through, but we could not update your dashboard. Please try again to sync status.'
+        });
+        return;
+      }
+
       showStatus(`✅ Refund successful! TX: ${receipt.hash}`, 'success');
       setRefunded(true);
       
@@ -328,4 +349,3 @@ export function useRefundFlow() {
     selectedBounty,
   };
 }
-

@@ -24,6 +24,23 @@ export function useRefundTransaction({ currentBounty, selectedBounty, onSuccess,
   const { showError } = useErrorModal();
   const { registry, currentNetwork: network } = useNetwork();
 
+  const persistRefundStatus = useCallback(
+    async (txHash) => {
+      const response = await fetch('/api/refunds/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bountyId: currentBounty?.bountyId, txHash })
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data?.success) {
+        const message = data?.error || 'Unable to record refund status';
+        throw new Error(message);
+      }
+    },
+    [currentBounty?.bountyId]
+  );
+
   const requestRefund = useCallback(async () => {
     try {
       if (!currentBounty) {
@@ -73,8 +90,23 @@ export function useRefundTransaction({ currentBounty, selectedBounty, onSuccess,
       showStatus('Waiting for confirmation...', 'loading');
       const receipt = await tx.wait();
 
+      try {
+        await persistRefundStatus(receipt.hash);
+      } catch (persistError) {
+        logger.error('Failed to record refund status:', persistError);
+        showError({
+          title: 'Refund Recorded On-Chain',
+          message:
+            persistError.message ||
+            'The refund went through, but we could not update your dashboard. Please try again to sync status.',
+          primaryActionLabel: 'Sync status',
+          onPrimaryAction: async () => persistRefundStatus(receipt.hash)
+        });
+        return;
+      }
+
       showStatus(`✅ Refund successful! TX: ${receipt.hash}`, 'success');
-      
+
       if (onSuccess) {
         await onSuccess();
       }
@@ -90,10 +122,21 @@ export function useRefundTransaction({ currentBounty, selectedBounty, onSuccess,
       });
       throw error;
     }
-  }, [currentBounty, selectedBounty, network, registry, chain?.id, showError, walletClient, switchChain, showStatus, onSuccess]);
+  }, [
+    currentBounty,
+    selectedBounty,
+    network,
+    registry,
+    chain?.id,
+    showError,
+    walletClient,
+    switchChain,
+    showStatus,
+    onSuccess,
+    persistRefundStatus
+  ]);
 
   return {
     requestRefund
   };
 }
-
