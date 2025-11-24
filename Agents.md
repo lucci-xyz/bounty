@@ -306,3 +306,4 @@ See `docs/reference/database.md` for full schema. Key models:
 - Look at test files if they exist
 - Check `shared/server/db/prisma.js` for query examples
 - Review `app/(api)/api/*/route.js` for API patterns
+
