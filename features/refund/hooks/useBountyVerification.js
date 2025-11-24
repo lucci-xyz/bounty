@@ -8,6 +8,8 @@ import { useErrorModal } from '@/shared/providers/ErrorModalProvider';
 import { ABIS } from '@/shared/config/chain-registry';
 import { getContractBounty } from '@/shared/api/bounty';
 
+const normalizeAddress = (address) => address?.trim?.().toLowerCase?.() || '';
+
 /**
  * Hook for verifying a bounty's eligibility for refund on-chain.
  * 
@@ -53,8 +55,8 @@ export function useBountyVerification() {
 
     // Normalize addresses for comparison using .toLowerCase() pattern (matches codebase pattern)
     // Pattern used in: useRefundFlow.js:140, useEligibleRefundBounties.js:41
-    const sponsorAddress = (bounty.sponsor || '').toLowerCase();
-    const connectedAddress = (address || '').toLowerCase();
+    const sponsorAddress = normalizeAddress(bounty.sponsor);
+    const connectedAddress = normalizeAddress(address);
     const canSelfRefund = Boolean(sponsorAddress && connectedAddress && sponsorAddress === connectedAddress);
 
     setBountyInfo({
@@ -93,6 +95,8 @@ export function useBountyVerification() {
 
       const onChainBounty = await getContractBounty(bounty.bountyId);
       const fundingWallet = onChainBounty?.sponsor;
+      const normalizedFundingWallet = normalizeAddress(fundingWallet);
+      const normalizedConnected = normalizeAddress(address);
 
       // Find the network for this bounty and set it as selected
       const bountyNetwork = registry?.[bounty.network];
@@ -117,8 +121,8 @@ export function useBountyVerification() {
         ...bounty.refundMeta,
         canSelfRefund: validated.canSelfRefund,
         requiresCustodialRefund: !validated.canSelfRefund,
-        fundingWallet: bounty.refundMeta?.fundingWallet || fundingWallet,
-        connectedWallet: address || null,
+        fundingWallet: (bounty.refundMeta?.fundingWallet || fundingWallet)?.trim?.() || null,
+        connectedWallet: address?.trim?.() || null,
       };
 
       if (!walletClient || !address) {
@@ -131,8 +135,8 @@ export function useBountyVerification() {
           message: connectMessage,
         });
       } else if (
-        fundingWallet &&
-        fundingWallet.toLowerCase() !== address.toLowerCase()
+        normalizedFundingWallet &&
+        normalizedFundingWallet !== normalizedConnected
       ) {
         showStatus('Connected wallet does not match the funding wallet. Use custodial refund or switch wallets.', 'warning');
       }

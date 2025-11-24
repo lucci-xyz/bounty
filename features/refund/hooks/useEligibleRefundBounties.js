@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { getUserBounties } from '@/shared/api/user';
 
+const normalizeAddress = (address) => address?.trim?.().toLowerCase?.() || '';
+
 /**
  * Hook for fetching and filtering eligible refund bounties.
  * 
@@ -23,10 +25,10 @@ export function useEligibleRefundBounties({ sessionGithubId, linkedWalletAddress
    * Fetch eligible bounties for refund
    */
   const normalizedLinked = useMemo(
-    () => linkedWalletAddress?.toLowerCase?.() || null,
+    () => normalizeAddress(linkedWalletAddress) || null,
     [linkedWalletAddress]
   );
-  const normalizedConnected = address?.toLowerCase();
+  const normalizedConnected = normalizeAddress(address);
 
   const fetchEligibleBounties = useCallback(async () => {
     try {
@@ -48,7 +50,7 @@ export function useEligibleRefundBounties({ sessionGithubId, linkedWalletAddress
           return acc;
         }
 
-        const fundingWallet = bounty.sponsorAddress.toLowerCase?.() || '';
+        const fundingWallet = normalizeAddress(bounty.sponsorAddress);
         const ownsByGithub = sessionGithubIdNumber
           ? Number(bounty.sponsorGithubId) === sessionGithubIdNumber
           : false;
