@@ -6,6 +6,7 @@ import { ethers } from 'ethers';
 import { useNetwork } from '@/shared/providers/NetworkProvider';
 import { useErrorModal } from '@/shared/providers/ErrorModalProvider';
 import { ABIS } from '@/shared/config/chain-registry';
+import { getContractBounty } from '@/shared/api/bounty';
 
 /**
  * Hook for verifying a bounty's eligibility for refund on-chain.
@@ -88,6 +89,10 @@ export function useBountyVerification() {
    */
   const verifyBounty = useCallback(async (bounty) => {
     try {
+      showStatus('Verifying bounty...', 'loading');
+
+      const onChainBounty = await getContractBounty(bounty.bountyId);
+
       // Find the network for this bounty and set it as selected
       const bountyNetwork = registry?.[bounty.network];
       if (!bountyNetwork) {
@@ -104,17 +109,6 @@ export function useBountyVerification() {
         showStatus(`Switching to ${bountyNetwork.name}...`, 'loading');
         await switchChain({ chainId: bountyNetwork.chainId });
       }
-
-      showStatus('Verifying bounty...', 'loading');
-
-      const provider = walletClient
-        ? new ethers.BrowserProvider(walletClient)
-        : new ethers.JsonRpcProvider(bountyNetwork.rpcUrl);
-
-      const escrow = new ethers.Contract(bountyNetwork.contracts.escrow, ABIS.escrow, provider);
-
-      // bountyId is already a hex string (0x...), ethers will convert it to bytes32
-      const onChainBounty = await escrow.getBounty(bounty.bountyId);
 
       const validated = await validateBounty(onChainBounty, bounty.bountyId, bountyNetwork, address);
 
