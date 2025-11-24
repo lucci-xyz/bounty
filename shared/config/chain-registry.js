@@ -87,9 +87,11 @@ export const ABIS = {
   escrow: [
     'function createBounty(address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) external returns (bytes32)',
     'function resolve(bytes32 bountyId, address recipient) external',
+    'function refundExpired(bytes32 bountyId) external',
     'function getBounty(bytes32 bountyId) external view returns (tuple(bytes32 repoIdHash, address sponsor, address resolver, uint96 amount, uint64 deadline, uint64 issueNumber, uint8 status))',
     'function computeBountyId(address sponsor, bytes32 repoIdHash, uint64 issueNumber) external pure returns (bytes32)',
     'event Resolved(bytes32 indexed bountyId, address indexed recipient, uint256 net, uint256 fee)',
+    'event Refunded(bytes32 indexed bountyId, address indexed sponsor, uint256 amount)',
     'event BountyCreated(bytes32 indexed bountyId, address indexed sponsor, bytes32 indexed repoIdHash, uint64 issueNumber, uint64 deadline, address resolver, uint256 amount)'
   ],
   erc20: [
