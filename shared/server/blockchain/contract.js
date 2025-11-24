@@ -110,7 +110,15 @@ export async function computeBountyIdOnNetwork(sponsorAddress, repoIdHash, issue
  * @returns {Promise<object>}
  */
 export async function getBountyFromContract(bountyId, alias) {
-  const { escrowContract } = getNetworkClients(alias);
+  const { escrowContract, provider } = getNetworkClients(alias);
+  const contractCode = await provider.getCode(escrowContract.target);
+
+  if (contractCode === '0x') {
+    throw new Error(
+      `Escrow contract not deployed on ${alias} at ${escrowContract.target}. Check chain registry and environment configuration.`
+    );
+  }
+
   const bounty = await escrowContract.getBounty(bountyId);
   return {
     repoIdHash: bounty.repoIdHash,

@@ -92,6 +92,7 @@ export function useBountyVerification() {
       showStatus('Verifying bounty...', 'loading');
 
       const onChainBounty = await getContractBounty(bounty.bountyId);
+      const fundingWallet = onChainBounty?.sponsor;
 
       // Find the network for this bounty and set it as selected
       const bountyNetwork = registry?.[bounty.network];
@@ -116,9 +117,25 @@ export function useBountyVerification() {
         ...bounty.refundMeta,
         canSelfRefund: validated.canSelfRefund,
         requiresCustodialRefund: !validated.canSelfRefund,
-        fundingWallet: bounty.refundMeta?.fundingWallet || onChainBounty?.sponsor,
+        fundingWallet: bounty.refundMeta?.fundingWallet || fundingWallet,
         connectedWallet: address || null,
       };
+
+      if (!walletClient || !address) {
+        const connectMessage = fundingWallet
+          ? `Connect the funding wallet ${fundingWallet} to self-refund this bounty. You can continue with custodial refund if you cannot connect.`
+          : 'Connect your funding wallet to self-refund this bounty, or continue with custodial refund.';
+        showStatus('Connect your wallet to continue the refund.', 'warning');
+        showError({
+          title: 'Wallet connection required',
+          message: connectMessage,
+        });
+      } else if (
+        fundingWallet &&
+        fundingWallet.toLowerCase() !== address.toLowerCase()
+      ) {
+        showStatus('Connected wallet does not match the funding wallet. Use custodial refund or switch wallets.', 'warning');
+      }
 
       setSelectedBounty({ ...bounty, refundMeta });
       return { ...validated, refundMeta };
