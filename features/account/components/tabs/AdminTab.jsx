@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useMemo } from 'react';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { formatDate, getStatusColor } from '@/shared/lib';
 import { StatBlock } from '@/features/account/components/StatBlock';
 import { LinkFromCatalog } from '@/shared/components/LinkFromCatalog';
+import { WalletIcon } from '@/shared/components/Icons';
 
 /**
  * ApplicationCard - Reusable card for displaying a beta application
@@ -66,36 +68,91 @@ function ApplicationCard({ app, onApprove, onReject, isProcessing, showActions =
 }
 
 /**
- * NetworkFeeCard - Display fees for a single network with withdraw action
+ * StatusMessage - Display status messages with appropriate styling
  */
-function NetworkFeeCard({ network, onWithdraw, isWithdrawing }) {
+function StatusMessage({ status, onDismiss }) {
+  if (!status) return null;
+  
+  const bgColor = status.type === 'error' 
+    ? 'bg-destructive/10 border-destructive/30 text-destructive'
+    : status.type === 'success'
+    ? 'bg-primary/10 border-primary/30 text-primary'
+    : 'bg-muted/50 border-border text-muted-foreground';
+
+  return (
+    <div className={`text-xs rounded p-2 border ${bgColor} flex items-center justify-between gap-2`}>
+      <span className="flex-1">{status.message}</span>
+      {(status.type === 'error' || status.type === 'success') && onDismiss && (
+        <button 
+          onClick={onDismiss}
+          className="text-current opacity-60 hover:opacity-100"
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * NetworkFeeCard - Display fees for a single network with secure wallet-based withdrawal
+ */
+function NetworkFeeCard({ 
+  network, 
+  onWithdraw, 
+  isWithdrawing, 
+  withdrawStatus,
+  onClearStatus,
+  wallet,
+  onConnectWallet
+}) {
   const [treasury, setTreasury] = useState('');
   const [showWithdraw, setShowWithdraw] = useState(false);
-  const [withdrawError, setWithdrawError] = useState(null);
-  const [withdrawSuccess, setWithdrawSuccess] = useState(null);
+  const [localError, setLocalError] = useState(null);
 
   const hasAvailableFees = network.fees && parseFloat(network.fees.availableFormatted) > 0;
 
   const handleWithdraw = async () => {
+    // Validate treasury address
     if (!treasury.trim()) {
-      setWithdrawError('Treasury address is required');
+      setLocalError('Treasury address is required');
       return;
     }
     if (!/^0x[a-fA-F0-9]{40}$/.test(treasury)) {
-      setWithdrawError('Invalid Ethereum address');
+      setLocalError('Invalid Ethereum address');
       return;
     }
     
-    setWithdrawError(null);
-    setWithdrawSuccess(null);
+    setLocalError(null);
     
     try {
-      const result = await onWithdraw(network.alias, treasury.trim(), '0');
-      setWithdrawSuccess(`Withdrawn ${result.formattedAmount} ${network.token.symbol}. Tx: ${result.txHash.slice(0, 10)}...`);
+      await onWithdraw(network.alias, treasury.trim(), '0');
       setShowWithdraw(false);
       setTreasury('');
     } catch (err) {
-      setWithdrawError(err.message || 'Withdrawal failed');
+      // Error is handled by the hook and shown via withdrawStatus
+      console.error('Withdrawal error:', err);
+    }
+  };
+
+  const handleCancel = () => {
+    setShowWithdraw(false);
+    setLocalError(null);
+    onClearStatus?.(network.alias);
+  };
+
+  const handleStartWithdraw = () => {
+    if (!wallet.isConnected) {
+      onConnectWallet?.();
+      return;
+    }
+    setShowWithdraw(true);
+  };
+
+  // Pre-fill treasury with connected wallet address
+  const handlePrefillTreasury = () => {
+    if (wallet.address) {
+      setTreasury(wallet.address);
     }
   };
 
@@ -144,43 +201,83 @@ function NetworkFeeCard({ network, onWithdraw, isWithdrawing }) {
             Fee rate: {(network.fees.feeBps / 100).toFixed(2)}%
           </div>
 
-          {withdrawSuccess && (
-            <div className="text-xs text-primary bg-primary/10 rounded p-2 mb-3">
-              {withdrawSuccess}
+          {/* Status messages */}
+          {withdrawStatus && (
+            <div className="mb-3">
+              <StatusMessage 
+                status={withdrawStatus} 
+                onDismiss={() => onClearStatus?.(network.alias)} 
+              />
             </div>
           )}
 
+          {/* Withdraw button - not in withdraw mode */}
           {hasAvailableFees && !showWithdraw && (
             <button
-              onClick={() => setShowWithdraw(true)}
-              className="premium-btn w-full text-xs bg-primary text-primary-foreground py-2"
+              onClick={handleStartWithdraw}
+              disabled={isWithdrawing}
+              className="premium-btn w-full text-xs bg-primary text-primary-foreground py-2 flex items-center justify-center gap-2"
             >
-              Withdraw Fees
+              {!wallet.isConnected && <WalletIcon size={14} />}
+              {wallet.isConnected ? 'Withdraw Fees' : 'Connect Wallet to Withdraw'}
             </button>
           )}
 
+          {/* Withdraw form */}
           {showWithdraw && (
-            <div className="space-y-2">
-              <input
-                type="text"
-                value={treasury}
-                onChange={(e) => setTreasury(e.target.value)}
-                placeholder="Treasury address (0x...)"
-                className="w-full text-xs bg-background border border-border rounded px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              {withdrawError && (
-                <div className="text-xs text-destructive">{withdrawError}</div>
+            <div className="space-y-3">
+              {/* Connected wallet indicator */}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded p-2">
+                <WalletIcon size={14} className="text-primary" />
+                <span>Connected: </span>
+                <span className="font-mono text-foreground">
+                  {wallet.address?.slice(0, 6)}...{wallet.address?.slice(-4)}
+                </span>
+              </div>
+
+              {/* Treasury input */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Treasury Address</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={treasury}
+                    onChange={(e) => setTreasury(e.target.value)}
+                    placeholder="0x..."
+                    className="flex-1 text-xs bg-background border border-border rounded px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+                  />
+                  <button
+                    onClick={handlePrefillTreasury}
+                    className="premium-btn text-xs bg-transparent border border-border text-muted-foreground py-2 px-3 whitespace-nowrap"
+                    title="Use connected wallet"
+                  >
+                    Use Mine
+                  </button>
+                </div>
+              </div>
+
+              {/* Local error */}
+              {localError && (
+                <div className="text-xs text-destructive">{localError}</div>
               )}
+
+              {/* Security notice */}
+              <div className="text-xs text-amber-500/80 bg-amber-500/10 rounded p-2">
+                ⚠️ Your connected wallet must be the contract owner to withdraw fees.
+              </div>
+
+              {/* Action buttons */}
               <div className="flex gap-2">
                 <button
                   onClick={handleWithdraw}
                   disabled={isWithdrawing}
                   className="premium-btn flex-1 text-xs bg-primary text-primary-foreground py-2 disabled:opacity-50"
                 >
-                  {isWithdrawing ? 'Withdrawing...' : 'Confirm Withdraw All'}
+                  {isWithdrawing ? 'Processing...' : 'Confirm Withdraw All'}
                 </button>
                 <button
-                  onClick={() => { setShowWithdraw(false); setWithdrawError(null); }}
+                  onClick={handleCancel}
+                  disabled={isWithdrawing}
                   className="premium-btn text-xs bg-transparent border border-border text-muted-foreground py-2 px-3"
                 >
                   Cancel
@@ -232,6 +329,33 @@ function CollapsibleSection({ title, count, children, defaultOpen = false }) {
 }
 
 /**
+ * WalletConnectionStatus - Display wallet connection status for fee operations
+ */
+function WalletConnectionStatus({ wallet, onConnect }) {
+  if (wallet.isConnected) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
+        <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+        <span>Wallet connected: </span>
+        <span className="font-mono text-foreground">
+          {wallet.address?.slice(0, 6)}...{wallet.address?.slice(-4)}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={onConnect}
+      className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 hover:bg-muted/50 rounded-lg px-3 py-2 transition-colors"
+    >
+      <WalletIcon size={14} />
+      <span>Connect wallet to withdraw fees</span>
+    </button>
+  );
+}
+
+/**
  * AdminTab displays and manages beta applications and network fees for admin users.
  *
  * Props:
@@ -250,13 +374,18 @@ export function AdminTab({
   betaProcessing,
   networkFees = {}
 }) {
+  const { openConnectModal } = useConnectModal();
+  
   const {
     networks = [],
     loading: feesLoading,
     error: feesError,
     withdrawing = {},
+    withdrawStatus = {},
     totals = {},
-    withdraw
+    wallet = {},
+    withdraw,
+    clearStatus
   } = networkFees;
 
   // Split applications by status
@@ -276,6 +405,11 @@ export function AdminTab({
   // Handle application review
   const onApprove = (id) => handleReview(id, 'approve');
   const onReject = (id) => handleReview(id, 'reject');
+
+  // Handle wallet connection
+  const handleConnectWallet = () => {
+    openConnectModal?.();
+  };
 
   // Show global error if present
   if (betaError && !betaApplications?.length) {
@@ -396,7 +530,10 @@ export function AdminTab({
 
       {/* ===== NETWORK FEES ===== */}
       <section>
-        <h2 className="text-lg font-medium text-foreground mb-4">Protocol Fees</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-medium text-foreground">Protocol Fees</h2>
+          <WalletConnectionStatus wallet={wallet} onConnect={handleConnectWallet} />
+        </div>
         
         {feesError && (
           <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
@@ -416,6 +553,10 @@ export function AdminTab({
                 network={network}
                 onWithdraw={withdraw}
                 isWithdrawing={withdrawing[network.alias]}
+                withdrawStatus={withdrawStatus[network.alias]}
+                onClearStatus={clearStatus}
+                wallet={wallet}
+                onConnectWallet={handleConnectWallet}
               />
               ))}
           </div>

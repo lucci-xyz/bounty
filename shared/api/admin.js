@@ -1,4 +1,4 @@
-import { fetchJson, fetchJsonOrNull, postJson } from './client';
+import { fetchJson, fetchJsonOrNull } from './client';
 
 /**
  * Checks if the current user has admin access.
@@ -18,18 +18,5 @@ export async function checkAdminAccess() {
  */
 export async function getNetworkFees() {
   return fetchJson('/api/admin/fees');
-}
-
-/**
- * Withdraw accumulated fees from a specific network.
- * Admin-only endpoint.
- * 
- * @param {string} alias - Network alias (e.g., 'BASE_SEPOLIA')
- * @param {string} treasury - Address to withdraw fees to
- * @param {string} [amount='0'] - Amount to withdraw (0 = withdraw all available)
- * @returns {Promise<Object>} Transaction result with txHash and amount.
- */
-export async function withdrawNetworkFees(alias, treasury, amount = '0') {
-  return postJson('/api/admin/fees/withdraw', { alias, treasury, amount });
 }
 
