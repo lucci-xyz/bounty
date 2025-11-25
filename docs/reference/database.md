@@ -125,16 +125,21 @@ erDiagram
 
 ## Status Values
 
-### Bounty Status (centralized in `shared/lib/status/index.js`)
+### Bounty Status (follows contract standard, centralized in `shared/lib/status/index.js`)
 
-| Status | Description |
-|--------|-------------|
-| `open` | Bounty is active, awaiting PR merge or expiry |
-| `resolved` | Bounty paid to contributor |
-| `refunded` | Bounty refunded to sponsor after expiry |
-| `canceled` | Bounty canceled by sponsor before deadline |
+| Status | Contract Enum | Description |
+|--------|---------------|-------------|
+| `open` | 1 | Bounty is active, awaiting PR merge or expiry |
+| `resolved` | 2 | Bounty paid to contributor |
+| `refunded` | 3 | Bounty refunded to sponsor after expiry |
+| `canceled` | 4 | Bounty canceled by sponsor before deadline |
 
-Contract enum maps: `0=None, 1=open, 2=resolved, 3=refunded, 4=canceled`
+Contract enum `0` = `None` (bounty doesn't exist, never returned to UI).
+
+### Lifecycle States
+
+The `lifecycle.state` field adds one additional state for open bounties:
+- `expired` — status is `open` but deadline has passed (eligible for refund)
 
 ### PrClaim Status
 

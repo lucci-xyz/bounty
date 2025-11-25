@@ -20,8 +20,8 @@ export const CONTRACT_STATUS_MAP = {
   4: 'canceled'
 };
 
-// Statuses that indicate bounty is no longer active
-export const CLOSED_STATUSES = new Set(['resolved', 'refunded', 'canceled']);
+// Statuses that indicate bounty is no longer active (funds have been moved)
+export const TERMINAL_STATUSES = new Set(['resolved', 'refunded', 'canceled']);
 
 // All valid status values
 export const VALID_STATUSES = new Set(['open', 'resolved', 'refunded', 'canceled']);
@@ -34,10 +34,10 @@ export function isValidStatus(status) {
 }
 
 /**
- * Check if a bounty is closed
+ * Check if a bounty is in a terminal state (no longer active)
  */
-export function isClosedStatus(status) {
-  return CLOSED_STATUSES.has(status);
+export function isTerminalStatus(status) {
+  return TERMINAL_STATUSES.has(status);
 }
 
 /**
@@ -62,39 +62,41 @@ export function getStatusLabel(status) {
 
 /**
  * Derive lifecycle state from bounty data.
- * This is the canonical place lifecycle should be computed.
+ * States follow contract standard: open, resolved, refunded, canceled
+ * Plus 'expired' for open bounties past deadline.
  */
 export function deriveLifecycle(bounty, nowSeconds = Math.floor(Date.now() / 1000)) {
   const deadlineSeconds = Number(bounty?.deadline);
   const hasDeadline = Number.isFinite(deadlineSeconds);
   const deadlinePassed = hasDeadline && deadlineSeconds <= nowSeconds;
-  const isClosed = isClosedStatus(bounty?.status);
+  const status = bounty?.status;
+  const isTerminal = isTerminalStatus(status);
 
-  if (isClosed) {
+  // Terminal statuses: resolved, refunded, canceled
+  if (isTerminal) {
     return {
-      state: 'closed',
-      label: 'Closed',
-      reason: bounty.status,
+      state: status,
+      label: getStatusLabel(status),
       secondsRemaining: 0,
       deadline: hasDeadline ? deadlineSeconds : null
     };
   }
 
+  // Open but expired (eligible for refund)
   if (deadlinePassed) {
     return {
       state: 'expired',
       label: 'Expired',
-      reason: 'deadline_passed',
       secondsRemaining: 0,
       deadline: hasDeadline ? deadlineSeconds : null,
       expiredAt: hasDeadline ? deadlineSeconds : null
     };
   }
 
+  // Active open bounty
   return {
     state: 'open',
     label: 'Open',
-    reason: 'countdown',
     secondsRemaining: hasDeadline ? Math.max(0, deadlineSeconds - nowSeconds) : null,
     deadline: hasDeadline ? deadlineSeconds : null
   };

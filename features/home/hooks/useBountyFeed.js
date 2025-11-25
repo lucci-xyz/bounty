@@ -3,7 +3,7 @@ import { logger } from '@/shared/lib/logger';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { dummyBounties } from '@/shared/data/bounties';
-import { CLOSED_STATUSES } from '@/shared/lib/status';
+import { TERMINAL_STATUSES } from '@/shared/lib/status';
 
 const FETCH_DELAY_MS = 500;
 
@@ -13,7 +13,7 @@ function filterActiveBounties(list) {
   return list.filter((bounty) => {
     if (!bounty) return false;
     const status = typeof bounty.status === 'string' ? bounty.status.toLowerCase() : '';
-    if (CLOSED_STATUSES.has(status)) {
+    if (TERMINAL_STATUSES.has(status)) {
       return false;
     }
     const deadline = Number(bounty.deadline);

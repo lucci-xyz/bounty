@@ -70,13 +70,11 @@ export function SponsoredTab({
     }
 
     // 2. Status Filter - use lifecycle.state from API
+    // States: open, expired, resolved, refunded, canceled
     if (statusFilter !== 'all') {
       result = result.filter((bounty) => {
         const state = bounty.lifecycle?.state || 'open';
-        if (statusFilter === 'expired') return state === 'expired';
-        if (statusFilter === 'open') return state === 'open';
-        if (statusFilter === 'closed') return state === 'closed';
-        return true;
+        return state === statusFilter;
       });
     }
 
@@ -219,8 +217,10 @@ export function SponsoredTab({
                   >
                     <option value="all">All Status</option>
                     <option value="open">Open</option>
-                    <option value="closed">Closed / Paid</option>
                     <option value="expired">Expired</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="refunded">Refunded</option>
+                    <option value="canceled">Canceled</option>
                   </select>
                 </div>
 
@@ -310,7 +310,7 @@ export function SponsoredTab({
                   const lifecycleLabel = bounty.lifecycle?.label || '';
                   const countdownLabel = getCountdownLabel(bounty);
                   const timelineLabel = countdownLabel ? `${countdownLabel} left` : lifecycleLabel || 'Open';
-                  const isClosed = bounty.isClosed || lifecycleState === 'closed';
+                  const isTerminal = ['resolved', 'refunded', 'canceled'].includes(lifecycleState);
                   const isExpired = bounty.isExpired || lifecycleState === 'expired';
                   const allowlistData = allowlists[bounty.bountyId] || [];
                   const isAllowlistLoading = !!allowlistLoading[bounty.bountyId];
@@ -381,7 +381,7 @@ export function SponsoredTab({
                               <span className="text-muted-foreground/80">Deadline</span>
                               <span className="text-foreground">
                                 {formatDeadlineDate(bounty.deadline)}{' '}
-                                {isClosed ? '(Closed)' : isExpired ? '(Expired)' : ''}
+                                {isTerminal ? `(${lifecycleLabel})` : isExpired ? '(Expired)' : ''}
                               </span>
                             </div>
                             <div className="flex items-center justify-between">

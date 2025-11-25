@@ -51,18 +51,13 @@ export async function GET(request) {
     const bounties = await bountyQueries.findBySponsor(session.githubId);
     const reconciledBounties = await reconcileOpenBountyStatuses(bounties);
     
-    // Filter out refunded bounties - they should not appear in eligible refunds
-    const activeBounties = reconciledBounties.filter(
-      (bounty) => bounty.status !== 'refunded'
-    );
-    
     const claimCounts = await prClaimQueries.countByBountyIds(
-      activeBounties.map((b) => b.bountyId)
+      reconciledBounties.map((b) => b.bountyId)
     );
     const now = Math.floor(Date.now() / 1000);
 
     // Calculate stats for each bounty
-    const bountiesWithStats = activeBounties.map((bounty) => {
+    const bountiesWithStats = reconciledBounties.map((bounty) => {
       const lifecycle = deriveLifecycle(bounty, now);
       const secondsRemaining = lifecycle.secondsRemaining ?? 0;
       const daysRemaining =
@@ -74,7 +69,6 @@ export async function GET(request) {
         ...bounty,
         lifecycle,
         isExpired: lifecycle.state === 'expired',
-        isClosed: lifecycle.state === 'closed',
         refundEligible: isRefundEligible(bounty, now),
         daysRemaining,
         claimCount: claimCounts[bounty.bountyId] || 0
