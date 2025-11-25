@@ -12,11 +12,20 @@ export async function GET(request) {
 
     // Get all PR claims for this user
     const claims = await prClaimQueries.findByContributor(session.githubId);
+    const CLOSED_BOUNTY_STATUSES = new Set(['canceled', 'refunded']);
     
     // Fetch bounty details for each claim
     const bountiesWithClaims = await Promise.all(
       claims.map(async (claim) => {
         const bounty = await bountyQueries.findById(claim.bountyId);
+        if (!bounty || CLOSED_BOUNTY_STATUSES.has(bounty.status)) {
+          logger.info('Skipping claim tied to closed bounty', {
+            claimId: claim.id,
+            bountyId: claim.bountyId,
+            bountyStatus: bounty?.status
+          });
+          return null;
+        }
         return {
           claimId: claim.id,
           ...bounty,
@@ -31,6 +40,7 @@ export async function GET(request) {
 
     // Calculate total earned (only resolved/paid bounties)
     const totalEarned = bountiesWithClaims
+      .filter(Boolean)
       .filter(b => b && (b.claimStatus === 'resolved' || b.claimStatus === 'paid'))
       .reduce((sum, b) => {
         const decimals = b.tokenSymbol === 'MUSD' ? 18 : 6;
@@ -39,7 +49,7 @@ export async function GET(request) {
       }, 0);
 
     return Response.json({
-      bounties: bountiesWithClaims.filter(b => b !== null),
+      bounties: bountiesWithClaims.filter(Boolean),
       totalEarned: Math.round(totalEarned * 100) / 100
     });
   } catch (error) {
