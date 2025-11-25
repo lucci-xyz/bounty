@@ -186,11 +186,6 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
         requestRefund={requestRefund}
         status={status}
         walletMatches={walletMatches}
-        connectWalletLabel={
-          isConnected && address
-            ? `Connected: ${formatAddress(address)}`
-            : 'Connect wallet'
-        }
       />
     </div>
   );
@@ -286,18 +281,15 @@ function RefundModal({
   open,
   onClose,
   bountyInfo,
-  network,
-  sponsorDisplay,
-  refundMeta,
+  network,  
   selectedBounty,
   requestRefund,
   status,
   walletMatches,
-  connectWalletLabel
+  refundMeta
 }) {
   const fundingWallet = refundMeta?.fundingWallet || bountyInfo?.sponsor;
   const connectedWallet = refundMeta?.connectedWallet;
-  const canRefund = Boolean(walletMatches && bountyInfo?.canSelfRefund);
 
   if (!open) return null;
 
@@ -346,9 +338,10 @@ function RefundModal({
                     e.preventDefault();
                     if (openConnectModal) openConnectModal();
                   }}
-                  className="w-full rounded-full border border-border/60 bg-foreground text-background px-4 py-3 text-sm font-semibold transition-colors hover:bg-foreground/90"
+                  disabled={!openConnectModal}
+                  className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {connectWalletLabel}
+                  Connect Wallet
                 </button>
               )}
             </ConnectButton.Custom>
@@ -359,9 +352,6 @@ function RefundModal({
               <BountyDetails
                 bountyInfo={bountyInfo}
                 network={network}
-                sponsorDisplay={sponsorDisplay}
-                linkedWallet={connectedWallet}
-                refundMeta={{ ...refundMeta, canSelfRefund: walletMatches }}
               />
             )}
             <button
