@@ -73,6 +73,17 @@ export function useRefundTransaction({ currentBounty, selectedBounty, onSuccess,
       showStatus('Waiting for confirmation...', 'loading');
       const receipt = await tx.wait();
 
+      // Update DB status after on-chain refund to remove bounty from eligible list
+      try {
+        await fetch('/api/refunds/self', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bountyId: currentBounty.bountyId, txHash: receipt.hash })
+        });
+      } catch (persistError) {
+        logger.error('Failed to persist refund status:', persistError);
+      }
+
       showStatus(`✅ Refund successful! TX: ${receipt.hash}`, 'success');
       
       if (onSuccess) {
@@ -96,4 +107,3 @@ export function useRefundTransaction({ currentBounty, selectedBounty, onSuccess,
     requestRefund
   };
 }
-
