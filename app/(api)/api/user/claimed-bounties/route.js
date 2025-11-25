@@ -18,6 +18,7 @@ export async function GET(request) {
       claims.map(async (claim) => {
         const bounty = await bountyQueries.findById(claim.bountyId);
         return {
+          claimId: claim.id,
           ...bounty,
           claimStatus: claim.status,
           prNumber: claim.prNumber,
@@ -46,4 +47,3 @@ export async function GET(request) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
-

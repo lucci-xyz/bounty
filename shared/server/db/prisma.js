@@ -487,6 +487,24 @@ export const prClaimQueries = {
   },
 
   /**
+   * Finds a PR claim by its ID.
+   */
+  findById: async (id) => {
+    const claim = await prisma.prClaim.findUnique({
+      where: { id }
+    });
+
+    if (!claim) return null;
+
+    return {
+      ...claim,
+      prAuthorGithubId: Number(claim.prAuthorGithubId),
+      createdAt: Number(claim.createdAt),
+      resolvedAt: claim.resolvedAt ? Number(claim.resolvedAt) : null
+    };
+  },
+
+  /**
    * Counts PR claims for a list of bounty IDs.
    * @param {Array} bountyIds 
    * @returns {Promise<object>}
@@ -805,4 +823,3 @@ export const allowlistQueries = {
  * Exports the Prisma client instance.
  */
 export { prisma };
-

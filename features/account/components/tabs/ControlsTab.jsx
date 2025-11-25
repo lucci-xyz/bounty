@@ -42,6 +42,7 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
   const [refunded, setRefunded] = useState(false);
   const [custodialStatus, setCustodialStatus] = useState({ message: '', type: '' });
   const [custodialLoading, setCustodialLoading] = useState(false);
+  const [payoutStatuses, setPayoutStatuses] = useState({});
 
   const failedPayouts = useMemo(() => {
     return claimedBounties.filter((bounty) => bounty?.claimStatus === 'failed');
@@ -112,6 +113,51 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
     if (!bountyInfo?.sponsor) return '';
     return `${bountyInfo.sponsor.slice(0, 6)}...${bountyInfo.sponsor.slice(-4)}`;
   }, [bountyInfo]);
+
+  const handleManualPayout = async (payout) => {
+    if (!payout?.claimId) return;
+
+    setPayoutStatuses((prev) => ({
+      ...prev,
+      [payout.claimId]: { loading: true, message: '', type: '' }
+    }));
+
+    try {
+      const response = await fetch('/api/payout/retry', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ claimId: payout.claimId })
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Payout retry failed');
+      }
+
+      setPayoutStatuses((prev) => ({
+        ...prev,
+        [payout.claimId]: {
+          loading: false,
+          message: data?.txHash
+            ? `Payout sent. TX: ${data.txHash.slice(0, 10)}...${data.txHash.slice(-6)}`
+            : 'Payout sent.',
+          type: 'success'
+        }
+      }));
+    } catch (error) {
+      logger.error('Manual payout retry failed:', error);
+      setPayoutStatuses((prev) => ({
+        ...prev,
+        [payout.claimId]: {
+          loading: false,
+          message: error.message || 'Payout retry failed',
+          type: 'error'
+        }
+      }));
+    }
+  };
 
   return (
     <div className="space-y-8 text-sm font-light text-muted-foreground">
@@ -195,14 +241,18 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
             </div>
           </header>
 
-          <FailedPayoutList payouts={failedPayouts} />
+          <FailedPayoutList
+            payouts={failedPayouts}
+            payoutStatuses={payoutStatuses}
+            onRetryPayout={handleManualPayout}
+          />
         </section>
       </div>
     </div>
   );
 }
 
-function FailedPayoutList({ payouts = [] }) {
+function FailedPayoutList({ payouts = [], onRetryPayout, payoutStatuses = {} }) {
   if (payouts.length === 0) {
     return (
       <div className="text-center text-sm font-light text-muted-foreground">
@@ -240,17 +290,50 @@ function FailedPayoutList({ payouts = [] }) {
               Failed
             </div>
           </div>
-          <div className="mt-3 flex items-center justify-between gap-3 text-muted-foreground">
-            <span>
-              {formatAmount(payout.amount, payout.tokenSymbol)} {payout.tokenSymbol}
-            </span>
-            <span className="font-mono text-[11px] text-destructive/80">
-              {payout.txHash ? `${payout.txHash.slice(0, 10)}...` : 'No tx yet'}
-            </span>
+          <div className="mt-3 grid gap-2 text-muted-foreground text-xs md:grid-cols-2">
+            <div className="flex items-center justify-between gap-3 md:justify-start">
+              <span className="text-foreground">
+                {formatAmount(payout.amount, payout.tokenSymbol)} {payout.tokenSymbol}
+              </span>
+              <span className="rounded-full bg-destructive/10 px-2 py-1 text-[10px] uppercase tracking-wide text-destructive">
+                {payout.network || 'Unknown network'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3 md:justify-end">
+              <span className="font-mono text-[11px] text-destructive/80">
+                {payout.txHash ? `${payout.txHash.slice(0, 10)}...` : 'No tx recorded'}
+              </span>
+            </div>
           </div>
+
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[12px] text-muted-foreground">
+              Payout failed when the PR was merged. Retry below once your wallet is linked.
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onRetryPayout?.(payout)}
+                disabled={!payout.claimId || payoutStatuses[payout.claimId]?.loading}
+                className="rounded-full border border-destructive/50 px-4 py-2 text-xs font-semibold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {payoutStatuses[payout.claimId]?.loading ? 'Retrying...' : 'Retry payout'}
+              </button>
+            </div>
+          </div>
+          {payout.claimId && payoutStatuses[payout.claimId]?.message && (
+            <div
+              className={`mt-2 text-[12px] ${
+                payoutStatuses[payout.claimId]?.type === 'error'
+                  ? 'text-destructive'
+                  : 'text-green-600'
+              }`}
+            >
+              {payoutStatuses[payout.claimId]?.message}
+            </div>
+          )}
         </div>
       ))}
     </div>
   );
 }
-
