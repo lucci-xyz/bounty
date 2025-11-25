@@ -160,7 +160,7 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
         <section className="rounded-[32px] border border-border/60 bg-card p-6 shadow-sm">
           <header className="mb-4">
             <div>
-              <h3 className="font-light text-foreground">Failed payouts</h3>
+              <h3 className="font-light text-foreground">Failed Payouts</h3>
             </div>
           </header>
 
@@ -357,7 +357,7 @@ function RefundModal({
             <button
               type="button"
               onClick={requestRefund}
-              className="w-full rounded-full bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Request refund
             </button>

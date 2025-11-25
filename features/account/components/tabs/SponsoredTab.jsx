@@ -439,7 +439,7 @@ export function SponsoredTab({
                           {refundEnabled && bounty.status === 'open' && isExpired && (
                             <Link
                               href={`/refund?bountyId=${bounty.bountyId}`}
-                              className="inline-flex items-center justify-center rounded-full border border-border/70 px-4 py-2 text-xs font-medium text-destructive/80 hover:border-destructive/60 hover:text-destructive transition-colors"
+                              className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
                             >
                               Request Refund
                             </Link>
