@@ -17,8 +17,8 @@ export function EligibleBountyCard({ bounty, isSelected, onSelect }) {
   const refundMeta = bounty.refundMeta;
   const badgeLabel = refundMeta
     ? refundMeta.canSelfRefund
-      ? 'Self refund'
-      : 'Custodial required'
+      ? 'Ready to refund'
+      : 'Connect funding wallet'
     : null;
 
   return (
@@ -64,4 +64,3 @@ export function EligibleBountyCard({ bounty, isSelected, onSelect }) {
     </button>
   );
 }
-

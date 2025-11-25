@@ -69,7 +69,6 @@ export function useEligibleRefundBounties({ sessionGithubId, linkedWalletAddress
           ...bounty,
           refundMeta: {
             canSelfRefund,
-            requiresCustodialRefund: !canSelfRefund,
             fundingWallet: bounty.sponsorAddress,
             expectedWallet: expectedWallet,
             ownerGithubId: bounty.sponsorGithubId,
@@ -116,4 +115,3 @@ export function useEligibleRefundBounties({ sessionGithubId, linkedWalletAddress
     fetchEligibleBounties
   };
 }
-

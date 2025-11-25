@@ -5,7 +5,6 @@ import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
 import { ethers } from 'ethers';
 import { useNetwork } from '@/shared/providers/NetworkProvider';
 import { useErrorModal } from '@/shared/providers/ErrorModalProvider';
-import { ABIS } from '@/shared/config/chain-registry';
 import { getContractBounty } from '@/shared/api/bounty';
 
 const normalizeAddress = (address) => address?.trim?.().toLowerCase?.() || '';
@@ -38,6 +37,7 @@ export function useBountyVerification() {
     setBountyInfo(null);
     setCurrentBounty(null);
     setSelectedBounty(null);
+    setStatus({ message: '', type: '' });
   }, []);
 
   /**
@@ -79,7 +79,7 @@ export function useBountyVerification() {
     if (canSelfRefund) {
       showStatus('✓ Eligible for refund', 'success');
     } else {
-      showStatus('Connect the funding wallet to self-refund or use custodial flow.', 'warning');
+      showStatus('Connect the funding wallet to refund.', 'warning');
     }
 
     return { bountyId, ...bounty, canSelfRefund };
@@ -120,25 +120,14 @@ export function useBountyVerification() {
       const refundMeta = {
         ...bounty.refundMeta,
         canSelfRefund: validated.canSelfRefund,
-        requiresCustodialRefund: !validated.canSelfRefund,
         fundingWallet: (bounty.refundMeta?.fundingWallet || fundingWallet)?.trim?.() || null,
         connectedWallet: address?.trim?.() || null,
       };
 
       if (!walletClient || !address) {
-        const connectMessage = fundingWallet
-          ? `Connect the funding wallet ${fundingWallet} to self-refund this bounty. You can continue with custodial refund if you cannot connect.`
-          : 'Connect your funding wallet to self-refund this bounty, or continue with custodial refund.';
-        showStatus('Connect your wallet to continue the refund.', 'warning');
-        showError({
-          title: 'Wallet connection required',
-          message: connectMessage,
-        });
-      } else if (
-        normalizedFundingWallet &&
-        normalizedFundingWallet !== normalizedConnected
-      ) {
-        showStatus('Connected wallet does not match the funding wallet. Use custodial refund or switch wallets.', 'warning');
+        showStatus('Connect your funding wallet to refund.', 'warning');
+      } else if (normalizedFundingWallet && normalizedFundingWallet !== normalizedConnected) {
+        showStatus('Connected wallet does not match the funding wallet.', 'warning');
       }
 
       setSelectedBounty({ ...bounty, refundMeta });

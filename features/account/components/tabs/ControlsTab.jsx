@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { logger } from '@/shared/lib/logger';
 
 const formatAddress = (address) => {
@@ -16,6 +16,8 @@ import { useRefundTransaction } from '@/features/refund/hooks/useRefundTransacti
 import { useNetwork } from '@/shared/providers/NetworkProvider';
 import { formatAmount } from '@/shared/lib';
 import { LinkFromCatalog } from '@/shared/components/LinkFromCatalog';
+import { useAccount } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 /**
  * ControlsTab
@@ -36,13 +38,14 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
     selectedBounty,
     verifyBounty,
     clearBountyState,
-    showStatus
+    showStatus,
+    status
   } = useBountyVerification();
   const { currentNetwork: network } = useNetwork();
-  const [refunded, setRefunded] = useState(false);
-  const [custodialStatus, setCustodialStatus] = useState({ message: '', type: '' });
-  const [custodialLoading, setCustodialLoading] = useState(false);
+  const { address, isConnected } = useAccount();
+  const [refundModalOpen, setRefundModalOpen] = useState(false);
   const [payoutStatuses, setPayoutStatuses] = useState({});
+  const [lastVerifiedWallet, setLastVerifiedWallet] = useState(null);
 
   const failedPayouts = useMemo(() => {
     return claimedBounties.filter((bounty) => bounty?.claimStatus === 'failed');
@@ -52,58 +55,19 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
     currentBounty,
     selectedBounty,
     onSuccess: async () => {
-      setRefunded(true);
-      clearBountyState();
       await fetchEligibleBounties();
+      setRefundModalOpen(false);
+      clearBountyState();
+      setLastVerifiedWallet(address || null);
     },
     showStatus
   });
 
-  const selectedRefundMeta = selectedBounty?.refundMeta;
-  const canSelfRefund = selectedRefundMeta?.canSelfRefund;
-
-  const handleCustodialRefund = async () => {
-    if (!selectedBounty) return;
-    try {
-      setCustodialLoading(true);
-      setCustodialStatus({ message: 'Requesting custodial refund...', type: 'loading' });
-      const response = await fetch('/api/refunds/request', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ bountyId: selectedBounty.bountyId })
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data?.error || 'Failed to request refund');
-      }
-      setCustodialStatus({
-        message: data?.txHash
-          ? `Refund requested. TX: ${data.txHash.slice(0, 10)}...${data.txHash.slice(-6)}`
-          : 'Refund request submitted.',
-        type: 'success'
-      });
-      setRefunded(true);
-      clearBountyState();
-      await fetchEligibleBounties();
-    } catch (error) {
-      logger.error('Custodial refund request failed:', error);
-      setCustodialStatus({
-        message: error.message || 'Failed to request custodial refund',
-        type: 'error'
-      });
-    } finally {
-      setCustodialLoading(false);
-    }
-  };
-
   const handleSelectBounty = async (bounty) => {
     try {
       await verifyBounty(bounty);
-      setRefunded(false);
-      setCustodialStatus({ message: '', type: '' });
-      setCustodialLoading(false);
+      setLastVerifiedWallet(address || null);
+      setRefundModalOpen(true);
     } catch (error) {
       // error handled by hook via modal/status
     }
@@ -113,6 +77,11 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
     if (!bountyInfo?.sponsor) return '';
     return `${bountyInfo.sponsor.slice(0, 6)}...${bountyInfo.sponsor.slice(-4)}`;
   }, [bountyInfo]);
+
+  const fundingWallet = selectedBounty?.refundMeta?.fundingWallet || bountyInfo?.sponsor;
+  const normalizedFunding = fundingWallet?.toLowerCase?.() || null;
+  const normalizedConnected = address?.toLowerCase?.() || null;
+  const walletMatches = Boolean(normalizedFunding && normalizedConnected && normalizedFunding === normalizedConnected);
 
   const handleManualPayout = async (payout) => {
     if (!payout?.claimId) return;
@@ -159,6 +128,17 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
     }
   };
 
+  // Re-verify when the connected wallet changes while the modal is open
+  useEffect(() => {
+    const shouldReverify = refundModalOpen && selectedBounty && (normalizedConnected !== lastVerifiedWallet);
+    if (!shouldReverify) return;
+
+    verifyBounty(selectedBounty)
+      .then(() => setLastVerifiedWallet(normalizedConnected || null))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [normalizedConnected, refundModalOpen, selectedBounty?.bountyId]);
+
   return (
     <div className="space-y-8 text-sm font-light text-muted-foreground">
       <div className="grid gap-6 xl:grid-cols-2">
@@ -175,63 +155,6 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
             selectedBounty={selectedBounty}
             onSelectBounty={handleSelectBounty}
           />
-
-          {bountyInfo && (
-            <div className="mt-5 space-y-4">
-              <BountyDetails
-                bountyInfo={bountyInfo}
-                network={network}
-                sponsorDisplay={sponsorDisplay}
-                linkedWallet={linkedWalletAddress}
-                refundMeta={selectedRefundMeta}
-              />
-              {selectedRefundMeta?.requiresCustodialRefund && (
-                <div className="rounded-2xl border border-amber-400/50 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-                  <p className="font-medium">Connected wallet does not match the funding wallet.</p>
-                  <p>
-                    Connect{' '}
-                    <code className="text-[10px]">
-                      {formatAddress(selectedRefundMeta?.fundingWallet) || 'the funding wallet'}
-                    </code>{' '}
-                    to self-refund, or request a custodial refund below.
-                  </p>
-                </div>
-              )}
-              <div className="flex flex-col gap-3">
-                <button
-                  type="button"
-                  onClick={requestRefund}
-                  disabled={refunded || !canSelfRefund}
-                  className="w-full rounded-full bg-destructive px-6 py-3 text-sm font-semibold text-destructive-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {canSelfRefund ? (refunded ? 'Refunded' : 'Request Refund') : 'Connect funding wallet to self-refund'}
-                </button>
-                {!canSelfRefund && (
-                  <button
-                    type="button"
-                    onClick={handleCustodialRefund}
-                    disabled={custodialLoading}
-                    className="w-full rounded-full border border-border/60 px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {custodialLoading ? 'Requesting...' : 'Request Custodial Refund'}
-                  </button>
-                )}
-                {custodialStatus.message && (
-                  <p
-                    className={`text-xs ${
-                      custodialStatus.type === 'error'
-                        ? 'text-destructive'
-                        : custodialStatus.type === 'success'
-                          ? 'text-green-600'
-                          : 'text-muted-foreground'
-                    }`}
-                  >
-                    {custodialStatus.message}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
         </section>
 
         <section className="rounded-[32px] border border-border/60 bg-card p-6 shadow-sm">
@@ -248,6 +171,27 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
           />
         </section>
       </div>
+
+      <RefundModal
+        open={refundModalOpen}
+        onClose={() => {
+          setRefundModalOpen(false);
+          clearBountyState();
+        }}
+        bountyInfo={bountyInfo}
+        network={network}
+        sponsorDisplay={sponsorDisplay}
+        refundMeta={selectedBounty?.refundMeta}
+        selectedBounty={selectedBounty}
+        requestRefund={requestRefund}
+        status={status}
+        walletMatches={walletMatches}
+        connectWalletLabel={
+          isConnected && address
+            ? `Connected: ${formatAddress(address)}`
+            : 'Connect wallet'
+        }
+      />
     </div>
   );
 }
@@ -334,6 +278,124 @@ function FailedPayoutList({ payouts = [], onRetryPayout, payoutStatuses = {} }) 
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+function RefundModal({
+  open,
+  onClose,
+  bountyInfo,
+  network,
+  sponsorDisplay,
+  refundMeta,
+  selectedBounty,
+  requestRefund,
+  status,
+  walletMatches,
+  connectWalletLabel
+}) {
+  const fundingWallet = refundMeta?.fundingWallet || bountyInfo?.sponsor;
+  const connectedWallet = refundMeta?.connectedWallet;
+  const canRefund = Boolean(walletMatches && bountyInfo?.canSelfRefund);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+      <div className="w-full max-w-lg rounded-3xl border border-border/70 bg-card p-6 shadow-lg">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Refund bounty</p>
+            <h3 className="text-lg font-medium text-foreground">
+              {selectedBounty?.repoFullName ? `${selectedBounty.repoFullName}#${selectedBounty.issueNumber}` : 'Selected bounty'}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground text-sm"
+          >
+            ✕
+          </button>
+        </div>
+
+        {bountyInfo && (
+          <div className="mb-4">
+            <BountyDetails
+              bountyInfo={bountyInfo}
+              network={network}
+              sponsorDisplay={sponsorDisplay}
+              linkedWallet={connectedWallet}
+              refundMeta={{ ...refundMeta, canSelfRefund: walletMatches }}
+            />
+          </div>
+        )}
+
+        <div className="mb-4 rounded-2xl border border-border/60 bg-muted/30 p-4 text-sm text-muted-foreground">
+          <p className="mb-2 text-foreground font-medium">Connect funding wallet</p>
+          <p className="mb-2">
+            Connect the funding wallet to proceed with the refund:
+          </p>
+          <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-background/40 p-3 text-xs text-foreground">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Required wallet</span>
+              <code className="text-[11px]">{fundingWallet ? formatAddress(fundingWallet) : '—'}</code>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Connected</span>
+              <code className="text-[11px]">
+                {connectedWallet ? formatAddress(connectedWallet) : 'Not connected'}
+              </code>
+            </div>
+            {!walletMatches && (
+              <p className="text-[11px] text-destructive">
+                Connected wallet does not match the funding wallet. Please connect the funding wallet to refund.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <ConnectButton.Custom>
+            {({ openConnectModal }) => (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (openConnectModal) openConnectModal();
+                }}
+                className="w-full rounded-full border border-border/60 px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:border-primary"
+              >
+                {connectWalletLabel}
+              </button>
+            )}
+          </ConnectButton.Custom>
+
+          <button
+            type="button"
+            onClick={requestRefund}
+            disabled={!canRefund}
+            className="w-full rounded-full bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {canRefund ? 'Request refund' : 'Connect funding wallet to refund'}
+          </button>
+
+          {status?.message && (
+            <p
+              className={`text-center text-xs ${
+                status.type === 'error'
+                  ? 'text-destructive'
+                  : status.type === 'success'
+                    ? 'text-green-600'
+                    : 'text-muted-foreground'
+              }`}
+            >
+              {status.message}
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

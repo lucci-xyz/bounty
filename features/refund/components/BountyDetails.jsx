@@ -49,10 +49,9 @@ export function BountyDetails({ bountyInfo, network, sponsorDisplay, linkedWalle
       <div className="flex items-center justify-between text-foreground">
         <span>Self-refund</span>
         <span className={`font-medium ${canSelfRefund ? 'text-green-600' : 'text-amber-600'}`}>
-          {canSelfRefund ? 'Available' : 'Requires custodial request'}
+          {canSelfRefund ? 'Available' : 'Connect funding wallet'}
         </span>
       </div>
     </div>
   );
 }
-
