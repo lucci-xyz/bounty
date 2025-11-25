@@ -1,9 +1,16 @@
 import { logger } from '@/shared/lib/logger';
 import { getSession } from '@/shared/lib/session';
 import { bountyQueries, prClaimQueries } from '@/shared/server/db/prisma';
+import { getBountyFromContract } from '@/shared/server/blockchain/contract';
 
-const CLOSED_BOUNTY_STATUSES = new Set(['closed', 'paid', 'resolved', 'refunded']);
+const CLOSED_BOUNTY_STATUSES = new Set(['closed', 'paid', 'resolved', 'refunded', 'canceled']);
 const DAY_IN_SECONDS = 24 * 60 * 60;
+const CONTRACT_STATUS_MAP = {
+  1: 'open',
+  2: 'resolved',
+  3: 'refunded',
+  4: 'canceled'
+};
 
 function deriveLifecycle(bounty, nowSeconds) {
   const deadlineSeconds = Number(bounty.deadline);
@@ -41,6 +48,40 @@ function deriveLifecycle(bounty, nowSeconds) {
   };
 }
 
+/**
+ * Sync open bounty statuses with on-chain state to avoid stale DB entries.
+ */
+async function reconcileOpenBountyStatuses(bounties = []) {
+  const openBounties = bounties.filter((bounty) => bounty.status === 'open');
+  if (openBounties.length === 0) {
+    return bounties;
+  }
+
+  const reconciled = await Promise.all(
+    openBounties.map(async (bounty) => {
+      try {
+        const onChain = await getBountyFromContract(bounty.bountyId, bounty.network);
+        const onChainStatus = CONTRACT_STATUS_MAP[Number(onChain?.status)];
+
+        if (!onChainStatus || onChainStatus === bounty.status) {
+          return bounty;
+        }
+
+        const updated = await bountyQueries.updateStatus(bounty.bountyId, onChainStatus);
+        return updated || { ...bounty, status: onChainStatus };
+      } catch (error) {
+        logger.warn(
+          `Failed to reconcile bounty status for ${bounty.bountyId}: ${error.message}`
+        );
+        return bounty;
+      }
+    })
+  );
+
+  const reconciledMap = new Map(reconciled.map((bounty) => [bounty.bountyId, bounty]));
+  return bounties.map((bounty) => reconciledMap.get(bounty.bountyId) || bounty);
+}
+
 export async function GET(request) {
   try {
     const session = await getSession();
@@ -50,9 +91,12 @@ export async function GET(request) {
     }
 
     const bounties = await bountyQueries.findBySponsor(session.githubId);
+    const reconciledBounties = await reconcileOpenBountyStatuses(bounties);
     
     // Filter out refunded bounties - they should not appear in eligible refunds
-    const activeBounties = bounties.filter(bounty => bounty.status !== 'refunded');
+    const activeBounties = reconciledBounties.filter(
+      (bounty) => bounty.status !== 'refunded'
+    );
     
     const claimCounts = await prClaimQueries.countByBountyIds(
       activeBounties.map((b) => b.bountyId)
@@ -83,4 +127,3 @@ export async function GET(request) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
-

@@ -25,7 +25,7 @@ import { LinkFromCatalog } from '@/shared/components/LinkFromCatalog';
 import { useFlag } from '@/shared/providers/FlagProvider';
 
 const ITEMS_PER_PAGE = 4;
-const CLOSED_BOUNTY_STATUSES = new Set(['closed', 'paid', 'resolved', 'refunded']);
+const CLOSED_BOUNTY_STATUSES = new Set(['closed', 'paid', 'resolved', 'refunded', 'canceled']);
 
 const deriveLifecycleState = (bounty, nowSeconds = Math.floor(Date.now() / 1000)) => {
   if (bounty?.lifecycle?.state) {
@@ -484,4 +484,3 @@ export function SponsoredTab({
     </>
   );
 }
-
