@@ -6,6 +6,7 @@ import { ethers } from 'ethers';
 import { useNetwork } from '@/shared/providers/NetworkProvider';
 import { useErrorModal } from '@/shared/providers/ErrorModalProvider';
 import { getContractBounty } from '@/shared/api/bounty';
+import { getStatusLabel } from '@/shared/lib/status';
 
 const normalizeAddress = (address) => address?.trim?.().toLowerCase?.() || '';
 
@@ -50,11 +51,11 @@ export function useBountyVerification() {
 
     const amount = ethers.formatUnits(bounty.amount, network.token.decimals);
     const deadline = new Date(Number(bounty.deadline) * 1000);
-    const statusText = ['None', 'Open', 'Resolved', 'Refunded', 'Canceled'][Number(bounty.status)];
+    // Use statusString from contract helper, fallback to getStatusLabel
+    const statusString = bounty.statusString || null;
+    const statusLabel = getStatusLabel(statusString);
     const now = new Date();
 
-    // Normalize addresses for comparison using .toLowerCase() pattern (matches codebase pattern)
-    // Pattern used in: useRefundFlow.js:140, useEligibleRefundBounties.js:41
     const sponsorAddress = normalizeAddress(bounty.sponsor);
     const connectedAddress = normalizeAddress(address);
     const canSelfRefund = Boolean(sponsorAddress && connectedAddress && sponsorAddress === connectedAddress);
@@ -62,13 +63,13 @@ export function useBountyVerification() {
     setBountyInfo({
       amount,
       deadline: deadline.toISOString().split('T')[0],
-      status: statusText,
-      sponsor: bounty.sponsor, // Keep original format for display
+      status: statusLabel,
+      sponsor: bounty.sponsor,
       canSelfRefund
     });
 
-    if (statusText !== 'Open') {
-      throw new Error(`Bounty is not open (status: ${statusText})`);
+    if (statusString !== 'open') {
+      throw new Error(`Bounty is not open (status: ${statusLabel})`);
     }
 
     if (deadline > now) {

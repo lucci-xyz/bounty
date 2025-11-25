@@ -123,10 +123,36 @@ erDiagram
 
 ---
 
+## Status Values
+
+### Bounty Status (centralized in `shared/lib/status/index.js`)
+
+| Status | Description |
+|--------|-------------|
+| `open` | Bounty is active, awaiting PR merge or expiry |
+| `resolved` | Bounty paid to contributor |
+| `refunded` | Bounty refunded to sponsor after expiry |
+| `canceled` | Bounty canceled by sponsor before deadline |
+
+Contract enum maps: `0=None, 1=open, 2=resolved, 3=refunded, 4=canceled`
+
+### PrClaim Status
+
+| Status | Description |
+|--------|-------------|
+| `pending` | PR opened, awaiting merge |
+| `paid` | PR merged, payout successful |
+| `failed` | Payout failed (retryable) |
+| `pending_wallet` | Awaiting contributor wallet link |
+
+---
+
 ## Usage Notes
 
 - `CONFIG.envTarget` is written to `Bounty.environment`; always filter queries by it.  
 - Prefer helpers in `shared/server/db/prisma.js` for:
   - BigInt conversions (`repoId`, etc.).
   - Optional issue metadata detection.
+  - Status validation (rejects invalid status values).
 - Links by `bountyId` (`PrClaim`, `Allowlist`) are enforced in application logic, not DB FKs.
+- Use `shared/lib/status` for status constants and helpers, never hardcode status strings.

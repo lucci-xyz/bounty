@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { getLinkHref } from '@/shared/config/links';
+import { contractStatusToDb, getStatusLabel } from '@/shared/lib/status';
 
 /**
  * Ensure the bounty deadline is valid.
@@ -284,8 +285,8 @@ export async function fundBounty({
     const existingBounty = await escrow.getBounty(bountyId);
     const statusValue = Number(existingBounty.status);
     if (!Number.isNaN(statusValue) && statusValue !== 0) {
-      const statusNames = ['None', 'Open', 'Resolved', 'Refunded', 'Canceled'];
-      const statusName = statusNames[statusValue] || 'Unknown';
+      const statusString = contractStatusToDb(statusValue);
+      const statusName = getStatusLabel(statusString);
       throw new Error(`A bounty for this issue already exists with status: ${statusName}. You cannot create a duplicate bounty.`);
     }
   } catch (bountyCheckError) {

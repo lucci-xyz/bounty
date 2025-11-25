@@ -8,6 +8,7 @@ import { useNetwork } from '@/shared/providers/NetworkProvider';
 import { useErrorModal } from '@/shared/providers/ErrorModalProvider';
 import { ABIS } from '@/shared/config/chain-registry';
 import { getUserBounties } from '@/shared/api/user';
+import { contractStatusToDb, getStatusLabel } from '@/shared/lib/status';
 
 export function useRefundFlow() {
   const [bountyId, setBountyId] = useState('');
@@ -51,18 +52,12 @@ export function useRefundFlow() {
       setLoadingBounties(true);
       const bounties = await getUserBounties();
       
-      // Filter for eligible refund bounties:
-      // - status is 'open'
-      // - expired (deadline has passed)
-      // - sponsor address matches connected wallet (required for on-chain refund)
-      const now = Math.floor(Date.now() / 1000);
+      // Filter for eligible refund bounties using API-provided refundEligible
       const eligible = (bounties || []).filter((bounty) => {
         if (!bounty.sponsorAddress) return false;
-        const lifecycleState = bounty.lifecycle?.state;
-        const isExpired = lifecycleState ? lifecycleState === 'expired' : Number(bounty.deadline) < now;
-        const isOpen = bounty.status === 'open';
+        if (!bounty.refundEligible) return false;
         const isSponsor = bounty.sponsorAddress.toLowerCase() === address.toLowerCase();
-        return isExpired && isOpen && isSponsor;
+        return isSponsor;
       });
 
       setEligibleBounties(eligible);
@@ -128,13 +123,14 @@ export function useRefundFlow() {
 
       const amount = ethers.formatUnits(onChainBounty.amount, bountyNetwork.token.decimals);
       const deadline = new Date(Number(onChainBounty.deadline) * 1000);
-      const statusText = ['None', 'Open', 'Resolved', 'Refunded', 'Canceled'][Number(onChainBounty.status)];
+      const statusString = contractStatusToDb(onChainBounty.status);
+      const statusLabel = getStatusLabel(statusString);
       const now = new Date();
 
       setBountyInfo({
         amount,
         deadline: deadline.toISOString().split('T')[0],
-        status: statusText,
+        status: statusLabel,
         sponsor: onChainBounty.sponsor
       });
 
@@ -142,8 +138,8 @@ export function useRefundFlow() {
         throw new Error('Only the sponsor can request a refund');
       }
 
-      if (statusText !== 'Open') {
-        throw new Error(`Bounty is not open (status: ${statusText})`);
+      if (statusString !== 'open') {
+        throw new Error(`Bounty is not open (status: ${statusLabel})`);
       }
 
       if (deadline > now) {
@@ -195,13 +191,14 @@ export function useRefundFlow() {
 
       const amount = ethers.formatUnits(bounty.amount, network.token.decimals);
       const deadline = new Date(Number(bounty.deadline) * 1000);
-      const statusText = ['None', 'Open', 'Resolved', 'Refunded', 'Canceled'][Number(bounty.status)];
+      const statusString = contractStatusToDb(bounty.status);
+      const statusLabel = getStatusLabel(statusString);
       const now = new Date();
 
       setBountyInfo({
         amount,
         deadline: deadline.toISOString().split('T')[0],
-        status: statusText,
+        status: statusLabel,
         sponsor: bounty.sponsor
       });
 
@@ -209,8 +206,8 @@ export function useRefundFlow() {
         throw new Error('Only the sponsor can request a refund');
       }
 
-      if (statusText !== 'Open') {
-        throw new Error(`Bounty is not open (status: ${statusText})`);
+      if (statusString !== 'open') {
+        throw new Error(`Bounty is not open (status: ${statusLabel})`);
       }
 
       if (deadline > now) {

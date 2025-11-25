@@ -3,9 +3,9 @@ import { logger } from '@/shared/lib/logger';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { dummyBounties } from '@/shared/data/bounties';
+import { CLOSED_STATUSES } from '@/shared/lib/status';
 
 const FETCH_DELAY_MS = 500;
-const CLOSED_STATUSES = new Set(['closed', 'paid', 'resolved', 'refunded']);
 
 function filterActiveBounties(list) {
   if (!Array.isArray(list)) return [];

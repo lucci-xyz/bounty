@@ -1,6 +1,7 @@
 import { logger } from '@/shared/lib/logger';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { CONFIG } from '../config.js';
+import { isValidStatus, BOUNTY_STATUS } from '@/shared/lib/status';
 
 // Prisma client instance
 const prisma = new PrismaClient();
@@ -110,6 +111,11 @@ export const bountyQueries = {
     if (!bountyData.chainId) throw new Error('Chain ID is required to create bounty');
     if (!bountyData.tokenSymbol) throw new Error('Token symbol is required to create bounty');
     
+    const status = bountyData.status || BOUNTY_STATUS.OPEN;
+    if (!isValidStatus(status)) {
+      throw new Error(`Invalid bounty status: ${status}. Valid: open, resolved, refunded, canceled`);
+    }
+    
     const data = {
       bountyId: bountyData.bountyId,
       repoFullName: bountyData.repoFullName,
@@ -120,7 +126,7 @@ export const bountyQueries = {
       token: bountyData.token,
       amount: bountyData.amount,
       deadline: BigInt(bountyData.deadline),
-      status: bountyData.status,
+      status,
       txHash: bountyData.txHash || null,
       network: bountyData.network,
       chainId: bountyData.chainId,
@@ -192,6 +198,9 @@ export const bountyQueries = {
    * @returns {Promise<object>}
    */
   updateStatus: async (bountyId, status, txHash = null) => {
+    if (!isValidStatus(status)) {
+      throw new Error(`Invalid bounty status: ${status}. Valid: open, resolved, refunded, canceled`);
+    }
     const bountySelect = await getBountySelect();
     const bounty = await prisma.bounty.update({
       where: { bountyId },

@@ -2,6 +2,9 @@ import { logger } from '@/shared/lib/logger';
 import { getSession } from '@/shared/lib/session';
 import { prClaimQueries, bountyQueries } from '@/shared/server/db/prisma';
 
+// Bounties in these statuses have no funds left (sponsor withdrew)
+const WITHDRAWN_STATUSES = new Set(['canceled', 'refunded']);
+
 export async function GET(request) {
   try {
     const session = await getSession();
@@ -12,13 +15,12 @@ export async function GET(request) {
 
     // Get all PR claims for this user
     const claims = await prClaimQueries.findByContributor(session.githubId);
-    const CLOSED_BOUNTY_STATUSES = new Set(['canceled', 'refunded']);
     
     // Fetch bounty details for each claim
     const bountiesWithClaims = await Promise.all(
       claims.map(async (claim) => {
         const bounty = await bountyQueries.findById(claim.bountyId);
-        if (!bounty || CLOSED_BOUNTY_STATUSES.has(bounty.status)) {
+        if (!bounty || WITHDRAWN_STATUSES.has(bounty.status)) {
           logger.info('Skipping claim tied to closed bounty', {
             claimId: claim.id,
             bountyId: claim.bountyId,

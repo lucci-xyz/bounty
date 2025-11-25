@@ -2,51 +2,9 @@ import { logger } from '@/shared/lib/logger';
 import { getSession } from '@/shared/lib/session';
 import { bountyQueries, prClaimQueries } from '@/shared/server/db/prisma';
 import { getBountyFromContract } from '@/shared/server/blockchain/contract';
+import { deriveLifecycle, isRefundEligible, contractStatusToDb } from '@/shared/lib/status';
 
-const CLOSED_BOUNTY_STATUSES = new Set(['closed', 'paid', 'resolved', 'refunded', 'canceled']);
 const DAY_IN_SECONDS = 24 * 60 * 60;
-const CONTRACT_STATUS_MAP = {
-  1: 'open',
-  2: 'resolved',
-  3: 'refunded',
-  4: 'canceled'
-};
-
-function deriveLifecycle(bounty, nowSeconds) {
-  const deadlineSeconds = Number(bounty.deadline);
-  const hasDeadline = Number.isFinite(deadlineSeconds);
-  const deadlinePassed = hasDeadline && deadlineSeconds <= nowSeconds;
-  const isClosed = CLOSED_BOUNTY_STATUSES.has(bounty.status);
-
-  if (isClosed) {
-    return {
-      state: 'closed',
-      label: 'Closed',
-      reason: bounty.status,
-      secondsRemaining: 0,
-      deadline: hasDeadline ? deadlineSeconds : null
-    };
-  }
-
-  if (deadlinePassed) {
-    return {
-      state: 'expired',
-      label: 'Expired',
-      reason: 'deadline_passed',
-      secondsRemaining: 0,
-      deadline: hasDeadline ? deadlineSeconds : null,
-      expiredAt: hasDeadline ? deadlineSeconds : null
-    };
-  }
-
-  return {
-    state: 'open',
-    label: 'Open',
-    reason: 'countdown',
-    secondsRemaining: hasDeadline ? Math.max(0, deadlineSeconds - nowSeconds) : null,
-    deadline: hasDeadline ? deadlineSeconds : null
-  };
-}
 
 /**
  * Sync open bounty statuses with on-chain state to avoid stale DB entries.
@@ -61,7 +19,7 @@ async function reconcileOpenBountyStatuses(bounties = []) {
     openBounties.map(async (bounty) => {
       try {
         const onChain = await getBountyFromContract(bounty.bountyId, bounty.network);
-        const onChainStatus = CONTRACT_STATUS_MAP[Number(onChain?.status)];
+        const onChainStatus = onChain?.statusString;
 
         if (!onChainStatus || onChainStatus === bounty.status) {
           return bounty;
@@ -116,6 +74,8 @@ export async function GET(request) {
         ...bounty,
         lifecycle,
         isExpired: lifecycle.state === 'expired',
+        isClosed: lifecycle.state === 'closed',
+        refundEligible: isRefundEligible(bounty, now),
         daysRemaining,
         claimCount: claimCounts[bounty.bountyId] || 0
       };

@@ -7,12 +7,8 @@ import { getUserBounties } from '@/shared/api/user';
 const normalizeAddress = (address) => address?.trim?.().toLowerCase?.() || '';
 
 /**
- * Hook for fetching and filtering eligible refund bounties.
- * 
- * Eligible bounties are:
- * - Status is 'open'
- * - Expired (deadline has passed)
- * - Sponsor address matches connected wallet
+ * Hook for fetching eligible refund bounties.
+ * Uses API-provided `refundEligible` flag (computed server-side).
  * 
  * @returns {Object} Eligible bounties state and fetch function
  */
@@ -34,8 +30,6 @@ export function useEligibleRefundBounties({ sessionGithubId, linkedWalletAddress
     try {
       setLoadingBounties(true);
       const bounties = await getUserBounties();
-      
-      const now = Math.floor(Date.now() / 1000);
       const sessionGithubIdNumber = sessionGithubId ? Number(sessionGithubId) : null;
 
       const eligible = (bounties || []).reduce((acc, bounty) => {
@@ -43,10 +37,8 @@ export function useEligibleRefundBounties({ sessionGithubId, linkedWalletAddress
           return acc;
         }
 
-        const lifecycleState = bounty.lifecycle?.state;
-        const isExpired = lifecycleState ? lifecycleState === 'expired' : Number(bounty.deadline) < now;
-        const isOpen = bounty.status === 'open';
-        if (!isExpired || !isOpen) {
+        // Use API-computed refundEligible
+        if (!bounty.refundEligible) {
           return acc;
         }
 

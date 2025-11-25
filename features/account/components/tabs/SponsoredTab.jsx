@@ -25,35 +25,9 @@ import { LinkFromCatalog } from '@/shared/components/LinkFromCatalog';
 import { useFlag } from '@/shared/providers/FlagProvider';
 
 const ITEMS_PER_PAGE = 4;
-const CLOSED_BOUNTY_STATUSES = new Set(['closed', 'paid', 'resolved', 'refunded', 'canceled']);
 
-const deriveLifecycleState = (bounty, nowSeconds = Math.floor(Date.now() / 1000)) => {
-  if (bounty?.lifecycle?.state) {
-    return bounty.lifecycle.state;
-  }
-
-  if (CLOSED_BOUNTY_STATUSES.has(bounty?.status)) {
-    return 'closed';
-  }
-
-  const deadlineSeconds = Number(bounty?.deadline);
-  if (Number.isFinite(deadlineSeconds) && deadlineSeconds <= nowSeconds) {
-    return 'expired';
-  }
-
-  return 'open';
-};
-
-const getLifecycleLabel = (bounty, state) => {
-  if (bounty?.lifecycle?.label) {
-    return bounty.lifecycle.label;
-  }
-  if (state === 'closed') return 'Closed';
-  if (state === 'expired') return 'Expired';
-  return '';
-};
-
-const getCountdownLabel = (bounty, state) => {
+const getCountdownLabel = (bounty) => {
+  const state = bounty?.lifecycle?.state;
   if (state !== 'open') return null;
   const label = formatTimeLeft(bounty.deadline);
   if (!label || label === '-' || label === 'Expired') return null;
@@ -95,14 +69,13 @@ export function SponsoredTab({
       );
     }
 
-    // 2. Status Filter
+    // 2. Status Filter - use lifecycle.state from API
     if (statusFilter !== 'all') {
-      const now = Math.floor(Date.now() / 1000);
       result = result.filter((bounty) => {
-        const lifecycleState = deriveLifecycleState(bounty, now);
-        if (statusFilter === 'expired') return lifecycleState === 'expired';
-        if (statusFilter === 'open') return lifecycleState === 'open';
-        if (statusFilter === 'closed') return lifecycleState === 'closed';
+        const state = bounty.lifecycle?.state || 'open';
+        if (statusFilter === 'expired') return state === 'expired';
+        if (statusFilter === 'open') return state === 'open';
+        if (statusFilter === 'closed') return state === 'closed';
         return true;
       });
     }
@@ -333,12 +306,12 @@ export function SponsoredTab({
               <div className="space-y-3">
                 {paginatedBounties.map((bounty) => {
                   const isExpanded = expandedBountyId === bounty.bountyId;
-                  const lifecycleState = deriveLifecycleState(bounty);
-                  const lifecycleLabel = getLifecycleLabel(bounty, lifecycleState);
-                  const countdownLabel = getCountdownLabel(bounty, lifecycleState);
+                  const lifecycleState = bounty.lifecycle?.state || 'open';
+                  const lifecycleLabel = bounty.lifecycle?.label || '';
+                  const countdownLabel = getCountdownLabel(bounty);
                   const timelineLabel = countdownLabel ? `${countdownLabel} left` : lifecycleLabel || 'Open';
-                  const isClosed = lifecycleState === 'closed';
-                  const isExpired = lifecycleState === 'expired';
+                  const isClosed = bounty.isClosed || lifecycleState === 'closed';
+                  const isExpired = bounty.isExpired || lifecycleState === 'expired';
                   const allowlistData = allowlists[bounty.bountyId] || [];
                   const isAllowlistLoading = !!allowlistLoading[bounty.bountyId];
                   const issueLinkParams = {
@@ -435,8 +408,8 @@ export function SponsoredTab({
                             )}
                           </div>
 
-                          {/* Refund button if the bounty is open and expired */}
-                          {refundEnabled && bounty.status === 'open' && isExpired && (
+                          {/* Refund button if eligible */}
+                          {refundEnabled && bounty.refundEligible && (
                             <Link
                               href={`/refund?bountyId=${bounty.bountyId}`}
                               className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
