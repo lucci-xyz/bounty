@@ -38,6 +38,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
     repoManager,
     walletManagement,
     beta,
+    networkFees,
     allowlistModal,
     wallet,
     logout,
@@ -181,6 +182,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
           betaError={beta.error}
           handleReview={beta.handleReview}
           betaProcessing={beta.processing}
+          networkFees={networkFees}
         />
       )}
 

@@ -16,7 +16,7 @@ import { useAccount, useWalletClient } from 'wagmi';
 import { useErrorModal } from '@/shared/providers/ErrorModalProvider';
 import { useBetaApplications } from '@/features/beta-access';
 import { useWalletManagement } from '@/features/wallet';
-import { useAllowlistData, useRepoManager } from '@/features/account';
+import { useAllowlistData, useRepoManager, useNetworkFees } from '@/features/account';
 import { useAccountData } from '@/shared/providers/AccountProvider';
 
 export function useAccountPage({ initialTab: initialTabOverride } = {}) {
@@ -106,6 +106,12 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
     onUnauthorized: handleBetaUnauthorized
   });
 
+  // Network fees feature (admin only)
+  const networkFees = useNetworkFees({
+    enabled: showAdminTab && activeTab === 'admin',
+    onUnauthorized: handleBetaUnauthorized
+  });
+
   // Log out and redirect to home
   const logout = useCallback(async () => {
     try {
@@ -148,6 +154,7 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
     repoManager,
     walletManagement,
     beta,
+    networkFees,
     wallet: {
       address,
       isConnected
