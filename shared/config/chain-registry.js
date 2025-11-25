@@ -98,8 +98,17 @@ const ESCROW_REFUND_FRAGMENTS = [
   'event Refunded(bytes32 indexed bountyId, address indexed sponsor, uint256 amount)'
 ];
 
+// Admin fee-related fragments
+const ESCROW_FEE_FRAGMENTS = [
+  'function availableFees() external view returns (uint256)',
+  'function totalFeesAccrued() external view returns (uint256)',
+  'function feeBps() external view returns (uint16)',
+  'function withdrawFees(address to, uint256 amount) external',
+  'function owner() external view returns (address)'
+];
+
 export const ABIS = {
-  escrow: Array.from(new Set([...ESCROW_ABI_BASE, ...ESCROW_REFUND_FRAGMENTS])),
+  escrow: Array.from(new Set([...ESCROW_ABI_BASE, ...ESCROW_REFUND_FRAGMENTS, ...ESCROW_FEE_FRAGMENTS])),
   erc20: [
     'function approve(address spender, uint256 amount) external returns (bool)',
     'function allowance(address owner, address spender) external view returns (uint256)',

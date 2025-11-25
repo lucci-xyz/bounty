@@ -13,6 +13,7 @@ Base path: `/api/*`. Responses are JSON with either `{ success, ... }` or `{ err
 | GET | `/api/oauth/user` | Session | Returns `{ githubId, githubUsername }` or 401. |
 | POST | `/api/oauth/logout` | Session | Destroys the current session. |
 | GET | `/api/admin/check` | Session | Returns `{ isAdmin }` based on `ADMIN_GITHUB_IDS`. |
+| GET | `/api/admin/fees` | Admin session | Returns protocol fee balances for all configured networks. |
 
 ## Wallets
 | Method | Path | Auth | Notes |

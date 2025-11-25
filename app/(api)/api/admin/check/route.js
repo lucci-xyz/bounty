@@ -1,28 +1,24 @@
 import { logger } from '@/shared/lib/logger';
 import { getSession } from '@/shared/lib/session';
 import { NextResponse } from 'next/server';
+import { isAdminGithubId } from '@/shared/server/auth/admin';
 
-// List of admin GitHub IDs - configure in environment
-const ADMIN_GITHUB_IDS = (process.env.ADMIN_GITHUB_IDS || '')
-  .split(',')
-  .map(id => id.trim())
-  .filter(id => id)
-  .map(id => BigInt(id));
-
+/**
+ * GET /api/admin/check
+ * Returns whether the current user has admin access.
+ */
 export async function GET() {
   try {
     const session = await getSession();
-    
-    if (!session.githubId) {
+
+    if (!session?.githubId) {
       return NextResponse.json({ isAdmin: false });
     }
-    
-    const isAdmin = ADMIN_GITHUB_IDS.includes(BigInt(session.githubId));
-    
+
+    const isAdmin = isAdminGithubId(session.githubId);
     return NextResponse.json({ isAdmin });
   } catch (error) {
     logger.error('Error checking admin status:', error);
     return NextResponse.json({ isAdmin: false });
   }
 }
-
