@@ -1,5 +1,5 @@
 import { logger } from '@/shared/lib/logger';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { CONFIG } from '../config.js';
 
 // Prisma client instance
@@ -512,6 +512,33 @@ export const prClaimQueries = {
       acc[entry.bountyId] = entry._count?.bountyId ? Number(entry._count.bountyId) : 0;
       return acc;
     }, {});
+  },
+
+  /**
+   * Counts unique contributors who were paid for a list of resolved bounty IDs.
+   * Uses efficient groupBy at database level - groups by contributor and counts groups.
+   * @param {Array<string>} resolvedBountyIds - Array of resolved bounty IDs
+   * @returns {Promise<number>} Number of unique contributors who were paid
+   */
+  countUniquePaidContributors: async (resolvedBountyIds = []) => {
+    if (!Array.isArray(resolvedBountyIds) || resolvedBountyIds.length === 0) {
+      return 0;
+    }
+
+    // Use groupBy to get unique contributors - database does the grouping efficiently
+    const uniqueContributorGroups = await prisma.prClaim.groupBy({
+      by: ['prAuthorGithubId'],
+      where: {
+        bountyId: {
+          in: resolvedBountyIds
+        },
+        status: {
+          in: ['paid', 'resolved']
+        }
+      }
+    });
+
+    return uniqueContributorGroups.length;
   }
 };
 
