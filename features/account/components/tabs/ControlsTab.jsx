@@ -306,7 +306,7 @@ function RefundModal({
       <div className="w-full max-w-lg rounded-3xl border border-border/70 bg-card p-6 shadow-lg">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Refund bounty</p>
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Refund bounty</p>
             <h3 className="text-lg font-medium text-foreground">
               {selectedBounty?.repoFullName ? `${selectedBounty.repoFullName}#${selectedBounty.issueNumber}` : 'Selected bounty'}
             </h3>
@@ -320,81 +320,72 @@ function RefundModal({
           </button>
         </div>
 
-        {bountyInfo && (
-          <div className="mb-4">
-            <BountyDetails
-              bountyInfo={bountyInfo}
-              network={network}
-              sponsorDisplay={sponsorDisplay}
-              linkedWallet={connectedWallet}
-              refundMeta={{ ...refundMeta, canSelfRefund: walletMatches }}
-            />
+        {!walletMatches ? (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-border/60 bg-muted/30 p-4 text-sm text-muted-foreground">
+              <p className="text-foreground mb-2 font-medium">Connect your funding wallet</p>
+              <div className="flex items-center justify-between rounded-xl border border-border/50 bg-background/40 px-3 py-2 text-xs text-foreground">
+                <span className="text-muted-foreground">Required</span>
+                <code className="text-[11px]">{fundingWallet ? formatAddress(fundingWallet) : '—'}</code>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-border/50 bg-background/40 px-3 py-2 text-xs text-foreground mt-2">
+                <span className="text-muted-foreground">Connected</span>
+                <code className="text-[11px]">
+                  {connectedWallet ? formatAddress(connectedWallet) : 'Not connected'}
+                </code>
+              </div>
+              <p className="mt-2 text-[12px] text-muted-foreground">
+                Connect the funding wallet to continue.
+              </p>
+            </div>
+            <ConnectButton.Custom>
+              {({ openConnectModal }) => (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (openConnectModal) openConnectModal();
+                  }}
+                  className="w-full rounded-full border border-border/60 bg-foreground text-background px-4 py-3 text-sm font-semibold transition-colors hover:bg-foreground/90"
+                >
+                  {connectWalletLabel}
+                </button>
+              )}
+            </ConnectButton.Custom>
           </div>
-        )}
-
-        <div className="mb-4 rounded-2xl border border-border/60 bg-muted/30 p-4 text-sm text-muted-foreground">
-          <p className="mb-2 text-foreground font-medium">Connect funding wallet</p>
-          <p className="mb-2">
-            Connect the funding wallet to proceed with the refund:
-          </p>
-          <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-background/40 p-3 text-xs text-foreground">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Required wallet</span>
-              <code className="text-[11px]">{fundingWallet ? formatAddress(fundingWallet) : '—'}</code>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Connected</span>
-              <code className="text-[11px]">
-                {connectedWallet ? formatAddress(connectedWallet) : 'Not connected'}
-              </code>
-            </div>
-            {!walletMatches && (
-              <p className="text-[11px] text-destructive">
-                Connected wallet does not match the funding wallet. Please connect the funding wallet to refund.
+        ) : (
+          <div className="space-y-4">
+            {bountyInfo && (
+              <BountyDetails
+                bountyInfo={bountyInfo}
+                network={network}
+                sponsorDisplay={sponsorDisplay}
+                linkedWallet={connectedWallet}
+                refundMeta={{ ...refundMeta, canSelfRefund: walletMatches }}
+              />
+            )}
+            <button
+              type="button"
+              onClick={requestRefund}
+              className="w-full rounded-full bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Request refund
+            </button>
+            {status?.message && (
+              <p
+                className={`text-center text-xs ${
+                  status.type === 'error'
+                    ? 'text-destructive'
+                    : status.type === 'success'
+                      ? 'text-green-600'
+                      : 'text-muted-foreground'
+                }`}
+              >
+                {status.message}
               </p>
             )}
           </div>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <ConnectButton.Custom>
-            {({ openConnectModal }) => (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (openConnectModal) openConnectModal();
-                }}
-                className="w-full rounded-full border border-border/60 px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:border-primary"
-              >
-                {connectWalletLabel}
-              </button>
-            )}
-          </ConnectButton.Custom>
-
-          <button
-            type="button"
-            onClick={requestRefund}
-            disabled={!canRefund}
-            className="w-full rounded-full bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {canRefund ? 'Request refund' : 'Connect funding wallet to refund'}
-          </button>
-
-          {status?.message && (
-            <p
-              className={`text-center text-xs ${
-                status.type === 'error'
-                  ? 'text-destructive'
-                  : status.type === 'success'
-                    ? 'text-green-600'
-                    : 'text-muted-foreground'
-              }`}
-            >
-              {status.message}
-            </p>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
