@@ -1,7 +1,7 @@
 'use client';
 import { logger } from '@/shared/lib/logger';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 
 /**
  * BetaAccessContext provides beta access status to the app.
@@ -32,14 +32,37 @@ export function BetaAccessProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [betaStatus, setBetaStatus] = useState(null);
 
-  useEffect(() => {
-    checkBetaAccess();
-  }, []);
 
   /**
    * Checks the user's beta access status from the backend.
    */
-  const checkBetaAccess = async () => {
+  const checkBetaAccess = useCallback(async () => {
+    // Development override: Check for ?previewBetaModal=apply in URL or localStorage
+    // This allows previewing the beta access modal without authentication
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const previewMode = urlParams.get('previewBetaModal') || localStorage.getItem('previewBetaModal');
+      
+      if (previewMode === 'apply') {
+        setHasAccess(false);
+        setBetaStatus('needsApplication');
+        setLoading(false);
+        return;
+      }
+      if (previewMode === 'signin') {
+        setHasAccess(false);
+        setBetaStatus('needsAuth');
+        setLoading(false);
+        return;
+      }
+      if (previewMode === 'pending') {
+        setHasAccess(false);
+        setBetaStatus('pending');
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const res = await fetch('/api/beta/check');
       const data = await res.json();
@@ -62,18 +85,36 @@ export function BetaAccessProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   /**
    * Refreshes the beta access status from the backend.
+   * Memoized to prevent unnecessary re-renders and API calls.
    */
-  const refreshAccess = () => {
+  const refreshAccess = useCallback(() => {
     setLoading(true);
     checkBetaAccess();
-  };
+  }, [checkBetaAccess]);
+
+  // Initial check on mount
+  useEffect(() => {
+    checkBetaAccess();
+  }, [checkBetaAccess]);
+
+  // Memoize context value to prevent unnecessary re-renders of consumers
+  // This matches the pattern used in NetworkProvider and AccountProvider
+  const value = useMemo(
+    () => ({
+      hasAccess,
+      betaStatus,
+      refreshAccess,
+      loading
+    }),
+    [hasAccess, betaStatus, refreshAccess, loading]
+  );
 
   return (
-    <BetaAccessContext.Provider value={{ hasAccess, betaStatus, refreshAccess, loading }}>
+    <BetaAccessContext.Provider value={value}>
       {children}
     </BetaAccessContext.Provider>
   );

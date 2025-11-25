@@ -18,3 +18,12 @@ export function reviewBetaApplication(applicationId, action) {
   return postJson('/api/beta/review', { applicationId, action });
 }
 
+/**
+ * Apply for beta access with email
+ * @param {string} email - User's email address
+ * @returns {Promise<any>} The server response
+ */
+export function applyForBeta(email) {
+  return postJson('/api/beta/apply', { email });
+}
+

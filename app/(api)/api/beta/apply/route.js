@@ -1,9 +1,10 @@
 import { logger } from '@/shared/lib/logger';
 import { getSession } from '@/shared/lib/session';
+import { isValidEmail } from '@/shared/lib/validation';
 import { prisma } from '@/shared/server/db/prisma';
 import { NextResponse } from 'next/server';
 
-export async function POST() {
+export async function POST(request) {
   try {
     const session = await getSession();
     
@@ -14,12 +15,40 @@ export async function POST() {
       );
     }
     
+    // Parse request body to get email
+    const body = await request.json().catch(() => ({}));
+    const email = body.email?.trim();
+    
+    // Validate email is provided
+    if (!email) {
+      return NextResponse.json(
+        { error: 'Email is required' },
+        { status: 400 }
+      );
+    }
+    
+    // Validate email format
+    if (!isValidEmail(email)) {
+      return NextResponse.json(
+        { error: 'Please provide a valid email address' },
+        { status: 400 }
+      );
+    }
+    
     // Check if user already applied
     const existing = await prisma.betaAccess.findUnique({
       where: { githubId: BigInt(session.githubId) }
     });
     
     if (existing) {
+      // Update email if it's different
+      if (existing.email !== email) {
+        await prisma.betaAccess.update({
+          where: { githubId: BigInt(session.githubId) },
+          data: { email }
+        });
+      }
+      
       return NextResponse.json({
         success: true,
         status: existing.status,
@@ -34,7 +63,7 @@ export async function POST() {
       data: {
         githubId: BigInt(session.githubId),
         githubUsername: session.githubUsername,
-        email: session.email,
+        email,
         status: 'pending',
         appliedAt: BigInt(Date.now())
       }
