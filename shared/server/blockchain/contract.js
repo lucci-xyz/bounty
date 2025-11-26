@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import { CONFIG } from '../config.js';
 import { REGISTRY, ABIS, getDefaultAliasForGroup } from '../../config/chain-registry.js';
 import { validateAddress, validateBytes32 } from './validation.js';
+import { contractStatusToDb } from '@/shared/lib/status';
 
 /**
  * Get the private key for a specific network alias.
@@ -110,8 +111,17 @@ export async function computeBountyIdOnNetwork(sponsorAddress, repoIdHash, issue
  * @returns {Promise<object>}
  */
 export async function getBountyFromContract(bountyId, alias) {
-  const { escrowContract } = getNetworkClients(alias);
+  const { escrowContract, provider } = getNetworkClients(alias);
+  const contractCode = await provider.getCode(escrowContract.target);
+
+  if (contractCode === '0x') {
+    throw new Error(
+      `Escrow contract not deployed on ${alias} at ${escrowContract.target}. Check chain registry and environment configuration.`
+    );
+  }
+
   const bounty = await escrowContract.getBounty(bountyId);
+  const statusNumber = Number(bounty.status);
   return {
     repoIdHash: bounty.repoIdHash,
     sponsor: bounty.sponsor,
@@ -119,7 +129,9 @@ export async function getBountyFromContract(bountyId, alias) {
     amount: bounty.amount.toString(),
     deadline: Number(bounty.deadline),
     issueNumber: Number(bounty.issueNumber),
-    status: Number(bounty.status), // 0=None, 1=Open, 2=Resolved, 3=Refunded, 4=Canceled
+    status: statusNumber,
+    statusString: contractStatusToDb(statusNumber),
+    exists: statusNumber !== 0
   };
 }
 

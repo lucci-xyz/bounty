@@ -4,13 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { getUserBounties } from '@/shared/api/user';
 
+const normalizeAddress = (address) => address?.trim?.().toLowerCase?.() || '';
+
 /**
- * Hook for fetching and filtering eligible refund bounties.
- * 
- * Eligible bounties are:
- * - Status is 'open'
- * - Expired (deadline has passed)
- * - Sponsor address matches connected wallet
+ * Hook for fetching eligible refund bounties.
+ * Uses API-provided `refundEligible` flag (computed server-side).
  * 
  * @returns {Object} Eligible bounties state and fetch function
  */
@@ -23,17 +21,15 @@ export function useEligibleRefundBounties({ sessionGithubId, linkedWalletAddress
    * Fetch eligible bounties for refund
    */
   const normalizedLinked = useMemo(
-    () => linkedWalletAddress?.toLowerCase?.() || null,
+    () => normalizeAddress(linkedWalletAddress) || null,
     [linkedWalletAddress]
   );
-  const normalizedConnected = address?.toLowerCase();
+  const normalizedConnected = normalizeAddress(address);
 
   const fetchEligibleBounties = useCallback(async () => {
     try {
       setLoadingBounties(true);
       const bounties = await getUserBounties();
-      
-      const now = Math.floor(Date.now() / 1000);
       const sessionGithubIdNumber = sessionGithubId ? Number(sessionGithubId) : null;
 
       const eligible = (bounties || []).reduce((acc, bounty) => {
@@ -41,14 +37,12 @@ export function useEligibleRefundBounties({ sessionGithubId, linkedWalletAddress
           return acc;
         }
 
-        const lifecycleState = bounty.lifecycle?.state;
-        const isExpired = lifecycleState ? lifecycleState === 'expired' : Number(bounty.deadline) < now;
-        const isOpen = bounty.status === 'open';
-        if (!isExpired || !isOpen) {
+        // Use API-computed refundEligible
+        if (!bounty.refundEligible) {
           return acc;
         }
 
-        const fundingWallet = bounty.sponsorAddress.toLowerCase?.() || '';
+        const fundingWallet = normalizeAddress(bounty.sponsorAddress);
         const ownsByGithub = sessionGithubIdNumber
           ? Number(bounty.sponsorGithubId) === sessionGithubIdNumber
           : false;
@@ -67,7 +61,6 @@ export function useEligibleRefundBounties({ sessionGithubId, linkedWalletAddress
           ...bounty,
           refundMeta: {
             canSelfRefund,
-            requiresCustodialRefund: !canSelfRefund,
             fundingWallet: bounty.sponsorAddress,
             expectedWallet: expectedWallet,
             ownerGithubId: bounty.sponsorGithubId,
@@ -114,4 +107,3 @@ export function useEligibleRefundBounties({ sessionGithubId, linkedWalletAddress
     fetchEligibleBounties
   };
 }
-

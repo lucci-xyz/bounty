@@ -1,2 +1,2 @@
-export { handleWebhook, handleBountyCreated } from './webhooks/index.js';
+export { handleWebhook, handleBountyCreated, handleBountyRefunded } from './webhooks/index.js';
 

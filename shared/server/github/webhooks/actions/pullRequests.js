@@ -12,14 +12,14 @@ import { ethers } from 'ethers';
 import { notifyMaintainers } from '../../services/maintainerAlerts.js';
 import { formatAmountByToken, networkMeta } from '../../services/bountyFormatting.js';
 import {
-  renderLinkWalletPromptComment,
-  renderPaymentFailureComment,
-  renderPaymentSuccessComment,
-  renderReadyToPayComment,
-  renderResolvedSummaryComment,
-  renderSuggestedBountiesComment,
-  renderWalletMissingAfterMergeComment,
-  renderInvalidWalletComment
+  renderPrLinkedComment,
+  renderPaymentFailedComment,
+  renderPaymentSentComment,
+  renderPrReadyComment,
+  renderBountyResolvedComment,
+  renderOpenBountiesComment,
+  renderWalletRequiredComment,
+  renderWalletInvalidComment
 } from '../../templates/bounties';
 import { BRAND_SIGNATURE, FRONTEND_BASE, OG_ICON } from '../../constants.js';
 import { getLinkHref } from '@/shared/config/links';
@@ -113,11 +113,11 @@ export async function handlePullRequestMerged(payload) {
       const walletMapping = await walletQueries.findByGithubId(claim.prAuthorGithubId);
 
       if (!walletMapping) {
-        const prUrl = getPullUrl(repository.full_name, pull_request.number);
-        const comment = renderWalletMissingAfterMergeComment({
+        const issueUrl = getIssueUrl(repository.full_name, bounty.issueNumber);
+        const comment = renderWalletRequiredComment({
           iconUrl: OG_ICON,
-          prUrl: `${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(prUrl)}`,
           username: pull_request.user.login,
+          linkWalletUrl: `${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(issueUrl)}`,
           brandSignature: BRAND_SIGNATURE
         });
 
@@ -128,12 +128,12 @@ export async function handlePullRequestMerged(payload) {
 
       if (!ethers.isAddress(walletMapping.walletAddress)) {
         logger.error('Invalid wallet address in database');
-        const prUrl = getPullUrl(repository.full_name, pull_request.number);
-        const comment = renderInvalidWalletComment({
+        const issueUrl = getIssueUrl(repository.full_name, bounty.issueNumber);
+        const comment = renderWalletInvalidComment({
           iconUrl: OG_ICON,
-          prUrl: `${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(prUrl)}`,
           username: pull_request.user.login,
           invalidAddress: walletMapping.walletAddress,
+          linkWalletUrl: `${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(issueUrl)}`,
           brandSignature: BRAND_SIGNATURE
         });
 
@@ -186,24 +186,24 @@ export async function handlePullRequestMerged(payload) {
         const amountFormatted = formatAmountByToken(bounty.amount, tokenSymbol);
         const net = networkMeta(bounty.network);
         const explorerUrl = net.explorerTx(result.txHash);
-        const successComment = renderPaymentSuccessComment({
+        const successComment = renderPaymentSentComment({
           iconUrl: OG_ICON,
           username: pull_request.user.login,
           amountFormatted,
           tokenSymbol,
-          explorerTxUrl: explorerUrl,
+          txUrl: explorerUrl,
           brandSignature: BRAND_SIGNATURE
         });
 
         await postIssueComment(octokit, owner, repo, pull_request.number, successComment);
 
         if (bounty.pinnedCommentId) {
-          const updatedSummary = renderResolvedSummaryComment({
+          const updatedSummary = renderBountyResolvedComment({
             iconUrl: OG_ICON,
             username: pull_request.user.login,
             amountFormatted,
             tokenSymbol,
-            explorerTxUrl: explorerUrl,
+            txUrl: explorerUrl,
             brandSignature: BRAND_SIGNATURE
           });
 
@@ -235,7 +235,7 @@ export async function handlePullRequestMerged(payload) {
           notifySeverity = 'medium';
         }
 
-        const errorComment = renderPaymentFailureComment({
+        const errorComment = renderPaymentFailedComment({
           iconUrl: OG_ICON,
           errorSnippet: `${result.error.substring(0, 200)}${result.error.length > 200 ? '...' : ''}`,
           helpText: errorHelp,
@@ -301,7 +301,7 @@ async function suggestBounties(octokit, owner, repo, pull_request, bounties) {
 
   const highestBounty = bounties[0];
 
-  const comment = renderSuggestedBountiesComment({
+  const comment = renderOpenBountiesComment({
     iconUrl: OG_ICON,
     username: pull_request.user.login,
     bountyCount: bounties.length,
@@ -329,18 +329,18 @@ async function handlePRWithBounties(octokit, owner, repo, pull_request, reposito
   const prUrl = getPullUrl(repository.full_name, pull_request.number);
 
   if (!walletMapping) {
-    const comment = renderLinkWalletPromptComment({
+    const comment = renderPrLinkedComment({
       iconUrl: OG_ICON,
       issueLinks,
       totalAmount: totalAmount.toFixed(2),
       tokenSymbol,
-      prUrl: `${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(prUrl)}`,
+      linkWalletUrl: `${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(prUrl)}`,
       brandSignature: BRAND_SIGNATURE
     });
 
     await postIssueComment(octokit, owner, repo, pull_request.number, comment);
   } else {
-    const comment = renderReadyToPayComment({
+    const comment = renderPrReadyComment({
       iconUrl: OG_ICON,
       issueLinks,
       totalAmount: totalAmount.toFixed(2),
@@ -371,4 +371,3 @@ async function handlePRWithBounties(octokit, owner, repo, pull_request, reposito
     }
   }
 }
-

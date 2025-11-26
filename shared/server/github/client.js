@@ -92,6 +92,37 @@ export async function addLabels(octokit, owner, repo, issueNumber, labels) {
   });
 }
 
+/**
+ * Remove a label from an issue
+ */
+export async function removeLabel(octokit, owner, repo, issueNumber, labelName) {
+  try {
+    await octokit.rest.issues.removeLabel({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      name: labelName
+    });
+  } catch (error) {
+    // Label might not exist or already be removed - non-critical
+    if (error.status !== 404) {
+      throw error;
+    }
+  }
+}
+
+/**
+ * Get all labels on an issue
+ */
+export async function getIssueLabels(octokit, owner, repo, issueNumber) {
+  const { data } = await octokit.rest.issues.listLabelsOnIssue({
+    owner,
+    repo,
+    issue_number: issueNumber
+  });
+  return data;
+}
+
 export async function ensureLabel(octokit, owner, repo, name, color, description = '') {
   const normalizedColor = color.replace('#', '').toLowerCase();
   try {

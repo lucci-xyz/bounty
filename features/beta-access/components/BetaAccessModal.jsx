@@ -1,34 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useBetaAccess } from '@/features/beta-access';
+import { resolveBetaStep } from '@/features/beta-access/lib/utils';
+import { isValidEmail } from '@/shared/lib/validation';
+import { applyForBeta } from '@/shared/api/beta';
 import { redirectToGithubSignIn } from '@/shared/lib/navigation';
-
-/**
- * Returns the current beta modal step based on status and access.
- * @param {string} betaStatus
- * @param {boolean} hasAccess
- * @returns {string} The name of the step
- */
-function resolveStep(betaStatus, hasAccess) {
-  if (hasAccess) {
-    return 'approved';
-  }
-
-  switch (betaStatus) {
-    case 'needsAuth':
-      return 'signin';
-    case 'needsApplication':
-      return 'apply';
-    case 'rejected':
-      return 'rejected';
-    case 'pending':
-      return 'pending';
-    default:
-      return 'loading';
-  }
-}
 
 /**
  * BetaAccessModal
@@ -42,28 +20,58 @@ function resolveStep(betaStatus, hasAccess) {
  * @param {function} [props.onDismiss] - Optional dismiss handler.
  * @param {string} [props.dismissLabel='Close'] - Text for dismiss button.
  */
+
 export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDismiss, dismissLabel = 'Close' }) {
   const { hasAccess, betaStatus, loading: betaLoading, refreshAccess } = useBetaAccess();
   const [step, setStep] = useState('loading');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [mounted, setMounted] = useState(false);
+  const [email, setEmail] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   // Ensure portal rendering only after mount (fixes Next.js hydration)
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Refresh beta status when modal opens
+  // Track if we've already refreshed for this modal open session using a ref
+  const hasRefreshedRef = useRef(false);
+  const lastOpenStateRef = useRef(false);
+
+  // Refresh beta status when modal opens (only once per open session)
   useEffect(() => {
-    if (!isOpen) return;
-    refreshAccess();
+    // Reset refresh flag when modal closes
+    if (!isOpen) {
+      hasRefreshedRef.current = false;
+      lastOpenStateRef.current = false;
+      return;
+    }
+    
+    // Only refresh once when modal first opens (when transitioning from closed to open)
+    if (!lastOpenStateRef.current && !hasRefreshedRef.current) {
+      refreshAccess();
+      hasRefreshedRef.current = true;
+    }
+    
+    lastOpenStateRef.current = isOpen;
   }, [isOpen, refreshAccess]);
+
+  // Reset email field when modal closes or step changes
+  useEffect(() => {
+    if (!isOpen) {
+      setEmail('');
+      setEmailError('');
+    }
+    if (step !== 'apply') {
+      setEmailError('');
+    }
+  }, [isOpen, step]);
 
   // Set the correct step based on beta status
   useEffect(() => {
     if (!isOpen) return;
-    const nextStep = resolveStep(betaStatus, hasAccess);
+    const nextStep = resolveBetaStep(betaStatus, hasAccess);
     setStep(nextStep);
 
     // If access was granted, call onAccessGranted and auto-close shortly after
@@ -74,12 +82,15 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
     }
   }, [betaStatus, hasAccess, isOpen, onAccessGranted, onClose]);
 
-  // Poll while awaiting access approval
+  // Poll while awaiting access approval (only when step is pending and modal is open)
   useEffect(() => {
     if (!isOpen || step !== 'pending') return;
+    
+    // Poll every 5 seconds to check if access has been approved
     const interval = setInterval(() => {
       refreshAccess();
     }, 5000);
+    
     return () => clearInterval(interval);
   }, [isOpen, step, refreshAccess]);
 
@@ -94,27 +105,41 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
   };
 
   /**
+   * Validates the email input
+   */
+  const validateEmailInput = () => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setEmailError('Email is required');
+      return false;
+    }
+    if (!isValidEmail(trimmedEmail)) {
+      setEmailError('Please enter a valid email address');
+      return false;
+    }
+    setEmailError('');
+    return true;
+  };
+
+  /**
    * Submits a beta access application.
    */
   const handleApply = async () => {
+    // Validate email before submitting
+    if (!validateEmailInput()) {
+      return;
+    }
+
     setLoading(true);
     setError(null);
+    setEmailError('');
 
     try {
-      const res = await fetch('/api/beta/apply', {
-        method: 'POST'
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to apply');
-      }
-
+      await applyForBeta(email.trim());
       setStep('pending');
       refreshAccess();
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to apply for beta access');
     } finally {
       setLoading(false);
     }
@@ -148,11 +173,40 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
         return {
           title: 'Beta Access Required',
           body: 'Request early access to start funding issues and automating payouts.',
+          emailInput: (
+            <div className="space-y-2">
+              <label htmlFor="beta-email" className="block text-xs font-medium text-foreground/70">
+                Email Address
+              </label>
+              <input
+                id="beta-email"
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (emailError) {
+                    setEmailError('');
+                  }
+                }}
+                onBlur={validateEmailInput}
+                placeholder="you@example.com"
+                disabled={loading}
+                className={`w-full rounded-2xl border px-4 py-3 text-sm text-foreground transition-all focus:ring-2 focus:ring-primary/10 ${
+                  emailError
+                    ? 'border-destructive/50 bg-destructive/5 focus:border-destructive'
+                    : 'border-border/60 bg-background focus:border-primary'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              />
+              {emailError && (
+                <p className="text-xs text-destructive">{emailError}</p>
+              )}
+            </div>
+          ),
           actions: (
             <button
               onClick={handleApply}
-              disabled={loading}
-              className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+              disabled={loading || !email.trim() || !isValidEmail(email.trim())}
+              className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Applying...' : 'Apply for Beta'}
             </button>
@@ -186,7 +240,7 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
     }
   };
 
-  const { title, body, actions } = renderContent();
+  const { title, body, emailInput, actions } = renderContent();
 
   /**
    * Dismiss handler for the modal
@@ -212,6 +266,7 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
             {error}
           </div>
         )}
+        {emailInput}
         {actions}
 
         {onDismiss && (

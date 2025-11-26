@@ -83,15 +83,32 @@ const CURATED_ALIASES = {
 };
 
 // ABIs used throughout the application
+const ESCROW_ABI_BASE = [
+  'function createBounty(address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) external returns (bytes32)',
+  'function resolve(bytes32 bountyId, address recipient) external',
+  'function getBounty(bytes32 bountyId) external view returns (tuple(bytes32 repoIdHash, address sponsor, address resolver, uint96 amount, uint64 deadline, uint64 issueNumber, uint8 status))',
+  'function computeBountyId(address sponsor, bytes32 repoIdHash, uint64 issueNumber) external pure returns (bytes32)',
+  'event Resolved(bytes32 indexed bountyId, address indexed recipient, uint256 net, uint256 fee)',
+  'event BountyCreated(bytes32 indexed bountyId, address indexed sponsor, bytes32 indexed repoIdHash, uint64 issueNumber, uint64 deadline, address resolver, uint256 amount)'
+];
+
+// Ensure refund flow fragments are always present (was missing in a prior ABI)
+const ESCROW_REFUND_FRAGMENTS = [
+  'function refundExpired(bytes32 bountyId) external',
+  'event Refunded(bytes32 indexed bountyId, address indexed sponsor, uint256 amount)'
+];
+
+// Admin fee-related fragments
+const ESCROW_FEE_FRAGMENTS = [
+  'function availableFees() external view returns (uint256)',
+  'function totalFeesAccrued() external view returns (uint256)',
+  'function feeBps() external view returns (uint16)',
+  'function withdrawFees(address to, uint256 amount) external',
+  'function owner() external view returns (address)'
+];
+
 export const ABIS = {
-  escrow: [
-    'function createBounty(address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) external returns (bytes32)',
-    'function resolve(bytes32 bountyId, address recipient) external',
-    'function getBounty(bytes32 bountyId) external view returns (tuple(bytes32 repoIdHash, address sponsor, address resolver, uint96 amount, uint64 deadline, uint64 issueNumber, uint8 status))',
-    'function computeBountyId(address sponsor, bytes32 repoIdHash, uint64 issueNumber) external pure returns (bytes32)',
-    'event Resolved(bytes32 indexed bountyId, address indexed recipient, uint256 net, uint256 fee)',
-    'event BountyCreated(bytes32 indexed bountyId, address indexed sponsor, bytes32 indexed repoIdHash, uint64 issueNumber, uint64 deadline, address resolver, uint256 amount)'
-  ],
+  escrow: Array.from(new Set([...ESCROW_ABI_BASE, ...ESCROW_REFUND_FRAGMENTS, ...ESCROW_FEE_FRAGMENTS])),
   erc20: [
     'function approve(address spender, uint256 amount) external returns (bool)',
     'function allowance(address owner, address spender) external view returns (uint256)',
@@ -329,4 +346,3 @@ export function formatTokenAmount(amount, alias) {
   
   return trimmed ? `${integerPart}.${trimmed}` : integerPart.toString();
 }
-

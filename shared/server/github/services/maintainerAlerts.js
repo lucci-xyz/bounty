@@ -2,7 +2,7 @@ import { logger } from '@/shared/lib/logger';
 import { postIssueComment } from '../client.js';
 import { sendSystemEmail } from '../../notifications/email.js';
 import { ALERT_SEVERITY_STYLES, buildShieldsBadge } from '@/shared/lib';
-import { renderMaintainerAlertComment, renderMaintainerAlertEmail } from '@/shared/server/github/templates/alerts';
+import { renderSystemAlertComment, renderAlertEmailHtml } from '@/shared/server/github/templates/alerts';
 import { BADGE_BASE, BADGE_LABEL_COLOR, BADGE_STYLE, BRAND_SIGNATURE, FRONTEND_BASE } from '../constants.js';
 
 export async function notifyMaintainers(octokit, owner, repo, issueNumber, errorDetails) {
@@ -52,17 +52,17 @@ export async function notifyMaintainers(octokit, owner, repo, issueNumber, error
 
   const truncatedError = errorMessage.length > 300 ? `${errorMessage.substring(0, 300)}...` : errorMessage;
 
-  const comment = renderMaintainerAlertComment({
-    emoji: severityStyle.emoji,
+  const comment = renderSystemAlertComment({
+    severityLabel: severityStyle.label,
     severityBadge,
     errorIdBadge,
+    errorId,
     errorType,
     timestamp,
     truncatedError,
     detailsSection,
     context,
     troubleshootingUrl: `${FRONTEND_BASE}/docs/support/troubleshooting`,
-    errorId,
     brandSignature: BRAND_SIGNATURE
   });
 
@@ -71,8 +71,7 @@ export async function notifyMaintainers(octokit, owner, repo, issueNumber, error
     ? `<p><strong>Details:</strong><br/>${detailsSection.replace(/\n/g, '<br/>')}</p>`
     : '';
   const contextHtml = context ? `<p><strong>Additional Context:</strong><br/>${context.replace(/\n/g, '<br/>')}</p>` : '';
-  const emailHtml = renderMaintainerAlertEmail({
-    emoji: severityStyle.emoji,
+  const emailHtml = renderAlertEmailHtml({
     errorType,
     owner,
     repo,
@@ -103,4 +102,3 @@ export async function notifyMaintainers(octokit, owner, repo, issueNumber, error
     return null;
   }
 }
-

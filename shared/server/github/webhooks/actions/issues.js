@@ -1,6 +1,6 @@
 import { logger } from '@/shared/lib/logger';
 import { getOctokit, postIssueComment } from '../../client.js';
-import { renderBountyButtonComment } from '../../templates/bounties';
+import { renderCreateButtonComment } from '../../templates/bounties';
 import { CTA_BUTTON, FRONTEND_BASE, BRAND_SIGNATURE } from '../../constants.js';
 
 export async function handleIssueOpened(payload) {
@@ -14,7 +14,7 @@ export async function handleIssueOpened(payload) {
       issue.number
     }&repoId=${repository.id}&installationId=${installation.id}`;
 
-    const comment = renderBountyButtonComment({
+    const comment = renderCreateButtonComment({
       attachUrl,
       ctaButtonUrl: CTA_BUTTON,
       brandSignature: BRAND_SIGNATURE
@@ -25,4 +25,3 @@ export async function handleIssueOpened(payload) {
     logger.error('Failed to post bounty button:', error.message);
   }
 }
-
