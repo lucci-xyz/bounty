@@ -3,7 +3,7 @@ import { getOctokit } from '../client.js';
 import { notifyMaintainers } from '../services/maintainerAlerts.js';
 import { handleIssueOpened } from './actions/issues.js';
 import { handlePullRequestOpened, handlePullRequestMerged } from './actions/pullRequests.js';
-import { handleBountyCreated } from './actions/bounties.js';
+import { handleBountyCreated, handleBountyRefunded } from './actions/bounties.js';
 
 export async function handleWebhook(event, payload) {
   try {
@@ -66,5 +66,5 @@ export async function handleWebhook(event, payload) {
   }
 }
 
-export { handleBountyCreated };
+export { handleBountyCreated, handleBountyRefunded };
 

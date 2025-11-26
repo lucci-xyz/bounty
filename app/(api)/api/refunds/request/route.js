@@ -2,6 +2,7 @@ import { logger } from '@/shared/lib/logger';
 import { getSession } from '@/shared/lib/session';
 import { bountyQueries } from '@/shared/server/db/prisma';
 import { refundExpiredOnNetwork } from '@/shared/server/blockchain/contract';
+import { handleBountyRefunded } from '@/shared/server/github/webhooks';
 
 export async function POST(request) {
   try {
@@ -42,6 +43,22 @@ export async function POST(request) {
 
     await bountyQueries.updateStatus(bountyId, 'refunded', result.txHash);
 
+    // Post GitHub notification (non-blocking)
+    if (bounty.installationId && bounty.repoFullName && bounty.issueNumber) {
+      handleBountyRefunded({
+        repoFullName: bounty.repoFullName,
+        issueNumber: bounty.issueNumber,
+        bountyId,
+        amount: bounty.amount,
+        txHash: result.txHash,
+        installationId: bounty.installationId,
+        network: bounty.network,
+        tokenSymbol: bounty.tokenSymbol
+      }).catch(err => {
+        logger.error('Failed to post refund notification to GitHub:', err.message);
+      });
+    }
+
     return Response.json({
       success: true,
       txHash: result.txHash,
@@ -52,5 +69,3 @@ export async function POST(request) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
-
-
