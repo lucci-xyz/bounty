@@ -1,80 +1,58 @@
 'use client';
-import { logger } from '@/shared/lib/logger';
 
 /**
- * Main page for the Base Mini App.
- * Lets users switch between Home, Dashboard, and Profile sections.
+ * Base Mini App page.
+ * Provides a unified view of home feed, dashboard, and profile sections
+ * within a single-page mini app experience for Farcaster.
  */
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
-import HomePage from '@/features/home/components/HomePage';
-import { AccountContent } from '@/features/account/components/AccountContent';
+import { logger } from '@/shared/lib/logger';
 import { cn } from '@/shared/lib';
+import { HomePage } from '@/features/home';
+import { AccountContent } from '@/features/account';
+import { AccountProvider } from '@/shared/providers/AccountProvider';
 
 /**
- * Shows an account section inside a suspense boundary.
- * @param {Object} props
- * @param {string} props.initialTab - Initial tab to open in AccountContent.
+ * Section configuration for mini app navigation.
  */
-function AccountSection({ initialTab }) {
-  return (
-    <Suspense
-      fallback={
-        <div className="mx-auto w-full max-w-5xl px-6 py-8 text-muted-foreground">
-          <p>Loading...</p>
-        </div>
-      }
-    >
-      <AccountContent initialTab={initialTab} />
-    </Suspense>
-  );
-}
-
-/**
- * Dashboard tab content for funded issue management.
- */
-function DashboardSection() {
-  return <AccountSection initialTab="sponsored" />;
-}
-
-/**
- * Profile tab content for user payouts & settings.
- */
-function ProfileSection() {
-  return <AccountSection initialTab="settings" />;
-}
-
-/**
- * Configuration for the available mini app sections.
- */
-const MINI_APP_SECTIONS = [
+const SECTIONS = [
   {
     id: 'home',
-    label: 'Home',
-    description: 'Browse public bounties',
-    Component: HomePage,
+    label: 'Bounties',
+    description: 'Browse open bounties'
   },
   {
     id: 'dashboard',
     label: 'Dashboard',
-    description: 'Manage funded issues',
-    Component: DashboardSection,
+    description: 'Manage your funded issues'
   },
   {
     id: 'profile',
     label: 'Profile',
-    description: 'Track your payouts',
-    Component: ProfileSection,
-  },
+    description: 'Settings and payouts'
+  }
 ];
 
 /**
- * The main component for the mini app hybrid page.
+ * Renders account content wrapped in the required AccountProvider.
+ * @param {Object} props
+ * @param {string} props.initialTab - Initial tab to display in AccountContent.
+ */
+function AccountSection({ initialTab }) {
+  return (
+    <AccountProvider>
+      <AccountContent initialTab={initialTab} />
+    </AccountProvider>
+  );
+}
+
+/**
+ * Main Base Mini App page component.
  */
 export default function BaseMiniAppPage() {
-  // Controls which section is active (home, dashboard, profile)
-  const [activeSection, setActiveSection] = useState(MINI_APP_SECTIONS[0].id);
+  const [activeSection, setActiveSection] = useState('home');
 
   // Signal readiness to Farcaster Mini App SDK on mount
   useEffect(() => {
@@ -86,7 +64,7 @@ export default function BaseMiniAppPage() {
         await sdk.actions.ready();
       } catch (error) {
         if (mounted) {
-          logger.error('Error signalling Base mini app readiness:', error);
+          logger.error('Mini app SDK ready signal failed:', error);
         }
       }
     }
@@ -97,31 +75,38 @@ export default function BaseMiniAppPage() {
     };
   }, []);
 
-  // Pick the component for the current section
-  const ActiveSectionComponent = useMemo(() => {
-    const match = MINI_APP_SECTIONS.find((section) => section.id === activeSection);
-    return match ? match.Component : MINI_APP_SECTIONS[0].Component;
+  // Render the active section content
+  const renderSection = useMemo(() => {
+    switch (activeSection) {
+      case 'dashboard':
+        return <AccountSection initialTab="sponsored" />;
+      case 'profile':
+        return <AccountSection initialTab="settings" />;
+      case 'home':
+      default:
+        return <HomePage />;
+    }
   }, [activeSection]);
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-5 py-10">
-      {/* Header and page info */}
-      <div className="mb-6">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#39BEB7]">
-          Base Mini App
+    <div className="mx-auto w-full max-w-5xl px-6 py-10">
+      {/* Header */}
+      <div className="mb-8 animate-fade-in-up">
+        <p
+          role="heading"
+          aria-level={1}
+          className="mb-2 text-[clamp(22px,3vw,30px)] font-light tracking-[-0.02em] text-foreground/90"
+        >
+          BountyPay Mini
         </p>
-        <h1 className="mb-2 text-[clamp(28px,5vw,40px)] font-semibold text-primary">
-          Explore BountyPay in one place
-        </h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          Toggle between the existing home, dashboard, and profile experiences without leaving this page.
-          Everything you see here reuses the production-ready screens.
+        <p className="text-sm text-muted-foreground">
+          Browse bounties, manage issues, and track payouts in one place
         </p>
       </div>
 
-      {/* Tabs for switching sections */}
-      <div className="mb-5 flex flex-wrap gap-3">
-        {MINI_APP_SECTIONS.map((section) => {
+      {/* Section tabs */}
+      <div className="mb-6 flex flex-wrap gap-3">
+        {SECTIONS.map((section) => {
           const isActive = section.id === activeSection;
           return (
             <button
@@ -129,19 +114,21 @@ export default function BaseMiniAppPage() {
               type="button"
               onClick={() => setActiveSection(section.id)}
               className={cn(
-                'flex-1 min-w-[200px] rounded-xl border px-5 py-4 text-left shadow-sm transition-all',
+                'flex-1 min-w-[160px] rounded-xl border px-4 py-3 text-left transition-all',
                 isActive
-                  ? 'border-transparent bg-primary text-primary-foreground shadow-lg'
-                  : 'border-border bg-card text-foreground'
+                  ? 'border-primary bg-primary/5 shadow-sm'
+                  : 'border-border/60 bg-card hover:border-primary/40'
               )}
             >
-              <div className="text-base font-semibold">{section.label}</div>
               <div
                 className={cn(
-                  'mt-0.5 text-sm',
-                  isActive ? 'text-white/80' : 'text-muted-foreground'
+                  'text-sm font-medium',
+                  isActive ? 'text-primary' : 'text-foreground'
                 )}
               >
+                {section.label}
+              </div>
+              <div className="mt-0.5 text-xs text-muted-foreground">
                 {section.description}
               </div>
             </button>
@@ -149,11 +136,10 @@ export default function BaseMiniAppPage() {
         })}
       </div>
 
-      {/* Main section render area */}
-      <div className="overflow-hidden rounded-2xl border border-border bg-background shadow-[0_16px_40px_rgba(0,0,0,0.08)]">
-        <ActiveSectionComponent key={activeSection} />
+      {/* Section content */}
+      <div className="overflow-hidden rounded-2xl border border-border/60 bg-background">
+        {renderSection}
       </div>
     </div>
   );
 }
-
