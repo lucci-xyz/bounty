@@ -30,6 +30,10 @@ export function useRefundTransaction({ currentBounty, selectedBounty, onSuccess,
         throw new Error('Please select a bounty first');
       }
 
+      if (!currentBounty.canSelfRefund) {
+        throw new Error('Connect the funding wallet to self-refund this bounty');
+      }
+
       // Get the network for the selected bounty
       const bountyNetwork = selectedBounty 
         ? registry?.[selectedBounty.network]
@@ -69,7 +73,29 @@ export function useRefundTransaction({ currentBounty, selectedBounty, onSuccess,
       showStatus('Waiting for confirmation...', 'loading');
       const receipt = await tx.wait();
 
-      showStatus(`✅ Refund successful! TX: ${receipt.hash}`, 'success');
+      // Update database after successful transaction
+      showStatus('Updating database...', 'loading');
+      try {
+        const response = await fetch('/api/refunds/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bountyId: currentBounty.bountyId,
+            txHash: receipt.hash
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          logger.error('Database update failed:', error);
+          showStatus(`✅ Refund successful on-chain, but database update failed. TX: ${receipt.hash}`, 'warning');
+        } else {
+          showStatus(`✅ Refund successful! TX: ${receipt.hash}`, 'success');
+        }
+      } catch (dbError) {
+        logger.error('Database update error:', dbError);
+        showStatus(`✅ Refund successful on-chain, but database update failed. TX: ${receipt.hash}`, 'warning');
+      }
       
       if (onSuccess) {
         await onSuccess();

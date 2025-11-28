@@ -1,8 +1,8 @@
 'use client';
-import { logger } from '@/shared/lib/logger';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { getGithubUser } from '@/shared/api/user';
 
 const IS_LOCAL_ENV = process.env.NEXT_PUBLIC_ENV_TARGET === 'local';
@@ -11,40 +11,27 @@ const USE_DUMMY_DATA = process.env.NEXT_PUBLIC_USE_DUMMY_DATA === 'true';
 const DUMMY_USER = {
   githubId: 123456789,
   githubUsername: 'local-dev',
-  avatarUrl: null,
+  avatarUrl: null
 };
 
 export function useGithubUser({ requireAuth = false, redirectTo = '/', onUnauthenticated } = {}) {
   const router = useRouter();
-  const [githubUser, setGithubUser] = useState(null);
-  const [githubUserLoading, setGithubUserLoading] = useState(true);
-  const [githubUserError, setGithubUserError] = useState(null);
+  const query = useQuery({
+    queryKey: ['account', 'githubUser'],
+    queryFn: async () => {
+      if (IS_LOCAL_ENV || USE_DUMMY_DATA) {
+        return DUMMY_USER;
+      }
+      return getGithubUser();
+    },
+    staleTime: 60 * 1000,
+    retry: 1,
+    refetchOnWindowFocus: false
+  });
 
-  const loadGithubUser = useCallback(async () => {
-    setGithubUserLoading(true);
-    setGithubUserError(null);
-
-    if (IS_LOCAL_ENV || USE_DUMMY_DATA) {
-      setGithubUser(DUMMY_USER);
-      setGithubUserLoading(false);
-      return;
-    }
-
-    try {
-      const user = await getGithubUser();
-      setGithubUser(user);
-    } catch (error) {
-      logger.error('Failed to load GitHub user', error);
-      setGithubUserError(error);
-      setGithubUser(null);
-    } finally {
-      setGithubUserLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadGithubUser();
-  }, [loadGithubUser]);
+  const githubUser = query.data || null;
+  const githubUserLoading = query.isPending;
+  const githubUserError = query.error || null;
 
   useEffect(() => {
     if (!requireAuth || githubUserLoading) {
@@ -65,8 +52,9 @@ export function useGithubUser({ requireAuth = false, redirectTo = '/', onUnauthe
     githubUser,
     githubUserLoading,
     githubUserError,
-    reloadGithubUser: loadGithubUser,
-    isLocalMode: IS_LOCAL_ENV || USE_DUMMY_DATA,
+    reloadGithubUser: query.refetch,
+    isLocalMode: IS_LOCAL_ENV || USE_DUMMY_DATA
   };
 }
+
 

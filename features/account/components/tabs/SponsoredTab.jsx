@@ -9,17 +9,14 @@
  * @param {Object} props
  * @param {boolean} props.showEmptyState - Whether to show the empty state (connect wallet) prompt.
  * @param {Object} props.stats - Stats for sponsored bounties (e.g., totalValueLocked, totalPaid, refundedBounties).
- * @param {Array} props.displayBounties - Array of bounty objects to display.
- * @param {number} props.totalPages - Total number of bounty pages.
- * @param {number} props.currentPage - Current page in the bounties list.
- * @param {function} props.handlePrevPage - Handler to go to the previous page.
- * @param {function} props.handleNextPage - Handler to go to the next page.
+ * @param {Array} props.sponsoredBounties - Full array of bounty objects to display.
  * @param {string|null} props.expandedBountyId - The currently expanded bounty's id or null.
  * @param {function} props.handleToggleBounty - Handler for expanding/collapsing a bounty card.
  * @param {Object} props.allowlists - Allowlist addresses by bounty id.
  * @param {Object} props.allowlistLoading - Loading state for each bounty's allowlist.
  * @param {function} props.openAllowlistModal - Handler to open the manage allowlist modal.
  */
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowIcon, MoneyIcon, PlusIcon, WalletIcon } from '@shared/components/Icons';
 import { StatBlock } from '@/features/account/components/StatBlock';
@@ -27,14 +24,20 @@ import { formatAmount, formatDeadlineDate, formatTimeLeft } from '@/shared/lib';
 import { LinkFromCatalog } from '@/shared/components/LinkFromCatalog';
 import { useFlag } from '@/shared/providers/FlagProvider';
 
+const ITEMS_PER_PAGE = 4;
+
+const getCountdownLabel = (bounty) => {
+  const state = bounty?.lifecycle?.state;
+  if (state !== 'open') return null;
+  const label = formatTimeLeft(bounty.deadline);
+  if (!label || label === '-' || label === 'Expired') return null;
+  return label;
+};
+
 export function SponsoredTab({
   showEmptyState,
   stats,
-  displayBounties,
-  totalPages,
-  currentPage,
-  handlePrevPage,
-  handleNextPage,
+  sponsoredBounties = [],
   expandedBountyId,
   handleToggleBounty,
   allowlists,
@@ -43,6 +46,81 @@ export function SponsoredTab({
 }) {
   const allowlistEnabled = useFlag('allowlistFeature', false);
   const refundEnabled = useFlag('refundFeature', false);
+
+  // Local state for toolbar filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [networkFilter, setNetworkFilter] = useState('all');
+  const [sortOption, setSortOption] = useState('deadline-asc');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Client-side filtering and sorting of the sponsor's bounties
+  const filteredBounties = useMemo(() => {
+    if (!sponsoredBounties) return [];
+
+    let result = [...sponsoredBounties];
+
+    // 1. Search
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(b => 
+        (b.repoFullName && b.repoFullName.toLowerCase().includes(query)) ||
+        (b.issueNumber && b.issueNumber.toString().includes(query))
+      );
+    }
+
+    // 2. Status Filter - use lifecycle.state from API
+    // States: open, expired, resolved, refunded, canceled
+    if (statusFilter !== 'all') {
+      result = result.filter((bounty) => {
+        const state = bounty.lifecycle?.state || 'open';
+        return state === statusFilter;
+      });
+    }
+
+    // 3. Network Filter
+    if (networkFilter !== 'all') {
+      result = result.filter(b => b.network === networkFilter);
+    }
+
+    // 4. Sort
+    result.sort((a, b) => {
+      const [key, dir] = sortOption.split('-');
+      let valA, valB;
+
+      if (key === 'deadline') {
+        valA = Number(a.deadline);
+        valB = Number(b.deadline);
+      } else if (key === 'amount') {
+        valA = Number(a.amount);
+        valB = Number(b.amount);
+      }
+
+      if (dir === 'asc') return valA - valB;
+      return valB - valA;
+    });
+
+    return result;
+  }, [sponsoredBounties, searchQuery, statusFilter, networkFilter, sortOption]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredBounties.length / ITEMS_PER_PAGE));
+  const paginatedBounties = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredBounties.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredBounties, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, networkFilter, sponsoredBounties.length]);
+
+  const handlePrevPage = () => {
+    setCurrentPage((prev) => Math.max(1, prev - 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage((prev) => Math.min(totalPages, prev + 1));
+  };
+
   // If user hasn't connected a wallet yet, show the empty state prompt.
   if (showEmptyState) {
     return (
@@ -108,45 +186,132 @@ export function SponsoredTab({
 
       <div className="animate-fade-in-up delay-400">
         <div>
-          {/* Show empty state if there are no sponsored bounties */}
-          {displayBounties.length === 0 ? (
-            <div className="text-center py-[60px] px-5">
-              <p className="text-sm font-light text-muted-foreground">No bounties found</p>
-            </div>
-          ) : (
-            <>
-              {/* Pagination controls if more than one page */}
+          {/* Filters and Pagination Toolbar */}
+          {sponsoredBounties.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4 mx-1 p-1">
+              {/* Left side: Filters */}
+              <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
+                {/* Search */}
+                <div className="relative flex-grow min-w-[200px] max-w-xs">
+                  <input
+                    type="text"
+                    placeholder="Search bounties..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full !h-9 !px-4 !py-1 !mb-0 !rounded-[32px] border border-border/60 bg-card !text-xs text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all shadow-sm"
+                  />
+                </div>
+
+                {/* Status Filter */}
+                <div className="relative">
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="!h-9 !pl-4 !pr-10 !py-1 !mb-0 !rounded-[32px] border border-border/60 bg-card !text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer appearance-none shadow-sm hover:border-primary/40 transition-colors"
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                      backgroundPosition: 'right 0.5rem center',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundSize: '1.2em 1.2em'
+                    }}
+                  >
+                    <option value="all">All Status</option>
+                    <option value="open">Open</option>
+                    <option value="expired">Expired</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="refunded">Refunded</option>
+                    <option value="canceled">Canceled</option>
+                  </select>
+                </div>
+
+                {/* Network Filter */}
+                <div className="relative">
+                  <select
+                    value={networkFilter}
+                    onChange={(e) => setNetworkFilter(e.target.value)}
+                    className="!h-9 !pl-4 !pr-10 !py-1 !mb-0 !rounded-[32px] border border-border/60 bg-card !text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer appearance-none shadow-sm hover:border-primary/40 transition-colors"
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                      backgroundPosition: 'right 0.5rem center',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundSize: '1.2em 1.2em'
+                    }}
+                  >
+                    <option value="all">All Networks</option>
+                    <option value="MEZO_TESTNET">Mezo Testnet</option>
+                    <option value="BASE_SEPOLIA">Base Sepolia</option>
+                  </select>
+                </div>
+
+                {/* Sort Control */}
+                <div className="relative">
+                  <select
+                    value={sortOption}
+                    onChange={(e) => setSortOption(e.target.value)}
+                    className="!h-9 !pl-4 !pr-10 !py-1 !mb-0 !rounded-[32px] border border-border/60 bg-card !text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer appearance-none shadow-sm hover:border-primary/40 transition-colors"
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                      backgroundPosition: 'right 0.5rem center',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundSize: '1.2em 1.2em'
+                    }}
+                  >
+                    <option value="deadline-asc">Deadline (Earliest)</option>
+                    <option value="deadline-desc">Deadline (Latest)</option>
+                    <option value="amount-asc">Amount (Low to High)</option>
+                    <option value="amount-desc">Amount (High to Low)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Right side: Pagination controls */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-end mb-4 text-sm text-muted-foreground">
+                <div className="flex items-center text-sm text-muted-foreground shrink-0">
                   <button
                     type="button"
                     onClick={handlePrevPage}
                     disabled={currentPage === 1}
                     aria-label="Previous bounties"
-                    className="w-6 h-6 rounded-full bg-muted hover:bg-muted/80 text-foreground flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed -mr-1"
+                    className="w-6 h-6 rounded-full bg-muted hover:bg-muted/80 text-foreground flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed border border-border/40"
                   >
                     <ArrowIcon direction="prev" className="h-3 w-3" />
                   </button>
-                  <span className="text-sm font-medium min-w-[3rem] text-center">
-                    {currentPage}/{totalPages}
+                  <span className="text-xs font-medium min-w-[3rem] text-center tabular-nums">
+                    {currentPage} / {totalPages}
                   </span>
                   <button
                     type="button"
                     onClick={handleNextPage}
                     disabled={currentPage === totalPages}
                     aria-label="Next bounties"
-                    className="w-6 h-6 rounded-full bg-muted hover:bg-muted/80 text-foreground flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed -ml-1"
+                    className="w-6 h-6 rounded-full bg-muted hover:bg-muted/80 text-foreground flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed border border-border/40"
                   >
                     <ArrowIcon direction="next" className="h-3 w-3" />
                   </button>
                 </div>
               )}
+            </div>
+          )}
 
+          {/* Show empty state if there are no bounties matching filters */}
+          {paginatedBounties.length === 0 ? (
+            <div className="text-center py-[60px] px-5">
+              <p className="text-sm font-light text-muted-foreground">
+                {sponsoredBounties.length === 0 ? 'No bounties found' : 'No bounties match your filters'}
+              </p>
+            </div>
+          ) : (
+            <>
               {/* List of sponsored bounties */}
               <div className="space-y-3">
-                {displayBounties.map((bounty) => {
+                {paginatedBounties.map((bounty) => {
                   const isExpanded = expandedBountyId === bounty.bountyId;
-                  const isExpired = Number(bounty.deadline) < Math.floor(Date.now() / 1000);
+                  const lifecycleState = bounty.lifecycle?.state || 'open';
+                  const lifecycleLabel = bounty.lifecycle?.label || '';
+                  const countdownLabel = getCountdownLabel(bounty);
+                  const timelineLabel = countdownLabel ? `${countdownLabel} left` : lifecycleLabel || 'Open';
+                  const isTerminal = ['resolved', 'refunded', 'canceled'].includes(lifecycleState);
+                  const isExpired = bounty.isExpired || lifecycleState === 'expired';
                   const allowlistData = allowlists[bounty.bountyId] || [];
                   const isAllowlistLoading = !!allowlistLoading[bounty.bountyId];
                   const issueLinkParams = {
@@ -179,9 +344,7 @@ export function SponsoredTab({
                             </div>
                           </button>
                           <div className="mt-1 text-muted-foreground text-[13px] font-light">
-                            {formatTimeLeft(bounty.deadline) === 'Expired'
-                              ? 'Expired'
-                              : `${formatTimeLeft(bounty.deadline)} left`}
+                            {timelineLabel}
                           </div>
                         </div>
 
@@ -217,7 +380,8 @@ export function SponsoredTab({
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground/80">Deadline</span>
                               <span className="text-foreground">
-                                {formatDeadlineDate(bounty.deadline)} {isExpired ? '(Expired)' : ''}
+                                {formatDeadlineDate(bounty.deadline)}{' '}
+                                {isTerminal ? `(${lifecycleLabel})` : isExpired ? '(Expired)' : ''}
                               </span>
                             </div>
                             <div className="flex items-center justify-between">
@@ -244,11 +408,11 @@ export function SponsoredTab({
                             )}
                           </div>
 
-                          {/* Refund button if the bounty is open and expired */}
-                          {refundEnabled && bounty.status === 'open' && isExpired && (
+                          {/* Refund button if eligible */}
+                          {refundEnabled && bounty.refundEligible && (
                             <Link
                               href={`/refund?bountyId=${bounty.bountyId}`}
-                              className="inline-flex items-center justify-center rounded-full border border-border/70 px-4 py-2 text-xs font-medium text-destructive/80 hover:border-destructive/60 hover:text-destructive transition-colors"
+                              className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
                             >
                               Request Refund
                             </Link>
@@ -293,4 +457,3 @@ export function SponsoredTab({
     </>
   );
 }
-

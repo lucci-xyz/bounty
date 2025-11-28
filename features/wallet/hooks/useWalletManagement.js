@@ -22,6 +22,7 @@ const DELETE_CONFIRMATION_TEXT = 'i want to remove my wallet';
  * @param {function} props.showError        Show error modal function
  * @param {function} props.fetchEarningsData Refreshes earnings after changes
  * @param {function} props.fetchSponsoredData Refreshes sponsored data after changes
+ * @param {function} props.refreshProfileData Refreshes profile/wallet data after changes
  * @returns {object} Modal state and handlers for both deleting and changing wallet
  */
 export function useWalletManagement({
@@ -33,7 +34,8 @@ export function useWalletManagement({
   chain,
   showError,
   fetchEarningsData,
-  fetchSponsoredData
+  fetchSponsoredData,
+  refreshProfileData
 }) {
   // Delete wallet modal state
   const [showDeleteWalletModal, setShowDeleteWalletModal] = useState(false);
@@ -115,6 +117,7 @@ export function useWalletManagement({
       }
 
       await fetchEarningsData?.();
+      await refreshProfileData?.();
       setShowDeleteWalletModal(false);
       setDeleteConfirmation('');
     } catch (error) {
@@ -123,7 +126,7 @@ export function useWalletManagement({
     } finally {
       setDeleteLoading(false);
     }
-  }, [deleteConfirmation, fetchEarningsData]);
+  }, [deleteConfirmation, fetchEarningsData, refreshProfileData]);
 
   /**
    * Handles updating the user's wallet by requesting a SIWE message signature.
@@ -192,6 +195,7 @@ export function useWalletManagement({
 
       await fetchEarningsData?.();
       await fetchSponsoredData?.();
+      await refreshProfileData?.();
 
       setTimeout(() => {
         setShowChangeWalletModal(false);
@@ -223,7 +227,8 @@ export function useWalletManagement({
     isConnected,
     isLocalMode,
     showError,
-    walletClient
+    walletClient,
+    refreshProfileData
   ]);
 
   /**

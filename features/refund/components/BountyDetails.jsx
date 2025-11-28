@@ -6,9 +6,8 @@
  * @param {Object} props
  * @param {Object} props.bountyInfo - Bounty information object
  * @param {Object} props.network - Network object with token info
- * @param {string} props.sponsorDisplay - Formatted sponsor address
  */
-export function BountyDetails({ bountyInfo, network, sponsorDisplay }) {
+export function BountyDetails({ bountyInfo, network }) {
   if (!bountyInfo) {
     return null;
   }
@@ -25,15 +24,6 @@ export function BountyDetails({ bountyInfo, network, sponsorDisplay }) {
         <span>Deadline</span>
         <span className="font-medium">{bountyInfo.deadline}</span>
       </div>
-      <div className="flex items-center justify-between text-foreground">
-        <span>Status</span>
-        <span className="font-medium">{bountyInfo.status}</span>
-      </div>
-      <div className="flex items-center justify-between text-foreground">
-        <span>Sponsor</span>
-        <code className="text-xs">{sponsorDisplay}</code>
-      </div>
     </div>
   );
 }
-

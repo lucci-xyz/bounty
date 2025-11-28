@@ -2,6 +2,9 @@ import { logger } from '@/shared/lib/logger';
 import { getSession } from '@/shared/lib/session';
 import { prClaimQueries, bountyQueries } from '@/shared/server/db/prisma';
 
+// Bounties in these statuses have no funds left (sponsor withdrew)
+const WITHDRAWN_STATUSES = new Set(['canceled', 'refunded']);
+
 export async function GET(request) {
   try {
     const session = await getSession();
@@ -17,7 +20,16 @@ export async function GET(request) {
     const bountiesWithClaims = await Promise.all(
       claims.map(async (claim) => {
         const bounty = await bountyQueries.findById(claim.bountyId);
+        if (!bounty || WITHDRAWN_STATUSES.has(bounty.status)) {
+          logger.info('Skipping claim tied to closed bounty', {
+            claimId: claim.id,
+            bountyId: claim.bountyId,
+            bountyStatus: bounty?.status
+          });
+          return null;
+        }
         return {
+          claimId: claim.id,
           ...bounty,
           claimStatus: claim.status,
           prNumber: claim.prNumber,
@@ -30,6 +42,7 @@ export async function GET(request) {
 
     // Calculate total earned (only resolved/paid bounties)
     const totalEarned = bountiesWithClaims
+      .filter(Boolean)
       .filter(b => b && (b.claimStatus === 'resolved' || b.claimStatus === 'paid'))
       .reduce((sum, b) => {
         const decimals = b.tokenSymbol === 'MUSD' ? 18 : 6;
@@ -38,7 +51,7 @@ export async function GET(request) {
       }, 0);
 
     return Response.json({
-      bounties: bountiesWithClaims.filter(b => b !== null),
+      bounties: bountiesWithClaims.filter(Boolean),
       totalEarned: Math.round(totalEarned * 100) / 100
     });
   } catch (error) {
@@ -46,4 +59,3 @@ export async function GET(request) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
-

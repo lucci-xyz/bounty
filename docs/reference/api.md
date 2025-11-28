@@ -13,6 +13,7 @@ Base path: `/api/*`. Responses are JSON with either `{ success, ... }` or `{ err
 | GET | `/api/oauth/user` | Session | Returns `{ githubId, githubUsername }` or 401. |
 | POST | `/api/oauth/logout` | Session | Destroys the current session. |
 | GET | `/api/admin/check` | Session | Returns `{ isAdmin }` based on `ADMIN_GITHUB_IDS`. |
+| GET | `/api/admin/fees` | Admin session | Returns protocol fee balances for all configured networks. |
 
 ## Wallets
 | Method | Path | Auth | Notes |
@@ -32,6 +33,11 @@ Base path: `/api/*`. Responses are JSON with either `{ success, ... }` or `{ err
 | GET | `/api/allowlist/[bountyId]` | GitHub session | Sponsor-only allowlist read. |
 | POST | `/api/allowlist/[bountyId]` | GitHub session | Sponsor-only add `{ address }` (auto-creates user). |
 | DELETE | `/api/allowlist/[bountyId]` | GitHub session | Sponsor-only delete `{ allowlistId }`. |
+
+## Refunds
+| Method | Path | Auth | Notes |
+| --- | --- | --- | --- |
+| POST | `/api/refunds/request` | GitHub session | Custodial refund path. Body `{ bountyId }`. Requires the caller to own the bounty (by GitHub ID), checks expiry, and submits `refundExpired` using the configured custody wallet for the bounty’s network. |
 
 ## User dashboards
 | Method | Path | Auth | Notes |

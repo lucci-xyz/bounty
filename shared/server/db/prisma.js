@@ -1,6 +1,7 @@
 import { logger } from '@/shared/lib/logger';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { CONFIG } from '../config.js';
+import { isValidStatus, BOUNTY_STATUS } from '@/shared/lib/status';
 
 // Prisma client instance
 const prisma = new PrismaClient();
@@ -110,6 +111,11 @@ export const bountyQueries = {
     if (!bountyData.chainId) throw new Error('Chain ID is required to create bounty');
     if (!bountyData.tokenSymbol) throw new Error('Token symbol is required to create bounty');
     
+    const status = bountyData.status || BOUNTY_STATUS.OPEN;
+    if (!isValidStatus(status)) {
+      throw new Error(`Invalid bounty status: ${status}. Valid: open, resolved, refunded, canceled`);
+    }
+    
     const data = {
       bountyId: bountyData.bountyId,
       repoFullName: bountyData.repoFullName,
@@ -120,7 +126,7 @@ export const bountyQueries = {
       token: bountyData.token,
       amount: bountyData.amount,
       deadline: BigInt(bountyData.deadline),
-      status: bountyData.status,
+      status,
       txHash: bountyData.txHash || null,
       network: bountyData.network,
       chainId: bountyData.chainId,
@@ -192,6 +198,9 @@ export const bountyQueries = {
    * @returns {Promise<object>}
    */
   updateStatus: async (bountyId, status, txHash = null) => {
+    if (!isValidStatus(status)) {
+      throw new Error(`Invalid bounty status: ${status}. Valid: open, resolved, refunded, canceled`);
+    }
     const bountySelect = await getBountySelect();
     const bounty = await prisma.bounty.update({
       where: { bountyId },
@@ -487,6 +496,24 @@ export const prClaimQueries = {
   },
 
   /**
+   * Finds a PR claim by its ID.
+   */
+  findById: async (id) => {
+    const claim = await prisma.prClaim.findUnique({
+      where: { id }
+    });
+
+    if (!claim) return null;
+
+    return {
+      ...claim,
+      prAuthorGithubId: Number(claim.prAuthorGithubId),
+      createdAt: Number(claim.createdAt),
+      resolvedAt: claim.resolvedAt ? Number(claim.resolvedAt) : null
+    };
+  },
+
+  /**
    * Counts PR claims for a list of bounty IDs.
    * @param {Array} bountyIds 
    * @returns {Promise<object>}
@@ -512,6 +539,33 @@ export const prClaimQueries = {
       acc[entry.bountyId] = entry._count?.bountyId ? Number(entry._count.bountyId) : 0;
       return acc;
     }, {});
+  },
+
+  /**
+   * Counts unique contributors who were paid for a list of resolved bounty IDs.
+   * Uses efficient groupBy at database level - groups by contributor and counts groups.
+   * @param {Array<string>} resolvedBountyIds - Array of resolved bounty IDs
+   * @returns {Promise<number>} Number of unique contributors who were paid
+   */
+  countUniquePaidContributors: async (resolvedBountyIds = []) => {
+    if (!Array.isArray(resolvedBountyIds) || resolvedBountyIds.length === 0) {
+      return 0;
+    }
+
+    // Use groupBy to get unique contributors - database does the grouping efficiently
+    const uniqueContributorGroups = await prisma.prClaim.groupBy({
+      by: ['prAuthorGithubId'],
+      where: {
+        bountyId: {
+          in: resolvedBountyIds
+        },
+        status: {
+          in: ['paid', 'resolved']
+        }
+      }
+    });
+
+    return uniqueContributorGroups.length;
   }
 };
 
@@ -778,4 +832,3 @@ export const allowlistQueries = {
  * Exports the Prisma client instance.
  */
 export { prisma };
-

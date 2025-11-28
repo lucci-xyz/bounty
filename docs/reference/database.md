@@ -123,10 +123,41 @@ erDiagram
 
 ---
 
+## Status Values
+
+### Bounty Status (follows contract standard, centralized in `shared/lib/status/index.js`)
+
+| Status | Contract Enum | Description |
+|--------|---------------|-------------|
+| `open` | 1 | Bounty is active, awaiting PR merge or expiry |
+| `resolved` | 2 | Bounty paid to contributor |
+| `refunded` | 3 | Bounty refunded to sponsor after expiry |
+| `canceled` | 4 | Bounty canceled by sponsor before deadline |
+
+Contract enum `0` = `None` (bounty doesn't exist, never returned to UI).
+
+### Lifecycle States
+
+The `lifecycle.state` field adds one additional state for open bounties:
+- `expired` — status is `open` but deadline has passed (eligible for refund)
+
+### PrClaim Status
+
+| Status | Description |
+|--------|-------------|
+| `pending` | PR opened, awaiting merge |
+| `paid` | PR merged, payout successful |
+| `failed` | Payout failed (retryable) |
+| `pending_wallet` | Awaiting contributor wallet link |
+
+---
+
 ## Usage Notes
 
 - `CONFIG.envTarget` is written to `Bounty.environment`; always filter queries by it.  
 - Prefer helpers in `shared/server/db/prisma.js` for:
   - BigInt conversions (`repoId`, etc.).
   - Optional issue metadata detection.
+  - Status validation (rejects invalid status values).
 - Links by `bountyId` (`PrClaim`, `Allowlist`) are enforced in application logic, not DB FKs.
+- Use `shared/lib/status` for status constants and helpers, never hardcode status strings.

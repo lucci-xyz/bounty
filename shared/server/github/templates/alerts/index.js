@@ -1,3 +1,2 @@
-export { renderMaintainerAlertComment } from './comment';
-export { renderMaintainerAlertEmail } from './email';
-
+export { renderSystemAlertComment } from './systemAlert';
+export { renderAlertEmailHtml } from './alertEmail';
