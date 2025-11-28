@@ -201,6 +201,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
         loading={repoManager.loadingRepos}
         close={repoManager.closeManageReposModal}
         handleInstallApp={repoManager.handleInstallApp}
+        hasBetaAccess={repoManager.hasBetaAccess}
       />
       {/* Allowlist management modal */}
       {allowlistEnabled && (
