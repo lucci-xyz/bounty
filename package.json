@@ -33,6 +33,7 @@
     "dotenv": "^16.3.1",
     "ethers": "^6.15.0",
     "flags": "^4.0.2",
+    "googleapis": "^166.0.0",
     "iron-session": "^8.0.3",
     "next": "^15.1.6",
     "octokit": "^3.1.2",

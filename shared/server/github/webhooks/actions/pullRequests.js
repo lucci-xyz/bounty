@@ -6,7 +6,7 @@ import {
   extractClosedIssues,
   extractMentionedIssues
 } from '../../client.js';
-import { bountyQueries, walletQueries, prClaimQueries } from '../../../db/prisma.js';
+import { bountyQueries, walletQueries, prClaimQueries, userQueries } from '../../../db/prisma.js';
 import { resolveBountyOnNetwork } from '../../../blockchain/contract.js';
 import { ethers } from 'ethers';
 import { notifyMaintainers } from '../../services/maintainerAlerts.js';
@@ -23,6 +23,7 @@ import {
 } from '../../templates/bounties';
 import { BRAND_SIGNATURE, FRONTEND_BASE, OG_ICON } from '../../constants.js';
 import { getLinkHref } from '@/shared/config/links';
+import { sendPrOpenedEmail } from '../../../notifications/email.js';
 
 const getIssueUrl = (repoFullName, issueNumber) => getLinkHref('github', 'issue', { repoFullName, issueNumber });
 const getPullUrl = (repoFullName, prNumber) => getLinkHref('github', 'pullRequest', { repoFullName, prNumber });
@@ -369,5 +370,27 @@ async function handlePRWithBounties(octokit, owner, repo, pull_request, reposito
         context: `Failed to record this PR as a claim for bounty ${bounty.bountyId}. This will prevent automatic payout when the PR is merged.`
       });
     }
+  }
+
+  // Send email notification to PR author (non-blocking)
+  try {
+    const user = await userQueries.findByGithubId(pull_request.user.id);
+    if (user?.email) {
+      const firstBounty = bounties[0];
+      await sendPrOpenedEmail({
+        to: user.email,
+        username: pull_request.user.login,
+        prNumber: pull_request.number,
+        prTitle: pull_request.title,
+        repoFullName: repository.full_name,
+        bountyAmount: totalAmount.toFixed(2),
+        tokenSymbol,
+        issueNumber: firstBounty.issueNumber,
+        frontendUrl: FRONTEND_BASE
+      });
+    }
+  } catch (emailError) {
+    // Non-blocking - log but don't fail the webhook
+    logger.warn('Failed to send PR opened email:', emailError.message);
   }
 }
