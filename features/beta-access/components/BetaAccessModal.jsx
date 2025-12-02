@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useBetaAccess } from '@/features/beta-access';
 import { resolveBetaStep } from '@/features/beta-access/lib/utils';
@@ -35,27 +35,13 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
     setMounted(true);
   }, []);
 
-  // Track if we've already refreshed for this modal open session using a ref
-  const hasRefreshedRef = useRef(false);
-  const lastOpenStateRef = useRef(false);
-
-  // Refresh beta status when modal opens (only once per open session)
-  useEffect(() => {
-    // Reset refresh flag when modal closes
-    if (!isOpen) {
-      hasRefreshedRef.current = false;
-      lastOpenStateRef.current = false;
-      return;
-    }
-    
-    // Only refresh once when modal first opens (when transitioning from closed to open)
-    if (!lastOpenStateRef.current && !hasRefreshedRef.current) {
-      refreshAccess();
-      hasRefreshedRef.current = true;
-    }
-    
-    lastOpenStateRef.current = isOpen;
-  }, [isOpen, refreshAccess]);
+  // Note: We intentionally do NOT call refreshAccess() when modal opens.
+  // The BetaAccessProvider already checks beta status on mount.
+  // Calling refreshAccess() here caused an infinite loop because:
+  // 1. refreshAccess() sets loading=true
+  // 2. Parent component re-renders with different JSX structure based on betaLoading
+  // 3. Modal remounts in different tree position
+  // 4. Effect runs again → calls refreshAccess() → infinite loop
 
   // Reset email field when modal closes or step changes
   useEffect(() => {
