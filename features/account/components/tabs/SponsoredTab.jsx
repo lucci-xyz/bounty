@@ -18,21 +18,26 @@
  * @param {Object} props.allowlistLoading - Loading state for each bounty's allowlist.
  * @param {function} props.openAllowlistModal - Handler to open the manage allowlist modal.
  */
-import { useState, useMemo, useEffect } from 'react';
-import Link from 'next/link';
-import { ArrowIcon, MoneyIcon, PlusIcon, WalletIcon } from '@shared/components/Icons';
-import { StatBlock } from '@/features/account/components/StatBlock';
-import { formatAmount, formatDeadlineDate, formatTimeLeft } from '@/shared/lib';
-import { LinkFromCatalog } from '@/shared/components/LinkFromCatalog';
-import { useFlag } from '@/shared/providers/FlagProvider';
+import { useState, useMemo, useEffect } from "react";
+import Link from "next/link";
+import {
+  ArrowIcon,
+  MoneyIcon,
+  PlusIcon,
+  WalletIcon,
+} from "@shared/components/Icons";
+import { StatBlock } from "@/features/account/components/StatBlock";
+import { formatAmount, formatDeadlineDate, formatTimeLeft } from "@/shared/lib";
+import { LinkFromCatalog } from "@/shared/components/LinkFromCatalog";
+import { useFlag } from "@/shared/providers/FlagProvider";
 
 const ITEMS_PER_PAGE = 4;
 
 const getCountdownLabel = (bounty) => {
   const state = bounty?.lifecycle?.state;
-  if (state !== 'open') return null;
+  if (state !== "open") return null;
   const label = formatTimeLeft(bounty.deadline);
-  if (!label || label === '-' || label === 'Expired') return null;
+  if (!label || label === "-" || label === "Expired") return null;
   return label;
 };
 
@@ -45,16 +50,16 @@ export function SponsoredTab({
   handleToggleBounty,
   allowlists,
   allowlistLoading,
-  openAllowlistModal
+  openAllowlistModal,
 }) {
-  const allowlistEnabled = useFlag('allowlistFeature', false);
-  const refundEnabled = useFlag('refundFeature', false);
+  const allowlistEnabled = useFlag("allowlistFeature", false);
+  const refundEnabled = useFlag("refundFeature", false);
 
   // Local state for toolbar filters
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [networkFilter, setNetworkFilter] = useState('all');
-  const [sortOption, setSortOption] = useState('deadline-asc');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [networkFilter, setNetworkFilter] = useState("all");
+  const [sortOption, setSortOption] = useState("deadline-asc");
   const [currentPage, setCurrentPage] = useState(1);
 
   // Client-side filtering and sorting of the sponsor's bounties
@@ -66,47 +71,51 @@ export function SponsoredTab({
     // 1. Search
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(b => 
-        (b.repoFullName && b.repoFullName.toLowerCase().includes(query)) ||
-        (b.issueNumber && b.issueNumber.toString().includes(query))
+      result = result.filter(
+        (b) =>
+          (b.repoFullName && b.repoFullName.toLowerCase().includes(query)) ||
+          (b.issueNumber && b.issueNumber.toString().includes(query))
       );
     }
 
     // 2. Status Filter - use lifecycle.state from API
     // States: open, expired, resolved, refunded, canceled
-    if (statusFilter !== 'all') {
+    if (statusFilter !== "all") {
       result = result.filter((bounty) => {
-        const state = bounty.lifecycle?.state || 'open';
+        const state = bounty.lifecycle?.state || "open";
         return state === statusFilter;
       });
     }
 
     // 3. Network Filter
-    if (networkFilter !== 'all') {
-      result = result.filter(b => b.network === networkFilter);
+    if (networkFilter !== "all") {
+      result = result.filter((b) => b.network === networkFilter);
     }
 
     // 4. Sort
     result.sort((a, b) => {
-      const [key, dir] = sortOption.split('-');
+      const [key, dir] = sortOption.split("-");
       let valA, valB;
 
-      if (key === 'deadline') {
+      if (key === "deadline") {
         valA = Number(a.deadline);
         valB = Number(b.deadline);
-      } else if (key === 'amount') {
+      } else if (key === "amount") {
         valA = Number(a.amount);
         valB = Number(b.amount);
       }
 
-      if (dir === 'asc') return valA - valB;
+      if (dir === "asc") return valA - valB;
       return valB - valA;
     });
 
     return result;
   }, [sponsoredBounties, searchQuery, statusFilter, networkFilter, sortOption]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredBounties.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredBounties.length / ITEMS_PER_PAGE)
+  );
   const paginatedBounties = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredBounties.slice(startIndex, startIndex + ITEMS_PER_PAGE);
@@ -133,9 +142,12 @@ export function SponsoredTab({
             <MoneyIcon size={32} color="currentColor" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-3xl font-light text-foreground/90">Connect Wallet</h2>
+            <h2 className="text-3xl font-light text-foreground/90">
+              Connect Wallet
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Link a wallet to start funding issues and automating contributor rewards.
+              Link a wallet to start funding issues and automating contributor
+              rewards.
             </p>
           </div>
           <div className="flex flex-col gap-3">
@@ -164,13 +176,13 @@ export function SponsoredTab({
     return (
       <div className="min-h-[420px] flex items-center justify-center animate-fade-in-up delay-100">
         <div className="w-full max-w-lg rounded-[36px] border border-border/60 bg-card p-10 text-center shadow-[0_50px_140px_rgba(15,23,42,0.18)] space-y-6">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <PlusIcon size={32} color="currentColor" />
-          </div>
           <div className="space-y-2">
-            <h2 className="text-3xl font-light text-foreground/90">Create Your First Bounty</h2>
+            <h2 className="text-3xl font-light text-foreground/90">
+              Create Your First Bounty
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Your wallet is connected! Fund a GitHub issue to attract contributors and automate payouts.
+              Your wallet is connected! Fund a GitHub issue to attract
+              contributors and automate payouts.
             </p>
           </div>
           <div className="flex flex-col gap-3">
@@ -178,8 +190,7 @@ export function SponsoredTab({
               href="/attach-bounty"
               className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
             >
-              <PlusIcon size={18} />
-              <span className="ml-2">Create a Bounty</span>
+              Create a Bounty
             </Link>
           </div>
         </div>
@@ -195,14 +206,14 @@ export function SponsoredTab({
         <StatBlock
           className="animate-fade-in-up delay-100"
           label="Value Locked"
-          value={`$${stats?.totalValueLocked?.toLocaleString() || '0'}`}
+          value={`$${stats?.totalValueLocked?.toLocaleString() || "0"}`}
           hint={`Across ${stats?.openBounties || 0} open bounties`}
           valueClassName="text-primary"
         />
         <StatBlock
           className="animate-fade-in-up delay-200"
           label="Total Paid"
-          value={`$${stats?.totalValuePaid?.toLocaleString() || '0'}`}
+          value={`$${stats?.totalValuePaid?.toLocaleString() || "0"}`}
           hint={`${stats?.resolvedBounties || 0} contributors`}
           valueClassName="text-primary"
         />
@@ -241,9 +252,9 @@ export function SponsoredTab({
                     className="!h-9 !pl-4 !pr-10 !py-1 !mb-0 !rounded-[32px] border border-border/60 bg-card !text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer appearance-none shadow-sm hover:border-primary/40 transition-colors"
                     style={{
                       backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                      backgroundPosition: 'right 0.5rem center',
-                      backgroundRepeat: 'no-repeat',
-                      backgroundSize: '1.2em 1.2em'
+                      backgroundPosition: "right 0.5rem center",
+                      backgroundRepeat: "no-repeat",
+                      backgroundSize: "1.2em 1.2em",
                     }}
                   >
                     <option value="all">All Status</option>
@@ -263,9 +274,9 @@ export function SponsoredTab({
                     className="!h-9 !pl-4 !pr-10 !py-1 !mb-0 !rounded-[32px] border border-border/60 bg-card !text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer appearance-none shadow-sm hover:border-primary/40 transition-colors"
                     style={{
                       backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                      backgroundPosition: 'right 0.5rem center',
-                      backgroundRepeat: 'no-repeat',
-                      backgroundSize: '1.2em 1.2em'
+                      backgroundPosition: "right 0.5rem center",
+                      backgroundRepeat: "no-repeat",
+                      backgroundSize: "1.2em 1.2em",
                     }}
                   >
                     <option value="all">All Networks</option>
@@ -282,9 +293,9 @@ export function SponsoredTab({
                     className="!h-9 !pl-4 !pr-10 !py-1 !mb-0 !rounded-[32px] border border-border/60 bg-card !text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer appearance-none shadow-sm hover:border-primary/40 transition-colors"
                     style={{
                       backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                      backgroundPosition: 'right 0.5rem center',
-                      backgroundRepeat: 'no-repeat',
-                      backgroundSize: '1.2em 1.2em'
+                      backgroundPosition: "right 0.5rem center",
+                      backgroundRepeat: "no-repeat",
+                      backgroundSize: "1.2em 1.2em",
                     }}
                   >
                     <option value="deadline-asc">Deadline (Earliest)</option>
@@ -328,7 +339,9 @@ export function SponsoredTab({
           {paginatedBounties.length === 0 ? (
             <div className="text-center py-[60px] px-5">
               <p className="text-sm font-light text-muted-foreground">
-                {sponsoredBounties.length === 0 ? 'No bounties found' : 'No bounties match your filters'}
+                {sponsoredBounties.length === 0
+                  ? "No bounties found"
+                  : "No bounties match your filters"}
               </p>
             </div>
           ) : (
@@ -337,19 +350,30 @@ export function SponsoredTab({
               <div className="space-y-3">
                 {paginatedBounties.map((bounty) => {
                   const isExpanded = expandedBountyId === bounty.bountyId;
-                  const lifecycleState = bounty.lifecycle?.state || 'open';
-                  const lifecycleLabel = bounty.lifecycle?.label || '';
+                  const lifecycleState = bounty.lifecycle?.state || "open";
+                  const lifecycleLabel = bounty.lifecycle?.label || "";
                   const countdownLabel = getCountdownLabel(bounty);
-                  const timelineLabel = countdownLabel ? `${countdownLabel} left` : lifecycleLabel || 'Open';
-                  const isTerminal = ['resolved', 'refunded', 'canceled'].includes(lifecycleState);
-                  const isExpired = bounty.isExpired || lifecycleState === 'expired';
+                  const timelineLabel = countdownLabel
+                    ? `${countdownLabel} left`
+                    : lifecycleLabel || "Open";
+                  const isTerminal = [
+                    "resolved",
+                    "refunded",
+                    "canceled",
+                  ].includes(lifecycleState);
+                  const isExpired =
+                    bounty.isExpired || lifecycleState === "expired";
                   const allowlistData = allowlists[bounty.bountyId] || [];
-                  const isAllowlistLoading = !!allowlistLoading[bounty.bountyId];
+                  const isAllowlistLoading =
+                    !!allowlistLoading[bounty.bountyId];
                   const issueLinkParams = {
                     repoFullName: bounty.repoFullName,
-                    issueNumber: bounty.issueNumber
+                    issueNumber: bounty.issueNumber,
                   };
-                  const explorerLinkKey = bounty.network === 'MEZO_TESTNET' ? 'mezoTestnetTx' : 'baseSepoliaTx';
+                  const explorerLinkKey =
+                    bounty.network === "MEZO_TESTNET"
+                      ? "mezoTestnetTx"
+                      : "baseSepoliaTx";
 
                   return (
                     <div
@@ -370,7 +394,7 @@ export function SponsoredTab({
                                 {bounty.repoFullName}#{bounty.issueNumber}
                               </div>
                               <span className="text-xs text-muted-foreground">
-                                {isExpanded ? 'Hide details' : 'Show details'}
+                                {isExpanded ? "Hide details" : "Show details"}
                               </span>
                             </div>
                           </button>
@@ -382,7 +406,8 @@ export function SponsoredTab({
                         {/* Reward amount and claim count */}
                         <div className="ml-auto flex flex-col items-end gap-1">
                           <div className="text-foreground text-base font-light tracking-tight text-[#0D473F]">
-                            {formatAmount(bounty.amount, bounty.tokenSymbol)} {bounty.tokenSymbol}
+                            {formatAmount(bounty.amount, bounty.tokenSymbol)}{" "}
+                            {bounty.tokenSymbol}
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-muted-foreground text-xs font-light">
@@ -409,22 +434,34 @@ export function SponsoredTab({
                           {/* Bounty meta info */}
                           <div className="space-y-3 text-sm font-light text-foreground/80">
                             <div className="flex items-center justify-between">
-                              <span className="text-muted-foreground/80">Deadline</span>
+                              <span className="text-muted-foreground/80">
+                                Deadline
+                              </span>
                               <span className="text-foreground">
-                                {formatDeadlineDate(bounty.deadline)}{' '}
-                                {isTerminal ? `(${lifecycleLabel})` : isExpired ? '(Expired)' : ''}
+                                {formatDeadlineDate(bounty.deadline)}{" "}
+                                {isTerminal
+                                  ? `(${lifecycleLabel})`
+                                  : isExpired
+                                  ? "(Expired)"
+                                  : ""}
                               </span>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-muted-foreground/80">Network</span>
+                              <span className="text-muted-foreground/80">
+                                Network
+                              </span>
                               <span className="text-foreground">
-                                {bounty.network === 'MEZO_TESTNET' ? 'Mezo Testnet' : 'Base Sepolia'}
+                                {bounty.network === "MEZO_TESTNET"
+                                  ? "Mezo Testnet"
+                                  : "Base Sepolia"}
                               </span>
                             </div>
                             {/* Transaction link, if available */}
                             {bounty.txHash && (
                               <div className="grid grid-cols-2 gap-2 items-center">
-                                <span className="text-muted-foreground/80 text-sm text-left">Transaction</span>
+                                <span className="text-muted-foreground/80 text-sm text-left">
+                                  Transaction
+                                </span>
                                 <div className="text-right">
                                   <LinkFromCatalog
                                     section="explorers"
@@ -450,7 +487,7 @@ export function SponsoredTab({
                           )}
 
                           {/* Allowlist info and manage button */}
-                          {allowlistEnabled && bounty.status === 'open' && (
+                          {allowlistEnabled && bounty.status === "open" && (
                             <div className="rounded-2xl border border-border/60 bg-white/40 p-4 shadow-sm">
                               <div className="flex items-center justify-between gap-3">
                                 <div>
@@ -459,15 +496,19 @@ export function SponsoredTab({
                                   </div>
                                   <div className="text-sm font-light">
                                     {isAllowlistLoading && !allowlistData.length
-                                      ? 'Loading allowlist…'
+                                      ? "Loading allowlist…"
                                       : allowlistData.length > 0
-                                        ? `${allowlistData.length} address${allowlistData.length === 1 ? '' : 'es'}`
-                                        : 'Open to anyone'}
+                                      ? `${allowlistData.length} address${
+                                          allowlistData.length === 1 ? "" : "es"
+                                        }`
+                                      : "Open to anyone"}
                                   </div>
                                 </div>
                                 <button
                                   type="button"
-                                  onClick={() => openAllowlistModal(bounty.bountyId)}
+                                  onClick={() =>
+                                    openAllowlistModal(bounty.bountyId)
+                                  }
                                   className="text-xs font-medium text-foreground/80 hover:text-primary transition-colors"
                                 >
                                   Manage
