@@ -292,7 +292,13 @@ export function renderBountyExpiredEmail({
               >
                 <tr>
                   <td style="padding-bottom: 4px;">
-                    BountyPay by Lucci Labs
+                    BountyPay by <a
+                      href="https://luccilabs.xyz"
+                      style="
+                        color: #9ca3af;
+                        text-decoration: underline;
+                      "
+                    >Lucci Labs</a>
                   </td>
                 </tr>
                 <tr>
@@ -300,96 +306,6 @@ export function renderBountyExpiredEmail({
                     <span style="font-size: 11px;">
                       Building payment infrastructure for open source work.
                     </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td>
-                    <table
-                      role="presentation"
-                      cellspacing="0"
-                      cellpadding="0"
-                      border="0"
-                      align="center"
-                    >
-                      <tr>
-                        <td style="padding: 0 4px;">
-                          <a
-                            href="https://luccilabs.xyz"
-                            style="
-                              text-decoration: none;
-                              color: #6b7280;
-                              font-size: 11px;
-                            "
-                          >
-                            <span
-                              style="
-                                display: inline-block;
-                                padding: 3px 8px;
-                              "
-                            >
-                              Website
-                            </span>
-                          </a>
-                        </td>
-                        <td style="padding: 0 4px;">
-                          <a
-                            href="https://github.com/lucci-xyz"
-                            style="
-                              text-decoration: none;
-                              color: #6b7280;
-                              font-size: 11px;
-                            "
-                          >
-                            <span
-                              style="
-                                display: inline-block;
-                                padding: 3px 8px;
-                              "
-                            >
-                              GitHub
-                            </span>
-                          </a>
-                        </td>
-                        <td style="padding: 0 4px;">
-                          <a
-                            href="https://x.com/LucciLabs"
-                            style="
-                              text-decoration: none;
-                              color: #6b7280;
-                              font-size: 11px;
-                            "
-                          >
-                            <span
-                              style="
-                                display: inline-block;
-                                padding: 3px 8px;
-                              "
-                            >
-                              X
-                            </span>
-                          </a>
-                        </td>
-                        <td style="padding: 0 4px;">
-                          <a
-                            href="https://discord.gg/MWxWzRVSx"
-                            style="
-                              text-decoration: none;
-                              color: #6b7280;
-                              font-size: 11px;
-                            "
-                          >
-                            <span
-                              style="
-                                display: inline-block;
-                                padding: 3px 8px;
-                              "
-                            >
-                              Discord
-                            </span>
-                          </a>
-                        </td>
-                      </tr>
-                    </table>
                   </td>
                 </tr>
               </table>
@@ -416,11 +332,7 @@ Manage this bounty from your dashboard: ${frontendUrl}/account
 
 The issue itself remains open on GitHub. Only the bounty reward has expired.
 
-BountyPay by Lucci Labs
-Website: luccilabs.xyz
-GitHub: github.com/lucci-xyz
-X: x.com/LucciLabs
-Discord: discord.gg/MWxWzRVSx
+BountyPay by Lucci Labs (luccilabs.xyz)
   `.trim();
 
   return { subject, html, text };
