@@ -13,7 +13,7 @@ export function renderBountyExpiredEmail({
   const issueUrl = `https://github.com/${repoFullName}/issues/${issueNumber}`;
   const logoUrl = `${frontendUrl}/icons/og.png`;
 
-  const subject = `Your ${bountyAmount} ${tokenSymbol} bounty has expired`;
+  const subject = `Your bounty has expired`;
 
   const html = `
     <!DOCTYPE html>
@@ -99,19 +99,6 @@ export function renderBountyExpiredEmail({
                         </td>
                       </tr>
                     </table>
-                  </td>
-                </tr>
-
-                <!-- Title -->
-                <tr>
-                  <td
-                    style="
-                      font-size: 20px;
-                      font-weight: 600;
-                      padding-bottom: 8px;
-                    "
-                  >
-                    Bounty expired
                   </td>
                 </tr>
 
