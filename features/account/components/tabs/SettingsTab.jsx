@@ -127,7 +127,7 @@ export function SettingsTab({
         ) : (
           <div className="text-center py-2">
             <p className="mb-2 text-sm font-light text-muted-foreground">No wallet linked</p>
-            <Link href="/link-wallet?type=payout">
+            <Link href="/app/link-wallet?type=payout">
               <button className="premium-btn bg-primary text-primary-foreground text-xs px-3 py-1.5">Link Wallet</button>
             </Link>
           </div>

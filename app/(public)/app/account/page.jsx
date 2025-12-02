@@ -18,3 +18,4 @@ export default function Account() {
     </AccountProvider>
   );
 }
+

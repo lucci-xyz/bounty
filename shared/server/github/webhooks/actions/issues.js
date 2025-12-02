@@ -10,7 +10,7 @@ export async function handleIssueOpened(payload) {
     const octokit = await getOctokit(installation.id);
     const [owner, repo] = repository.full_name.split('/');
 
-    const attachUrl = `${FRONTEND_BASE}/attach-bounty?repo=${encodeURIComponent(repository.full_name)}&issue=${
+    const attachUrl = `${FRONTEND_BASE}/app/attach-bounty?repo=${encodeURIComponent(repository.full_name)}&issue=${
       issue.number
     }&repoId=${repository.id}&installationId=${installation.id}`;
 

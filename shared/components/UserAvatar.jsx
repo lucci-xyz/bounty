@@ -1,6 +1,7 @@
 import { cn } from '@/shared/lib';
 
 const SIZE_MAP = {
+  32: { wrapper: 'h-8 w-8', initials: 'text-sm' },
   34: { wrapper: 'h-[34px] w-[34px]', initials: 'text-[13.6px]' },
   40: { wrapper: 'h-10 w-10', initials: 'text-lg' },
   48: { wrapper: 'h-12 w-12', initials: 'text-xl' }

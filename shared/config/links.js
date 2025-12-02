@@ -94,7 +94,7 @@ export const LINKS = Object.freeze({
     fontsApiPreconnect: internalStatic('https://fonts.googleapis.com'),
     fontsStaticPreconnect: internalStatic('https://fonts.gstatic.com'),
     fontsDmSansAndFriends: internalStatic(
-      'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Jetbrains+Mono:wght@400;500&display=swap'
+      'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&display=swap'
     ),
     badgeBase: externalStatic('https://img.shields.io/badge'),
     badgeLinkWallet: externalStatic('https://img.shields.io/badge/Link_Wallet-00827B?style=for-the-badge&logo=ethereum&logoColor=white')

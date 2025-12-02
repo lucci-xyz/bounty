@@ -56,7 +56,7 @@ function LinkWalletContent() {
       window.close();
       // If window.close() doesn't work (page wasn't opened via script), redirect home
       setTimeout(() => {
-        window.location.href = '/';
+        window.location.href = '/app';
       }, 100);
     }
   };
@@ -291,3 +291,4 @@ export default function LinkWallet() {
     </Suspense>
   );
 }
+
