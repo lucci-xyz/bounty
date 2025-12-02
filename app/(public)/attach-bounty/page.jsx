@@ -5,7 +5,7 @@
  * Handles main logic and view for connecting wallet, setting bounty amount and deadline.
  */
 
-import { useMemo, Suspense } from 'react';
+import { useMemo, Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import BetaAccessModal from '@/features/beta-access/components/BetaAccessModal';
@@ -64,19 +64,46 @@ function AttachBountyContent() {
   // Navigate back (or push) handler
   const handleBack = () => goBackOrPush(router);
 
+  // Track if modal was opened - once opened, keep it open until dismissed or access granted
+  // This prevents flickering when beta access state updates during loading
+  const [modalIsOpen, setModalIsOpen] = useState(false);
+  
+  useEffect(() => {
+    // Open modal if user doesn't have access and showBetaModal is true
+    if (!betaLoading && !hasAccess && showBetaModal) {
+      setModalIsOpen(true);
+    }
+    // Close modal if access is granted
+    if (!betaLoading && hasAccess && modalIsOpen) {
+      setModalIsOpen(false);
+    }
+  }, [betaLoading, hasAccess, showBetaModal, modalIsOpen]);
+
+  const handleModalClose = () => {
+    setModalIsOpen(false);
+    hideBetaModal();
+    handleBack();
+  };
+
   /**
    * Modal for beta access.
    * Shown if user does not have access.
+   * Once opened, stays open until dismissed or access is granted (prevents flickering during loading).
    */
   const betaModal = (
     <BetaAccessModal
-      isOpen={!hasAccess && showBetaModal}
-      onClose={handleBack}
-      onDismiss={handleBack}
+      isOpen={modalIsOpen}
+      onClose={handleModalClose}
+      onDismiss={handleModalClose}
       dismissLabel="Back"
       onAccessGranted={() => {
+        setModalIsOpen(false);
         hideBetaModal();
-        router.refresh();
+        // Refresh the page to update beta access state
+        // Use a small delay to ensure modal closes smoothly
+        setTimeout(() => {
+          router.refresh();
+        }, 100);
       }}
     />
   );

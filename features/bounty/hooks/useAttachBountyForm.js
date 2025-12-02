@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
 import { useNetwork } from '@/shared/providers/NetworkProvider';
 import { useBetaAccess } from '@/features/beta-access';
@@ -27,6 +27,7 @@ export function useAttachBountyForm({ issueData }) {
   const [isMounted, setIsMounted] = useState(false);
   // Beta modal control
   const [showBetaModal, setShowBetaModal] = useState(false);
+  const modalOpenedRef = useRef(false);
 
   // Wallet/account/network context
   const { address, isConnected, chain } = useAccount();
@@ -70,10 +71,19 @@ export function useAttachBountyForm({ issueData }) {
   /**
    * Updates the visibility of the beta access modal
    * depending on user access state.
+   * Once the modal is opened, keep it open until access is granted or user dismisses it.
    */
   useEffect(() => {
     if (!betaLoading) {
-      setShowBetaModal(!hasAccess);
+      // Only update if modal hasn't been opened yet, or if access was just granted
+      if (!modalOpenedRef.current && !hasAccess) {
+        setShowBetaModal(true);
+        modalOpenedRef.current = true;
+      } else if (hasAccess && modalOpenedRef.current) {
+        // Access was granted, close modal and reset ref
+        setShowBetaModal(false);
+        modalOpenedRef.current = false;
+      }
     }
   }, [betaLoading, hasAccess]);
 
@@ -205,7 +215,10 @@ export function useAttachBountyForm({ issueData }) {
     showBetaModal,
     betaLoading,
     hasAccess,
-    hideBetaModal: () => setShowBetaModal(false),
+    hideBetaModal: () => {
+      setShowBetaModal(false);
+      modalOpenedRef.current = false;
+    },
     supportedNetworkNames,
     isChainSupported,
     network,
