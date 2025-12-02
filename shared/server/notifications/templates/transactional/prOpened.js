@@ -13,157 +13,372 @@ export function renderPrOpenedEmail({
 }) {
   const prUrl = `https://github.com/${repoFullName}/pull/${prNumber}`;
   const issueUrl = `https://github.com/${repoFullName}/issues/${issueNumber}`;
-  
+  const logoUrl = `${frontendUrl}/icons/og.png`;
+
   const subject = `Your PR #${prNumber} is linked to a ${bountyAmount} ${tokenSymbol} bounty`;
 
   const html = `
     <!DOCTYPE html>
     <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-          line-height: 1.6;
-          color: #1f2937;
-          max-width: 600px;
-          margin: 0 auto;
-          padding: 20px;
-          background-color: #f9fafb;
-        }
-        .container {
-          background-color: #ffffff;
-          border-radius: 8px;
-          padding: 40px;
-          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-        }
-        .header {
-          text-align: center;
-          margin-bottom: 30px;
-        }
-        h1 {
-          color: #00827B;
-          font-size: 24px;
-          margin: 0 0 10px 0;
-        }
-        .bounty-amount {
-          background: linear-gradient(135deg, #00827B 0%, #39BEB7 100%);
-          color: #ffffff;
-          font-size: 28px;
-          font-weight: 700;
-          padding: 20px;
-          border-radius: 8px;
-          text-align: center;
-          margin: 20px 0;
-        }
-        p {
-          margin: 15px 0;
-          font-size: 16px;
-        }
-        .info-box {
-          background-color: #f0fdf4;
-          border-left: 4px solid #00827B;
-          padding: 16px 20px;
-          margin: 20px 0;
-          border-radius: 0 8px 8px 0;
-        }
-        .info-box strong {
-          color: #00827B;
-        }
-        .cta-button {
-          display: inline-block;
-          background-color: #00827B;
-          color: #ffffff;
-          padding: 14px 32px;
-          text-decoration: none;
-          border-radius: 6px;
-          font-weight: 600;
-          margin: 20px 0;
-        }
-        a {
-          color: #00827B;
-          text-decoration: none;
-        }
-        a:hover {
-          text-decoration: underline;
-        }
-        .footer {
-          text-align: center;
-          margin-top: 40px;
-          padding-top: 20px;
-          border-top: 1px solid #e5e7eb;
-          color: #6b7280;
-          font-size: 14px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>🎯 PR Linked to Bounty!</h1>
-        </div>
+      <head>
+        <meta charset="UTF-8" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0"
+        />
+        <title>${subject}</title>
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            background-color: #f3f4f6;
+            -webkit-font-smoothing: antialiased;
+          }
+        </style>
+      </head>
+      <body>
+        <table
+          role="presentation"
+          width="100%"
+          cellspacing="0"
+          cellpadding="0"
+          border="0"
+          style="background-color: #f3f4f6; padding: 24px 0;"
+        >
+          <tr>
+            <td align="center">
+              <!-- Main card -->
+              <table
+                role="presentation"
+                width="100%"
+                cellspacing="0"
+                cellpadding="0"
+                border="0"
+                style="
+                  max-width: 640px;
+                  width: 100%;
+                  background-color: #ffffff;
+                  border-radius: 12px;
+                  padding: 32px 40px;
+                  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+                  box-sizing: border-box;
+                  font-family: -apple-system, BlinkMacSystemFont, system-ui,
+                    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                  color: #111827;
+                "
+              >
+                <!-- Brand header -->
+                <tr>
+                  <td align="center" style="padding-bottom: 24px;">
+                    <table
+                      role="presentation"
+                      cellspacing="0"
+                      cellpadding="0"
+                      border="0"
+                      style="margin: 0 auto;"
+                    >
+                      <tr>
+                        <td style="padding-right: 8px;">
+                          <img
+                            src="${logoUrl}"
+                            alt="BountyPay"
+                            width="34"
+                            height="30"
+                            style="display: block; border-radius: 6px;"
+                          />
+                        </td>
+                        <td
+                          style="
+                            font-size: 15px;
+                            font-weight: 600;
+                            letter-spacing: 0.06em;
+                            text-transform: uppercase;
+                            color: #111827;
+                            white-space: nowrap;
+                          "
+                        >
+                          BountyPay
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
 
-        <p>Hi <strong>${username}</strong>,</p>
+                <!-- Greeting -->
+                <tr>
+                  <td
+                    style="
+                      font-size: 14px;
+                      line-height: 1.7;
+                      padding-bottom: 4px;
+                    "
+                  >
+                    Hi <strong>${username}</strong>,
+                  </td>
+                </tr>
 
-        <p>Great news! Your pull request has been linked to a bounty on BountyPay.</p>
+                <!-- Main copy -->
+                <tr>
+                  <td
+                    style="
+                      font-size: 14px;
+                      line-height: 1.7;
+                      padding-bottom: 20px;
+                    "
+                  >
+                    Your pull request has been linked to a bounty on BountyPay.
+                  </td>
+                </tr>
 
-        <div class="bounty-amount">
-          ${bountyAmount} ${tokenSymbol}
-        </div>
+                <!-- Summary table -->
+                <tr>
+                  <td>
+                    <table
+                      role="presentation"
+                      width="100%"
+                      cellspacing="0"
+                      cellpadding="0"
+                      border="0"
+                      style="
+                        border-collapse: collapse;
+                        font-size: 13px;
+                        margin-bottom: 24px;
+                      "
+                    >
+                      <tr>
+                        <td
+                          width="140"
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                            color: #4b5563;
+                          "
+                        >
+                          Bounty amount
+                        </td>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                          "
+                        >
+                          ${bountyAmount} ${tokenSymbol}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                            color: #4b5563;
+                          "
+                        >
+                          Repository
+                        </td>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                          "
+                        >
+                          ${repoFullName}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                            color: #4b5563;
+                          "
+                        >
+                          Issue
+                        </td>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                          "
+                        >
+                          <a
+                            href="${issueUrl}"
+                            style="color: #111827; text-decoration: underline;"
+                          >
+                            #${issueNumber}
+                          </a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                            color: #4b5563;
+                          "
+                        >
+                          Pull request
+                        </td>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                          "
+                        >
+                          <a
+                            href="${prUrl}"
+                            style="color: #111827; text-decoration: underline;"
+                          >
+                            #${prNumber}${
+    prTitle ? ` — ${prTitle}` : ""
+  }
+                          </a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                            color: #4b5563;
+                          "
+                        >
+                          Status
+                        </td>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                          "
+                        >
+                          Linked to bounty
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
 
-        <div class="info-box">
-          <p style="margin: 0 0 10px 0;"><strong>Pull Request:</strong> <a href="${prUrl}">#${prNumber} - ${prTitle || 'View PR'}</a></p>
-          <p style="margin: 0;"><strong>Linked Issue:</strong> <a href="${issueUrl}">#${issueNumber}</a></p>
-        </div>
+                <!-- Note -->
+                <tr>
+                  <td
+                    style="
+                      font-size: 13px;
+                      line-height: 1.7;
+                      padding-bottom: 4px;
+                    "
+                  >
+                    When your pull request is merged and closes the linked issue,
+                    the bounty will be paid to your linked wallet.
+                  </td>
+                </tr>
 
-        <p><strong>What happens next?</strong></p>
-        <ul>
-          <li>When your PR is merged and closes issue #${issueNumber}, you'll automatically receive the bounty</li>
-          <li>Make sure your wallet is linked to your GitHub account to receive payment</li>
-          <li>The bounty will be sent to your linked wallet address</li>
-        </ul>
+                <tr>
+                  <td
+                    style="
+                      font-size: 13px;
+                      line-height: 1.7;
+                      padding-bottom: 16px;
+                    "
+                  >
+                    You can review your bounties and wallet settings in your
+                    dashboard.
+                  </td>
+                </tr>
 
-        <div style="text-align: center;">
-          <a href="${frontendUrl}/account" class="cta-button">Check Your Dashboard</a>
-        </div>
+                <tr>
+                  <td style="font-size: 13px; padding-bottom: 16px;">
+                    <a
+                      href="${frontendUrl}/account"
+                      style="
+                        color: #111827;
+                        text-decoration: underline;
+                      "
+                    >
+                      Open dashboard
+                    </a>
+                  </td>
+                </tr>
 
-        <div class="footer">
-          <p>BountyPay by Lucci Labs</p>
-          <p><a href="${frontendUrl}">${frontendUrl}</a></p>
-        </div>
-      </div>
-    </body>
+                <tr>
+                  <td
+                    style="
+                      font-size: 12px;
+                      color: #6b7280;
+                      border-top: 1px solid #e5e7eb;
+                      padding-top: 12px;
+                    "
+                  >
+                    Make sure your wallet is linked to your GitHub account so you
+                    can receive the bounty when it is paid out.
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Footer -->
+              <table
+                role="presentation"
+                width="100%"
+                cellspacing="0"
+                cellpadding="0"
+                border="0"
+                style="
+                  max-width: 640px;
+                  width: 100%;
+                  margin-top: 16px;
+                  font-family: -apple-system, BlinkMacSystemFont, system-ui,
+                    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                  text-align: center;
+                  color: #9ca3af;
+                  font-size: 12px;
+                "
+              >
+                <tr>
+                  <td style="padding-bottom: 4px;">
+                    BountyPay by
+                    <a
+                      href="https://luccilabs.xyz"
+                      style="
+                        color: #9ca3af;
+                        text-decoration: underline;
+                      "
+                    >
+                      Lucci Labs
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 10px;">
+                    <span style="font-size: 11px;">
+                      Building payment infrastructure for open source work.
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
     </html>
   `;
 
   const text = `
-PR Linked to Bounty!
+PR linked to bounty
 
 Hi ${username},
 
-Great news! Your pull request has been linked to a bounty on BountyPay.
+Your pull request has been linked to a bounty on BountyPay.
 
-Bounty Amount: ${bountyAmount} ${tokenSymbol}
+Bounty amount: ${bountyAmount} ${tokenSymbol}
+Repository: ${repoFullName}
+Issue: #${issueNumber} (${issueUrl})
+Pull request: #${prNumber}${prTitle ? ` - ${prTitle}` : ''} (${prUrl})
+Status: Linked to bounty
 
-Pull Request: #${prNumber} - ${prTitle || 'View PR'}
-${prUrl}
+When your pull request is merged and closes the linked issue, the bounty will be paid to your linked wallet.
 
-Linked Issue: #${issueNumber}
-${issueUrl}
+Manage your settings in your dashboard: ${frontendUrl}/account
 
-What happens next?
-- When your PR is merged and closes issue #${issueNumber}, you'll automatically receive the bounty
-- Make sure your wallet is linked to your GitHub account to receive payment
-- The bounty will be sent to your linked wallet address
-
-Check your dashboard: ${frontendUrl}/account
-
----
-BountyPay by Lucci Labs
-${frontendUrl}
+BountyPay by Lucci Labs (luccilabs.xyz)
   `.trim();
 
   return { subject, html, text };
 }
-

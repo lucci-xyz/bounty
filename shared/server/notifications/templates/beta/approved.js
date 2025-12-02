@@ -2,145 +2,250 @@
  * Email template for approved beta access
  */
 export function renderBetaApprovedEmail({ username, frontendUrl }) {
-  const subject = 'Welcome to BountyPay Beta!';
+  const subject = 'Welcome to BountyPay Beta';
+  const logoUrl = `${frontendUrl}/icons/og.png`;
 
   const html = `
     <!DOCTYPE html>
     <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-          line-height: 1.6;
-          color: #1f2937;
-          max-width: 600px;
-          margin: 0 auto;
-          padding: 20px;
-          background-color: #f9fafb;
-        }
-        .container {
-          background-color: #ffffff;
-          border-radius: 8px;
-          padding: 40px;
-          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-        }
-        .header {
-          text-align: center;
-          margin-bottom: 30px;
-        }
-        h1 {
-          color: #00827B;
-          font-size: 28px;
-          margin: 0 0 10px 0;
-        }
-        p {
-          margin: 15px 0;
-          font-size: 16px;
-        }
-        .cta-button {
-          display: inline-block;
-          background-color: #00827B;
-          color: #ffffff;
-          padding: 14px 32px;
-          text-decoration: none;
-          border-radius: 6px;
-          font-weight: 600;
-          margin: 25px 0;
-          transition: background-color 0.2s;
-        }
-        .cta-button:hover {
-          background-color: #39BEB7;
-        }
-        .features {
-          background-color: #f9fafb;
-          border-left: 4px solid #00827B;
-          padding: 20px;
-          margin: 25px 0;
-        }
-        .features ul {
-          margin: 10px 0;
-          padding-left: 20px;
-        }
-        .features li {
-          margin: 8px 0;
-        }
-        .footer {
-          text-align: center;
-          margin-top: 40px;
-          padding-top: 20px;
-          border-top: 1px solid #e5e7eb;
-          color: #6b7280;
-          font-size: 14px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>Welcome to BountyPay Beta!</h1>
-        </div>
+      <head>
+        <meta charset="UTF-8" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0"
+        />
+        <title>${subject}</title>
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            background-color: #f3f4f6;
+            -webkit-font-smoothing: antialiased;
+          }
+        </style>
+      </head>
+      <body>
+        <table
+          role="presentation"
+          width="100%"
+          cellspacing="0"
+          cellpadding="0"
+          border="0"
+          style="background-color: #f3f4f6; padding: 24px 0;"
+        >
+          <tr>
+            <td align="center">
+              <!-- Main card -->
+              <table
+                role="presentation"
+                width="100%"
+                cellspacing="0"
+                cellpadding="0"
+                border="0"
+                style="
+                  max-width: 640px;
+                  width: 100%;
+                  background-color: #ffffff;
+                  border-radius: 12px;
+                  padding: 32px 40px;
+                  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+                  box-sizing: border-box;
+                  font-family: -apple-system, BlinkMacSystemFont, system-ui,
+                    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                  color: #111827;
+                "
+              >
+                <!-- Brand header -->
+                <tr>
+                  <td align="center" style="padding-bottom: 24px;">
+                    <table
+                      role="presentation"
+                      cellspacing="0"
+                      cellpadding="0"
+                      border="0"
+                      style="margin: 0 auto;"
+                    >
+                      <tr>
+                        <td style="padding-right: 8px;">
+                          <img
+                            src="${logoUrl}"
+                            alt="BountyPay"
+                            width="34"
+                            height="30"
+                            style="display: block; border-radius: 6px;"
+                          />
+                        </td>
+                        <td
+                          style="
+                            font-size: 15px;
+                            font-weight: 600;
+                            letter-spacing: 0.06em;
+                            text-transform: uppercase;
+                            color: #111827;
+                            white-space: nowrap;
+                          "
+                        >
+                          BountyPay
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
 
-        <p>Hi <strong>${username}</strong>,</p>
+                <!-- Greeting -->
+                <tr>
+                  <td
+                    style="
+                      font-size: 14px;
+                      line-height: 1.7;
+                      padding-bottom: 4px;
+                    "
+                  >
+                    Hi <strong>${username}</strong>,
+                  </td>
+                </tr>
 
-        <p>Great news! Your application for BountyPay beta access has been <strong>approved</strong>.</p>
+                <!-- Main copy -->
+                <tr>
+                  <td
+                    style="
+                      font-size: 14px;
+                      line-height: 1.7;
+                      padding-bottom: 16px;
+                    "
+                  >
+                    Your application for BountyPay beta access has been approved.
+                  </td>
+                </tr>
 
-        <p>You can now start using BountyPay to create bounties on GitHub issues and claim rewards for solving them.</p>
+                <tr>
+                  <td
+                    style="
+                      font-size: 14px;
+                      line-height: 1.7;
+                      padding-bottom: 16px;
+                    "
+                  >
+                    You can now use BountyPay to create bounties on GitHub issues
+                    and claim rewards for solving them.
+                  </td>
+                </tr>
 
-        <div style="text-align: center;">
-          <a href="${frontendUrl}" class="cta-button">Get Started with BountyPay</a>
-        </div>
+                <!-- Features list -->
+                <tr>
+                  <td
+                    style="
+                      font-size: 13px;
+                      line-height: 1.7;
+                      padding-bottom: 16px;
+                    "
+                  >
+                    <strong>With beta access you can:</strong>
+                    <ul style="margin: 6px 0 0 18px; padding: 0;">
+                      <li>Create bounties on issues in repositories with the BountyPay app installed</li>
+                      <li>Claim bounties by submitting pull requests that fix those issues</li>
+                      <li>Link your wallet to receive automatic payments when PRs are merged</li>
+                      <li>Track all of your bounties from a single dashboard</li>
+                    </ul>
+                  </td>
+                </tr>
 
-        <div class="features">
-          <strong>What you can do:</strong>
-          <ul>
-            <li>Create bounties on any GitHub issue in repositories with our app installed</li>
-            <li>Claim bounties by submitting PRs that fix issues</li>
-            <li>Link your wallet to receive automatic payments when PRs are merged</li>
-            <li>Track all your bounties in the dashboard</li>
-          </ul>
-        </div>
+                <!-- CTA -->
+                <tr>
+                  <td style="font-size: 13px; padding-bottom: 16px;">
+                    <a
+                      href="${frontendUrl}"
+                      style="
+                        color: #111827;
+                        text-decoration: underline;
+                      "
+                    >
+                      Open BountyPay
+                    </a>
+                  </td>
+                </tr>
 
-        <p>If you have any questions or need help getting started, feel free to reach out to us.</p>
+                <tr>
+                  <td
+                    style="
+                      font-size: 12px;
+                      color: #6b7280;
+                      border-top: 1px solid #e5e7eb;
+                      padding-top: 12px;
+                    "
+                  >
+                    You are receiving this email because you applied for early
+                    access to BountyPay.
+                  </td>
+                </tr>
+              </table>
 
-        <p>Happy bounty hunting!</p>
-
-        <div class="footer">
-          <p>BountyPay by Lucci Labs</p>
-          <p><a href="${frontendUrl}" style="color: #00827B; text-decoration: none;">${frontendUrl}</a></p>
-        </div>
-      </div>
-    </body>
+              <!-- Footer -->
+              <table
+                role="presentation"
+                width="100%"
+                cellspacing="0"
+                cellpadding="0"
+                border="0"
+                style="
+                  max-width: 640px;
+                  width: 100%;
+                  margin-top: 16px;
+                  font-family: -apple-system, BlinkMacSystemFont, system-ui,
+                    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                  text-align: center;
+                  color: #9ca3af;
+                  font-size: 12px;
+                "
+              >
+                <tr>
+                  <td style="padding-bottom: 4px;">
+                    BountyPay by
+                    <a
+                      href="https://luccilabs.xyz"
+                      style="
+                        color: #9ca3af;
+                        text-decoration: underline;
+                      "
+                    >
+                      Lucci Labs
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 10px;">
+                    <span style="font-size: 11px;">
+                      Building payment infrastructure for open source work.
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
     </html>
   `;
 
   const text = `
-Welcome to BountyPay Beta!
+Welcome to BountyPay Beta
 
 Hi ${username},
 
-Great news! Your application for BountyPay beta access has been approved.
+Your application for BountyPay beta access has been approved.
 
-You can now start using BountyPay to create bounties on GitHub issues and claim rewards for solving them.
-
-Get started: ${frontendUrl}
+You can now use BountyPay to create bounties on GitHub issues and claim rewards for solving them.
 
 What you can do:
-- Create bounties on any GitHub issue in repositories with our app installed
-- Claim bounties by submitting PRs that fix issues
+- Create bounties on issues in repositories with the BountyPay app installed
+- Claim bounties by submitting pull requests that fix those issues
 - Link your wallet to receive automatic payments when PRs are merged
-- Track all your bounties in the dashboard
+- Track all of your bounties from a single dashboard
 
-If you have any questions or need help getting started, feel free to reach out to us.
+Open BountyPay: ${frontendUrl}
 
-Happy bounty hunting!
-
----
-BountyPay by Lucci Labs
-${frontendUrl}
+BountyPay by Lucci Labs (luccilabs.xyz)
   `.trim();
 
   return { subject, html, text };
 }
-

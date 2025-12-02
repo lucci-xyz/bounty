@@ -12,179 +12,375 @@ export function renderUserErrorEmail({
   bountyId,
   frontendUrl
 }) {
-  const issueUrl = issueNumber ? `https://github.com/${repoFullName}/issues/${issueNumber}` : null;
-  const prUrl = prNumber ? `https://github.com/${repoFullName}/pull/${prNumber}` : null;
-  
-  const subject = `[BountyPay] Action Required: ${errorType}`;
+  const issueUrl = issueNumber
+    ? `https://github.com/${repoFullName}/issues/${issueNumber}`
+    : null;
+  const prUrl = prNumber
+    ? `https://github.com/${repoFullName}/pull/${prNumber}`
+    : null;
+  const logoUrl = `${frontendUrl}/icons/og.png`;
+
+  const subject = `[BountyPay] Action required: ${errorType}`;
 
   const html = `
     <!DOCTYPE html>
     <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-          line-height: 1.6;
-          color: #1f2937;
-          max-width: 600px;
-          margin: 0 auto;
-          padding: 20px;
-          background-color: #f9fafb;
-        }
-        .container {
-          background-color: #ffffff;
-          border-radius: 8px;
-          padding: 40px;
-          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-        }
-        .header {
-          text-align: center;
-          margin-bottom: 30px;
-        }
-        h1 {
-          color: #dc2626;
-          font-size: 24px;
-          margin: 0 0 10px 0;
-        }
-        p {
-          margin: 15px 0;
-          font-size: 16px;
-        }
-        .error-box {
-          background-color: #fef2f2;
-          border-left: 4px solid #dc2626;
-          padding: 16px 20px;
-          margin: 20px 0;
-          border-radius: 0 8px 8px 0;
-        }
-        .error-type {
-          font-weight: 600;
-          color: #dc2626;
-          margin-bottom: 8px;
-        }
-        .error-message {
-          font-family: 'Menlo', 'Monaco', monospace;
-          font-size: 13px;
-          color: #6b7280;
-          background-color: #f3f4f6;
-          padding: 8px 12px;
-          border-radius: 4px;
-          word-break: break-all;
-        }
-        .info-box {
-          background-color: #f0f9ff;
-          border-left: 4px solid #0284c7;
-          padding: 16px 20px;
-          margin: 20px 0;
-          border-radius: 0 8px 8px 0;
-        }
-        .cta-button {
-          display: inline-block;
-          background-color: #00827B;
-          color: #ffffff;
-          padding: 14px 32px;
-          text-decoration: none;
-          border-radius: 6px;
-          font-weight: 600;
-          margin: 20px 0;
-        }
-        a {
-          color: #00827B;
-          text-decoration: none;
-        }
-        a:hover {
-          text-decoration: underline;
-        }
-        .footer {
-          text-align: center;
-          margin-top: 40px;
-          padding-top: 20px;
-          border-top: 1px solid #e5e7eb;
-          color: #6b7280;
-          font-size: 14px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>⚠️ Issue Detected</h1>
-        </div>
+      <head>
+        <meta charset="UTF-8" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0"
+        />
+        <title>${subject}</title>
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            background-color: #f3f4f6;
+            -webkit-font-smoothing: antialiased;
+          }
+        </style>
+      </head>
+      <body>
+        <table
+          role="presentation"
+          width="100%"
+          cellspacing="0"
+          cellpadding="0"
+          border="0"
+          style="background-color: #f3f4f6; padding: 24px 0;"
+        >
+          <tr>
+            <td align="center">
+              <!-- Main card -->
+              <table
+                role="presentation"
+                width="100%"
+                cellspacing="0"
+                cellpadding="0"
+                border="0"
+                style="
+                  max-width: 640px;
+                  width: 100%;
+                  background-color: #ffffff;
+                  border-radius: 12px;
+                  padding: 32px 40px;
+                  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+                  box-sizing: border-box;
+                  font-family: -apple-system, BlinkMacSystemFont, system-ui,
+                    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                  color: #111827;
+                "
+              >
+                <!-- Brand header -->
+                <tr>
+                  <td align="center" style="padding-bottom: 24px;">
+                    <table
+                      role="presentation"
+                      cellspacing="0"
+                      cellpadding="0"
+                      border="0"
+                      style="margin: 0 auto;"
+                    >
+                      <tr>
+                        <td style="padding-right: 8px;">
+                          <img
+                            src="${logoUrl}"
+                            alt="BountyPay"
+                            width="34"
+                            height="30"
+                            style="display: block; border-radius: 6px;"
+                          />
+                        </td>
+                        <td
+                          style="
+                            font-size: 15px;
+                            font-weight: 600;
+                            letter-spacing: 0.06em;
+                            text-transform: uppercase;
+                            color: #111827;
+                            white-space: nowrap;
+                          "
+                        >
+                          BountyPay
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
 
-        <p>Hi <strong>${username}</strong>,</p>
+                <!-- Greeting -->
+                <tr>
+                  <td
+                    style="
+                      font-size: 14px;
+                      line-height: 1.7;
+                      padding-bottom: 4px;
+                    "
+                  >
+                    Hi <strong>${username}</strong>,
+                  </td>
+                </tr>
 
-        <p>We encountered an issue while processing one of your bounty-related actions. Our team has been notified and is looking into it.</p>
+                <!-- Main copy -->
+                <tr>
+                  <td
+                    style="
+                      font-size: 14px;
+                      line-height: 1.7;
+                      padding-bottom: 16px;
+                    "
+                  >
+                    We ran into an issue while processing one of your actions on
+                    BountyPay. Our team has been notified and is looking into it.
+                  </td>
+                </tr>
 
-        <div class="error-box">
-          <p class="error-type">${errorType}</p>
-          ${errorMessage ? `<p class="error-message">${errorMessage}</p>` : ''}
-        </div>
+                <!-- Error box -->
+                <tr>
+                  <td style="padding-bottom: 16px;">
+                    <table
+                      role="presentation"
+                      width="100%"
+                      cellspacing="0"
+                      cellpadding="0"
+                      border="0"
+                      style="
+                        border-collapse: collapse;
+                        font-size: 13px;
+                        background-color: #fef2f2;
+                        border-radius: 8px;
+                        border: 1px solid #fecaca;
+                      "
+                    >
+                      <tr>
+                        <td
+                          style="
+                            padding: 10px 14px 4px 14px;
+                            font-weight: 600;
+                            color: #b91c1c;
+                          "
+                        >
+                          ${errorType}
+                        </td>
+                      </tr>
+                      ${
+                        errorMessage
+                          ? `
+                      <tr>
+                        <td
+                          style="
+                            padding: 0 14px 12px 14px;
+                            font-family: Menlo, Monaco, Consolas, 'Liberation Mono',
+                              'Courier New', monospace;
+                            font-size: 12px;
+                            color: #4b5563;
+                            background-color: #f9fafb;
+                            border-radius: 4px;
+                          "
+                        >
+                          ${errorMessage}
+                        </td>
+                      </tr>
+                      `
+                          : ""
+                      }
+                    </table>
+                  </td>
+                </tr>
 
-        ${context ? `
-        <div class="info-box">
-          <p style="margin: 0;"><strong>Context:</strong> ${context}</p>
-        </div>
-        ` : ''}
+                ${
+                  context
+                    ? `
+                <tr>
+                  <td
+                    style="
+                      font-size: 13px;
+                      line-height: 1.7;
+                      padding-bottom: 16px;
+                    "
+                  >
+                    <strong>Context:</strong> ${context}
+                  </td>
+                </tr>
+                `
+                    : ""
+                }
 
-        ${(repoFullName || bountyId) ? `
-        <p><strong>Related Information:</strong></p>
-        <ul>
-          ${repoFullName ? `<li><strong>Repository:</strong> ${repoFullName}</li>` : ''}
-          ${issueUrl ? `<li><strong>Issue:</strong> <a href="${issueUrl}">#${issueNumber}</a></li>` : ''}
-          ${prUrl ? `<li><strong>PR:</strong> <a href="${prUrl}">#${prNumber}</a></li>` : ''}
-          ${bountyId ? `<li><strong>Bounty ID:</strong> ${bountyId.slice(0, 10)}...${bountyId.slice(-8)}</li>` : ''}
-        </ul>
-        ` : ''}
+                ${
+                  repoFullName || bountyId
+                    ? `
+                <tr>
+                  <td
+                    style="
+                      font-size: 13px;
+                      line-height: 1.7;
+                      padding-bottom: 16px;
+                    "
+                  >
+                    <strong>Related information:</strong>
+                    <ul style="margin: 6px 0 0 18px; padding: 0;">
+                      ${
+                        repoFullName
+                          ? `<li>Repository: ${repoFullName}</li>`
+                          : ""
+                      }
+                      ${
+                        issueUrl
+                          ? `<li>Issue: <a href="${issueUrl}" style="color: #111827; text-decoration: underline;">#${issueNumber}</a></li>`
+                          : ""
+                      }
+                      ${
+                        prUrl
+                          ? `<li>PR: <a href="${prUrl}" style="color: #111827; text-decoration: underline;">#${prNumber}</a></li>`
+                          : ""
+                      }
+                      ${
+                        bountyId
+                          ? `<li>Bounty ID: ${bountyId.slice(
+                              0,
+                              10
+                            )}...${bountyId.slice(-8)}</li>`
+                          : ""
+                      }
+                    </ul>
+                  </td>
+                </tr>
+                `
+                    : ""
+                }
 
-        <p><strong>What you can do:</strong></p>
-        <ul>
-          <li>Check your dashboard to verify the status of your bounties</li>
-          <li>If the issue persists, contact our support team</li>
-          <li>No action may be needed if this was a temporary issue</li>
-        </ul>
+                <!-- Guidance -->
+                <tr>
+                  <td
+                    style="
+                      font-size: 13px;
+                      line-height: 1.7;
+                      padding-bottom: 4px;
+                    "
+                  >
+                    You can check your dashboard to verify the status of your
+                    bounties and related activity.
+                  </td>
+                </tr>
+                <tr>
+                  <td
+                    style="
+                      font-size: 13px;
+                      line-height: 1.7;
+                      padding-bottom: 16px;
+                    "
+                  >
+                    If the problem continues, you can reply to this email with
+                    any additional details and we will help you resolve it.
+                  </td>
+                </tr>
 
-        <div style="text-align: center;">
-          <a href="${frontendUrl}/account" class="cta-button">View Dashboard</a>
-        </div>
+                <tr>
+                  <td style="font-size: 13px; padding-bottom: 16px;">
+                    <a
+                      href="${frontendUrl}/account"
+                      style="
+                        color: #111827;
+                        text-decoration: underline;
+                      "
+                    >
+                      Open dashboard
+                    </a>
+                  </td>
+                </tr>
 
-        <div class="footer">
-          <p>BountyPay by Lucci Labs</p>
-          <p><a href="${frontendUrl}">${frontendUrl}</a></p>
-        </div>
-      </div>
-    </body>
+                <tr>
+                  <td
+                    style="
+                      font-size: 12px;
+                      color: #6b7280;
+                      border-top: 1px solid #e5e7eb;
+                      padding-top: 12px;
+                    "
+                  >
+                    You are receiving this email because an error occurred while
+                    processing a BountyPay action associated with your account.
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Footer -->
+              <table
+                role="presentation"
+                width="100%"
+                cellspacing="0"
+                cellpadding="0"
+                border="0"
+                style="
+                  max-width: 640px;
+                  width: 100%;
+                  margin-top: 16px;
+                  font-family: -apple-system, BlinkMacSystemFont, system-ui,
+                    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                  text-align: center;
+                  color: #9ca3af;
+                  font-size: 12px;
+                "
+              >
+                <tr>
+                  <td style="padding-bottom: 4px;">
+                    BountyPay by
+                    <a
+                      href="https://luccilabs.xyz"
+                      style="
+                        color: #9ca3af;
+                        text-decoration: underline;
+                      "
+                    >
+                      Lucci Labs
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 10px;">
+                    <span style="font-size: 11px;">
+                      Building payment infrastructure for open source work.
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
     </html>
   `;
 
   const text = `
-Issue Detected
+Issue detected
 
 Hi ${username},
 
-We encountered an issue while processing one of your bounty-related actions. Our team has been notified and is looking into it.
+We ran into an issue while processing one of your actions on BountyPay. Our team has been notified and is looking into it.
 
-Error Type: ${errorType}
+Error type: ${errorType}
 ${errorMessage ? `Details: ${errorMessage}` : ''}
-${context ? `\nContext: ${context}` : ''}
+${context ? `Context: ${context}` : ''}
 
-${repoFullName || bountyId ? `Related Information:` : ''}
-${repoFullName ? `- Repository: ${repoFullName}` : ''}
-${issueUrl ? `- Issue: #${issueNumber} (${issueUrl})` : ''}
-${prUrl ? `- PR: #${prNumber} (${prUrl})` : ''}
-${bountyId ? `- Bounty ID: ${bountyId.slice(0, 10)}...${bountyId.slice(-8)}` : ''}
+${
+  repoFullName || bountyId
+    ? `Related information:
+${repoFullName ? `- Repository: ${repoFullName}\n` : ''}${
+        issueUrl ? `- Issue: #${issueNumber} (${issueUrl})\n` : ''
+      }${prUrl ? `- PR: #${prNumber} (${prUrl})\n` : ''}${
+        bountyId
+          ? `- Bounty ID: ${bountyId.slice(0, 10)}...${bountyId.slice(-8)}\n`
+          : ''
+      }`
+    : ''
+}
 
-What you can do:
-- Check your dashboard to verify the status of your bounties
-- If the issue persists, contact our support team
-- No action may be needed if this was a temporary issue
+You can check your dashboard to verify the status of your bounties. If the problem continues, reply to this email with any additional details.
 
 View dashboard: ${frontendUrl}/account
 
----
-BountyPay by Lucci Labs
-${frontendUrl}
+BountyPay by Lucci Labs (luccilabs.xyz)
   `.trim();
 
   return { subject, html, text };
@@ -192,6 +388,7 @@ ${frontendUrl}
 
 /**
  * Email template for ops team error alerts
+ * (kept in a compact, monospace style for internal use)
  */
 export function renderOpsErrorEmail({
   errorType,
@@ -206,180 +403,207 @@ export function renderOpsErrorEmail({
   userEmail,
   timestamp
 }) {
-  const issueUrl = issueNumber ? `https://github.com/${repoFullName}/issues/${issueNumber}` : null;
-  const prUrl = prNumber ? `https://github.com/${repoFullName}/pull/${prNumber}` : null;
-  
+  const issueUrl = issueNumber
+    ? `https://github.com/${repoFullName}/issues/${issueNumber}`
+    : null;
+  const prUrl = prNumber
+    ? `https://github.com/${repoFullName}/pull/${prNumber}`
+    : null;
+
   const subject = `[ALERT] ${errorType} - ${repoFullName || 'BountyPay'}`;
 
   const html = `
     <!DOCTYPE html>
     <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body {
-          font-family: 'Menlo', 'Monaco', monospace;
-          font-size: 13px;
-          color: #1f2937;
-          max-width: 700px;
-          margin: 0 auto;
-          padding: 20px;
-          background-color: #1f2937;
-        }
-        .container {
-          background-color: #111827;
-          border-radius: 8px;
-          padding: 24px;
-          border: 1px solid #374151;
-        }
-        h1 {
-          color: #ef4444;
-          font-size: 16px;
-          margin: 0 0 20px 0;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-        }
-        .field {
-          margin: 8px 0;
-          padding: 8px 12px;
-          background-color: #1f2937;
-          border-radius: 4px;
-        }
-        .field-label {
-          color: #9ca3af;
-          margin-right: 8px;
-        }
-        .field-value {
-          color: #f3f4f6;
-        }
-        .field-value.error {
-          color: #ef4444;
-        }
-        .field-value.link {
-          color: #60a5fa;
-        }
-        .section {
-          margin: 20px 0;
-          padding-top: 16px;
-          border-top: 1px solid #374151;
-        }
-        .section-title {
-          color: #9ca3af;
-          font-size: 11px;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          margin-bottom: 12px;
-        }
-        pre {
-          background-color: #1f2937;
-          padding: 12px;
-          border-radius: 4px;
-          overflow-x: auto;
-          color: #fbbf24;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <h1>🚨 ${errorType}</h1>
-        
-        <div class="field">
-          <span class="field-label">Timestamp:</span>
-          <span class="field-value">${timestamp || new Date().toISOString()}</span>
+      <head>
+        <meta charset="UTF-8" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0"
+        />
+        <title>${subject}</title>
+        <style>
+          body {
+            font-family: Menlo, Monaco, Consolas, 'Liberation Mono',
+              'Courier New', monospace;
+            font-size: 13px;
+            color: #f9fafb;
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #111827;
+          }
+          .container {
+            background-color: #020617;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #1f2937;
+          }
+          h1 {
+            color: #f97316;
+            font-size: 14px;
+            margin: 0 0 12px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+          }
+          .field {
+            margin: 6px 0;
+          }
+          .label {
+            color: #9ca3af;
+          }
+          .value {
+            color: #e5e7eb;
+          }
+          pre {
+            background-color: #020617;
+            border-radius: 4px;
+            padding: 12px;
+            overflow-x: auto;
+            color: #facc15;
+            border: 1px solid #1f2937;
+          }
+          .section {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #1f2937;
+          }
+          .section-title {
+            color: #9ca3af;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 6px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>${errorType}</h1>
+
+          <div class="field">
+            <span class="label">Timestamp:</span>
+            <span class="value">${timestamp || new Date().toISOString()}</span>
+          </div>
+
+          ${
+            username
+              ? `
+          <div class="section">
+            <div class="section-title">User</div>
+            <div class="field">
+              <span class="label">Username:</span>
+              <span class="value">${username}</span>
+            </div>
+            ${
+              userEmail
+                ? `<div class="field">
+              <span class="label">Email:</span>
+              <span class="value">${userEmail}</span>
+            </div>`
+                : ""
+            }
+          </div>
+          `
+              : ""
+          }
+
+          <div class="section">
+            <div class="section-title">Error</div>
+            <pre>${errorMessage || "No additional details"}</pre>
+            ${
+              context
+                ? `<div class="field">
+              <span class="label">Context:</span>
+              <span class="value">${context}</span>
+            </div>`
+                : ""
+            }
+          </div>
+
+          ${
+            repoFullName || bountyId || network
+              ? `
+          <div class="section">
+            <div class="section-title">Resources</div>
+            ${
+              repoFullName
+                ? `<div class="field">
+              <span class="label">Repository:</span>
+              <span class="value">${repoFullName}</span>
+            </div>`
+                : ""
+            }
+            ${
+              issueUrl
+                ? `<div class="field">
+              <span class="label">Issue:</span>
+              <span class="value">#${issueNumber} - ${issueUrl}</span>
+            </div>`
+                : ""
+            }
+            ${
+              prUrl
+                ? `<div class="field">
+              <span class="label">PR:</span>
+              <span class="value">#${prNumber} - ${prUrl}</span>
+            </div>`
+                : ""
+            }
+            ${
+              bountyId
+                ? `<div class="field">
+              <span class="label">Bounty ID:</span>
+              <span class="value">${bountyId}</span>
+            </div>`
+                : ""
+            }
+            ${
+              network
+                ? `<div class="field">
+              <span class="label">Network:</span>
+              <span class="value">${network}</span>
+            </div>`
+                : ""
+            }
+          </div>
+          `
+              : ""
+          }
         </div>
-        
-        ${username ? `
-        <div class="section">
-          <div class="section-title">Affected User</div>
-          <div class="field">
-            <span class="field-label">Username:</span>
-            <span class="field-value">${username}</span>
-          </div>
-          ${userEmail ? `
-          <div class="field">
-            <span class="field-label">Email:</span>
-            <span class="field-value">${userEmail}</span>
-          </div>
-          ` : ''}
-        </div>
-        ` : ''}
-        
-        <div class="section">
-          <div class="section-title">Error Details</div>
-          ${errorMessage ? `<pre>${errorMessage}</pre>` : '<pre>No additional details</pre>'}
-          ${context ? `
-          <div class="field" style="margin-top: 12px;">
-            <span class="field-label">Context:</span>
-            <span class="field-value">${context}</span>
-          </div>
-          ` : ''}
-        </div>
-        
-        ${(repoFullName || bountyId || network) ? `
-        <div class="section">
-          <div class="section-title">Related Resources</div>
-          ${repoFullName ? `
-          <div class="field">
-            <span class="field-label">Repository:</span>
-            <span class="field-value">${repoFullName}</span>
-          </div>
-          ` : ''}
-          ${issueUrl ? `
-          <div class="field">
-            <span class="field-label">Issue:</span>
-            <span class="field-value link">#${issueNumber} - ${issueUrl}</span>
-          </div>
-          ` : ''}
-          ${prUrl ? `
-          <div class="field">
-            <span class="field-label">PR:</span>
-            <span class="field-value link">#${prNumber} - ${prUrl}</span>
-          </div>
-          ` : ''}
-          ${bountyId ? `
-          <div class="field">
-            <span class="field-label">Bounty ID:</span>
-            <span class="field-value">${bountyId}</span>
-          </div>
-          ` : ''}
-          ${network ? `
-          <div class="field">
-            <span class="field-label">Network:</span>
-            <span class="field-value">${network}</span>
-          </div>
-          ` : ''}
-        </div>
-        ` : ''}
-      </div>
-    </body>
+      </body>
     </html>
   `;
 
   const text = `
 [ALERT] ${errorType}
-${'='.repeat(50)}
+==================================================
 
 Timestamp: ${timestamp || new Date().toISOString()}
 
-${username ? `AFFECTED USER
-Username: ${username}
-${userEmail ? `Email: ${userEmail}` : ''}
-` : ''}
+${
+  username
+    ? `User:
+- Username: ${username}
+${userEmail ? `- Email: ${userEmail}` : ''}
 
-ERROR DETAILS
+`
+    : ''
+}Error:
 ${errorMessage || 'No additional details'}
-${context ? `Context: ${context}` : ''}
+${context ? `\nContext: ${context}` : ''}
 
-${repoFullName || bountyId || network ? `RELATED RESOURCES
-${repoFullName ? `Repository: ${repoFullName}` : ''}
-${issueUrl ? `Issue: #${issueNumber} - ${issueUrl}` : ''}
-${prUrl ? `PR: #${prNumber} - ${prUrl}` : ''}
-${bountyId ? `Bounty ID: ${bountyId}` : ''}
-${network ? `Network: ${network}` : ''}
-` : ''}
+${
+  repoFullName || bountyId || network
+    ? `Resources:
+${repoFullName ? `- Repository: ${repoFullName}\n` : ''}${
+        issueUrl ? `- Issue: #${issueNumber} - ${issueUrl}\n` : ''
+      }${prUrl ? `- PR: #${prNumber} - ${prUrl}\n` : ''}${
+        bountyId ? `- Bounty ID: ${bountyId}\n` : ''
+      }${network ? `- Network: ${network}\n` : ''}`
+    : ''
+}
   `.trim();
 
   return { subject, html, text };
 }
-

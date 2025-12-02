@@ -2,106 +2,240 @@
  * Email template for rejected beta access
  */
 export function renderBetaRejectedEmail({ username, frontendUrl }) {
-  const subject = 'BountyPay Beta Application Update';
+  const subject = 'BountyPay beta application update';
+  const logoUrl = `${frontendUrl}/icons/og.png`;
 
   const html = `
     <!DOCTYPE html>
     <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-          line-height: 1.6;
-          color: #1f2937;
-          max-width: 600px;
-          margin: 0 auto;
-          padding: 20px;
-          background-color: #f9fafb;
-        }
-        .container {
-          background-color: #ffffff;
-          border-radius: 8px;
-          padding: 40px;
-          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-        }
-        .header {
-          text-align: center;
-          margin-bottom: 30px;
-        }
-        h1 {
-          color: #1f2937;
-          font-size: 24px;
-          margin: 0 0 10px 0;
-        }
-        p {
-          margin: 15px 0;
-          font-size: 16px;
-        }
-        .info-box {
-          background-color: #f9fafb;
-          border-left: 4px solid #6b7280;
-          padding: 20px;
-          margin: 25px 0;
-        }
-        .footer {
-          text-align: center;
-          margin-top: 40px;
-          padding-top: 20px;
-          border-top: 1px solid #e5e7eb;
-          color: #6b7280;
-          font-size: 14px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>BountyPay Beta Application Update</h1>
-        </div>
+      <head>
+        <meta charset="UTF-8" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0"
+        />
+        <title>${subject}</title>
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            background-color: #f3f4f6;
+            -webkit-font-smoothing: antialiased;
+          }
+        </style>
+      </head>
+      <body>
+        <table
+          role="presentation"
+          width="100%"
+          cellspacing="0"
+          cellpadding="0"
+          border="0"
+          style="background-color: #f3f4f6; padding: 24px 0;"
+        >
+          <tr>
+            <td align="center">
+              <!-- Main card -->
+              <table
+                role="presentation"
+                width="100%"
+                cellspacing="0"
+                cellpadding="0"
+                border="0"
+                style="
+                  max-width: 640px;
+                  width: 100%;
+                  background-color: #ffffff;
+                  border-radius: 12px;
+                  padding: 32px 40px;
+                  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+                  box-sizing: border-box;
+                  font-family: -apple-system, BlinkMacSystemFont, system-ui,
+                    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                  color: #111827;
+                "
+              >
+                <!-- Brand header -->
+                <tr>
+                  <td align="center" style="padding-bottom: 24px;">
+                    <table
+                      role="presentation"
+                      cellspacing="0"
+                      cellpadding="0"
+                      border="0"
+                      style="margin: 0 auto;"
+                    >
+                      <tr>
+                        <td style="padding-right: 8px;">
+                          <img
+                            src="${logoUrl}"
+                            alt="BountyPay"
+                            width="34"
+                            height="30"
+                            style="display: block; border-radius: 6px;"
+                          />
+                        </td>
+                        <td
+                          style="
+                            font-size: 15px;
+                            font-weight: 600;
+                            letter-spacing: 0.06em;
+                            text-transform: uppercase;
+                            color: #111827;
+                            white-space: nowrap;
+                          "
+                        >
+                          BountyPay
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
 
-        <p>Hi <strong>${username}</strong>,</p>
+                <!-- Greeting -->
+                <tr>
+                  <td
+                    style="
+                      font-size: 14px;
+                      line-height: 1.7;
+                      padding-bottom: 4px;
+                    "
+                  >
+                    Hi <strong>${username}</strong>,
+                  </td>
+                </tr>
 
-        <p>Thank you for your interest in BountyPay beta access.</p>
+                <!-- Main copy -->
+                <tr>
+                  <td
+                    style="
+                      font-size: 14px;
+                      line-height: 1.7;
+                      padding-bottom: 16px;
+                    "
+                  >
+                    Thank you for your interest in BountyPay beta access.
+                  </td>
+                </tr>
 
-        <p>Unfortunately, we're unable to approve your application at this time. Our beta program has limited capacity, and we're carefully managing the number of early users.</p>
+                <tr>
+                  <td
+                    style="
+                      font-size: 14px;
+                      line-height: 1.7;
+                      padding-bottom: 16px;
+                    "
+                  >
+                    We are not able to approve your application at this time.
+                    The beta program has limited capacity and we are carefully
+                    managing the number of early users.
+                  </td>
+                </tr>
 
-        <div class="info-box">
-          <p style="margin: 0;"><strong>What's next?</strong></p>
-          <p style="margin: 10px 0 0 0;">We'll keep your application on file and reach out if spots become available. We appreciate your patience and interest in BountyPay.</p>
-        </div>
+                <tr>
+                  <td
+                    style="
+                      font-size: 13px;
+                      line-height: 1.7;
+                      padding-bottom: 16px;
+                    "
+                  >
+                    We will keep your application on file and may reach out if
+                    additional spots become available. We appreciate your
+                    interest and your patience while we continue to roll out
+                    access.
+                  </td>
+                </tr>
 
-        <p>Stay tuned for updates on our public launch!</p>
+                <tr>
+                  <td
+                    style="
+                      font-size: 13px;
+                      line-height: 1.7;
+                      padding-bottom: 16px;
+                    "
+                  >
+                    We will share updates as we get closer to a broader launch.
+                  </td>
+                </tr>
 
-        <div class="footer">
-          <p>BountyPay by Lucci Labs</p>
-          <p><a href="${frontendUrl}" style="color: #00827B; text-decoration: none;">${frontendUrl}</a></p>
-        </div>
-      </div>
-    </body>
+                <tr>
+                  <td
+                    style="
+                      font-size: 12px;
+                      color: #6b7280;
+                      border-top: 1px solid #e5e7eb;
+                      padding-top: 12px;
+                    "
+                  >
+                    You are receiving this email because you applied for
+                    early access to BountyPay.
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Footer -->
+              <table
+                role="presentation"
+                width="100%"
+                cellspacing="0"
+                cellpadding="0"
+                border="0"
+                style="
+                  max-width: 640px;
+                  width: 100%;
+                  margin-top: 16px;
+                  font-family: -apple-system, BlinkMacSystemFont, system-ui,
+                    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                  text-align: center;
+                  color: #9ca3af;
+                  font-size: 12px;
+                "
+              >
+                <tr>
+                  <td style="padding-bottom: 4px;">
+                    BountyPay by
+                    <a
+                      href="https://luccilabs.xyz"
+                      style="
+                        color: #9ca3af;
+                        text-decoration: underline;
+                      "
+                    >
+                      Lucci Labs
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 10px;">
+                    <span style="font-size: 11px;">
+                      Building payment infrastructure for open source work.
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
     </html>
   `;
 
   const text = `
-BountyPay Beta Application Update
+BountyPay beta application update
 
 Hi ${username},
 
 Thank you for your interest in BountyPay beta access.
 
-Unfortunately, we're unable to approve your application at this time. Our beta program has limited capacity, and we're carefully managing the number of early users.
+We are not able to approve your application at this time. The beta program has limited capacity and we are carefully managing the number of early users.
 
-What's next?
-We'll keep your application on file and reach out if spots become available. We appreciate your patience and interest in BountyPay.
+We will keep your application on file and may reach out if additional spots become available. We appreciate your interest and your patience while we continue to roll out access.
 
-Stay tuned for updates on our public launch!
+We will share updates as we get closer to a broader launch.
 
----
-BountyPay by Lucci Labs
-${frontendUrl}
+BountyPay by Lucci Labs (luccilabs.xyz)
   `.trim();
 
   return { subject, html, text };
 }
-
