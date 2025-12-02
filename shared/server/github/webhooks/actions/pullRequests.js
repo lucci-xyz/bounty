@@ -23,7 +23,10 @@ import {
 } from '../../templates/bounties';
 import { BRAND_SIGNATURE, FRONTEND_BASE, OG_ICON } from '../../constants.js';
 import { getLinkHref } from '@/shared/config/links';
-import { sendPrOpenedEmail } from '../../../notifications/email.js';
+import {
+  sendPrOpenedEmail,
+  sendBountyPaidEmail
+} from '../../../notifications/email.js';
 
 const getIssueUrl = (repoFullName, issueNumber) => getLinkHref('github', 'issue', { repoFullName, issueNumber });
 const getPullUrl = (repoFullName, prNumber) => getLinkHref('github', 'pullRequest', { repoFullName, prNumber });
@@ -209,6 +212,21 @@ export async function handlePullRequestMerged(payload) {
           });
 
           await updateComment(octokit, owner, repo, bounty.pinnedCommentId, updatedSummary);
+        }
+
+        const contributor = await userQueries.findByGithubId(claim.prAuthorGithubId);
+        if (contributor?.email) {
+          await sendBountyPaidEmail({
+            to: contributor.email,
+            username: contributor.githubUsername,
+            bountyAmount: amountFormatted,
+            tokenSymbol,
+            issueNumber: bounty.issueNumber,
+            issueTitle: bounty.issueTitle || '',
+            repoFullName: bounty.repoFullName,
+            txUrl: explorerUrl,
+            frontendUrl: FRONTEND_BASE
+          });
         }
       } else {
         logger.error('Bounty resolution failed:', result.error);

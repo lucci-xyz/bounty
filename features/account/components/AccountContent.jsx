@@ -170,7 +170,8 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
             onManageRepos={repoManager.handleManageRepos}
             openChangeWalletModal={walletManagement.changeModal.open}
             openDeleteWalletModal={walletManagement.deleteModal.open}
-            logout={logout}
+              logout={logout}
+              refreshProfile={accountActions.refreshProfile}
           />
         )
       )}

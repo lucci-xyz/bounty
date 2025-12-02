@@ -709,6 +709,116 @@ export const userQueries = {
       updatedAt: Number(user.updatedAt)
     };
   }
+,
+  /**
+   * Creates an email verification record for the given user/email.
+   */
+  createEmailVerification: async (userId, email, token, expiresAt) => {
+    const verification = await prisma.emailVerification.create({
+      data: {
+        userId,
+        email,
+        token,
+        expiresAt: BigInt(expiresAt),
+        createdAt: BigInt(Date.now())
+      }
+    });
+    
+    return {
+      ...verification,
+      userId: Number(verification.userId),
+      expiresAt: Number(verification.expiresAt),
+      createdAt: Number(verification.createdAt),
+      verifiedAt: verification.verifiedAt ? Number(verification.verifiedAt) : null
+    };
+  },
+  /**
+   * Finds the latest pending email verification that has not expired.
+   */
+  findLatestPendingEmailVerification: async (userId) => {
+    const now = BigInt(Date.now());
+    const verification = await prisma.emailVerification.findFirst({
+      where: {
+        userId,
+        verifiedAt: null,
+        expiresAt: {
+          gt: now
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    
+    if (!verification) return null;
+    
+    return {
+      ...verification,
+      userId: Number(verification.userId),
+      expiresAt: Number(verification.expiresAt),
+      createdAt: Number(verification.createdAt),
+      verifiedAt: verification.verifiedAt ? Number(verification.verifiedAt) : null
+    };
+  },
+  /**
+   * Finds a verification record by token if still valid.
+   */
+  findEmailVerificationByToken: async (token) => {
+    const verification = await prisma.emailVerification.findUnique({
+      where: { token }
+    });
+    
+    if (
+      !verification ||
+      verification.verifiedAt ||
+      Number(verification.expiresAt) <= Date.now()
+    ) {
+      return null;
+    }
+    
+    return {
+      ...verification,
+      userId: Number(verification.userId),
+      expiresAt: Number(verification.expiresAt),
+      createdAt: Number(verification.createdAt),
+      verifiedAt: verification.verifiedAt ? Number(verification.verifiedAt) : null
+    };
+  },
+  /**
+   * Marks a verification record as consumed and updates the user's email.
+   */
+  markEmailAsVerified: async (verificationId) => {
+    const now = BigInt(Date.now());
+    const verification = await prisma.emailVerification.findUnique({
+      where: { id: verificationId }
+    });
+    
+    if (!verification) {
+      throw new Error('Email verification not found');
+    }
+    
+    await prisma.$transaction([
+      prisma.emailVerification.update({
+        where: { id: verificationId },
+        data: { verifiedAt: now }
+      }),
+      prisma.user.update({
+        where: { id: verification.userId },
+        data: {
+          email: verification.email,
+          updatedAt: now
+        }
+      })
+    ]);
+
+    const user = await prisma.user.findUnique({ where: { id: verification.userId } });
+    return {
+      ...user,
+      githubId: Number(user.githubId),
+      createdAt: Number(user.createdAt),
+      updatedAt: Number(user.updatedAt)
+    };
+  }
 };
 
 /**

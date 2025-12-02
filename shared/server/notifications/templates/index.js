@@ -11,4 +11,6 @@ export { renderBetaReceivedEmail } from './beta/received.js';
 // Transactional templates (sent from no-reply@luccilabs.xyz)
 export { renderPrOpenedEmail } from './transactional/prOpened.js';
 export { renderBountyExpiredEmail } from './transactional/bountyExpired.js';
+export { renderBountyPaidEmail } from './transactional/bountyPaid.js';
+export { renderEmailVerificationEmail } from './transactional/emailVerification.js';
 export { renderUserErrorEmail, renderOpsErrorEmail } from './transactional/userError.js';

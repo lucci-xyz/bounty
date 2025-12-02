@@ -80,9 +80,25 @@ model User {
   updatedAt      BigInt       @map("updated_at")
   
   allowlists     Allowlist[]
+  emailVerifications EmailVerification[]
   
   @@index([githubId], name: "idx_users_github")
   @@map("users")
+}
+
+model EmailVerification {
+  id          Int     @id @default(autoincrement())
+  userId      Int     @map("user_id")
+  email       String
+  token       String  @unique
+  expiresAt   BigInt  @map("expires_at")
+  createdAt   BigInt  @map("created_at")
+  verifiedAt  BigInt? @map("verified_at")
+
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], name: "idx_email_verifications_user")
+  @@map("email_verifications")
 }
 
 model Allowlist {

@@ -51,3 +51,11 @@ export function getUserWalletByGithubId(githubId) {
   }
   return fetchJsonOrNull(`/api/wallet/${githubId}`);
 }
+
+export function requestEmailVerification(email) {
+  return fetchJson('/api/user/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
+}

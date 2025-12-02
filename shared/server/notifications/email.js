@@ -9,6 +9,8 @@ import {
 import {
   renderPrOpenedEmail,
   renderBountyExpiredEmail,
+  renderBountyPaidEmail,
+  renderEmailVerificationEmail,
   renderUserErrorEmail,
   renderOpsErrorEmail,
   renderBetaApprovedEmail,
@@ -89,6 +91,61 @@ export async function sendBountyExpiredEmail(params) {
   }
   
   const template = renderBountyExpiredEmail(templateParams);
+  return sendTransactionalEmail({
+    to,
+    subject: template.subject,
+    html: template.html,
+    text: template.text
+  });
+}
+
+/**
+ * Send bounty paid notification to a contributor
+ * @param {Object} params
+ * @param {string} params.to - Contributor email address
+ * @param {string} params.username - Contributor GitHub username
+ * @param {string} params.bountyAmount - Formatted bounty amount
+ * @param {string} params.tokenSymbol - Token symbol
+ * @param {number} params.issueNumber - Issue number
+ * @param {string} params.issueTitle - Issue title
+ * @param {string} params.repoFullName - Repository name
+ * @param {string} params.txUrl - Explorer URL
+ * @param {string} params.frontendUrl - Frontend URL
+ */
+export async function sendBountyPaidEmail(params) {
+  const { to, ...templateParams } = params;
+
+  if (!isSmtpConfigured()) {
+    logger.warn('[email] SMTP not configured. Skipping bounty paid email');
+    return { skipped: true, reason: 'no_config' };
+  }
+
+  const template = renderBountyPaidEmail(templateParams);
+  return sendTransactionalEmail({
+    to,
+    subject: template.subject,
+    html: template.html,
+    text: template.text
+  });
+}
+
+/**
+ * Send email verification link to a user
+ * @param {Object} params
+ * @param {string} params.to - Recipient email address
+ * @param {string} params.username - GitHub username
+ * @param {string} params.token - Verification token
+ * @param {string} params.frontendUrl - Frontend URL
+ */
+export async function sendEmailVerificationEmail(params) {
+  const { to, ...templateParams } = params;
+
+  if (!isSmtpConfigured()) {
+    logger.warn('[email] SMTP not configured. Skipping verification email');
+    return { skipped: true, reason: 'no_config' };
+  }
+
+  const template = renderEmailVerificationEmail(templateParams);
   return sendTransactionalEmail({
     to,
     subject: template.subject,
