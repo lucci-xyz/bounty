@@ -188,7 +188,7 @@ export function SponsoredTab({
           <div className="flex flex-col gap-3">
             <Link
               href="/attach-bounty"
-              className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+              className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-background transition-opacity hover:opacity-90"
             >
               Create a Bounty
             </Link>
