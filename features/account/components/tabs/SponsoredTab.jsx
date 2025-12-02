@@ -5,9 +5,11 @@
  *
  * Displays statistics and active sponsored bounties for the current account.
  * Shows wallet connection prompt if no wallet is linked.
+ * Shows "create first bounty" prompt if wallet is linked but no bounties exist.
  *
  * @param {Object} props
- * @param {boolean} props.showEmptyState - Whether to show the empty state (connect wallet) prompt.
+ * @param {boolean} props.showEmptyState - Whether to show the connect wallet prompt (no wallet linked).
+ * @param {boolean} props.showNoBountiesState - Whether to show the create bounty prompt (wallet linked, no bounties).
  * @param {Object} props.stats - Stats for sponsored bounties (e.g., totalValueLocked, totalPaid, refundedBounties).
  * @param {Array} props.sponsoredBounties - Full array of bounty objects to display.
  * @param {string|null} props.expandedBountyId - The currently expanded bounty's id or null.
@@ -36,6 +38,7 @@ const getCountdownLabel = (bounty) => {
 
 export function SponsoredTab({
   showEmptyState,
+  showNoBountiesState,
   stats,
   sponsoredBounties = [],
   expandedBountyId,
@@ -121,7 +124,7 @@ export function SponsoredTab({
     setCurrentPage((prev) => Math.min(totalPages, prev + 1));
   };
 
-  // If user hasn't connected a wallet yet, show the empty state prompt.
+  // If user hasn't connected a wallet yet, show the connect wallet prompt.
   if (showEmptyState) {
     return (
       <div className="min-h-[420px] flex items-center justify-center animate-fade-in-up delay-100">
@@ -149,6 +152,34 @@ export function SponsoredTab({
             >
               <PlusIcon size={18} />
               <span className="ml-2">Learn more about funding</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If user has wallet but no bounties yet, show a different prompt.
+  if (showNoBountiesState) {
+    return (
+      <div className="min-h-[420px] flex items-center justify-center animate-fade-in-up delay-100">
+        <div className="w-full max-w-lg rounded-[36px] border border-border/60 bg-card p-10 text-center shadow-[0_50px_140px_rgba(15,23,42,0.18)] space-y-6">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <PlusIcon size={32} color="currentColor" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-3xl font-light text-foreground/90">Create Your First Bounty</h2>
+            <p className="text-sm text-muted-foreground">
+              Your wallet is connected! Fund a GitHub issue to attract contributors and automate payouts.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <Link
+              href="/attach-bounty"
+              className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              <PlusIcon size={18} />
+              <span className="ml-2">Create a Bounty</span>
             </Link>
           </div>
         </div>

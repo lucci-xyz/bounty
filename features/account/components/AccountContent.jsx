@@ -107,6 +107,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
         ) : (
           <SponsoredTab
             showEmptyState={sponsor.showEmptyState}
+            showNoBountiesState={sponsor.showNoBountiesState}
             stats={sponsor.stats}
             sponsoredBounties={sponsor.sponsoredBounties}
             expandedBountyId={sponsor.expandedBountyId}
