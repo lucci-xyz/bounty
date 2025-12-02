@@ -5,7 +5,7 @@
  * Handles main logic and view for connecting wallet, setting bounty amount and deadline.
  */
 
-import { useMemo, Suspense } from 'react';
+import { useMemo, Suspense, useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import BetaAccessModal from '@/features/beta-access/components/BetaAccessModal';
@@ -61,23 +61,62 @@ function AttachBountyContent() {
     fundBounty
   } = useAttachBountyForm({ issueData });
 
-  // Navigate back (or push) handler
-  const handleBack = () => goBackOrPush(router);
+  // Navigate back (or push) handler - wrapped in useCallback for stability
+  const handleBack = useCallback(() => goBackOrPush(router), [router]);
+
+  // Track if modal was opened - once opened, keep it open until dismissed or access granted
+  // This prevents flickering when beta access state updates during loading
+  const [modalIsOpen, setModalIsOpen] = useState(false);
+  const modalOpenedRef = useRef(false);
+  
+  useEffect(() => {
+    // Only update when not loading and conditions change
+    if (betaLoading) return;
+    
+    // Open modal if user doesn't have access and showBetaModal is true
+    if (!hasAccess && showBetaModal && !modalOpenedRef.current) {
+      setModalIsOpen(true);
+      modalOpenedRef.current = true;
+    }
+    // Close modal if access is granted
+    if (hasAccess && modalOpenedRef.current) {
+      setModalIsOpen(false);
+      modalOpenedRef.current = false;
+    }
+  }, [betaLoading, hasAccess, showBetaModal]); // Removed modalIsOpen from deps to prevent circular updates
+
+  // Stable callback for modal close - prevents flickering from inline function re-creation
+  const handleModalClose = useCallback(() => {
+    setModalIsOpen(false);
+    modalOpenedRef.current = false;
+    hideBetaModal();
+    handleBack();
+  }, [hideBetaModal, handleBack]);
+
+  // Stable callback for access granted - prevents flickering from inline function re-creation
+  const handleAccessGranted = useCallback(() => {
+    setModalIsOpen(false);
+    modalOpenedRef.current = false;
+    hideBetaModal();
+    // Refresh the page to update beta access state
+    // Use a small delay to ensure modal closes smoothly
+    setTimeout(() => {
+      router.refresh();
+    }, 100);
+  }, [hideBetaModal, router]);
 
   /**
    * Modal for beta access.
    * Shown if user does not have access.
+   * Once opened, stays open until dismissed or access is granted (prevents flickering during loading).
    */
   const betaModal = (
     <BetaAccessModal
-      isOpen={!hasAccess && showBetaModal}
-      onClose={handleBack}
-      onDismiss={handleBack}
+      isOpen={modalIsOpen}
+      onClose={handleModalClose}
+      onDismiss={handleModalClose}
       dismissLabel="Back"
-      onAccessGranted={() => {
-        hideBetaModal();
-        router.refresh();
-      }}
+      onAccessGranted={handleAccessGranted}
     />
   );
 

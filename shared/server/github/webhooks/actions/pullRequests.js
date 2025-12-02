@@ -6,7 +6,7 @@ import {
   extractClosedIssues,
   extractMentionedIssues
 } from '../../client.js';
-import { bountyQueries, walletQueries, prClaimQueries } from '../../../db/prisma.js';
+import { bountyQueries, walletQueries, prClaimQueries, userQueries } from '../../../db/prisma.js';
 import { resolveBountyOnNetwork } from '../../../blockchain/contract.js';
 import { ethers } from 'ethers';
 import { notifyMaintainers } from '../../services/maintainerAlerts.js';
@@ -23,6 +23,10 @@ import {
 } from '../../templates/bounties';
 import { BRAND_SIGNATURE, FRONTEND_BASE, OG_ICON } from '../../constants.js';
 import { getLinkHref } from '@/shared/config/links';
+import {
+  sendPrOpenedEmail,
+  sendBountyPaidEmail
+} from '../../../notifications/email.js';
 
 const getIssueUrl = (repoFullName, issueNumber) => getLinkHref('github', 'issue', { repoFullName, issueNumber });
 const getPullUrl = (repoFullName, prNumber) => getLinkHref('github', 'pullRequest', { repoFullName, prNumber });
@@ -209,6 +213,21 @@ export async function handlePullRequestMerged(payload) {
 
           await updateComment(octokit, owner, repo, bounty.pinnedCommentId, updatedSummary);
         }
+
+        const contributor = await userQueries.findByGithubId(claim.prAuthorGithubId);
+        if (contributor?.email) {
+          await sendBountyPaidEmail({
+            to: contributor.email,
+            username: contributor.githubUsername,
+            bountyAmount: amountFormatted,
+            tokenSymbol,
+            issueNumber: bounty.issueNumber,
+            issueTitle: bounty.issueTitle || '',
+            repoFullName: bounty.repoFullName,
+            txUrl: explorerUrl,
+            frontendUrl: FRONTEND_BASE
+          });
+        }
       } else {
         logger.error('Bounty resolution failed:', result.error);
 
@@ -369,5 +388,43 @@ async function handlePRWithBounties(octokit, owner, repo, pull_request, reposito
         context: `Failed to record this PR as a claim for bounty ${bounty.bountyId}. This will prevent automatic payout when the PR is merged.`
       });
     }
+  }
+
+  // Send email notification to bounty sponsors (non-blocking)
+  try {
+    // Get unique sponsors from all bounties
+    const uniqueSponsors = new Map();
+    for (const bounty of bounties) {
+      if (bounty.sponsorGithubId && !uniqueSponsors.has(bounty.sponsorGithubId)) {
+        uniqueSponsors.set(bounty.sponsorGithubId, bounty);
+      }
+    }
+
+    // Send email to each unique sponsor
+    for (const [sponsorGithubId, bounty] of uniqueSponsors) {
+      try {
+        const sponsor = await userQueries.findByGithubId(sponsorGithubId);
+        if (sponsor?.email) {
+          await sendPrOpenedEmail({
+            to: sponsor.email,
+            username: sponsor.githubUsername,
+            prNumber: pull_request.number,
+            prTitle: pull_request.title,
+            prAuthor: pull_request.user.login,
+            repoFullName: repository.full_name,
+            bountyAmount: totalAmount.toFixed(2),
+            tokenSymbol,
+            issueNumber: bounty.issueNumber,
+            frontendUrl: FRONTEND_BASE
+          });
+        }
+      } catch (sponsorError) {
+        // Log but continue with other sponsors
+        logger.warn(`Failed to send PR opened email to sponsor ${sponsorGithubId}:`, sponsorError.message);
+      }
+    }
+  } catch (emailError) {
+    // Non-blocking - log but don't fail the webhook
+    logger.warn('Failed to send PR opened email:', emailError.message);
   }
 }

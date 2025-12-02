@@ -3,6 +3,8 @@ import { getSession } from '@/shared/lib/session';
 import { isValidEmail } from '@/shared/lib/validation';
 import { prisma } from '@/shared/server/db/prisma';
 import { NextResponse } from 'next/server';
+import { sendBetaReceivedEmail } from '@/shared/server/notifications/email';
+import { getLinkHref } from '@/shared/config/links';
 
 export async function POST(request) {
   try {
@@ -67,6 +69,16 @@ export async function POST(request) {
         status: 'pending',
         appliedAt: BigInt(Date.now())
       }
+    });
+    
+    // Send beta application received email (non-blocking)
+    const frontendUrl = process.env.FRONTEND_URL || getLinkHref('app', 'marketingSite');
+    sendBetaReceivedEmail({
+      to: email,
+      username: session.githubUsername,
+      frontendUrl
+    }).catch((emailError) => {
+      logger.warn('Failed to send beta received email:', emailError.message);
     });
     
     return NextResponse.json({

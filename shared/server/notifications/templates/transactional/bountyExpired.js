@@ -1,9 +1,19 @@
 /**
- * Email template for rejected beta access
+ * Email template for when a bounty expires without being closed
  */
-export function renderBetaRejectedEmail({ username, frontendUrl }) {
-  const subject = 'BountyPay beta application update';
+export function renderBountyExpiredEmail({
+  username,
+  bountyAmount,
+  tokenSymbol,
+  issueNumber,
+  issueTitle,
+  repoFullName,
+  frontendUrl
+}) {
+  const issueUrl = `https://github.com/${repoFullName}/issues/${issueNumber}`;
   const logoUrl = `${frontendUrl}/icons/og.png`;
+
+  const subject = `Your bounty has expired`;
 
   const html = `
     <!DOCTYPE html>
@@ -105,60 +115,149 @@ export function renderBetaRejectedEmail({ username, frontendUrl }) {
                   </td>
                 </tr>
 
-                <!-- Main copy -->
+                <!-- Main line -->
                 <tr>
                   <td
                     style="
                       font-size: 14px;
                       line-height: 1.7;
-                      padding-bottom: 16px;
+                      padding-bottom: 20px;
                     "
                   >
-                    Thank you for your interest in BountyPay beta access.
+                    You have a bounty that has reached its deadline and is now expired.
                   </td>
                 </tr>
 
+                <!-- Summary table -->
                 <tr>
-                  <td
-                    style="
-                      font-size: 14px;
-                      line-height: 1.7;
-                      padding-bottom: 16px;
-                    "
-                  >
-                    We are not able to approve your application at this time.
-                    The beta program has limited capacity and we are carefully
-                    managing the number of early users.
+                  <td>
+                    <table
+                      role="presentation"
+                      width="100%"
+                      cellspacing="0"
+                      cellpadding="0"
+                      border="0"
+                      style="
+                        border-collapse: collapse;
+                        font-size: 13px;
+                        margin-bottom: 24px;
+                      "
+                    >
+                      <tr>
+                        <td
+                          width="140"
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                            color: #4b5563;
+                          "
+                        >
+                          Bounty amount
+                        </td>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                          "
+                        >
+                          ${bountyAmount} ${tokenSymbol}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                            color: #4b5563;
+                          "
+                        >
+                          Repository
+                        </td>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                          "
+                        >
+                          ${repoFullName}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                            color: #4b5563;
+                          "
+                        >
+                          Issue
+                        </td>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                          "
+                        >
+                          <a
+                            href="${issueUrl}"
+                            style="color: #111827; text-decoration: underline;"
+                          >
+                            #${issueNumber}${
+    issueTitle ? ` — ${issueTitle}` : ""
+  }
+                          </a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                            color: #4b5563;
+                          "
+                        >
+                          Status
+                        </td>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                          "
+                        >
+                          Eligible for refund
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
 
+                <!-- Dashboard link -->
                 <tr>
                   <td
                     style="
                       font-size: 13px;
                       line-height: 1.7;
-                      padding-bottom: 16px;
+                      padding-bottom: 4px;
                     "
                   >
-                    We will keep your application on file and may reach out if
-                    additional spots become available. We appreciate your
-                    interest and your patience while we continue to roll out
-                    access.
+                    You can manage this bounty from your dashboard.
                   </td>
                 </tr>
-
                 <tr>
-                  <td
-                    style="
-                      font-size: 13px;
-                      line-height: 1.7;
-                      padding-bottom: 16px;
-                    "
-                  >
-                    We will share updates as we get closer to a broader launch.
+                  <td style="font-size: 13px; padding-bottom: 16px;">
+                    <a
+                      href="${frontendUrl}/account"
+                      style="
+                        color: #111827;
+                        text-decoration: underline;
+                      "
+                    >
+                      Open dashboard
+                    </a>
                   </td>
                 </tr>
 
+                <!-- Note -->
                 <tr>
                   <td
                     style="
@@ -168,8 +267,7 @@ export function renderBetaRejectedEmail({ username, frontendUrl }) {
                       padding-top: 12px;
                     "
                   >
-                    You are receiving this email because you applied for
-                    early access to BountyPay.
+                    The issue itself remains open on GitHub. Only the bounty reward has expired.
                   </td>
                 </tr>
               </table>
@@ -194,16 +292,13 @@ export function renderBetaRejectedEmail({ username, frontendUrl }) {
               >
                 <tr>
                   <td style="padding-bottom: 4px;">
-                    BountyPay by
-                    <a
+                    BountyPay by <a
                       href="https://luccilabs.xyz"
                       style="
                         color: #9ca3af;
                         text-decoration: underline;
                       "
-                    >
-                      Lucci Labs
-                    </a>
+                    >Lucci Labs</a>
                   </td>
                 </tr>
                 <tr>
@@ -222,17 +317,20 @@ export function renderBetaRejectedEmail({ username, frontendUrl }) {
   `;
 
   const text = `
-BountyPay beta application update
+Bounty expired
 
 Hi ${username},
 
-Thank you for your interest in BountyPay beta access.
+You have a bounty that has reached its deadline and is now expired.
 
-We are not able to approve your application at this time. The beta program has limited capacity and we are carefully managing the number of early users.
+Bounty amount: ${bountyAmount} ${tokenSymbol}
+Repository: ${repoFullName}
+Issue: #${issueNumber}${issueTitle ? ` - ${issueTitle}` : ''} (${issueUrl})
+Status: Eligible for refund
 
-We will keep your application on file and may reach out if additional spots become available. We appreciate your interest and your patience while we continue to roll out access.
+Manage this bounty from your dashboard: ${frontendUrl}/account
 
-We will share updates as we get closer to a broader launch.
+The issue itself remains open on GitHub. Only the bounty reward has expired.
 
 BountyPay by Lucci Labs (luccilabs.xyz)
   `.trim();

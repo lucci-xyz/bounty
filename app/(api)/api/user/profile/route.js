@@ -12,6 +12,9 @@ export async function GET(request) {
 
     const user = await userQueries.findByGithubId(session.githubId);
     const wallet = await walletQueries.findByGithubId(session.githubId);
+    const emailVerification = user
+      ? await userQueries.findLatestPendingEmailVerification(user.id)
+      : null;
     
     return Response.json({
       user: user || {
@@ -19,7 +22,8 @@ export async function GET(request) {
         githubUsername: session.githubUsername,
         avatarUrl: session.avatarUrl
       },
-      wallet
+      wallet,
+      emailVerification
     });
   } catch (error) {
     logger.error('Error fetching user profile:', error);

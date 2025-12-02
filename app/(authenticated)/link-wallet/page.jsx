@@ -5,6 +5,8 @@
  * to enable automatic bounty payouts.
  */
 
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { GitHubIcon, CheckCircleIcon } from '@/shared/components/Icons';
 import StatusNotice from '@/shared/components/StatusNotice';
@@ -14,9 +16,12 @@ import { useLinkWalletFlow } from '@/features/wallet';
 const cardClasses = 'rounded-3xl border border-border/60 bg-card p-6 shadow-sm';
 
 /**
- * LinkWallet page component.
+ * Inner content component that uses useSearchParams.
  */
-export default function LinkWallet() {
+function LinkWalletContent() {
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get('returnTo');
+
   // Get state and actions for the wallet/GitHub linking flow
   const {
     state: {
@@ -32,6 +37,29 @@ export default function LinkWallet() {
     github,
     actions: { authenticateGitHub, createProfileWithWallet },
   } = useLinkWalletFlow();
+
+  /**
+   * Handle the Continue button click.
+   * Redirects to the returnTo URL if provided, otherwise tries to close the window.
+   */
+  const handleContinue = () => {
+    if (returnTo) {
+      // If returnTo is an external URL (starts with http), redirect there
+      // Otherwise treat it as a relative path
+      if (returnTo.startsWith('http://') || returnTo.startsWith('https://')) {
+        window.location.href = returnTo;
+      } else {
+        window.location.href = returnTo;
+      }
+    } else {
+      // Fallback: try to close window, or redirect to home if that fails
+      window.close();
+      // If window.close() doesn't work (page wasn't opened via script), redirect home
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
+    }
+  };
 
   // Show loading message while mounting
   if (!isMounted) {
@@ -109,7 +137,7 @@ export default function LinkWallet() {
             </p>
           </div>
           <button
-            onClick={() => window.close()}
+            onClick={handleContinue}
             className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
             Continue
@@ -154,7 +182,7 @@ export default function LinkWallet() {
             </p>
           </div>
           <button
-            onClick={() => window.close()}
+            onClick={handleContinue}
             className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
             Continue
@@ -246,5 +274,20 @@ export default function LinkWallet() {
       {/* Show the main flow card */}
       {renderFlowCard()}
     </div>
+  );
+}
+
+/**
+ * LinkWallet page wrapper with Suspense boundary.
+ */
+export default function LinkWallet() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-3xl mx-auto px-6 py-24 text-center">
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </div>
+    }>
+      <LinkWalletContent />
+    </Suspense>
   );
 }

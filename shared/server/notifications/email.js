@@ -1,66 +1,314 @@
 import { logger } from '@/shared/lib/logger';
-import { getLinkHref } from '@/shared/config/links';
+import {
+  sendTransactionalEmail,
+  sendBetaEmail,
+  sendOpsAlert,
+  isSmtpConfigured,
+  EMAIL_SENDERS
+} from './smtp.js';
+import {
+  renderPrOpenedEmail,
+  renderBountyExpiredEmail,
+  renderBountyPaidEmail,
+  renderEmailVerificationEmail,
+  renderUserErrorEmail,
+  renderOpsErrorEmail,
+  renderBetaApprovedEmail,
+  renderBetaRejectedEmail,
+  renderBetaReceivedEmail
+} from './templates/index.js';
 
-const ALERT_EMAIL = 'contact@luccilabs.xyz';
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'alerts@luccilabs.xyz';
-const RESEND_EMAIL_ENDPOINT = getLinkHref('services', 'resendEmail');
+// Re-export email senders for external use
+export { EMAIL_SENDERS };
 
 /**
- * Send a system alert email via Resend.
- * Gracefully no-ops if credentials are missing to avoid throwing inside critical paths.
- * @param {Object} params
- * @param {string} params.subject
- * @param {string} params.html
- * @param {string} [params.text]
+ * Get the ops alert email address
  */
-export async function sendSystemEmail({ subject, html, text }) {
-  if (!RESEND_API_KEY) {
-    logger.warn(`[email] RESEND_API_KEY not configured. Skipping alert email: ${subject}`);
-    return { skipped: true };
-  }
-
-  try {
-    const response = await fetch(RESEND_EMAIL_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${RESEND_API_KEY}`
-      },
-      body: JSON.stringify({
-        from: RESEND_FROM_EMAIL,
-        to: [ALERT_EMAIL],
-        subject,
-        html,
-        text: text || html.replace(/<[^>]+>/g, '')
-      })
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      logger.error('[email] Failed to send alert email:', response.status, errorBody);
-      return { success: false };
-    }
-
-    return { success: true };
-  } catch (error) {
-    logger.error('[email] Exception while sending alert email:', error);
-    return { success: false, error: error.message };
-  }
+export function getOpsEmailAddress() {
+  return EMAIL_SENDERS.ops;
 }
 
 /**
- * Send an email to a specific user via Resend.
- * Gracefully no-ops if credentials are missing to avoid throwing inside critical paths.
+ * Get the alert email address (legacy, now points to ops)
+ */
+export function getAlertEmailAddress() {
+  return EMAIL_SENDERS.ops;
+}
+
+// ============================================================================
+// TRANSACTIONAL EMAILS (from no-reply@luccilabs.xyz)
+// ============================================================================
+
+/**
+ * Send PR opened notification to a bounty sponsor
+ * @param {Object} params
+ * @param {string} params.to - Recipient email address (sponsor's email)
+ * @param {string} params.username - Sponsor's GitHub username
+ * @param {number} params.prNumber - PR number
+ * @param {string} params.prTitle - PR title
+ * @param {string} params.prAuthor - PR author's GitHub username
+ * @param {string} params.repoFullName - Full repo name (owner/repo)
+ * @param {string} params.bountyAmount - Formatted bounty amount
+ * @param {string} params.tokenSymbol - Token symbol (USDC, MUSD)
+ * @param {number} params.issueNumber - Issue number
+ * @param {string} params.frontendUrl - Frontend URL
+ */
+export async function sendPrOpenedEmail(params) {
+  const { to, ...templateParams } = params;
+  
+  if (!isSmtpConfigured()) {
+    logger.warn('[email] SMTP not configured. Skipping PR opened email');
+    return { skipped: true, reason: 'no_config' };
+  }
+  
+  const template = renderPrOpenedEmail(templateParams);
+  return sendTransactionalEmail({
+    to,
+    subject: template.subject,
+    html: template.html,
+    text: template.text
+  });
+}
+
+/**
+ * Send bounty expired notification to a sponsor
  * @param {Object} params
  * @param {string} params.to - Recipient email address
- * @param {string} params.subject
- * @param {string} params.html
- * @param {string} [params.text]
+ * @param {string} params.username - GitHub username
+ * @param {string} params.bountyAmount - Formatted bounty amount
+ * @param {string} params.tokenSymbol - Token symbol
+ * @param {number} params.issueNumber - Issue number
+ * @param {string} params.issueTitle - Issue title
+ * @param {string} params.repoFullName - Full repo name
+ * @param {string} params.frontendUrl - Frontend URL
+ */
+export async function sendBountyExpiredEmail(params) {
+  const { to, ...templateParams } = params;
+  
+  if (!isSmtpConfigured()) {
+    logger.warn('[email] SMTP not configured. Skipping bounty expired email');
+    return { skipped: true, reason: 'no_config' };
+  }
+  
+  const template = renderBountyExpiredEmail(templateParams);
+  return sendTransactionalEmail({
+    to,
+    subject: template.subject,
+    html: template.html,
+    text: template.text
+  });
+}
+
+/**
+ * Send bounty paid notification to a contributor
+ * @param {Object} params
+ * @param {string} params.to - Contributor email address
+ * @param {string} params.username - Contributor GitHub username
+ * @param {string} params.bountyAmount - Formatted bounty amount
+ * @param {string} params.tokenSymbol - Token symbol
+ * @param {number} params.issueNumber - Issue number
+ * @param {string} params.issueTitle - Issue title
+ * @param {string} params.repoFullName - Repository name
+ * @param {string} params.txUrl - Explorer URL
+ * @param {string} params.frontendUrl - Frontend URL
+ */
+export async function sendBountyPaidEmail(params) {
+  const { to, ...templateParams } = params;
+
+  if (!isSmtpConfigured()) {
+    logger.warn('[email] SMTP not configured. Skipping bounty paid email');
+    return { skipped: true, reason: 'no_config' };
+  }
+
+  const template = renderBountyPaidEmail(templateParams);
+  return sendTransactionalEmail({
+    to,
+    subject: template.subject,
+    html: template.html,
+    text: template.text
+  });
+}
+
+/**
+ * Send email verification link to a user
+ * @param {Object} params
+ * @param {string} params.to - Recipient email address
+ * @param {string} params.username - GitHub username
+ * @param {string} params.token - Verification token
+ * @param {string} params.frontendUrl - Frontend URL
+ */
+export async function sendEmailVerificationEmail(params) {
+  const { to, ...templateParams } = params;
+
+  if (!isSmtpConfigured()) {
+    logger.warn('[email] SMTP not configured. Skipping verification email');
+    return { skipped: true, reason: 'no_config' };
+  }
+
+  const template = renderEmailVerificationEmail(templateParams);
+  return sendTransactionalEmail({
+    to,
+    subject: template.subject,
+    html: template.html,
+    text: template.text
+  });
+}
+
+/**
+ * Send error notification to a user AND ops team
+ * @param {Object} params
+ * @param {string} params.to - User's email address (optional)
+ * @param {string} params.username - GitHub username
+ * @param {string} params.errorType - Type of error
+ * @param {string} params.errorMessage - Error message
+ * @param {string} params.context - Additional context
+ * @param {string} params.repoFullName - Repository name
+ * @param {number} params.issueNumber - Issue number
+ * @param {number} params.prNumber - PR number
+ * @param {string} params.bountyId - Bounty ID
+ * @param {string} params.network - Network alias
+ * @param {string} params.frontendUrl - Frontend URL
+ */
+export async function sendErrorNotification(params) {
+  const { to, frontendUrl, ...errorParams } = params;
+  const results = { user: null, ops: null };
+  
+  if (!isSmtpConfigured()) {
+    logger.warn('[email] SMTP not configured. Skipping error notification');
+    return { skipped: true, reason: 'no_config' };
+  }
+  
+  // Always send to ops team
+  const opsTemplate = renderOpsErrorEmail({
+    ...errorParams,
+    userEmail: to,
+    timestamp: new Date().toISOString()
+  });
+  
+  results.ops = await sendOpsAlert({
+    subject: opsTemplate.subject,
+    html: opsTemplate.html,
+    text: opsTemplate.text
+  });
+  
+  // Send to user if they have an email
+  if (to) {
+    const userTemplate = renderUserErrorEmail({
+      ...errorParams,
+      frontendUrl
+    });
+    
+    results.user = await sendTransactionalEmail({
+      to,
+      subject: userTemplate.subject,
+      html: userTemplate.html,
+      text: userTemplate.text
+    });
+  }
+  
+  return results;
+}
+
+// ============================================================================
+// BETA PROGRAM EMAILS (from beta@luccilabs.xyz)
+// ============================================================================
+
+/**
+ * Send beta application received email
+ * @param {Object} params
+ * @param {string} params.to - Recipient email address
+ * @param {string} params.username - GitHub username
+ * @param {string} params.frontendUrl - Frontend URL
+ */
+export async function sendBetaReceivedEmail(params) {
+  const { to, ...templateParams } = params;
+  
+  if (!isSmtpConfigured()) {
+    logger.warn('[email] SMTP not configured. Skipping beta received email');
+    return { skipped: true, reason: 'no_config' };
+  }
+  
+  const template = renderBetaReceivedEmail(templateParams);
+  return sendBetaEmail({
+    to,
+    subject: template.subject,
+    html: template.html,
+    text: template.text
+  });
+}
+
+/**
+ * Send beta application approved email
+ * @param {Object} params
+ * @param {string} params.to - Recipient email address
+ * @param {string} params.username - GitHub username
+ * @param {string} params.frontendUrl - Frontend URL
+ */
+export async function sendBetaApprovedEmail(params) {
+  const { to, ...templateParams } = params;
+  
+  if (!isSmtpConfigured()) {
+    logger.warn('[email] SMTP not configured. Skipping beta approved email');
+    return { skipped: true, reason: 'no_config' };
+  }
+  
+  const template = renderBetaApprovedEmail(templateParams);
+  return sendBetaEmail({
+    to,
+    subject: template.subject,
+    html: template.html,
+    text: template.text
+  });
+}
+
+/**
+ * Send beta application rejected email
+ * @param {Object} params
+ * @param {string} params.to - Recipient email address
+ * @param {string} params.username - GitHub username
+ * @param {string} params.frontendUrl - Frontend URL
+ */
+export async function sendBetaRejectedEmail(params) {
+  const { to, ...templateParams } = params;
+  
+  if (!isSmtpConfigured()) {
+    logger.warn('[email] SMTP not configured. Skipping beta rejected email');
+    return { skipped: true, reason: 'no_config' };
+  }
+  
+  const template = renderBetaRejectedEmail(templateParams);
+  return sendBetaEmail({
+    to,
+    subject: template.subject,
+    html: template.html,
+    text: template.text
+  });
+}
+
+// ============================================================================
+// LEGACY FUNCTIONS (for backwards compatibility)
+// ============================================================================
+
+/**
+ * Send a system alert email (now sends to ops)
+ * @deprecated Use sendErrorNotification instead
+ */
+export async function sendSystemEmail({ subject, html, text }) {
+  if (!isSmtpConfigured()) {
+    logger.warn(`[email] SMTP not configured. Skipping system email: ${subject}`);
+    return { skipped: true };
+  }
+  
+  return sendOpsAlert({ subject, html, text });
+}
+
+/**
+ * Send an email to a specific user
+ * @deprecated Use specific email functions instead
  */
 export async function sendUserEmail({ to, subject, html, text }) {
-  if (!RESEND_API_KEY) {
-    logger.warn(`[email] RESEND_API_KEY not configured. Skipping user email: ${subject}`);
+  if (!isSmtpConfigured()) {
+    logger.warn(`[email] SMTP not configured. Skipping user email: ${subject}`);
     return { skipped: true };
   }
 
@@ -69,38 +317,5 @@ export async function sendUserEmail({ to, subject, html, text }) {
     return { skipped: true, reason: 'no_recipient' };
   }
 
-  try {
-    const response = await fetch(RESEND_EMAIL_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${RESEND_API_KEY}`
-      },
-      body: JSON.stringify({
-        from: RESEND_FROM_EMAIL,
-        to: [to],
-        subject,
-        html,
-        text: text || html.replace(/<[^>]+>/g, '')
-      })
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      logger.error('[email] Failed to send user email:', response.status, errorBody);
-      return { success: false };
-    }
-
-    const result = await response.json();
-    logger.info(`[email] User email sent successfully to ${to}`);
-    return { success: true, id: result.id };
-  } catch (error) {
-    logger.error('[email] Exception while sending user email:', error);
-    return { success: false, error: error.message };
-  }
+  return sendTransactionalEmail({ to, subject, html, text });
 }
-
-export function getAlertEmailAddress() {
-  return ALERT_EMAIL;
-}
-

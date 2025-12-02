@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useBetaAccess } from '@/features/beta-access';
 import { resolveBetaStep } from '@/features/beta-access/lib/utils';
@@ -35,27 +35,13 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
     setMounted(true);
   }, []);
 
-  // Track if we've already refreshed for this modal open session using a ref
-  const hasRefreshedRef = useRef(false);
-  const lastOpenStateRef = useRef(false);
-
-  // Refresh beta status when modal opens (only once per open session)
-  useEffect(() => {
-    // Reset refresh flag when modal closes
-    if (!isOpen) {
-      hasRefreshedRef.current = false;
-      lastOpenStateRef.current = false;
-      return;
-    }
-    
-    // Only refresh once when modal first opens (when transitioning from closed to open)
-    if (!lastOpenStateRef.current && !hasRefreshedRef.current) {
-      refreshAccess();
-      hasRefreshedRef.current = true;
-    }
-    
-    lastOpenStateRef.current = isOpen;
-  }, [isOpen, refreshAccess]);
+  // Note: We intentionally do NOT call refreshAccess() when modal opens.
+  // The BetaAccessProvider already checks beta status on mount.
+  // Calling refreshAccess() here caused an infinite loop because:
+  // 1. refreshAccess() sets loading=true
+  // 2. Parent component re-renders with different JSX structure based on betaLoading
+  // 3. Modal remounts in different tree position
+  // 4. Effect runs again → calls refreshAccess() → infinite loop
 
   // Reset email field when modal closes or step changes
   useEffect(() => {
@@ -69,10 +55,13 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
   }, [isOpen, step]);
 
   // Set the correct step based on beta status
+  // Only update step when it actually changes to prevent unnecessary re-renders
   useEffect(() => {
     if (!isOpen) return;
     const nextStep = resolveBetaStep(betaStatus, hasAccess);
-    setStep(nextStep);
+    
+    // Only update state if step actually changed - prevents flickering
+    setStep((prevStep) => (prevStep !== nextStep ? nextStep : prevStep));
 
     // If access was granted, call onAccessGranted and auto-close shortly after
     if (nextStep === 'approved') {
@@ -145,8 +134,8 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
     }
   };
 
-  // Don't render if the modal is closed or the portal hasn't mounted yet
-  if (!isOpen || !mounted) return null;
+  // Don't render if the portal hasn't mounted yet
+  if (!mounted) return null;
 
   // Use beta loading state if relevant
   const effectiveStep = step === 'loading' && betaLoading ? 'loading' : step;
@@ -253,9 +242,13 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
     }
   };
 
-  // Modal markup
+  // Modal markup - keep portal mounted, hide with CSS to prevent backdrop-blur flickering
   const modalContent = (
-    <div className="fixed inset-0 z-[9999] bg-background/70 backdrop-blur-md flex items-center justify-center p-5">
+    <div 
+      className={`fixed inset-0 z-[9999] bg-background/70 backdrop-blur-md flex items-center justify-center p-5 transition-opacity duration-200 ${
+        isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+      }`}
+    >
       <div className="w-full max-w-md rounded-[40px] border border-border/60 bg-card px-8 py-12 shadow-[0_60px_160px_rgba(15,23,42,0.22)] space-y-7">
         <div className="text-center space-y-3">
           <h2 className="text-3xl font-light text-foreground/90">{title}</h2>

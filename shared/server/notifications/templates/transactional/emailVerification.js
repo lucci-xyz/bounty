@@ -1,8 +1,9 @@
 /**
- * Email template for rejected beta access
+ * Email sent when a user requests to verify their email address.
  */
-export function renderBetaRejectedEmail({ username, frontendUrl }) {
-  const subject = 'BountyPay beta application update';
+export function renderEmailVerificationEmail({ username, frontendUrl, token }) {
+  const verificationLink = `${frontendUrl}/api/user/email/verify?token=${token}`;
+  const subject = 'Verify your email for BountyPay';
   const logoUrl = `${frontendUrl}/icons/og.png`;
 
   const html = `
@@ -10,10 +11,7 @@ export function renderBetaRejectedEmail({ username, frontendUrl }) {
     <html lang="en">
       <head>
         <meta charset="UTF-8" />
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1.0"
-        />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>${subject}</title>
         <style>
           body {
@@ -101,7 +99,7 @@ export function renderBetaRejectedEmail({ username, frontendUrl }) {
                       padding-bottom: 4px;
                     "
                   >
-                    Hi <strong>${username}</strong>,
+                    Hi <strong>${username || 'there'}</strong>,
                   </td>
                 </tr>
 
@@ -114,24 +112,11 @@ export function renderBetaRejectedEmail({ username, frontendUrl }) {
                       padding-bottom: 16px;
                     "
                   >
-                    Thank you for your interest in BountyPay beta access.
+                    Please confirm that you own this email address so we can send you bounty notifications and payouts.
                   </td>
                 </tr>
 
-                <tr>
-                  <td
-                    style="
-                      font-size: 14px;
-                      line-height: 1.7;
-                      padding-bottom: 16px;
-                    "
-                  >
-                    We are not able to approve your application at this time.
-                    The beta program has limited capacity and we are carefully
-                    managing the number of early users.
-                  </td>
-                </tr>
-
+                <!-- Verification link -->
                 <tr>
                   <td
                     style="
@@ -140,25 +125,37 @@ export function renderBetaRejectedEmail({ username, frontendUrl }) {
                       padding-bottom: 16px;
                     "
                   >
-                    We will keep your application on file and may reach out if
-                    additional spots become available. We appreciate your
-                    interest and your patience while we continue to roll out
-                    access.
+                    <a
+                      href="${verificationLink}"
+                      style="color: #111827; text-decoration: underline;"
+                    >
+                      Verify my email
+                    </a>
                   </td>
                 </tr>
 
+                <!-- Fallback link -->
                 <tr>
                   <td
                     style="
-                      font-size: 13px;
+                      font-size: 12px;
+                      color: #6b7280;
                       line-height: 1.7;
                       padding-bottom: 16px;
                     "
                   >
-                    We will share updates as we get closer to a broader launch.
+                    If the link above doesn’t work, copy and paste this URL into your browser:
+                    <br />
+                    <a
+                      href="${verificationLink}"
+                      style="color: #111827; text-decoration: underline; word-break: break-all;"
+                    >
+                      ${verificationLink}
+                    </a>
                   </td>
                 </tr>
 
+                <!-- Note -->
                 <tr>
                   <td
                     style="
@@ -168,8 +165,7 @@ export function renderBetaRejectedEmail({ username, frontendUrl }) {
                       padding-top: 12px;
                     "
                   >
-                    You are receiving this email because you applied for
-                    early access to BountyPay.
+                    If you did not request this, you can safely ignore this email.
                   </td>
                 </tr>
               </table>
@@ -222,17 +218,15 @@ export function renderBetaRejectedEmail({ username, frontendUrl }) {
   `;
 
   const text = `
-BountyPay beta application update
+Verify your email for BountyPay
 
-Hi ${username},
+Hi ${username || 'there'},
 
-Thank you for your interest in BountyPay beta access.
+Please confirm that you own this email address so we can send you bounty notifications and payouts.
 
-We are not able to approve your application at this time. The beta program has limited capacity and we are carefully managing the number of early users.
+Verify link: ${verificationLink}
 
-We will keep your application on file and may reach out if additional spots become available. We appreciate your interest and your patience while we continue to roll out access.
-
-We will share updates as we get closer to a broader launch.
+If you did not request this, you can safely ignore this message.
 
 BountyPay by Lucci Labs (luccilabs.xyz)
   `.trim();

@@ -1,8 +1,8 @@
 /**
- * Email template for rejected beta access
+ * Email template for beta application received
  */
-export function renderBetaRejectedEmail({ username, frontendUrl }) {
-  const subject = 'BountyPay beta application update';
+export function renderBetaReceivedEmail({ username, frontendUrl }) {
+  const subject = 'BountyPay beta application received';
   const logoUrl = `${frontendUrl}/icons/og.png`;
 
   const html = `
@@ -114,24 +114,12 @@ export function renderBetaRejectedEmail({ username, frontendUrl }) {
                       padding-bottom: 16px;
                     "
                   >
-                    Thank you for your interest in BountyPay beta access.
+                    Thanks for your interest in BountyPay. We've received your
+                    request for beta access and added it to our review queue.
                   </td>
                 </tr>
 
-                <tr>
-                  <td
-                    style="
-                      font-size: 14px;
-                      line-height: 1.7;
-                      padding-bottom: 16px;
-                    "
-                  >
-                    We are not able to approve your application at this time.
-                    The beta program has limited capacity and we are carefully
-                    managing the number of early users.
-                  </td>
-                </tr>
-
+                <!-- What happens next -->
                 <tr>
                   <td
                     style="
@@ -140,13 +128,16 @@ export function renderBetaRejectedEmail({ username, frontendUrl }) {
                       padding-bottom: 16px;
                     "
                   >
-                    We will keep your application on file and may reach out if
-                    additional spots become available. We appreciate your
-                    interest and your patience while we continue to roll out
-                    access.
+                    <strong>What happens next:</strong>
+                    <ul style="margin: 6px 0 0 18px; padding: 0;">
+                      <li>We review applications on a rolling basis</li>
+                      <li>You'll receive an email as soon as a decision is made</li>
+                      <li>Typical review time is 1–3 business days</li>
+                    </ul>
                   </td>
                 </tr>
 
+                <!-- Overview of BountyPay -->
                 <tr>
                   <td
                     style="
@@ -155,7 +146,12 @@ export function renderBetaRejectedEmail({ username, frontendUrl }) {
                       padding-bottom: 16px;
                     "
                   >
-                    We will share updates as we get closer to a broader launch.
+                    <strong>What BountyPay offers:</strong>
+                    <ul style="margin: 6px 0 0 18px; padding: 0;">
+                      <li><strong>Sponsors:</strong> create crypto bounties on GitHub issues</li>
+                      <li><strong>Contributors:</strong> earn rewards by fixing issues and submitting PRs</li>
+                      <li><strong>Automatic payouts:</strong> when a PR is merged and closes the bounty issue</li>
+                    </ul>
                   </td>
                 </tr>
 
@@ -168,8 +164,8 @@ export function renderBetaRejectedEmail({ username, frontendUrl }) {
                       padding-top: 12px;
                     "
                   >
-                    You are receiving this email because you applied for
-                    early access to BountyPay.
+                    You are receiving this email because you requested beta
+                    access to BountyPay.
                   </td>
                 </tr>
               </table>
@@ -222,17 +218,21 @@ export function renderBetaRejectedEmail({ username, frontendUrl }) {
   `;
 
   const text = `
-BountyPay beta application update
+BountyPay beta application received
 
 Hi ${username},
 
-Thank you for your interest in BountyPay beta access.
+Thanks for your interest in BountyPay. We've received your request for beta access and added it to our review queue.
 
-We are not able to approve your application at this time. The beta program has limited capacity and we are carefully managing the number of early users.
+What happens next:
+- We review applications on a rolling basis
+- You'll receive an email as soon as a decision is made
+- Typical review time is 1–3 business days
 
-We will keep your application on file and may reach out if additional spots become available. We appreciate your interest and your patience while we continue to roll out access.
-
-We will share updates as we get closer to a broader launch.
+What BountyPay offers:
+- Sponsors: create crypto bounties on GitHub issues
+- Contributors: earn rewards by fixing issues and submitting PRs
+- Automatic payouts when a PR is merged and closes the bounty issue
 
 BountyPay by Lucci Labs (luccilabs.xyz)
   `.trim();

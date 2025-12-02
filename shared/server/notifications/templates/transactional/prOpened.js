@@ -1,9 +1,22 @@
 /**
- * Email template for approved beta access
+ * Email template for when a pull request is opened for a bounty
+ * (sent to the person who created / funded the bounty)
  */
-export function renderBetaApprovedEmail({ username, frontendUrl }) {
-  const subject = 'Welcome to BountyPay Beta';
+export function renderPrOpenedEmail({
+  username,
+  prNumber,
+  prTitle,
+  repoFullName,
+  bountyAmount,
+  tokenSymbol,
+  issueNumber,
+  frontendUrl
+}) {
+  const prUrl = `https://github.com/${repoFullName}/pull/${prNumber}`;
+  const issueUrl = `https://github.com/${repoFullName}/issues/${issueNumber}`;
   const logoUrl = `${frontendUrl}/icons/og.png`;
+
+  const subject = `A pull request was opened for your bounty`;
 
   const html = `
     <!DOCTYPE html>
@@ -111,27 +124,152 @@ export function renderBetaApprovedEmail({ username, frontendUrl }) {
                     style="
                       font-size: 14px;
                       line-height: 1.7;
-                      padding-bottom: 16px;
+                      padding-bottom: 20px;
                     "
                   >
-                    Your application for BountyPay beta access has been approved.
+                    A contributor has opened a pull request for one of your bounties on BountyPay.
                   </td>
                 </tr>
 
+                <!-- Summary table -->
+                <tr>
+                  <td>
+                    <table
+                      role="presentation"
+                      width="100%"
+                      cellspacing="0"
+                      cellpadding="0"
+                      border="0"
+                      style="
+                        border-collapse: collapse;
+                        font-size: 13px;
+                        margin-bottom: 24px;
+                      "
+                    >
+                      <tr>
+                        <td
+                          width="140"
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                            color: #4b5563;
+                          "
+                        >
+                          Bounty amount
+                        </td>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                          "
+                        >
+                          ${bountyAmount} ${tokenSymbol}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                            color: #4b5563;
+                          "
+                        >
+                          Repository
+                        </td>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                          "
+                        >
+                          ${repoFullName}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                            color: #4b5563;
+                          "
+                        >
+                          Issue
+                        </td>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                          "
+                        >
+                          <a
+                            href="${issueUrl}"
+                            style="color: #111827; text-decoration: underline;"
+                          >
+                            #${issueNumber}
+                          </a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                            color: #4b5563;
+                          "
+                        >
+                          Pull request
+                        </td>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                          "
+                        >
+                          <a
+                            href="${prUrl}"
+                            style="color: #111827; text-decoration: underline;"
+                          >
+                            #${prNumber}${prTitle ? ` — ${prTitle}` : ""}
+                          </a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                            color: #4b5563;
+                          "
+                        >
+                          Status
+                        </td>
+                        <td
+                          style="
+                            padding: 6px 0;
+                            border-bottom: 1px solid #e5e7eb;
+                          "
+                        >
+                          Waiting for review
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Note -->
                 <tr>
                   <td
                     style="
-                      font-size: 14px;
+                      font-size: 13px;
                       line-height: 1.7;
-                      padding-bottom: 16px;
+                      padding-bottom: 4px;
                     "
                   >
-                    You can now use BountyPay to create bounties on GitHub issues
-                    and claim rewards for solving them.
+                    When you review and merge this pull request and it closes the linked issue,
+                    the bounty will be paid out automatically from escrow.
                   </td>
                 </tr>
 
-                <!-- Features list -->
                 <tr>
                   <td
                     style="
@@ -140,27 +278,20 @@ export function renderBetaApprovedEmail({ username, frontendUrl }) {
                       padding-bottom: 16px;
                     "
                   >
-                    <strong>With beta access you can:</strong>
-                    <ul style="margin: 6px 0 0 18px; padding: 0;">
-                      <li>Create bounties on issues in repositories with the BountyPay app installed</li>
-                      <li>Claim bounties by submitting pull requests that fix those issues</li>
-                      <li>Link your wallet to receive automatic payments when PRs are merged</li>
-                      <li>Track all of your bounties from a single dashboard</li>
-                    </ul>
+                    You can review this bounty and others from your dashboard.
                   </td>
                 </tr>
 
-                <!-- CTA -->
                 <tr>
                   <td style="font-size: 13px; padding-bottom: 16px;">
                     <a
-                      href="${frontendUrl}"
+                      href="${frontendUrl}/account"
                       style="
                         color: #111827;
                         text-decoration: underline;
                       "
                     >
-                      Open BountyPay
+                      Open dashboard
                     </a>
                   </td>
                 </tr>
@@ -174,8 +305,8 @@ export function renderBetaApprovedEmail({ username, frontendUrl }) {
                       padding-top: 12px;
                     "
                   >
-                    You are receiving this email because you applied for early
-                    access to BountyPay.
+                    You are receiving this email because a pull request was opened
+                    for a bounty you created on BountyPay.
                   </td>
                 </tr>
               </table>
@@ -228,21 +359,21 @@ export function renderBetaApprovedEmail({ username, frontendUrl }) {
   `;
 
   const text = `
-Welcome to BountyPay Beta
+A pull request was opened for your bounty
 
 Hi ${username},
 
-Your application for BountyPay beta access has been approved.
+A contributor has opened a pull request for one of your bounties on BountyPay.
 
-You can now use BountyPay to create bounties on GitHub issues and claim rewards for solving them.
+Bounty amount: ${bountyAmount} ${tokenSymbol}
+Repository: ${repoFullName}
+Issue: #${issueNumber} (${issueUrl})
+Pull request: #${prNumber}${prTitle ? ` - ${prTitle}` : ''} (${prUrl})
+Status: Waiting for review
 
-What you can do:
-- Create bounties on issues in repositories with the BountyPay app installed
-- Claim bounties by submitting pull requests that fix those issues
-- Link your wallet to receive automatic payments when PRs are merged
-- Track all of your bounties from a single dashboard
+When you review and merge this pull request and it closes the linked issue, the bounty will be paid out automatically from escrow.
 
-Open BountyPay: ${frontendUrl}
+You can review this bounty from your dashboard: ${frontendUrl}/account
 
 BountyPay by Lucci Labs (luccilabs.xyz)
   `.trim();

@@ -5,6 +5,11 @@
   "env": {
     "NODE_ENV": "production"
   },
-  "crons": []
+  "crons": [
+    {
+      "path": "/api/cron/expiration-notify",
+      "schedule": "0 9 * * *"
+    }
+  ]
 }
 

@@ -140,7 +140,11 @@ export function AccountProvider({ children }) {
   const profileError = USE_DUMMY_DATA ? null : profileQuery.error || null;
   const adminError = USE_DUMMY_DATA ? null : adminQuery.error || null;
 
-  const showEmptyState = sponsorStatus === STATUS.READY && sponsoredBounties.length === 0;
+  // Only show "connect wallet" empty state if user has no linked wallet
+  // If user has wallet but no bounties, we'll show a different message
+  const hasLinkedWallet = Boolean(profileData?.wallet?.walletAddress);
+  const showWalletEmptyState = sponsorStatus === STATUS.READY && !hasLinkedWallet;
+  const showNoBountiesState = sponsorStatus === STATUS.READY && hasLinkedWallet && sponsoredBounties.length === 0;
 
   const actions = useMemo(() => {
     if (USE_DUMMY_DATA) {
@@ -199,7 +203,8 @@ export function AccountProvider({ children }) {
         stats: sponsorStats,
         status: sponsorStatus,
         error: sponsorError,
-        showEmptyState
+        showEmptyState: showWalletEmptyState,
+        showNoBountiesState
       },
       earnings: {
         claimedBounties,
@@ -227,7 +232,8 @@ export function AccountProvider({ children }) {
       sponsorStats,
       sponsorStatus,
       sponsorError,
-      showEmptyState,
+      showWalletEmptyState,
+      showNoBountiesState,
       claimedBounties,
       totalEarned,
       earningsStatus,

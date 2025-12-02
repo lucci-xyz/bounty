@@ -2,8 +2,7 @@ import { logger } from '@/shared/lib/logger';
 import { getSession } from '@/shared/lib/session';
 import { prisma } from '@/shared/server/db/prisma';
 import { NextResponse } from 'next/server';
-import { sendUserEmail } from '@/shared/server/notifications/email';
-import { renderBetaApprovedEmail, renderBetaRejectedEmail } from '@/shared/server/notifications/templates';
+import { sendBetaApprovedEmail, sendBetaRejectedEmail } from '@/shared/server/notifications/email';
 import { getLinkHref } from '@/shared/config/links';
 
 // List of admin GitHub IDs - configure in environment
@@ -59,20 +58,14 @@ export async function POST(request) {
     // Get frontend URL from environment
     const frontendUrl = process.env.FRONTEND_URL || getLinkHref('app', 'marketingSite');
     
-    // Select appropriate template based on status
-    const template =
-      status === 'approved'
-        ? renderBetaApprovedEmail({ username: betaAccess.githubUsername, frontendUrl })
-        : renderBetaRejectedEmail({ username: betaAccess.githubUsername, frontendUrl });
-    
     // Send email if user has provided an email address
     let emailResult = { skipped: true, reason: 'no_email' };
     if (betaAccess.email) {
-      emailResult = await sendUserEmail({
+      const sendEmail = status === 'approved' ? sendBetaApprovedEmail : sendBetaRejectedEmail;
+      emailResult = await sendEmail({
         to: betaAccess.email,
-        subject: template.subject,
-        html: template.html,
-        text: template.text
+        username: betaAccess.githubUsername,
+        frontendUrl
       });
     } else {
       logger.warn(`[NOTIFICATION] No email address for user ${betaAccess.githubUsername}`);

@@ -107,6 +107,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
         ) : (
           <SponsoredTab
             showEmptyState={sponsor.showEmptyState}
+            showNoBountiesState={sponsor.showNoBountiesState}
             stats={sponsor.stats}
             sponsoredBounties={sponsor.sponsoredBounties}
             expandedBountyId={sponsor.expandedBountyId}
@@ -169,7 +170,8 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
             onManageRepos={repoManager.handleManageRepos}
             openChangeWalletModal={walletManagement.changeModal.open}
             openDeleteWalletModal={walletManagement.deleteModal.open}
-            logout={logout}
+              logout={logout}
+              refreshProfile={accountActions.refreshProfile}
           />
         )
       )}
@@ -201,6 +203,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
         loading={repoManager.loadingRepos}
         close={repoManager.closeManageReposModal}
         handleInstallApp={repoManager.handleInstallApp}
+        hasBetaAccess={repoManager.hasBetaAccess}
       />
       {/* Allowlist management modal */}
       {allowlistEnabled && (

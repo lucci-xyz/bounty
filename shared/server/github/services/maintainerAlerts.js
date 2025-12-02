@@ -1,9 +1,10 @@
 import { logger } from '@/shared/lib/logger';
 import { postIssueComment } from '../client.js';
-import { sendSystemEmail } from '../../notifications/email.js';
+import { sendErrorNotification } from '../../notifications/email.js';
 import { ALERT_SEVERITY_STYLES, buildShieldsBadge } from '@/shared/lib';
 import { renderSystemAlertComment, renderAlertEmailHtml } from '@/shared/server/github/templates/alerts';
 import { BADGE_BASE, BADGE_LABEL_COLOR, BADGE_STYLE, BRAND_SIGNATURE, FRONTEND_BASE } from '../constants.js';
+import { userQueries } from '../../db/prisma.js';
 
 export async function notifyMaintainers(octokit, owner, repo, issueNumber, errorDetails) {
   const {
@@ -15,6 +16,7 @@ export async function notifyMaintainers(octokit, owner, repo, issueNumber, error
     recipientAddress,
     prNumber,
     username,
+    githubId,
     txHash,
     context
   } = errorDetails;
@@ -66,31 +68,32 @@ export async function notifyMaintainers(octokit, owner, repo, issueNumber, error
     brandSignature: BRAND_SIGNATURE
   });
 
-  const emailSubject = `[BountyPay Alert] ${severityStyle.label} - ${errorType}`;
-  const detailsHtml = detailsSection
-    ? `<p><strong>Details:</strong><br/>${detailsSection.replace(/\n/g, '<br/>')}</p>`
-    : '';
-  const contextHtml = context ? `<p><strong>Additional Context:</strong><br/>${context.replace(/\n/g, '<br/>')}</p>` : '';
-  const emailHtml = renderAlertEmailHtml({
-    errorType,
-    owner,
-    repo,
-    issueNumber,
-    severityLabel: severityStyle.label,
-    errorId,
-    timestamp,
-    truncatedError,
-    detailsHtml,
-    contextHtml
-  });
-
+  // Send error notification to both user (if they have email) and ops team
   try {
-    await sendSystemEmail({
-      subject: emailSubject,
-      html: emailHtml
+    // Try to get user's email if we have their githubId or username
+    let userEmail = null;
+    const userGithubId = githubId || (username ? await getUserIdFromUsername(octokit, owner, repo, username) : null);
+    
+    if (userGithubId) {
+      const user = await userQueries.findByGithubId(userGithubId);
+      userEmail = user?.email;
+    }
+
+    await sendErrorNotification({
+      to: userEmail,
+      username,
+      errorType,
+      errorMessage: truncatedError,
+      context,
+      repoFullName: `${owner}/${repo}`,
+      issueNumber,
+      prNumber,
+      bountyId,
+      network,
+      frontendUrl: FRONTEND_BASE
     });
   } catch (emailError) {
-    logger.error('Failed to send alert email:', emailError);
+    logger.error('Failed to send error notification email:', emailError);
   }
 
   try {
@@ -99,6 +102,20 @@ export async function notifyMaintainers(octokit, owner, repo, issueNumber, error
     return errorId;
   } catch (notifyError) {
     logger.error('Failed to notify maintainers:', notifyError.message);
+    return null;
+  }
+}
+
+/**
+ * Helper to get GitHub user ID from username (if we don't already have it)
+ * Returns null if unable to fetch
+ */
+async function getUserIdFromUsername(octokit, owner, repo, username) {
+  try {
+    // This is a best-effort attempt - we might not always have API access
+    const { data } = await octokit.rest.users.getByUsername({ username });
+    return data?.id;
+  } catch {
     return null;
   }
 }
