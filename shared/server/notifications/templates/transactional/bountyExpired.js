@@ -11,119 +11,143 @@ export function renderBountyExpiredEmail({
   frontendUrl
 }) {
   const issueUrl = `https://github.com/${repoFullName}/issues/${issueNumber}`;
-  
+  const logoUrl = `${frontendUrl}/icons/og.png`;
+
   const subject = `Your ${bountyAmount} ${tokenSymbol} bounty has expired`;
 
   const html = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <style>
         body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+          margin: 0;
+          padding: 24px 0;
+          background-color: #f3f4f6;
+          font-family: -apple-system, BlinkMacSystemFont, system-ui, -system-ui,
+            "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+          color: #111827;
           line-height: 1.6;
-          color: #1f2937;
-          max-width: 600px;
-          margin: 0 auto;
-          padding: 20px;
-          background-color: #f9fafb;
         }
         .container {
+          max-width: 640px;
+          margin: 0 auto;
           background-color: #ffffff;
           border-radius: 8px;
-          padding: 40px;
-          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+          padding: 32px;
+          box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
         }
         .header {
-          text-align: center;
-          margin-bottom: 30px;
+          text-align: left;
+          margin-bottom: 24px;
+        }
+        .logo {
+          height: 24px;
         }
         h1 {
-          color: #b45309;
-          font-size: 24px;
-          margin: 0 0 10px 0;
-        }
-        .bounty-amount {
-          background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
-          color: #ffffff;
-          font-size: 28px;
-          font-weight: 700;
-          padding: 20px;
-          border-radius: 8px;
-          text-align: center;
-          margin: 20px 0;
+          font-size: 22px;
+          font-weight: 600;
+          margin: 16px 0 8px;
+          color: #111827;
         }
         p {
-          margin: 15px 0;
-          font-size: 16px;
+          margin: 12px 0;
+          font-size: 15px;
         }
-        .info-box {
-          background-color: #fffbeb;
-          border-left: 4px solid #f59e0b;
-          padding: 16px 20px;
+        .summary {
+          width: 100%;
+          border-collapse: collapse;
           margin: 20px 0;
-          border-radius: 0 8px 8px 0;
+          font-size: 14px;
         }
-        .cta-button {
-          display: inline-block;
-          background-color: #00827B;
-          color: #ffffff;
-          padding: 14px 32px;
-          text-decoration: none;
-          border-radius: 6px;
+        .summary th,
+        .summary td {
+          padding: 8px 0;
+          border-bottom: 1px solid #e5e7eb;
+          text-align: left;
+        }
+        .summary th {
+          width: 120px;
+          font-weight: 500;
+          color: #4b5563;
+        }
+        .section-title {
           font-weight: 600;
-          margin: 20px 0;
+          margin-top: 24px;
+          margin-bottom: 8px;
+          font-size: 15px;
+        }
+        ul {
+          margin: 8px 0 16px 20px;
+          padding: 0;
+          font-size: 14px;
+        }
+        li {
+          margin-bottom: 6px;
         }
         a {
-          color: #00827B;
-          text-decoration: none;
-        }
-        a:hover {
+          color: #111827;
           text-decoration: underline;
         }
         .footer {
-          text-align: center;
-          margin-top: 40px;
-          padding-top: 20px;
+          margin-top: 32px;
+          padding-top: 16px;
           border-top: 1px solid #e5e7eb;
+          font-size: 13px;
           color: #6b7280;
-          font-size: 14px;
         }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="header">
-          <h1>⏰ Bounty Expired</h1>
+          <img src="${logoUrl}" alt="BountyPay" class="logo" />
+          <h1>Bounty expired</h1>
         </div>
 
         <p>Hi <strong>${username}</strong>,</p>
 
-        <p>Your bounty on issue <a href="${issueUrl}">#${issueNumber}</a> has reached its deadline and expired.</p>
+        <p>
+          Your bounty on issue
+          <a href="${issueUrl}">#${issueNumber}${issueTitle ? ` — ${issueTitle}` : ''}</a>
+          has reached its deadline and is now expired.
+        </p>
 
-        <div class="bounty-amount">
-          ${bountyAmount} ${tokenSymbol}
-        </div>
+        <table class="summary" role="presentation">
+          <tr>
+            <th>Bounty amount</th>
+            <td>${bountyAmount} ${tokenSymbol}</td>
+          </tr>
+          <tr>
+            <th>Repository</th>
+            <td>${repoFullName}</td>
+          </tr>
+          <tr>
+            <th>Issue</th>
+            <td><a href="${issueUrl}">#${issueNumber}</a></td>
+          </tr>
+          <tr>
+            <th>Status</th>
+            <td>Eligible for refund</td>
+          </tr>
+        </table>
 
-        <div class="info-box">
-          <p style="margin: 0 0 10px 0;"><strong>Repository:</strong> ${repoFullName}</p>
-          <p style="margin: 0 0 10px 0;"><strong>Issue:</strong> <a href="${issueUrl}">#${issueNumber}${issueTitle ? ` - ${issueTitle}` : ''}</a></p>
-          <p style="margin: 0;"><strong>Status:</strong> Eligible for refund</p>
-        </div>
-
-        <p><strong>What are your options?</strong></p>
+        <p class="section-title">What you can do next</p>
         <ul>
-          <li><strong>Request a refund:</strong> You can claim your funds back from your dashboard</li>
-          <li><strong>Create a new bounty:</strong> If you still need the issue solved, you can create a new bounty with an extended deadline</li>
+          <li><strong>Request a refund:</strong> Claim your funds back from your dashboard.</li>
+          <li><strong>Create a new bounty:</strong> If you still need the issue solved, open a new bounty with an updated deadline.</li>
         </ul>
 
-        <div style="text-align: center;">
-          <a href="${frontendUrl}/account" class="cta-button">Manage Your Bounties</a>
-        </div>
+        <p>
+          You can manage this bounty from your dashboard:
+          <a href="${frontendUrl}/account">${frontendUrl}/account</a>
+        </p>
 
-        <p style="color: #6b7280; font-size: 14px;">The issue remains open on GitHub. The bounty expiration only affects the reward, not the issue itself.</p>
+        <p style="font-size: 13px; color: #6b7280;">
+          The issue itself remains open on GitHub. Only the bounty reward has expired.
+        </p>
 
         <div class="footer">
           <p>BountyPay by Lucci Labs</p>
@@ -135,27 +159,26 @@ export function renderBountyExpiredEmail({
   `;
 
   const text = `
-Bounty Expired
+Bounty expired
 
 Hi ${username},
 
-Your bounty on issue #${issueNumber} has reached its deadline and expired.
+Your bounty on issue #${issueNumber}${issueTitle ? ` - ${issueTitle}` : ''} has reached its deadline and is now expired.
 
-Bounty Amount: ${bountyAmount} ${tokenSymbol}
-
+Bounty amount: ${bountyAmount} ${tokenSymbol}
 Repository: ${repoFullName}
-Issue: #${issueNumber}${issueTitle ? ` - ${issueTitle}` : ''}
+Issue: #${issueNumber}
 ${issueUrl}
 
 Status: Eligible for refund
 
-What are your options?
-- Request a refund: You can claim your funds back from your dashboard
-- Create a new bounty: If you still need the issue solved, you can create a new bounty with an extended deadline
+What you can do next:
+- Request a refund: claim your funds back from your dashboard.
+- Create a new bounty: if you still need the issue solved, open a new bounty with an updated deadline.
 
-Manage your bounties: ${frontendUrl}/account
+Manage this bounty from your dashboard: ${frontendUrl}/account
 
-The issue remains open on GitHub. The bounty expiration only affects the reward, not the issue itself.
+The issue itself remains open on GitHub. Only the bounty reward has expired.
 
 ---
 BountyPay by Lucci Labs
@@ -164,4 +187,3 @@ ${frontendUrl}
 
   return { subject, html, text };
 }
-
