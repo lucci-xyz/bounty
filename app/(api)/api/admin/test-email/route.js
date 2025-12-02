@@ -8,7 +8,7 @@ import {
   sendBetaApprovedEmail,
   sendBetaRejectedEmail
 } from '@/shared/server/notifications/email';
-import { isGmailConfigured } from '@/shared/server/notifications/gmail';
+import { isSmtpConfigured } from '@/shared/server/notifications/smtp';
 
 // Admin GitHub IDs from environment
 const ADMIN_GITHUB_IDS = (process.env.ADMIN_GITHUB_IDS || '')
@@ -33,11 +33,11 @@ export async function POST(request) {
       return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
     
-    // Check if Gmail is configured
-    if (!isGmailConfigured()) {
+    // Check if SMTP is configured
+    if (!isSmtpConfigured()) {
       return Response.json({ 
-        error: 'Gmail not configured',
-        details: 'GMAIL_SERVICE_ACCOUNT_JSON environment variable is not set'
+        error: 'SMTP not configured',
+        details: 'SMTP_USER and SMTP_PASS environment variables are not set'
       }, { status: 503 });
     }
     

@@ -3,9 +3,9 @@ import {
   sendTransactionalEmail,
   sendBetaEmail,
   sendOpsAlert,
-  isGmailConfigured,
+  isSmtpConfigured,
   EMAIL_SENDERS
-} from './gmail.js';
+} from './smtp.js';
 import {
   renderPrOpenedEmail,
   renderBountyExpiredEmail,
@@ -53,8 +53,8 @@ export function getAlertEmailAddress() {
 export async function sendPrOpenedEmail(params) {
   const { to, ...templateParams } = params;
   
-  if (!isGmailConfigured()) {
-    logger.warn('[email] Gmail not configured. Skipping PR opened email');
+  if (!isSmtpConfigured()) {
+    logger.warn('[email] SMTP not configured. Skipping PR opened email');
     return { skipped: true, reason: 'no_config' };
   }
   
@@ -82,8 +82,8 @@ export async function sendPrOpenedEmail(params) {
 export async function sendBountyExpiredEmail(params) {
   const { to, ...templateParams } = params;
   
-  if (!isGmailConfigured()) {
-    logger.warn('[email] Gmail not configured. Skipping bounty expired email');
+  if (!isSmtpConfigured()) {
+    logger.warn('[email] SMTP not configured. Skipping bounty expired email');
     return { skipped: true, reason: 'no_config' };
   }
   
@@ -115,8 +115,8 @@ export async function sendErrorNotification(params) {
   const { to, frontendUrl, ...errorParams } = params;
   const results = { user: null, ops: null };
   
-  if (!isGmailConfigured()) {
-    logger.warn('[email] Gmail not configured. Skipping error notification');
+  if (!isSmtpConfigured()) {
+    logger.warn('[email] SMTP not configured. Skipping error notification');
     return { skipped: true, reason: 'no_config' };
   }
   
@@ -165,8 +165,8 @@ export async function sendErrorNotification(params) {
 export async function sendBetaReceivedEmail(params) {
   const { to, ...templateParams } = params;
   
-  if (!isGmailConfigured()) {
-    logger.warn('[email] Gmail not configured. Skipping beta received email');
+  if (!isSmtpConfigured()) {
+    logger.warn('[email] SMTP not configured. Skipping beta received email');
     return { skipped: true, reason: 'no_config' };
   }
   
@@ -189,8 +189,8 @@ export async function sendBetaReceivedEmail(params) {
 export async function sendBetaApprovedEmail(params) {
   const { to, ...templateParams } = params;
   
-  if (!isGmailConfigured()) {
-    logger.warn('[email] Gmail not configured. Skipping beta approved email');
+  if (!isSmtpConfigured()) {
+    logger.warn('[email] SMTP not configured. Skipping beta approved email');
     return { skipped: true, reason: 'no_config' };
   }
   
@@ -213,8 +213,8 @@ export async function sendBetaApprovedEmail(params) {
 export async function sendBetaRejectedEmail(params) {
   const { to, ...templateParams } = params;
   
-  if (!isGmailConfigured()) {
-    logger.warn('[email] Gmail not configured. Skipping beta rejected email');
+  if (!isSmtpConfigured()) {
+    logger.warn('[email] SMTP not configured. Skipping beta rejected email');
     return { skipped: true, reason: 'no_config' };
   }
   
@@ -236,8 +236,8 @@ export async function sendBetaRejectedEmail(params) {
  * @deprecated Use sendErrorNotification instead
  */
 export async function sendSystemEmail({ subject, html, text }) {
-  if (!isGmailConfigured()) {
-    logger.warn(`[email] Gmail not configured. Skipping system email: ${subject}`);
+  if (!isSmtpConfigured()) {
+    logger.warn(`[email] SMTP not configured. Skipping system email: ${subject}`);
     return { skipped: true };
   }
   
@@ -249,8 +249,8 @@ export async function sendSystemEmail({ subject, html, text }) {
  * @deprecated Use specific email functions instead
  */
 export async function sendUserEmail({ to, subject, html, text }) {
-  if (!isGmailConfigured()) {
-    logger.warn(`[email] Gmail not configured. Skipping user email: ${subject}`);
+  if (!isSmtpConfigured()) {
+    logger.warn(`[email] SMTP not configured. Skipping user email: ${subject}`);
     return { skipped: true };
   }
 

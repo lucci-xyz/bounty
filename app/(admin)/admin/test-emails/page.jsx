@@ -217,13 +217,14 @@ export default function TestEmailsPage() {
           </div>
         )}
 
-        {/* Gmail Config Status */}
+        {/* SMTP Config Status */}
         <div className="mt-8 p-4 bg-zinc-900/50 rounded-lg border border-zinc-800">
           <h3 className="text-sm font-medium text-zinc-400 mb-2">Configuration Checklist</h3>
           <ul className="text-sm text-zinc-500 space-y-1">
-            <li>• <code className="text-zinc-400">GMAIL_SERVICE_ACCOUNT_JSON</code> must be set in environment</li>
-            <li>• Service account must have domain-wide delegation enabled</li>
-            <li>• Gmail API scope <code className="text-zinc-400">https://www.googleapis.com/auth/gmail.send</code> must be authorized</li>
+            <li>• <code className="text-zinc-400">SMTP_USER</code> must be set in environment (e.g., natalie@luccilabs.xyz)</li>
+            <li>• <code className="text-zinc-400">SMTP_PASS</code> must be set in environment (Gmail app password)</li>
+            <li>• Gmail account must have 2-factor authentication enabled</li>
+            <li>• App password must be generated in Google Account settings</li>
             <li>• Sender addresses must be configured as aliases in Google Workspace</li>
           </ul>
         </div>
