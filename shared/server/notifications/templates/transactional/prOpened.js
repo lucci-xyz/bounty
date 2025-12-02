@@ -1,5 +1,6 @@
 /**
- * Email template for when a user opens a PR for a bounty
+ * Email template for when a pull request is opened for a bounty
+ * (sent to the person who created / funded the bounty)
  */
 export function renderPrOpenedEmail({
   username,
@@ -15,7 +16,7 @@ export function renderPrOpenedEmail({
   const issueUrl = `https://github.com/${repoFullName}/issues/${issueNumber}`;
   const logoUrl = `${frontendUrl}/icons/og.png`;
 
-  const subject = `Your PR #${prNumber} is linked to a ${bountyAmount} ${tokenSymbol} bounty`;
+  const subject = `A pull request was opened for your bounty`;
 
   const html = `
     <!DOCTYPE html>
@@ -126,7 +127,7 @@ export function renderPrOpenedEmail({
                       padding-bottom: 20px;
                     "
                   >
-                    Your pull request has been linked to a bounty on BountyPay.
+                    A contributor has opened a pull request for one of your bounties on BountyPay.
                   </td>
                 </tr>
 
@@ -228,9 +229,7 @@ export function renderPrOpenedEmail({
                             href="${prUrl}"
                             style="color: #111827; text-decoration: underline;"
                           >
-                            #${prNumber}${
-    prTitle ? ` — ${prTitle}` : ""
-  }
+                            #${prNumber}${prTitle ? ` — ${prTitle}` : ""}
                           </a>
                         </td>
                       </tr>
@@ -250,7 +249,7 @@ export function renderPrOpenedEmail({
                             border-bottom: 1px solid #e5e7eb;
                           "
                         >
-                          Linked to bounty
+                          Waiting for review
                         </td>
                       </tr>
                     </table>
@@ -266,8 +265,8 @@ export function renderPrOpenedEmail({
                       padding-bottom: 4px;
                     "
                   >
-                    When your pull request is merged and closes the linked issue,
-                    the bounty will be paid to your linked wallet.
+                    When you review and merge this pull request and it closes the linked issue,
+                    the bounty will be paid out automatically from escrow.
                   </td>
                 </tr>
 
@@ -279,8 +278,7 @@ export function renderPrOpenedEmail({
                       padding-bottom: 16px;
                     "
                   >
-                    You can review your bounties and wallet settings in your
-                    dashboard.
+                    You can review this bounty and others from your dashboard.
                   </td>
                 </tr>
 
@@ -307,8 +305,8 @@ export function renderPrOpenedEmail({
                       padding-top: 12px;
                     "
                   >
-                    Make sure your wallet is linked to your GitHub account so you
-                    can receive the bounty when it is paid out.
+                    You are receiving this email because a pull request was opened
+                    for a bounty you created on BountyPay.
                   </td>
                 </tr>
               </table>
@@ -361,21 +359,21 @@ export function renderPrOpenedEmail({
   `;
 
   const text = `
-PR linked to bounty
+A pull request was opened for your bounty
 
 Hi ${username},
 
-Your pull request has been linked to a bounty on BountyPay.
+A contributor has opened a pull request for one of your bounties on BountyPay.
 
 Bounty amount: ${bountyAmount} ${tokenSymbol}
 Repository: ${repoFullName}
 Issue: #${issueNumber} (${issueUrl})
 Pull request: #${prNumber}${prTitle ? ` - ${prTitle}` : ''} (${prUrl})
-Status: Linked to bounty
+Status: Waiting for review
 
-When your pull request is merged and closes the linked issue, the bounty will be paid to your linked wallet.
+When you review and merge this pull request and it closes the linked issue, the bounty will be paid out automatically from escrow.
 
-Manage your settings in your dashboard: ${frontendUrl}/account
+You can review this bounty from your dashboard: ${frontendUrl}/account
 
 BountyPay by Lucci Labs (luccilabs.xyz)
   `.trim();

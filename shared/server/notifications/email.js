@@ -38,12 +38,13 @@ export function getAlertEmailAddress() {
 // ============================================================================
 
 /**
- * Send PR opened notification to a contributor
+ * Send PR opened notification to a bounty sponsor
  * @param {Object} params
- * @param {string} params.to - Recipient email address
- * @param {string} params.username - GitHub username
+ * @param {string} params.to - Recipient email address (sponsor's email)
+ * @param {string} params.username - Sponsor's GitHub username
  * @param {number} params.prNumber - PR number
  * @param {string} params.prTitle - PR title
+ * @param {string} params.prAuthor - PR author's GitHub username
  * @param {string} params.repoFullName - Full repo name (owner/repo)
  * @param {string} params.bountyAmount - Formatted bounty amount
  * @param {string} params.tokenSymbol - Token symbol (USDC, MUSD)

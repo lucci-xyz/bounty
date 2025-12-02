@@ -372,22 +372,38 @@ async function handlePRWithBounties(octokit, owner, repo, pull_request, reposito
     }
   }
 
-  // Send email notification to PR author (non-blocking)
+  // Send email notification to bounty sponsors (non-blocking)
   try {
-    const user = await userQueries.findByGithubId(pull_request.user.id);
-    if (user?.email) {
-      const firstBounty = bounties[0];
-      await sendPrOpenedEmail({
-        to: user.email,
-        username: pull_request.user.login,
-        prNumber: pull_request.number,
-        prTitle: pull_request.title,
-        repoFullName: repository.full_name,
-        bountyAmount: totalAmount.toFixed(2),
-        tokenSymbol,
-        issueNumber: firstBounty.issueNumber,
-        frontendUrl: FRONTEND_BASE
-      });
+    // Get unique sponsors from all bounties
+    const uniqueSponsors = new Map();
+    for (const bounty of bounties) {
+      if (bounty.sponsorGithubId && !uniqueSponsors.has(bounty.sponsorGithubId)) {
+        uniqueSponsors.set(bounty.sponsorGithubId, bounty);
+      }
+    }
+
+    // Send email to each unique sponsor
+    for (const [sponsorGithubId, bounty] of uniqueSponsors) {
+      try {
+        const sponsor = await userQueries.findByGithubId(sponsorGithubId);
+        if (sponsor?.email) {
+          await sendPrOpenedEmail({
+            to: sponsor.email,
+            username: sponsor.githubUsername,
+            prNumber: pull_request.number,
+            prTitle: pull_request.title,
+            prAuthor: pull_request.user.login,
+            repoFullName: repository.full_name,
+            bountyAmount: totalAmount.toFixed(2),
+            tokenSymbol,
+            issueNumber: bounty.issueNumber,
+            frontendUrl: FRONTEND_BASE
+          });
+        }
+      } catch (sponsorError) {
+        // Log but continue with other sponsors
+        logger.warn(`Failed to send PR opened email to sponsor ${sponsorGithubId}:`, sponsorError.message);
+      }
     }
   } catch (emailError) {
     // Non-blocking - log but don't fail the webhook

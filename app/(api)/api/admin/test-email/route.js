@@ -61,6 +61,7 @@ export async function POST(request) {
           username: params.username || 'testuser',
           prNumber: parseInt(params.prNumber) || 42,
           prTitle: params.prTitle || 'Test PR Title',
+          prAuthor: params.prAuthor || 'contributor',
           repoFullName: params.repoFullName || 'owner/repo',
           bountyAmount: params.bountyAmount || '100.00',
           tokenSymbol: params.tokenSymbol || 'USDC',
