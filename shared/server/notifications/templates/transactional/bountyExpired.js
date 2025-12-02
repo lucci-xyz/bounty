@@ -80,8 +80,8 @@ export function renderBountyExpiredEmail({
                           <img
                             src="${logoUrl}"
                             alt="BountyPay"
-                            width="22"
-                            height="22"
+                            width="34"
+                            height="30"
                             style="display: block; border-radius: 6px;"
                           />
                         </td>
@@ -324,8 +324,6 @@ export function renderBountyExpiredEmail({
                             <span
                               style="
                                 display: inline-block;
-                                border-radius: 999px;
-                                border: 1px solid #d1d5db;
                                 padding: 3px 8px;
                               "
                             >
@@ -345,8 +343,6 @@ export function renderBountyExpiredEmail({
                             <span
                               style="
                                 display: inline-block;
-                                border-radius: 999px;
-                                border: 1px solid #d1d5db;
                                 padding: 3px 8px;
                               "
                             >
@@ -366,8 +362,6 @@ export function renderBountyExpiredEmail({
                             <span
                               style="
                                 display: inline-block;
-                                border-radius: 999px;
-                                border: 1px solid #d1d5db;
                                 padding: 3px 8px;
                               "
                             >
@@ -387,8 +381,6 @@ export function renderBountyExpiredEmail({
                             <span
                               style="
                                 display: inline-block;
-                                border-radius: 999px;
-                                border: 1px solid #d1d5db;
                                 padding: 3px 8px;
                               "
                             >
