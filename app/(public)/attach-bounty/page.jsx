@@ -5,7 +5,7 @@
  * Handles main logic and view for connecting wallet, setting bounty amount and deadline.
  */
 
-import { useMemo, Suspense, useEffect, useState, useRef } from 'react';
+import { useMemo, Suspense, useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import BetaAccessModal from '@/features/beta-access/components/BetaAccessModal';
@@ -61,8 +61,8 @@ function AttachBountyContent() {
     fundBounty
   } = useAttachBountyForm({ issueData });
 
-  // Navigate back (or push) handler
-  const handleBack = () => goBackOrPush(router);
+  // Navigate back (or push) handler - wrapped in useCallback for stability
+  const handleBack = useCallback(() => goBackOrPush(router), [router]);
 
   // Track if modal was opened - once opened, keep it open until dismissed or access granted
   // This prevents flickering when beta access state updates during loading
@@ -85,12 +85,25 @@ function AttachBountyContent() {
     }
   }, [betaLoading, hasAccess, showBetaModal]); // Removed modalIsOpen from deps to prevent circular updates
 
-  const handleModalClose = () => {
+  // Stable callback for modal close - prevents flickering from inline function re-creation
+  const handleModalClose = useCallback(() => {
     setModalIsOpen(false);
     modalOpenedRef.current = false;
     hideBetaModal();
     handleBack();
-  };
+  }, [hideBetaModal, handleBack]);
+
+  // Stable callback for access granted - prevents flickering from inline function re-creation
+  const handleAccessGranted = useCallback(() => {
+    setModalIsOpen(false);
+    modalOpenedRef.current = false;
+    hideBetaModal();
+    // Refresh the page to update beta access state
+    // Use a small delay to ensure modal closes smoothly
+    setTimeout(() => {
+      router.refresh();
+    }, 100);
+  }, [hideBetaModal, router]);
 
   /**
    * Modal for beta access.
@@ -103,16 +116,7 @@ function AttachBountyContent() {
       onClose={handleModalClose}
       onDismiss={handleModalClose}
       dismissLabel="Back"
-      onAccessGranted={() => {
-        setModalIsOpen(false);
-        modalOpenedRef.current = false;
-        hideBetaModal();
-        // Refresh the page to update beta access state
-        // Use a small delay to ensure modal closes smoothly
-        setTimeout(() => {
-          router.refresh();
-        }, 100);
-      }}
+      onAccessGranted={handleAccessGranted}
     />
   );
 

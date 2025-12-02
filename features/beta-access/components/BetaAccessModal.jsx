@@ -69,10 +69,13 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
   }, [isOpen, step]);
 
   // Set the correct step based on beta status
+  // Only update step when it actually changes to prevent unnecessary re-renders
   useEffect(() => {
     if (!isOpen) return;
     const nextStep = resolveBetaStep(betaStatus, hasAccess);
-    setStep(nextStep);
+    
+    // Only update state if step actually changed - prevents flickering
+    setStep((prevStep) => (prevStep !== nextStep ? nextStep : prevStep));
 
     // If access was granted, call onAccessGranted and auto-close shortly after
     if (nextStep === 'approved') {
