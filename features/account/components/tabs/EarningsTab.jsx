@@ -81,12 +81,16 @@ export function EarningsTab({ claimedBounties, totalEarned }) {
                       {repoName}
                     </LinkFromCatalog>
                     <div className="text-muted-foreground text-[13px] font-light">
-                      {bounty.paidAt
-                        ? `Paid ${new Date(bounty.paidAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric'
-                          })}`
-                        : 'Paid Recent'}
+                      {bounty.claimStatus === 'pending'
+                        ? 'Pending payout'
+                        : bounty.claimStatus === 'failed'
+                          ? 'Payout failed'
+                          : bounty.paidAt
+                            ? `Paid ${new Date(bounty.paidAt).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric'
+                              })}`
+                            : 'Paid'}
                     </div>
                   </div>
                   <div className="text-foreground text-base font-light tracking-tight text-[#0D473F]">
