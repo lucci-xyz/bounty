@@ -145,8 +145,8 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
     }
   };
 
-  // Don't render if the modal is closed or the portal hasn't mounted yet
-  if (!isOpen || !mounted) return null;
+  // Don't render if the portal hasn't mounted yet
+  if (!mounted) return null;
 
   // Use beta loading state if relevant
   const effectiveStep = step === 'loading' && betaLoading ? 'loading' : step;
@@ -253,9 +253,13 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
     }
   };
 
-  // Modal markup
+  // Modal markup - keep portal mounted, hide with CSS to prevent backdrop-blur flickering
   const modalContent = (
-    <div className="fixed inset-0 z-[9999] bg-background/70 backdrop-blur-md flex items-center justify-center p-5">
+    <div 
+      className={`fixed inset-0 z-[9999] bg-background/70 backdrop-blur-md flex items-center justify-center p-5 transition-opacity duration-200 ${
+        isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+      }`}
+    >
       <div className="w-full max-w-md rounded-[40px] border border-border/60 bg-card px-8 py-12 shadow-[0_60px_160px_rgba(15,23,42,0.22)] space-y-7">
         <div className="text-center space-y-3">
           <h2 className="text-3xl font-light text-foreground/90">{title}</h2>
