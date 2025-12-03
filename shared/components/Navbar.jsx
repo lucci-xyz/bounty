@@ -112,13 +112,13 @@ export default function Navbar() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 px-4 pt-4">
       <nav className={cn(
-        'max-w-3xl mx-auto flex items-center justify-between px-4 py-2 rounded-full border transition-all duration-300',
+        'max-w-3xl mx-auto relative flex items-center justify-between px-4 py-2 rounded-full border transition-all duration-300',
         scrolled
           ? 'bg-card/95 backdrop-blur-custom border-border shadow-sm'
           : 'bg-card/80 backdrop-blur-sm border-border/80'
       )}>
         {/* Logo - links to app if in app, otherwise landing */}
-        <Link href={isAppRoute ? "/app" : "/"} className="flex items-center gap-1 flex-shrink-0">
+        <Link href={isAppRoute ? "/app" : "/"} className="flex items-center gap-1 flex-shrink-0 z-10">
           <Image
             src="/icons/og.png"
             alt="BountyPay cube logo"
@@ -132,26 +132,32 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Center Navigation - Only show on landing page */}
+        {/* Center Navigation - Absolutely centered, only show on landing page */}
         {!isAppRoute && (
-          <div className="hidden md:flex items-center gap-5">
+          <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-6">
             <Link 
               href="#how-it-works"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
             >
               How it works
             </Link>
             <Link 
               href="#features"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
             >
               Features
+            </Link>
+            <Link 
+              href="#faq"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+            >
+              FAQ
             </Link>
           </div>
         )}
 
         {/* Right side */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-shrink-0 z-10">
           {githubUser ? (
             <div className="relative" ref={dropdownRef}>
               <button
