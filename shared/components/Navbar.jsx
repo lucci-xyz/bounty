@@ -3,6 +3,7 @@ import { logger } from '@/shared/lib/logger';
 
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useNetwork } from '@/shared/providers/NetworkProvider';
 import UserAvatar from '@/shared/components/UserAvatar';
@@ -117,8 +118,16 @@ export default function Navbar() {
           : 'bg-card/80 backdrop-blur-sm border-border/80'
       )}>
         {/* Logo - links to app if in app, otherwise landing */}
-        <Link href={isAppRoute ? "/app" : "/"} className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-base font-semibold tracking-tight text-foreground">
+        <Link href={isAppRoute ? "/app" : "/"} className="flex items-center gap-1 flex-shrink-0">
+          <Image
+            src="/icons/og.png"
+            alt="BountyPay cube logo"
+            width={36}
+            height={36}
+            className="h-7 w-7 md:h-9 md:w-9 rounded-md object-contain"
+            priority
+          />
+          <span className="font-instrument-serif text-lg md:text-xl text-foreground leading-tight tracking-tight">
             BountyPay
           </span>
         </Link>
