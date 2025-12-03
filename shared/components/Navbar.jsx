@@ -110,7 +110,7 @@ export default function Navbar() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 px-4 pt-4">
+    <header className="fixed top-0 left-0 right-0 z-50 px-0 pt-4">
       <nav className={cn(
         'max-w-3xl mx-auto relative flex items-center justify-between px-4 py-2 rounded-full border transition-all duration-300',
         scrolled
