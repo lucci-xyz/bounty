@@ -177,7 +177,7 @@ export function SponsoredTab({
       <div className="min-h-[420px] flex items-center justify-center animate-fade-in-up delay-100">
         <div className="w-full max-w-lg rounded-[36px] border border-border/60 bg-card p-10 text-center shadow-[0_50px_140px_rgba(15,23,42,0.18)] space-y-6">
           <div className="space-y-2">
-            <h2 className="text-3xl font-light text-foreground/90">
+            <h2 className="text-3xl font-light text-primary-foreground">
               Create Your First Bounty
             </h2>
             <p className="text-sm text-muted-foreground">
