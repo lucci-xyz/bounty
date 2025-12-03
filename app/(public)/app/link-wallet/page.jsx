@@ -290,6 +290,9 @@ function SignInContent() {
     window.location.href = returnTo;
   };
   
+  // Calculate short address early so it's available in early returns
+  const shortAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '';
+  
   // Loading state - only show during initial mount
   if (!isMounted) {
     return (
@@ -317,35 +320,94 @@ function SignInContent() {
     );
   }
   
-  // Calculate short address
-  const shortAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '';
+  // Show welcome back state when user has all three (GitHub + wallet + email)
+  // No animations - just static content with spinner until redirect
+  if (githubUser && showWelcomeBack && hasLinkedWallet && hasVerifiedEmail) {
+    return (
+      <div className="max-w-lg mx-auto px-6 py-16 space-y-8">
+        <header className="text-center space-y-3">
+          <h1 className="font-instrument-serif text-4xl text-foreground">Welcome back</h1>
+          <p className="text-sm text-muted-foreground">Your account is ready for bounty payouts</p>
+        </header>
+        
+        <div className={cardClasses}>
+          <div className="text-center space-y-5">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
+              <CheckCircleIcon size={32} className="text-emerald-600" />
+            </div>
+            
+            {/* Account summary */}
+            <div className="rounded-xl border border-border/50 bg-secondary/30 p-4 text-left space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">GitHub</span>
+                <span className="text-sm font-medium text-foreground">@{githubUser.githubUsername}</span>
+              </div>
+              <div className="border-t border-border/40" />
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Wallet</span>
+                <span className="text-sm font-mono text-foreground">{shortAddress || 'Linked'}</span>
+              </div>
+              <div className="border-t border-border/40" />
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Email</span>
+                <span className="text-sm text-foreground">{userEmail}</span>
+              </div>
+            </div>
+            
+            {/* Redirecting indicator */}
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin" />
+              <span>Redirecting to bounties...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show checking state for logged-in users while loading profile
+  if (githubUser && checkingProfile) {
+    return (
+      <div className="max-w-lg mx-auto px-6 py-16 space-y-8">
+        <header className="text-center space-y-3">
+          <h1 className="font-instrument-serif text-4xl text-foreground">Welcome back</h1>
+          <p className="text-sm text-muted-foreground">Loading your account...</p>
+        </header>
+        <div className={`${cardClasses} text-center py-12`}>
+          <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+            <CheckCircleIcon size={32} className="text-emerald-600" />
+          </div>
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin" />
+            <span>Loading your account...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   // Determine what to show
   // User is "fully set up" when they have a linked wallet (email is optional)
   const isFullySetUp = hasLinkedWallet;
-  // User gets "welcome back" treatment when they have all three: GitHub + wallet + email
-  const isReturningUser = hasLinkedWallet && hasVerifiedEmail && showWelcomeBack;
   
   return (
     <div className="max-w-lg mx-auto px-6 py-16 space-y-8">
       {/* Header */}
-      <header className={`text-center space-y-3 transition-opacity duration-500 ${redirecting ? 'opacity-0' : 'opacity-100'}`}>
+      <header className="text-center space-y-3">
         <h1 className="font-instrument-serif text-4xl text-foreground">
-          {!githubUser ? 'Sign in' : isReturningUser ? 'Welcome back' : isFullySetUp ? 'You\'re all set' : 'Complete setup'}
+          {!githubUser ? 'Sign in' : isFullySetUp ? 'You\'re all set' : 'Complete setup'}
         </h1>
         <p className="text-sm text-muted-foreground max-w-sm mx-auto">
           {!githubUser 
             ? 'Sign in with GitHub to sponsor bounties or claim rewards.'
-            : isReturningUser
-              ? 'Your account is ready for bounty payouts'
-              : isFullySetUp
-                ? 'Your account is ready to receive bounty payments.'
-                : 'Connect your wallet to receive bounty payments.'}
+            : isFullySetUp
+              ? 'Your account is ready to receive bounty payments.'
+              : 'Connect your wallet to receive bounty payments.'}
         </p>
       </header>
       
-      {/* Progress indicator - hide when redirecting or in welcome back state */}
-      {githubUser && !isFullySetUp && !isReturningUser && !redirecting && (
+      {/* Progress indicator */}
+      {githubUser && !isFullySetUp && (
         <div className="flex items-center justify-center gap-2">
           <div className={`w-2 h-2 rounded-full ${currentStep >= 1 ? 'bg-primary' : 'bg-border'}`} />
           <div className={`w-8 h-px ${currentStep >= 2 ? 'bg-primary' : 'bg-border'}`} />
@@ -388,18 +450,8 @@ function SignInContent() {
         </div>
       )}
       
-      {/* Checking account state */}
-      {githubUser && checkingProfile && (
-        <div className={`${cardClasses} text-center`}>
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-            <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-          </div>
-          <p className="text-sm text-muted-foreground">Checking your account...</p>
-        </div>
-      )}
-      
       {/* Step 2: Connect Wallet */}
-      {githubUser && !checkingProfile && !hasLinkedWallet && (
+      {githubUser && !hasLinkedWallet && (
         <div className={cardClasses}>
           <div className="space-y-5">
             {/* Connected GitHub indicator */}
@@ -441,52 +493,8 @@ function SignInContent() {
         </div>
       )}
       
-      {/* Welcome back state - shown when all three are linked (GitHub + wallet + email) */}
-      {githubUser && !checkingProfile && showWelcomeBack && hasLinkedWallet && hasVerifiedEmail && (
-        <div 
-          className={`${cardClasses} transition-all duration-700 ease-out ${redirecting ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}
-        >
-          <div className="text-center space-y-5">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto animate-[pulse_2s_ease-in-out_infinite]">
-              <CheckCircleIcon size={32} className="text-emerald-600" />
-            </div>
-            
-            <div className="space-y-2">
-              <h2 className="text-xl font-medium text-foreground">Welcome back</h2>
-              <p className="text-sm text-muted-foreground">
-                Your account is ready for bounty payouts
-              </p>
-            </div>
-            
-            {/* Account summary */}
-            <div className="rounded-xl border border-border/50 bg-secondary/30 p-4 text-left space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">GitHub</span>
-                <span className="text-sm font-medium text-foreground">@{githubUser.githubUsername}</span>
-              </div>
-              <div className="border-t border-border/40" />
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Wallet</span>
-                <span className="text-sm font-mono text-foreground">{shortAddress || 'Linked'}</span>
-              </div>
-              <div className="border-t border-border/40" />
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Email</span>
-                <span className="text-sm text-foreground">{userEmail}</span>
-              </div>
-            </div>
-            
-            {/* Redirecting indicator */}
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin" />
-              <span>Redirecting to bounties...</span>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Step 3: All set (with optional email) - only shown when NOT in welcome back state */}
-      {githubUser && !checkingProfile && hasLinkedWallet && !showWelcomeBack && (
+      {/* Step 3: All set (with optional email) */}
+      {githubUser && hasLinkedWallet && (
         <div className={cardClasses}>
           <div className="text-center space-y-5">
             <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
