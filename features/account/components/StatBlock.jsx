@@ -51,7 +51,8 @@ export function StatBlock({
   valueClassName,
   icon,
   iconBgClass = 'bg-primary/10',
-  iconTextClass = 'text-primary'
+  iconTextClass = 'text-primary',
+  showIcon = true
 }) {
   // Choose a default icon based on label if none provided
   const getDefaultIcon = () => {
@@ -75,18 +76,23 @@ export function StatBlock({
       'bg-card border border-border rounded-2xl p-5 transition-all hover:shadow-md',
       className
     )}>
-      <div className="flex items-start justify-between gap-3 mb-3">
+      <div className={cn(
+        'flex items-start justify-between gap-3',
+        showIcon ? 'mb-3' : 'mb-1'
+      )}>
         <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
           {label}
         </span>
-        <div className={cn(
-          'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
-          iconBgClass
-        )}>
-          <div className={iconTextClass}>
-            {IconComponent}
+        {showIcon && (
+          <div className={cn(
+            'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
+            iconBgClass
+          )}>
+            <div className={iconTextClass}>
+              {IconComponent}
+            </div>
           </div>
-        </div>
+        )}
       </div>
       <div className={cn(
         'font-instrument-serif text-3xl text-foreground tracking-tight',

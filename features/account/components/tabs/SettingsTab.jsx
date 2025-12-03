@@ -150,7 +150,7 @@ export function SettingsTab({
             <div className="flex items-center gap-2">
               <input
                 type="email"
-                className="flex-1 min-w-0 h-9 rounded-full border border-border bg-background px-4 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="flex-1 min-w-0 h-9 mb-0 rounded-full border border-border bg-background px-4 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 placeholder="New email"
                 value={email !== verifiedEmail ? email : ''}
                 onChange={(event) => setEmail(event.target.value)}
@@ -205,7 +205,7 @@ export function SettingsTab({
             <div className="flex items-center gap-2">
               <input
                 type="email"
-                className="flex-1 min-w-0 h-9 rounded-full border border-border bg-background px-4 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="flex-1 min-w-0 h-9 mb-0 rounded-full border border-border bg-background px-4 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}

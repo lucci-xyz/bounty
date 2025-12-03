@@ -237,12 +237,12 @@ export function AdminTab({ betaApplications, betaLoading, betaError, handleRevie
       <section>
         <h2 className="text-lg font-medium text-foreground mb-4">Overview</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          <StatBlock label="Applications" value={betaLoading ? '...' : betaApplications?.length || 0} />
-          <StatBlock label="Pending" value={betaLoading ? '...' : pendingApps.length} valueClassName={pendingApps.length > 0 ? 'text-amber-500' : ''} />
-          <StatBlock label="Beta Users" value={betaLoading ? '...' : approvedApps.length} valueClassName="text-primary" />
-          <StatBlock label="Rejected" value={betaLoading ? '...' : rejectedApps.length} />
-          <StatBlock label="Networks" value={feesLoading ? '...' : networks.length} />
-          <StatBlock label="Fees Available" value={feesLoading ? '...' : totals.networksWithFees || 0} hint={!feesLoading ? `${totals.totalAvailable?.toFixed(2) || '0.00'} total` : ''} />
+          <StatBlock label="Applications" value={betaLoading ? '...' : betaApplications?.length || 0} showIcon={false} />
+          <StatBlock label="Pending" value={betaLoading ? '...' : pendingApps.length} valueClassName={pendingApps.length > 0 ? 'text-amber-500' : ''} showIcon={false} />
+          <StatBlock label="Beta Users" value={betaLoading ? '...' : approvedApps.length} valueClassName="text-primary" showIcon={false} />
+          <StatBlock label="Rejected" value={betaLoading ? '...' : rejectedApps.length} showIcon={false} />
+          <StatBlock label="Networks" value={feesLoading ? '...' : networks.length} showIcon={false} />
+          <StatBlock label="Fees Available" value={feesLoading ? '...' : totals.networksWithFees || 0} hint={!feesLoading ? `${totals.totalAvailable?.toFixed(2) || '0.00'} total` : ''} showIcon={false} />
         </div>
       </section>
 
