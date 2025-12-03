@@ -8,7 +8,7 @@ export function renderWalletInvalidComment({
   linkWalletUrl,
   brandSignature
 }) {
-  return `## <img src="${iconUrl}" alt="BountyPay" width="20" height="20" /> Bounty: Invalid Wallet
+  return `## <img src="${iconUrl}" alt="BountyPay" width="35" height="35" style="vertical-align: middle;" /> Bounty: Invalid Wallet
 
 @${username}, we could not send this bounty because the wallet address on file is invalid.
 

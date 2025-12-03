@@ -9,7 +9,7 @@ export function renderBountyRefundedComment({
   txUrl,
   brandSignature
 }) {
-  return `## <img src="${iconUrl}" alt="BountyPay" width="20" height="20" /> Bounty: Refunded
+  return `## <img src="${iconUrl}" alt="BountyPay" width="35" height="35" style="vertical-align: middle;" /> Bounty: Refunded
 
 **Amount:** ${amountFormatted} ${tokenSymbol}  
 **Network:** ${networkName}  
