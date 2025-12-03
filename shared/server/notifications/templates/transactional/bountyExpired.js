@@ -11,7 +11,9 @@ export function renderBountyExpiredEmail({
   frontendUrl
 }) {
   const issueUrl = `https://github.com/${repoFullName}/issues/${issueNumber}`;
-  const logoUrl = `${frontendUrl}/icons/og.png`;
+  const normalizedBase = frontendUrl.endsWith('/') ? frontendUrl : `${frontendUrl}/`;
+  const dashboardUrl = new URL('account', normalizedBase).toString();
+  const logoUrl = new URL('/icons/og.png', frontendUrl).toString();
 
   const subject = `Your bounty has expired`;
 
@@ -247,7 +249,7 @@ export function renderBountyExpiredEmail({
                 <tr>
                   <td style="font-size: 13px; padding-bottom: 16px;">
                     <a
-                      href="${frontendUrl}/account"
+                      href="${dashboardUrl}"
                       style="
                         color: #111827;
                         text-decoration: underline;
@@ -329,7 +331,7 @@ Repository: ${repoFullName}
 Issue: #${issueNumber}${issueTitle ? ` - ${issueTitle}` : ''} (${issueUrl})
 Status: Eligible for refund
 
-Manage this bounty from your dashboard: ${frontendUrl}/account
+Manage this bounty from your dashboard: ${dashboardUrl}
 
 The issue itself remains open on GitHub. Only the bounty reward has expired.
 

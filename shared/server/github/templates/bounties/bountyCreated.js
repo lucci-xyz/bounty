@@ -11,7 +11,10 @@ export function renderBountyCreatedComment({
   linkWalletUrl,
   brandSignature
 }) {
-  return `## <img src="${iconUrl}" alt="BountyPay" width="35" height="35" style="vertical-align: middle;" /> Bounty: ${amountFormatted} ${tokenSymbol}
+  return `<h2 style="display:flex;align-items:center;gap:8px;margin:0 0 12px;">
+  <img src="${iconUrl}" alt="BountyPay" width="35" height="35" style="display:inline-block;" />
+  <span>Bounty: ${amountFormatted} ${tokenSymbol}</span>
+</h2>
 
 **Network:** ${networkName}  
 **Deadline:** ${deadlineDate}  

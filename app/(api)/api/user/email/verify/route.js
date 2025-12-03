@@ -6,18 +6,22 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get('token');
-    const successRedirect = `${CONFIG.frontendUrl}/account?emailVerified=success`;
-    const failureRedirect = `${CONFIG.frontendUrl}/account?emailVerified=invalid`;
+
+    const successUrl = new URL('/app/account', CONFIG.frontendUrl);
+    successUrl.searchParams.set('emailVerified', 'success');
+
+    const failureUrl = new URL('/app/account', CONFIG.frontendUrl);
+    failureUrl.searchParams.set('emailVerified', 'invalid');
 
     if (!token) {
       logger.warn('Email verification attempt without token');
-      return Response.redirect(failureRedirect);
+      return Response.redirect(failureUrl.toString());
     }
 
     const verification = await userQueries.findEmailVerificationByToken(token);
     if (!verification) {
       logger.warn('Email verification token not found or expired', { token: token.slice(0, 8) + '...' });
-      return Response.redirect(failureRedirect);
+      return Response.redirect(failureUrl.toString());
     }
 
     logger.info('Verifying email', { 
@@ -34,10 +38,12 @@ export async function GET(request) {
       githubUsername: updatedUser.githubUsername
     });
     
-    return Response.redirect(successRedirect);
+    return Response.redirect(successUrl.toString());
   } catch (error) {
     logger.error('Email verification error', { error: error.message, stack: error.stack });
-    return Response.redirect(`${CONFIG.frontendUrl}/account?emailVerified=invalid`);
+    const fallbackFailureUrl = new URL('/app/account', CONFIG.frontendUrl);
+    fallbackFailureUrl.searchParams.set('emailVerified', 'invalid');
+    return Response.redirect(fallbackFailureUrl.toString());
   }
 }
 

@@ -9,7 +9,10 @@ export function renderPrReadyComment({
   walletDisplay,
   brandSignature
 }) {
-  return `## <img src="${iconUrl}" alt="BountyPay" width="35" height="35" style="vertical-align: middle;" /> Bounty: Ready to Pay
+  return `<h2 style="display:flex;align-items:center;gap:8px;margin:0 0 12px;">
+  <img src="${iconUrl}" alt="BountyPay" width="35" height="35" style="display:inline-block;" />
+  <span>Bounty: Ready to Pay</span>
+</h2>
 
 **Issues:** ${issueLinks}  
 **Value:** ${totalAmount} ${tokenSymbol}  

@@ -18,7 +18,9 @@ export function renderUserErrorEmail({
   const prUrl = prNumber
     ? `https://github.com/${repoFullName}/pull/${prNumber}`
     : null;
-  const logoUrl = `${frontendUrl}/icons/og.png`;
+  const normalizedBase = frontendUrl.endsWith('/') ? frontendUrl : `${frontendUrl}/`;
+  const dashboardUrl = new URL('account', normalizedBase).toString();
+  const logoUrl = new URL('/icons/og.png', frontendUrl).toString();
 
   const subject = `[BountyPay] Action required: ${errorType}`;
 
@@ -280,7 +282,7 @@ export function renderUserErrorEmail({
                 <tr>
                   <td style="font-size: 13px; padding-bottom: 16px;">
                     <a
-                      href="${frontendUrl}/account"
+                      href="${dashboardUrl}"
                       style="
                         color: #111827;
                         text-decoration: underline;
@@ -379,7 +381,7 @@ ${repoFullName ? `- Repository: ${repoFullName}\n` : ''}${
 
 You can check your dashboard to verify the status of your bounties. If the problem continues, reply to this email with any additional details.
 
-View dashboard: ${frontendUrl}/account
+View dashboard: ${dashboardUrl}
 
 BountyPay by Lucci Labs (luccilabs.xyz)
   `.trim();

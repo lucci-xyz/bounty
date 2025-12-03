@@ -14,7 +14,9 @@ export function renderPrOpenedEmail({
 }) {
   const prUrl = `https://github.com/${repoFullName}/pull/${prNumber}`;
   const issueUrl = `https://github.com/${repoFullName}/issues/${issueNumber}`;
-  const logoUrl = `${frontendUrl}/icons/og.png`;
+  const normalizedBase = frontendUrl.endsWith('/') ? frontendUrl : `${frontendUrl}/`;
+  const dashboardUrl = new URL('account', normalizedBase).toString();
+  const logoUrl = new URL('/icons/og.png', frontendUrl).toString();
 
   const subject = `A pull request was opened for your bounty`;
 
@@ -286,7 +288,7 @@ export function renderPrOpenedEmail({
                 <tr>
                   <td style="font-size: 13px; padding-bottom: 16px;">
                     <a
-                      href="${frontendUrl}/account"
+                      href="${dashboardUrl}"
                       style="
                         color: #111827;
                         text-decoration: underline;
@@ -374,7 +376,7 @@ Status: Waiting for review
 
 When you review and merge this pull request and it closes the linked issue, the bounty will be paid out automatically from escrow.
 
-You can review this bounty from your dashboard: ${frontendUrl}/account
+You can review this bounty from your dashboard: ${dashboardUrl}
 
 BountyPay by Lucci Labs (luccilabs.xyz)
   `.trim();

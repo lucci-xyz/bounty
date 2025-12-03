@@ -2,9 +2,11 @@
  * Email sent when a user requests to verify their email address.
  */
 export function renderEmailVerificationEmail({ username, frontendUrl, token }) {
-  const verificationLink = `${frontendUrl}/api/user/email/verify?token=${token}`;
+  const verificationUrl = new URL('/api/user/email/verify', frontendUrl);
+  verificationUrl.searchParams.set('token', token);
+  const verificationLink = verificationUrl.toString();
   const subject = 'Verify your email for BountyPay';
-  const logoUrl = `${frontendUrl}/icons/og.png`;
+  const logoUrl = new URL('/icons/og.png', frontendUrl).toString();
 
   const html = `
     <!DOCTYPE html>

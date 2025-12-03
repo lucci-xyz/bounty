@@ -13,7 +13,10 @@ export function renderPrLinkedComment({
   linkWalletUrl,
   brandSignature
 }) {
-  return `## <img src="${iconUrl}" alt="BountyPay" width="35" height="35" style="vertical-align: middle;" /> Bounty: Linked to PR
+  return `<h2 style="display:flex;align-items:center;gap:8px;margin:0 0 12px;">
+  <img src="${iconUrl}" alt="BountyPay" width="35" height="35" style="display:inline-block;" />
+  <span>Bounty: Linked to PR</span>
+</h2>
 
 **Issues:** ${issueLinks}  
 **Value:** ${totalAmount} ${tokenSymbol}

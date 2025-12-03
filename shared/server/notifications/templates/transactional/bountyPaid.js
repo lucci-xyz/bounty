@@ -12,7 +12,9 @@ export function renderBountyPaidEmail({
     frontendUrl
   }) {
     const issueUrl = `https://github.com/${repoFullName}/issues/${issueNumber}`;
-    const logoUrl = `${frontendUrl}/icons/og.png`;
+    const normalizedBase = frontendUrl.endsWith('/') ? frontendUrl : `${frontendUrl}/`;
+    const dashboardUrl = new URL('account', normalizedBase).toString();
+    const logoUrl = new URL('/icons/og.png', frontendUrl).toString();
   
     const subject = `Your bounty has been paid`;
   
@@ -276,7 +278,7 @@ export function renderBountyPaidEmail({
                   <tr>
                     <td style="font-size: 13px; padding-bottom: 16px;">
                       <a
-                        href="${frontendUrl}/account"
+                        href="${dashboardUrl}"
                         style="
                           color: #111827;
                           text-decoration: underline;
@@ -366,7 +368,7 @@ export function renderBountyPaidEmail({
         : ''
     }
   
-  You can view this bounty and your payout history from your dashboard: ${frontendUrl}/account
+  You can view this bounty and your payout history from your dashboard: ${dashboardUrl}
   
   Depending on your wallet and network, it may take a moment for the updated balance to appear.
   

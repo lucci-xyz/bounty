@@ -7,7 +7,10 @@ export function renderWalletRequiredComment({
   linkWalletUrl,
   brandSignature
 }) {
-  return `## <img src="${iconUrl}" alt="BountyPay" width="35" height="35" style="vertical-align: middle;" /> Bounty: Wallet Required
+  return `<h2 style="display:flex;align-items:center;gap:8px;margin:0 0 12px;">
+  <img src="${iconUrl}" alt="BountyPay" width="35" height="35" style="display:inline-block;" />
+  <span>Bounty: Wallet Required</span>
+</h2>
 
 @${username}, your PR was merged and this bounty is ready to pay. However, we do not have a wallet address on file for you.
 

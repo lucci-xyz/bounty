@@ -3,7 +3,7 @@
  */
 export function renderBetaReceivedEmail({ username, frontendUrl }) {
   const subject = 'BountyPay beta application received';
-  const logoUrl = `${frontendUrl}/icons/og.png`;
+  const logoUrl = new URL('/icons/og.png', frontendUrl).toString();
 
   const html = `
     <!DOCTYPE html>
