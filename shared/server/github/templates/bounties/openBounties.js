@@ -9,7 +9,10 @@ export function renderOpenBountiesComment({
   exampleIssueNumber,
   brandSignature
 }) {
-  return `## <img src="${iconUrl}" alt="BountyPay" width="20" height="20" /> Open Bounties (${bountyCount})
+  return `<h2>
+  <sub><img src="${iconUrl}" alt="BountyPay" width="28" height="28" /></sub>
+  Open Bounties (${bountyCount})
+</h2>
 
 @${username}, the following issues have active bounties:
 

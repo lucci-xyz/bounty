@@ -9,9 +9,9 @@ export function renderPaymentFailedComment({
   recipientAddress,
   brandSignature
 }) {
-  return `<h2 style="display:flex;align-items:center;gap:8px;margin:0 0 12px;">
-  <img src="${iconUrl}" alt="BountyPay" width="35" height="35" style="display:inline-block;" />
-  <span>Bounty: Payment Issue</span>
+  return `<h2>
+  <sub><img src="${iconUrl}" alt="BountyPay" width="28" height="28" /></sub>
+  Bounty: Payment Issue
 </h2>
 
 Your payout could not be processed. Our team has been notified and is looking into it.
