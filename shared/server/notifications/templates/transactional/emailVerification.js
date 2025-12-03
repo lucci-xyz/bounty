@@ -75,10 +75,11 @@ export function renderEmailVerificationEmail({ username, frontendUrl, token }) {
                         </td>
                         <td
                           style="
-                            font-size: 15px;
-                            font-weight: 600;
-                            letter-spacing: 0.06em;
-                            text-transform: uppercase;
+                            font-family: 'Instrument Serif', Georgia, serif;
+                            font-size: 20px;
+                            font-weight: 400;
+                            line-height: 1.2;
+                            letter-spacing: -0.01em;
                             color: #111827;
                             white-space: nowrap;
                           "

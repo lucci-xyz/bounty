@@ -19,7 +19,7 @@ export function renderBountyCreatedComment({
 
 Open a pull request that fixes this issue. When your PR is merged, payment is sent automatically.
 
-New here? <a href="${linkWalletUrl}" target="_blank" rel="noopener noreferrer">Create an account and link your wallet</a> to receive payments.
+New here? <a href="${linkWalletUrl}" target="_blank" rel="noopener noreferrer">Create an account</a> to receive payments.
 
 ${brandSignature}`;
 }

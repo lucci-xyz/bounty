@@ -86,16 +86,17 @@ export function renderBountyPaidEmail({
                               style="display: block; border-radius: 6px;"
                             />
                           </td>
-                          <td
-                            style="
-                              font-size: 15px;
-                              font-weight: 600;
-                              letter-spacing: 0.06em;
-                              text-transform: uppercase;
-                              color: #111827;
-                              white-space: nowrap;
-                            "
-                          >
+                        <td
+                          style="
+                            font-family: 'Instrument Serif', Georgia, serif;
+                            font-size: 20px;
+                            font-weight: 400;
+                            line-height: 1.2;
+                            letter-spacing: -0.01em;
+                            color: #111827;
+                            white-space: nowrap;
+                          "
+                        >
                             BountyPay
                           </td>
                         </tr>
