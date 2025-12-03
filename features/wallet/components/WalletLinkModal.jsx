@@ -26,7 +26,7 @@ export default function WalletLinkModal({ isOpen, onClose, walletType = 'payout'
   const handleLinkWallet = () => {
     setLoading(true);
     const returnUrl = window.location.pathname + window.location.search;
-    router.push(`/link-wallet?returnTo=${encodeURIComponent(returnUrl)}&type=${walletType}`);
+    router.push(`/app/link-wallet?returnTo=${encodeURIComponent(returnUrl)}&type=${walletType}`);
   };
 
   // Determine modal title and description based on wallet type

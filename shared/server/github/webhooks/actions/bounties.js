@@ -33,7 +33,7 @@ export async function handleBountyCreated(bountyData) {
       networkName: net.name,
       deadlineDate,
       txUrl: net.explorerTx(txHash),
-      linkWalletUrl: `${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(issueUrl)}`,
+      linkWalletUrl: `${FRONTEND_BASE}/app/link-wallet?returnTo=${encodeURIComponent(issueUrl)}`,
       brandSignature: BRAND_SIGNATURE
     });
 

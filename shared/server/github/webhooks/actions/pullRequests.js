@@ -121,7 +121,7 @@ export async function handlePullRequestMerged(payload) {
         const comment = renderWalletRequiredComment({
           iconUrl: OG_ICON,
           username: pull_request.user.login,
-          linkWalletUrl: `${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(issueUrl)}`,
+          linkWalletUrl: `${FRONTEND_BASE}/app/link-wallet?returnTo=${encodeURIComponent(issueUrl)}`,
           brandSignature: BRAND_SIGNATURE
         });
 
@@ -137,7 +137,7 @@ export async function handlePullRequestMerged(payload) {
           iconUrl: OG_ICON,
           username: pull_request.user.login,
           invalidAddress: walletMapping.walletAddress,
-          linkWalletUrl: `${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(issueUrl)}`,
+          linkWalletUrl: `${FRONTEND_BASE}/app/link-wallet?returnTo=${encodeURIComponent(issueUrl)}`,
           brandSignature: BRAND_SIGNATURE
         });
 
@@ -353,7 +353,7 @@ async function handlePRWithBounties(octokit, owner, repo, pull_request, reposito
       issueLinks,
       totalAmount: totalAmount.toFixed(2),
       tokenSymbol,
-      linkWalletUrl: `${FRONTEND_BASE}/link-wallet?returnTo=${encodeURIComponent(prUrl)}`,
+      linkWalletUrl: `${FRONTEND_BASE}/app/link-wallet?returnTo=${encodeURIComponent(prUrl)}`,
       brandSignature: BRAND_SIGNATURE
     });
 

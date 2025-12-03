@@ -147,7 +147,7 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
     switch (effectiveStep) {
       case 'signin':
         return {
-          title: 'Welcome to Lucci',
+          title: 'Welcome to BountyPay',
           body: 'We’re currently in private beta. Sign in with GitHub to request access.',
           actions: (
             <button

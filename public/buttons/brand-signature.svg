@@ -1,41 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="220" height="40" viewBox="0 0 220 40">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="32" viewBox="0 0 200 32">
   <style>
-    .prefix {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 13px;
-      font-weight: 500;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      fill: #111827;
-    }
-    .brand {
+    .brand-text {
       font-family: 'Instrument Serif', Georgia, serif;
-      font-size: 20px;
+      font-size: 16px;
       font-weight: 400;
-      letter-spacing: -0.01em;
-      fill: #111827;
+      font-style: italic;
+      letter-spacing: 0.02em;
+      fill: currentColor;
     }
     .cube-fill {
-      fill: #fffbf0;
+      fill: #FFF5E4;
     }
     .cube-stroke {
-      stroke: #111827;
-      stroke-width: 1.2;
+      stroke: currentColor;
+      stroke-width: 1;
       fill: none;
     }
   </style>
-  <text class="prefix" x="0" y="24">By</text>
-  <a xlink:href="https://bountypay.dev" target="_blank">
-    <text class="brand" x="42" y="26">BountyPay</text>
+  <a xlink:href="https://bountypay.luccilabs.xyz" target="_blank" rel="noopener noreferrer">
+    <text class="brand-text" x="0" y="22">By BountyPay</text>
   </a>
-  <g transform="translate(170 6)">
-    <path class="cube-fill" d="M4 4L14 0L24 4L24 18L14 22L4 18Z"/>
-    <path class="cube-fill" d="M4 4L14 8V22L4 18Z"/>
-    <path class="cube-fill" d="M14 8L24 4V18L14 22Z"/>
-    <path class="cube-stroke" d="M4 4L14 0L24 4L24 18L14 22L4 18Z"/>
-    <path class="cube-stroke" d="M14 8L24 4"/>
-    <path class="cube-stroke" d="M14 8V22"/>
-    <path class="cube-stroke" d="M4 4L14 8"/>
+  <g transform="translate(113 7) scale(0.65)">
+    <path class="cube-fill" d="M4 2L11 0L18 2L18 12L11 14L4 12Z"/>
+    <path class="cube-fill" d="M4 2L11 4V14L4 12Z"/>
+    <path class="cube-fill" d="M11 4L18 2V12L11 14Z"/>
+    <path class="cube-stroke" d="M4 2L11 0L18 2L18 12L11 14L4 12Z"/>
+    <path class="cube-stroke" d="M11 4L18 2"/>
+    <path class="cube-stroke" d="M11 4V14"/>
+    <path class="cube-stroke" d="M4 2L11 4"/>
   </g>
 </svg>
 
