@@ -12,8 +12,7 @@ export function renderBountyPaidEmail({
     frontendUrl
   }) {
     const issueUrl = `https://github.com/${repoFullName}/issues/${issueNumber}`;
-    const normalizedBase = frontendUrl.endsWith('/') ? frontendUrl : `${frontendUrl}/`;
-    const dashboardUrl = new URL('account', normalizedBase).toString();
+    const dashboardUrl = new URL('/app/account', frontendUrl).toString();
     const logoUrl = new URL('/icons/og.png', frontendUrl).toString();
   
     const subject = `Your bounty has been paid`;

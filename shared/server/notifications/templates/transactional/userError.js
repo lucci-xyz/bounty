@@ -18,8 +18,7 @@ export function renderUserErrorEmail({
   const prUrl = prNumber
     ? `https://github.com/${repoFullName}/pull/${prNumber}`
     : null;
-  const normalizedBase = frontendUrl.endsWith('/') ? frontendUrl : `${frontendUrl}/`;
-  const dashboardUrl = new URL('account', normalizedBase).toString();
+  const dashboardUrl = new URL('/app/account', frontendUrl).toString();
   const logoUrl = new URL('/icons/og.png', frontendUrl).toString();
 
   const subject = `[BountyPay] Action required: ${errorType}`;
