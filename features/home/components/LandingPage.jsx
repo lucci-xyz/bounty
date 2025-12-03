@@ -2,9 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useBountyFeed } from '@/features/home/hooks/useBountyFeed';
-import { formatAmount, formatTimeLeft, capitalizeFirst } from '@/shared/lib';
-import { LinkFromCatalog } from '@/shared/components/LinkFromCatalog';
 
 // Separator component
 function Separator() {
@@ -228,11 +225,48 @@ function FeaturesSection() {
   );
 }
 
-// Bounty Feed Section
-function BountyFeedSection() {
-  const { filteredBounties, loading, error } = useBountyFeed();
-  const displayBounties = filteredBounties.slice(0, 4);
+// Demo bounties for the landing page - always shown regardless of environment
+const DEMO_BOUNTIES = [
+  {
+    id: 'demo-1',
+    repoFullName: 'facebook/react',
+    issueNumber: 28145,
+    issueTitle: 'Optimize React Server Components streaming',
+    amount: 500,
+    tokenSymbol: 'USDC',
+    timeLeft: '6d',
+  },
+  {
+    id: 'demo-2',
+    repoFullName: 'vercel/next.js',
+    issueNumber: 58234,
+    issueTitle: 'Add partial prerendering segments support',
+    amount: 1000,
+    tokenSymbol: 'USDC',
+    timeLeft: '12d',
+  },
+  {
+    id: 'demo-3',
+    repoFullName: 'ethereum/go-ethereum',
+    issueNumber: 29234,
+    issueTitle: 'Improve state pruning efficiency',
+    amount: 750,
+    tokenSymbol: 'USDC',
+    timeLeft: '3d',
+  },
+  {
+    id: 'demo-4',
+    repoFullName: 'rust-lang/rust',
+    issueNumber: 115678,
+    issueTitle: 'Incremental compilation for async functions',
+    amount: 1500,
+    tokenSymbol: 'USDC',
+    timeLeft: '9d',
+  },
+];
 
+// Bounty Feed Section - Always shows demo bounties
+function BountyFeedSection() {
   return (
     <section id="bounties" className="py-20">
       <div className="max-w-6xl mx-auto px-6">
@@ -250,98 +284,48 @@ function BountyFeedSection() {
           </Link>
         </div>
 
-        {/* Loading state */}
-        {loading && (
-          <div className="text-center py-12">
-            <div className="inline-flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-border border-t-foreground rounded-full animate-spin" />
-              <span className="text-muted-foreground text-sm">Loading bounties...</span>
-            </div>
-          </div>
-        )}
-
-        {/* Error state */}
-        {error && (
-          <div className="text-center py-12 border border-destructive/20 bg-destructive/5 rounded-xl">
-            <p className="text-destructive text-sm">Unable to load bounties</p>
-          </div>
-        )}
-
-        {/* Bounties grid */}
-        {!loading && !error && displayBounties.length > 0 && (
-          <div className="grid md:grid-cols-2 gap-5">
-            {displayBounties.map((bounty) => {
-              // Get raw amount number for display
-              const rawAmount = Math.floor(Number(bounty.amount) / (10 ** (bounty.tokenDecimals || 6)));
-              const amountNumber = rawAmount.toLocaleString();
-              const rawTimeRemaining = formatTimeLeft(bounty.deadline);
-              const timeDisplay =
-                !rawTimeRemaining || rawTimeRemaining === '-'
-                  ? 'No deadline'
-                  : rawTimeRemaining === '< 1h'
-                    ? '< 1 hour'
-                    : rawTimeRemaining;
-
-              return (
-                <div
-                  key={bounty.bountyId}
-                  className="group p-6 bg-card/30 backdrop-blur-sm border border-border rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-foreground/5"
-                >
-                  {/* Top row: repo + amount */}
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    <p className="text-sm text-muted-foreground font-mono">{bounty.repoFullName}</p>
-                    <div className="text-right flex-shrink-0 flex items-baseline gap-1.5">
-                      <span className="font-instrument-serif text-xl font-semibold text-muted-foreground">{amountNumber}</span>
-                      <span className="font-instrument-serif text-xs text-muted-foreground uppercase">{bounty.tokenSymbol}</span>
-                    </div>
-                  </div>
-
-                  {/* Title - larger and can wrap */}
-                  <h3 className="text-xl text-foreground font-medium leading-snug mb-8">
-                    {capitalizeFirst(bounty.issueTitle || bounty.issueDescription || 'Bounty')}
-                  </h3>
-
-                  {/* Footer */}
-                  <div className="flex items-center justify-between pt-4 border-t border-border">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      {timeDisplay}
-                    </div>
-                    <LinkFromCatalog
-                      section="github"
-                      link="issue"
-                      params={{ repoFullName: bounty.repoFullName, issueNumber: bounty.issueNumber }}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 group/link"
-                    >
-                      View issue
-                      <span className="transition-transform group-hover/link:translate-x-0.5">→</span>
-                    </LinkFromCatalog>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!loading && !error && displayBounties.length === 0 && (
-          <div className="text-center py-12 border border-border rounded-xl bg-card/80 backdrop-blur-sm">
-            <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-muted flex items-center justify-center">
-              <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-              </svg>
-            </div>
-            <p className="text-muted-foreground text-sm mb-3">No open bounties at the moment.</p>
-            <Link 
-              href="/app/attach-bounty" 
-              className="inline-flex px-4 py-2 bg-primary text-primary-foreground text-sm rounded-full hover:opacity-90 transition-opacity"
+        {/* Bounties grid - Always show demo bounties */}
+        <div className="grid md:grid-cols-2 gap-5">
+          {DEMO_BOUNTIES.map((bounty) => (
+            <div
+              key={bounty.id}
+              className="group p-6 bg-card/30 backdrop-blur-sm border border-border rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-foreground/5"
             >
-              Post the first bounty
-            </Link>
-          </div>
-        )}
+              {/* Top row: repo + amount */}
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <p className="text-sm text-muted-foreground font-mono">{bounty.repoFullName}</p>
+                <div className="text-right flex-shrink-0 flex items-baseline gap-1.5">
+                  <span className="font-instrument-serif text-xl font-semibold text-muted-foreground">{bounty.amount.toLocaleString()}</span>
+                  <span className="font-instrument-serif text-xs text-muted-foreground uppercase">{bounty.tokenSymbol}</span>
+                </div>
+              </div>
+
+              {/* Title - larger and can wrap */}
+              <h3 className="text-xl text-foreground font-medium leading-snug mb-8">
+                {bounty.issueTitle}
+              </h3>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between pt-4 border-t border-border">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {bounty.timeLeft}
+                </div>
+                <a
+                  href={`https://github.com/${bounty.repoFullName}/issues/${bounty.issueNumber}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 group/link"
+                >
+                  View issue
+                  <span className="transition-transform group-hover/link:translate-x-0.5">→</span>
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -370,7 +354,7 @@ function FAQSection() {
     },
     {
       question: 'Are there any fees?',
-      answer: 'BountyPay charges a small platform fee on successful bounty completions. There are no fees for posting bounties or if work is not completed.'
+      answer: 'BountyPay takes a 1% platform fee on successful bounty completions. There are no fees for posting bounties or if work is not completed.'
     },
   ];
 
