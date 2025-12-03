@@ -8,6 +8,40 @@ import { useNetwork } from '@/shared/providers/NetworkProvider';
 import UserAvatar from '@/shared/components/UserAvatar';
 import { useGithubUser } from '@/shared/hooks/useGithubUser';
 import { useErrorModal } from '@/shared/providers/ErrorModalProvider';
+import { cn } from '@/shared/lib';
+
+// Icons for dropdown menu
+function PlusIcon({ className }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+  );
+}
+
+function UserIcon({ className }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+    </svg>
+  );
+}
+
+function LogoutIcon({ className }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+    </svg>
+  );
+}
+
+function NetworkIcon({ className }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+    </svg>
+  );
+}
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -19,6 +53,9 @@ export default function Navbar() {
   const networkEnv = networkGroup || 'testnet';
   const { githubUser } = useGithubUser();
   const { showError } = useErrorModal();
+
+  // Detect if user is in the app vs landing page
+  const isAppRoute = pathname?.startsWith('/app');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -59,8 +96,6 @@ export default function Navbar() {
     }
   };
 
-  const isActive = (path) => pathname === path;
-
   const handleLogout = async () => {
     try {
       await fetch('/api/oauth/logout', {
@@ -75,33 +110,36 @@ export default function Navbar() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 px-4 pt-4">
-      <nav className={`max-w-3xl mx-auto flex items-center justify-between px-4 py-2 rounded-full border transition-all duration-300 ${
+      <nav className={cn(
+        'max-w-3xl mx-auto flex items-center justify-between px-4 py-2 rounded-full border transition-all duration-300',
         scrolled
           ? 'bg-card/95 backdrop-blur-custom border-border shadow-sm'
           : 'bg-card/80 backdrop-blur-sm border-border/80'
-      }`}>
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+      )}>
+        {/* Logo - links to app if in app, otherwise landing */}
+        <Link href={isAppRoute ? "/app" : "/"} className="flex items-center gap-2 flex-shrink-0">
           <span className="text-base font-semibold tracking-tight text-foreground">
             BountyPay
           </span>
         </Link>
 
-        {/* Center Navigation */}
-        <div className="hidden md:flex items-center gap-5">
-          <Link 
-            href="#how-it-works"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            How it works
-          </Link>
-          <Link 
-            href="#features"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Features
-          </Link>
-        </div>
+        {/* Center Navigation - Only show on landing page */}
+        {!isAppRoute && (
+          <div className="hidden md:flex items-center gap-5">
+            <Link 
+              href="#how-it-works"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              How it works
+            </Link>
+            <Link 
+              href="#features"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Features
+            </Link>
+          </div>
+        )}
 
         {/* Right side */}
         <div className="flex items-center gap-3">
@@ -122,46 +160,62 @@ export default function Navbar() {
               </button>
 
               {showDropdown && (
-                <div className="absolute top-full mt-2 right-0 w-52 bg-card border border-border rounded-xl shadow-lg overflow-hidden z-50">
-                  <div className="p-2.5 border-b border-border">
+                <div className="absolute top-full mt-2 right-0 w-44 bg-card/95 backdrop-blur-xl border border-border/60 rounded-xl shadow-lg overflow-hidden z-50">
+                  {/* Network Switcher */}
+                  <div className="p-1.5 border-b border-border/40">
                     <button
                       onClick={handleNetworkSwitch}
                       disabled={isSwitchingGroup}
                       type="button"
-                      className="w-full cursor-pointer rounded-lg border border-border bg-secondary px-3 py-2 text-left transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <div className="flex items-center gap-2 text-xs text-foreground">
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            networkEnv === 'mainnet' ? 'bg-emerald-500' : 'bg-amber-500'
-                          }`}
-                        />
+                      <span
+                        className={cn(
+                          'w-1.5 h-1.5 rounded-full',
+                          networkEnv === 'mainnet' ? 'bg-emerald-500' : 'bg-amber-500'
+                        )}
+                      />
+                      <span className="text-xs text-foreground">
                         {networkEnv === 'mainnet' ? 'Mainnet' : 'Testnet'}
-                      </div>
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">
-                        Tap to switch
-                      </p>
+                      </span>
+                      <span className="text-[10px] text-muted-foreground ml-auto">switch</span>
                     </button>
                   </div>
 
+                  {/* Navigation Links */}
                   <div className="p-1.5">
+                    <Link
+                      href="/app/attach-bounty"
+                      onClick={() => setShowDropdown(false)}
+                      className={cn(
+                        'flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors hover:bg-secondary',
+                        pathname?.startsWith('/app/attach-bounty') ? 'bg-secondary' : ''
+                      )}
+                    >
+                      <PlusIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-foreground">Create Bounty</span>
+                    </Link>
                     <Link
                       href="/app/account?tab=sponsored"
                       onClick={() => setShowDropdown(false)}
-                      className={`block px-3 py-2 text-sm rounded-lg transition-colors text-foreground hover:bg-accent ${
-                        isActive('/app/account') ? 'font-medium' : ''
-                      }`}
+                      className={cn(
+                        'flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors hover:bg-secondary',
+                        pathname?.startsWith('/app/account') ? 'bg-secondary' : ''
+                      )}
                     >
-                      Account
+                      <UserIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-foreground">Account</span>
                     </Link>
                   </div>
 
-                  <div className="p-1.5 border-t border-border">
+                  {/* Logout */}
+                  <div className="p-1.5 border-t border-border/40">
                     <button
                       onClick={handleLogout}
-                      className="w-full px-3 py-2 text-sm text-left rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors hover:bg-destructive/5"
                     >
-                      Log out
+                      <LogoutIcon className="w-3.5 h-3.5 text-destructive" />
+                      <span className="text-destructive">Log out</span>
                     </button>
                   </div>
                 </div>
@@ -170,7 +224,8 @@ export default function Navbar() {
           ) : (
             <button
               onClick={() => {
-                window.location.href = `/api/oauth/github?returnTo=${encodeURIComponent('/')}`;
+                const returnPath = isAppRoute ? pathname : '/app';
+                window.location.href = `/api/oauth/github?returnTo=${encodeURIComponent(returnPath)}`;
               }}
               className="px-4 py-1.5 text-sm text-primary-foreground bg-primary rounded-full hover:opacity-90 transition-all"
             >

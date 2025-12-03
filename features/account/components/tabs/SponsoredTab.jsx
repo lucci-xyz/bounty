@@ -152,7 +152,7 @@ export function SponsoredTab({
           </div>
           <div className="flex flex-col gap-3">
             <Link
-              href="/link-wallet?type=funding"
+              href="/app/link-wallet?type=funding"
               className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
             >
               <WalletIcon size={18} />
@@ -204,25 +204,28 @@ export function SponsoredTab({
       {/* Sponsored bounties statistics */}
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
         <StatBlock
-          className="animate-fade-in-up delay-100"
+          className="animate-fade-in-up"
           label="Value Locked"
           value={`$${stats?.totalValueLocked?.toLocaleString() || "0"}`}
           hint={`Across ${stats?.openBounties || 0} open bounties`}
-          valueClassName="text-primary"
+          iconBgClass="bg-emerald-50"
+          iconTextClass="text-emerald-600"
         />
         <StatBlock
-          className="animate-fade-in-up delay-200"
+          className="animate-fade-in-up"
           label="Total Paid"
           value={`$${stats?.totalValuePaid?.toLocaleString() || "0"}`}
           hint={`${stats?.resolvedBounties || 0} contributors`}
-          valueClassName="text-primary"
+          iconBgClass="bg-blue-50"
+          iconTextClass="text-blue-600"
         />
         <StatBlock
-          className="animate-fade-in-up delay-300"
+          className="animate-fade-in-up"
           label="Refunded"
           value={stats?.refundedBounties || 0}
           hint="Expired bounties"
-          valueClassName="text-primary"
+          iconBgClass="bg-amber-50"
+          iconTextClass="text-amber-600"
         />
       </div>
 

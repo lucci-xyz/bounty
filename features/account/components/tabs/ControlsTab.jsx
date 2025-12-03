@@ -140,35 +140,35 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
   }, [normalizedConnected, refundModalOpen, selectedBounty?.bountyId]);
 
   return (
-    <div className="space-y-8 text-sm font-light text-muted-foreground">
-      <div className="grid gap-6 xl:grid-cols-2">
-        <section className="rounded-[32px] border border-border/60 bg-card p-6 shadow-sm">
-          <header className="mb-4">
-            <div>
-              <h3 className="font-light text-foreground">Eligible refunds</h3>
-            </div>
+    <div className="space-y-6">
+      <div className="grid gap-4 xl:grid-cols-2">
+        <section className="rounded-2xl border border-border bg-card overflow-hidden">
+          <header className="px-6 py-4 border-b border-border">
+            <h3 className="text-base font-medium text-foreground">Eligible Refunds</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Bounties you can reclaim</p>
           </header>
-
-          <EligibleBountiesList
-            bounties={eligibleBounties}
-            loading={loadingBounties}
-            selectedBounty={selectedBounty}
-            onSelectBounty={handleSelectBounty}
-          />
+          <div className="p-6">
+            <EligibleBountiesList
+              bounties={eligibleBounties}
+              loading={loadingBounties}
+              selectedBounty={selectedBounty}
+              onSelectBounty={handleSelectBounty}
+            />
+          </div>
         </section>
 
-        <section className="rounded-[32px] border border-border/60 bg-card p-6 shadow-sm">
-          <header className="mb-4">
-            <div>
-              <h3 className="font-light text-foreground">Failed Payouts</h3>
-            </div>
+        <section className="rounded-2xl border border-border bg-card overflow-hidden">
+          <header className="px-6 py-4 border-b border-border">
+            <h3 className="text-base font-medium text-foreground">Failed Payouts</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Payouts that need attention</p>
           </header>
-
-          <FailedPayoutList
-            payouts={failedPayouts}
-            payoutStatuses={payoutStatuses}
-            onRetryPayout={handleManualPayout}
-          />
+          <div className="p-6">
+            <FailedPayoutList
+              payouts={failedPayouts}
+              payoutStatuses={payoutStatuses}
+              onRetryPayout={handleManualPayout}
+            />
+          </div>
         </section>
       </div>
 

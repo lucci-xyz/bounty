@@ -1,208 +1,361 @@
 'use client';
 
 /**
- * LinkWallet page lets users connect their GitHub account and wallet
- * to enable automatic bounty payouts.
+ * Sign In / Sign Up page
+ * Handles GitHub OAuth, wallet connection, and optional email for notifications.
  */
 
-import { Suspense } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { GitHubIcon, CheckCircleIcon } from '@/shared/components/Icons';
+import { useAccount, useWalletClient } from 'wagmi';
+import { GitHubIcon, CheckCircleIcon, WalletIcon, MailIcon } from '@/shared/components/Icons';
+import { useGithubUser } from '@/shared/hooks/useGithubUser';
+import { getUserProfile, requestEmailVerification } from '@/shared/api/user';
+import { getNonce, verifyWalletSignature, linkWallet, buildSiweMessage } from '@/shared/api/wallet';
+import { useErrorModal } from '@/shared/providers/ErrorModalProvider';
 import StatusNotice from '@/shared/components/StatusNotice';
-import { useLinkWalletFlow } from '@/features/wallet';
 
-// Card container style
-const cardClasses = 'rounded-3xl border border-border/60 bg-card p-6 shadow-sm';
+// Card container styles
+const cardClasses = 'rounded-2xl border border-border/60 bg-card p-6 shadow-sm';
 
 /**
- * Inner content component that uses useSearchParams.
+ * Main sign-in content component
  */
-function LinkWalletContent() {
+function SignInContent() {
   const searchParams = useSearchParams();
-  const returnTo = searchParams.get('returnTo');
-
-  // Get state and actions for the wallet/GitHub linking flow
-  const {
-    state: {
-      hasLinkedWallet,
-      profileCreated,
-      status,
-      isMounted,
-      checkingAccount,
-      shortAddress,
-      displayWalletAddress,
-    },
-    wallet,
-    github,
-    actions: { authenticateGitHub, createProfileWithWallet },
-  } = useLinkWalletFlow();
-
-  /**
-   * Handle the Continue button click.
-   * Redirects to the returnTo URL if provided, otherwise tries to close the window.
-   */
-  const handleContinue = () => {
-    if (returnTo) {
-      // If returnTo is an external URL (starts with http), redirect there
-      // Otherwise treat it as a relative path
-      if (returnTo.startsWith('http://') || returnTo.startsWith('https://')) {
-        window.location.href = returnTo;
-      } else {
-        window.location.href = returnTo;
+  const returnTo = searchParams.get('returnTo') || '/app';
+  
+  // Auth state
+  const { githubUser, githubUserLoading } = useGithubUser();
+  const { address, isConnected, chain } = useAccount();
+  const { data: walletClient } = useWalletClient();
+  const { showError } = useErrorModal();
+  
+  // Flow state
+  const [isMounted, setIsMounted] = useState(false);
+  const [checkingProfile, setCheckingProfile] = useState(false);
+  const [hasLinkedWallet, setHasLinkedWallet] = useState(false);
+  const [hasVerifiedEmail, setHasVerifiedEmail] = useState(false);
+  const [profileCreated, setProfileCreated] = useState(false);
+  const [status, setStatus] = useState({ message: '', type: '' });
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Email state
+  const [email, setEmail] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailStep, setEmailStep] = useState(false);
+  
+  // Current step tracking
+  const [currentStep, setCurrentStep] = useState(1);
+  
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  
+  // Check user's profile when GitHub user is available
+  useEffect(() => {
+    if (!githubUser) return;
+    if (checkingProfile) return;
+    
+    let cancelled = false;
+    
+    const checkProfile = async () => {
+      setCheckingProfile(true);
+      
+      // Add timeout to prevent hanging
+      const timeoutId = setTimeout(() => {
+        if (!cancelled) {
+          setCheckingProfile(false);
+          setCurrentStep(2);
+        }
+      }, 5000);
+      
+      try {
+        const profile = await getUserProfile();
+        clearTimeout(timeoutId);
+        if (cancelled) return;
+        
+        if (profile?.wallet?.walletAddress) {
+          setHasLinkedWallet(true);
+          setCurrentStep(3);
+        } else {
+          setCurrentStep(2);
+        }
+        if (profile?.user?.email) {
+          setHasVerifiedEmail(true);
+        }
+      } catch (err) {
+        clearTimeout(timeoutId);
+        if (cancelled) return;
+        // No profile yet, that's fine - proceed to wallet step
+        setCurrentStep(2);
+      } finally {
+        if (!cancelled) {
+          setCheckingProfile(false);
+        }
       }
-    } else {
-      // Fallback: try to close window, or redirect to home if that fails
-      window.close();
-      // If window.close() doesn't work (page wasn't opened via script), redirect home
-      setTimeout(() => {
-        window.location.href = '/app';
-      }, 100);
+    };
+    
+    checkProfile();
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [githubUser?.githubId]);
+  
+  // Auto-link wallet when connected
+  useEffect(() => {
+    if (
+      githubUser &&
+      isConnected &&
+      address &&
+      walletClient &&
+      !hasLinkedWallet &&
+      !isProcessing &&
+      !profileCreated &&
+      currentStep === 2
+    ) {
+      createProfileWithWallet();
+    }
+  }, [githubUser, isConnected, address, walletClient, hasLinkedWallet, isProcessing, profileCreated, currentStep]);
+  
+  /**
+   * Start GitHub OAuth flow
+   */
+  const authenticateGitHub = useCallback(() => {
+    const currentUrl = window.location.pathname + window.location.search;
+    window.location.href = `/api/oauth/github?returnTo=${encodeURIComponent(currentUrl)}`;
+  }, []);
+  
+  /**
+   * Link wallet via SIWE signature
+   */
+  const createProfileWithWallet = useCallback(async () => {
+    if (isProcessing) return;
+    
+    try {
+      setIsProcessing(true);
+      setStatus({ message: 'Please sign the message in your wallet...', type: 'loading' });
+      
+      if (!isConnected || !address) {
+        throw new Error('Please connect your wallet first');
+      }
+      if (!walletClient) {
+        throw new Error('Wallet client not available');
+      }
+      if (!githubUser) {
+        throw new Error('Missing GitHub session');
+      }
+      
+      const { nonce } = await getNonce();
+      
+      const { message: messageText } = await buildSiweMessage({
+        address,
+        nonce,
+        chainId: chain?.id || 1,
+        domain: window.location.host,
+        uri: window.location.origin,
+        statement: 'Sign in to BountyPay to receive bounty payments.'
+      });
+      
+      if (!messageText) {
+        throw new Error('Failed to build verification message');
+      }
+      
+      const signature = await walletClient.signMessage({ message: messageText });
+      
+      setStatus({ message: 'Verifying signature...', type: 'loading' });
+      await verifyWalletSignature({ message: messageText, signature });
+      
+      setStatus({ message: 'Setting up your account...', type: 'loading' });
+      await linkWallet({
+        githubId: githubUser.githubId,
+        githubUsername: githubUser.githubUsername,
+        walletAddress: address
+      });
+      
+      setProfileCreated(true);
+      setHasLinkedWallet(true);
+      setCurrentStep(3);
+      setStatus({ message: 'Wallet linked successfully!', type: 'success' });
+      
+      setTimeout(() => setStatus({ message: '', type: '' }), 2000);
+    } catch (err) {
+      if (err?.message?.includes('User rejected') || err?.code === 4001) {
+        setStatus({ message: 'Signature cancelled. Please try again.', type: 'error' });
+      } else {
+        setStatus({ message: err?.message || 'Failed to link wallet', type: 'error' });
+        showError({ title: 'Wallet Link Failed', message: err?.message });
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [isConnected, address, walletClient, githubUser, chain, isProcessing, showError]);
+  
+  /**
+   * Send email verification
+   */
+  const handleSendEmailVerification = async () => {
+    if (!email || isProcessing) return;
+    
+    try {
+      setIsProcessing(true);
+      setStatus({ message: 'Sending verification email...', type: 'loading' });
+      
+      await requestEmailVerification(email);
+      
+      setEmailSent(true);
+      setStatus({ message: 'Verification email sent!', type: 'success' });
+    } catch (err) {
+      setStatus({ message: err?.message || 'Failed to send email', type: 'error' });
+    } finally {
+      setIsProcessing(false);
     }
   };
-
-  // Show loading message while mounting
+  
+  /**
+   * Skip email step and continue
+   */
+  const skipEmail = () => {
+    handleContinue();
+  };
+  
+  /**
+   * Navigate to return URL
+   */
+  const handleContinue = () => {
+    window.location.href = returnTo;
+  };
+  
+  // Loading state - only show during initial mount
   if (!isMounted) {
     return (
-      <div className="max-w-3xl mx-auto px-6 py-24 text-center">
-        <p className="text-sm text-muted-foreground">Preparing your workspace...</p>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="w-8 h-8 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
       </div>
     );
   }
-
-  /**
-   * Render the flow card depending on what step the user is in.
-   */
-  const renderFlowCard = () => {
-    // Step 1: Connect GitHub
-    if (!github.user) {
-      return (
-        <section className={cardClasses}>
-          <div className="space-y-4">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground/70">Step 1</p>
-              <h2 className="text-lg font-medium text-foreground">Connect GitHub</h2>
+  
+  // Show loading while checking GitHub auth
+  if (githubUserLoading) {
+    return (
+      <div className="max-w-lg mx-auto px-6 py-16 space-y-8">
+        <header className="text-center space-y-3">
+          <h1 className="font-instrument-serif text-4xl text-foreground">Sign in</h1>
+          <p className="text-sm text-muted-foreground">Checking your account...</p>
+        </header>
+        <div className={`${cardClasses} text-center py-8`}>
+          <div className="w-10 h-10 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin mx-auto" />
+        </div>
+      </div>
+    );
+  }
+  
+  // Calculate short address
+  const shortAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '';
+  
+  // Determine what to show
+  const isFullySetUp = hasLinkedWallet;
+  
+  return (
+    <div className="max-w-lg mx-auto px-6 py-16 space-y-8">
+      {/* Header */}
+      <header className="text-center space-y-3">
+        <h1 className="font-instrument-serif text-4xl text-foreground">
+          {!githubUser ? 'Sign in' : isFullySetUp ? 'Welcome back' : 'Complete setup'}
+        </h1>
+        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+          {!githubUser 
+            ? 'Sign in with GitHub to sponsor bounties or claim rewards.'
+            : isFullySetUp
+              ? 'Your account is ready for bounty payouts.'
+              : 'Connect your wallet to receive bounty payments.'}
+        </p>
+      </header>
+      
+      {/* Progress indicator */}
+      {githubUser && !isFullySetUp && (
+        <div className="flex items-center justify-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${currentStep >= 1 ? 'bg-primary' : 'bg-border'}`} />
+          <div className={`w-8 h-px ${currentStep >= 2 ? 'bg-primary' : 'bg-border'}`} />
+          <div className={`w-2 h-2 rounded-full ${currentStep >= 2 ? 'bg-primary' : 'bg-border'}`} />
+          <div className={`w-8 h-px ${currentStep >= 3 ? 'bg-primary' : 'bg-border'}`} />
+          <div className={`w-2 h-2 rounded-full ${currentStep >= 3 ? 'bg-primary' : 'bg-border'}`} />
+        </div>
+      )}
+      
+      {/* Status messages */}
+      <StatusNotice status={status} />
+      
+      {/* Step 1: Sign in with GitHub */}
+      {!githubUser && (
+        <div className={cardClasses}>
+          <div className="text-center space-y-5">
+            <div className="w-14 h-14 rounded-full bg-foreground/5 flex items-center justify-center mx-auto">
+              <GitHubIcon size={28} color="currentColor" className="text-foreground" />
+            </div>
+            
+            <div className="space-y-2">
+              <h2 className="text-lg font-medium text-foreground">Continue with GitHub</h2>
               <p className="text-sm text-muted-foreground">
-                Authenticate with GitHub to verify your identity.
+                We use GitHub to verify your identity and track your contributions.
               </p>
             </div>
+            
             <button
               onClick={authenticateGitHub}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition-opacity hover:opacity-90"
             >
               <GitHubIcon size={18} color="currentColor" />
-              Connect with GitHub
+              Sign in with GitHub
             </button>
+            
+            <p className="text-xs text-muted-foreground">
+              By signing in, you agree to our terms of service.
+            </p>
           </div>
-        </section>
-      );
-    }
-
-    // Show account check loading state
-    if (checkingAccount) {
-      return (
-        <section className={`${cardClasses} text-center`}>
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <span className="h-5 w-5 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+        </div>
+      )}
+      
+      {/* Checking account state */}
+      {githubUser && checkingProfile && (
+        <div className={`${cardClasses} text-center`}>
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+            <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
           </div>
           <p className="text-sm text-muted-foreground">Checking your account...</p>
-        </section>
-      );
-    }
-
-    // Show if the account already has a linked wallet
-    if (hasLinkedWallet) {
-      return (
-        <section className={`${cardClasses} text-center space-y-5`}>
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex items-center gap-2 text-primary">
-              <CheckCircleIcon size={20} color="currentColor" />
-              <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground/70">
-                Ready
-              </span>
+        </div>
+      )}
+      
+      {/* Step 2: Connect Wallet */}
+      {githubUser && !checkingProfile && !hasLinkedWallet && (
+        <div className={cardClasses}>
+          <div className="space-y-5">
+            {/* Connected GitHub indicator */}
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                <CheckCircleIcon size={16} className="text-emerald-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground">Signed in as</p>
+                <p className="text-sm font-medium text-foreground truncate">@{githubUser.githubUsername}</p>
+              </div>
             </div>
-            <h3 className="text-xl font-medium text-foreground">You're all set</h3>
-            <p className="text-sm text-muted-foreground">
-              Your account is already verified and ready for bounty payouts.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-border/50 bg-muted/40 p-4 text-left text-sm text-muted-foreground">
-            <div className="flex items-center justify-between text-foreground/80">
-              <span>GitHub</span>
-              <span>@{github.user?.githubUsername}</span>
-            </div>
-            <hr className="my-3 border-border/40" />
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
-              Ready to receive payments
-            </p>
-          </div>
-          <button
-            onClick={handleContinue}
-            className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-          >
-            Continue
-          </button>
-        </section>
-      );
-    }
-
-    // Show after profile is created and linked
-    if (profileCreated) {
-      return (
-        <section className={`${cardClasses} text-center space-y-5`}>
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex items-center gap-2 text-primary">
-              <CheckCircleIcon size={20} color="currentColor" />
-              <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground/70">
-                Linked
-              </span>
-            </div>
-            <h3 className="text-xl font-medium text-foreground">Profile created</h3>
-            <p className="text-sm text-muted-foreground">
-              You're now eligible to claim bounties automatically.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-border/50 bg-muted/40 p-4 text-left text-sm text-muted-foreground">
-            <div className="flex items-center justify-between text-foreground/80">
-              <span>GitHub</span>
-              <span>@{github.user?.githubUsername}</span>
-            </div>
-            {shortAddress && (
-              <>
-                <hr className="my-3 border-border/40" />
-                <div className="flex items-center justify-between text-foreground/80">
-                  <span>Wallet</span>
-                  <span>{shortAddress}</span>
-                </div>
-              </>
-            )}
-            <hr className="my-3 border-border/40" />
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
-              Ready to receive payments
-            </p>
-          </div>
-          <button
-            onClick={handleContinue}
-            className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-          >
-            Continue
-          </button>
-        </section>
-      );
-    }
-
-    // Step 2: Connect wallet if not yet connected
-    if (!wallet.isConnected) {
-      return (
-        <section className={cardClasses}>
-          <div className="space-y-4">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground/70">Step 2</p>
+            
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                <WalletIcon size={24} className="text-primary" />
+              </div>
               <h2 className="text-lg font-medium text-foreground">Connect your wallet</h2>
               <p className="text-sm text-muted-foreground">
-                Link a wallet to receive bounty payouts. You'll only sign a verification message—no gas required.
+                Link a wallet to receive bounty payments. You'll sign a message to verify ownership—no gas required.
               </p>
             </div>
+            
             <ConnectButton.Custom>
               {({ openConnectModal }) => (
                 <button
@@ -210,85 +363,107 @@ function LinkWalletContent() {
                     e.preventDefault();
                     if (openConnectModal) openConnectModal();
                   }}
-                  disabled={!isMounted || !openConnectModal}
-                  className="inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={!isMounted || isProcessing}
+                  className="w-full inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Connect Wallet
+                  {isProcessing ? 'Connecting...' : 'Connect Wallet'}
                 </button>
               )}
             </ConnectButton.Custom>
           </div>
-        </section>
-      );
-    }
-
-    // Show generic loading step if still in process
-    return (
-      <section className={`${cardClasses} text-center space-y-3`}>
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <span className="h-5 w-5 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
         </div>
-        <h3 className="text-lg font-medium text-foreground">Finishing up</h3>
-        <p className="text-sm text-muted-foreground">
-          {status.message || 'Setting up your profile...'}
-        </p>
-      </section>
-    );
-  };
-
-  return (
-    <div className="max-w-2xl mx-auto px-6 py-12 space-y-6">
-      {/* Page header */}
-      <header className="text-center space-y-3">
-        <h1 className="text-4xl font-light text-foreground/90">Claim Bounties</h1>
-        <p className="text-sm text-muted-foreground">
-          Link your GitHub account and wallet to receive automatic bounty payouts.
-        </p>
-      </header>
-
-      {/* Show connection summary if either GitHub or wallet is present */}
-      {(github.user || wallet.address) && (
-        <div className={`${cardClasses} flex items-center justify-between text-sm text-muted-foreground`}>
-          <div>
-            <p className="text-foreground/80">GitHub</p>
-            <p className="text-foreground font-medium">
-              {github.user ? `@${github.user.githubUsername}` : 'Not connected'}
-            </p>
-          </div>
-          <div>
-            <p className="text-foreground/80">Wallet</p>
-            <p className="text-foreground font-medium">
-              {shortAddress
-                ? shortAddress
-                : hasLinkedWallet
-                  ? 'Linked'
-                  : 'Not connected'}
-            </p>
+      )}
+      
+      {/* Step 3: All set (with optional email) */}
+      {githubUser && !checkingProfile && hasLinkedWallet && (
+        <div className={cardClasses}>
+          <div className="text-center space-y-5">
+            <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
+              <CheckCircleIcon size={28} className="text-emerald-600" />
+            </div>
+            
+            <div className="space-y-2">
+              <h2 className="text-lg font-medium text-foreground">You're all set!</h2>
+              <p className="text-sm text-muted-foreground">
+                Your account is ready to receive bounty payments.
+              </p>
+            </div>
+            
+            {/* Account summary */}
+            <div className="rounded-xl border border-border/50 bg-secondary/30 p-4 text-left space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">GitHub</span>
+                <span className="text-sm font-medium text-foreground">@{githubUser.githubUsername}</span>
+              </div>
+              <div className="border-t border-border/40" />
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Wallet</span>
+                <span className="text-sm font-mono text-foreground">{shortAddress || 'Linked'}</span>
+              </div>
+            </div>
+            
+            {/* Optional email section */}
+            {!hasVerifiedEmail && !emailSent && (
+              <div className="pt-4 border-t border-border/40">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MailIcon size={14} />
+                    <span>Get notified when you earn bounties</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="flex-1 !h-10 !px-4 !py-0 !mb-0 !rounded-full !border !border-border !bg-background !text-sm placeholder:text-muted-foreground focus:!outline-none focus:!ring-2 focus:!ring-primary/20"
+                    />
+                    <button
+                      onClick={handleSendEmailVerification}
+                      disabled={!email || isProcessing}
+                      className="px-4 py-2 rounded-full bg-secondary border border-border text-sm font-medium text-foreground hover:bg-secondary/80 transition-colors disabled:opacity-50"
+                    >
+                      Verify
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {emailSent && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 text-emerald-700 text-sm">
+                <CheckCircleIcon size={16} />
+                <span>Verification email sent! Check your inbox.</span>
+              </div>
+            )}
+            
+            <button
+              onClick={handleContinue}
+              className="w-full inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              Continue to App
+            </button>
           </div>
         </div>
       )}
-
-      {/* Show flow status messages */}
-      <StatusNotice status={status} />
-
-      {/* Show the main flow card */}
-      {renderFlowCard()}
     </div>
   );
 }
 
 /**
- * LinkWallet page wrapper with Suspense boundary.
+ * Sign In page wrapper with Suspense boundary
  */
-export default function LinkWallet() {
+export default function SignInPage() {
   return (
     <Suspense fallback={
-      <div className="max-w-3xl mx-auto px-6 py-24 text-center">
-        <p className="text-sm text-muted-foreground">Loading...</p>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="w-8 h-8 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
       </div>
     }>
-      <LinkWalletContent />
+      <SignInContent />
     </Suspense>
   );
 }
-

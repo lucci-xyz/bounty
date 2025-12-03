@@ -1,10 +1,21 @@
+'use client';
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import Socials from './Socials';
 
 /**
  * Footer component with multi-column links
+ * Hidden on /app/* routes
  */
 export default function Footer() {
+  const pathname = usePathname();
+  
+  // Hide footer on app routes
+  if (pathname?.startsWith('/app')) {
+    return null;
+  }
+
   const footerLinks = {
     product: [
       { label: 'Features', href: '#features' },
@@ -12,12 +23,11 @@ export default function Footer() {
       { label: 'Bounties', href: '/app' },
     ],
     resources: [
-      { label: 'Documentation', href: '/app/docs' },
-      { label: 'GitHub', href: 'https://github.com/lucci-foundation' },
+      { label: 'GitHub', href: 'https://github.com/lucci-xyz', external: true },
     ],
     company: [
       { label: 'About', href: '#' },
-      { label: 'Contact', href: '#' },
+      { label: 'Contact', href: 'mailto:contact@luccilabs.xyz', external: true },
     ],
   };
 
@@ -59,12 +69,23 @@ export default function Footer() {
             <ul className="space-y-2.5">
               {footerLinks.resources.map((link) => (
                 <li key={link.label}>
-                  <Link 
-                    href={link.href}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.label}
-                  </Link>
+                  {link.external ? (
+                    <a 
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {link.label}
+                    </a>
+                  ) : (
+                    <Link 
+                      href={link.href}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
@@ -76,12 +97,21 @@ export default function Footer() {
             <ul className="space-y-2.5">
               {footerLinks.company.map((link) => (
                 <li key={link.label}>
-                  <Link 
-                    href={link.href}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.label}
-                  </Link>
+                  {link.external ? (
+                    <a 
+                      href={link.href}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {link.label}
+                    </a>
+                  ) : (
+                    <Link 
+                      href={link.href}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

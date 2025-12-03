@@ -9,15 +9,6 @@ import { requestEmailVerification } from '@/shared/api/user';
 /**
  * Displays the user's account settings, including GitHub account info,
  * payout wallet, and logout functionality.
- *
- * @param {Object} props
- * @param {Object} props.githubUser - GitHub user information
- * @param {Object} props.profile - User profile, may include wallet info
- * @param {Function} props.onManageRepos - Opens manage repositories modal
- * @param {Function} props.openChangeWalletModal - Opens change wallet modal
- * @param {Function} props.openDeleteWalletModal - Opens delete wallet modal
- * @param {Function} props.refreshProfile - Refreshes user profile data
- * @param {Function} props.logout - Logs out the user
  */
 export function SettingsTab({
   githubUser,
@@ -35,7 +26,6 @@ export function SettingsTab({
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  // Simple email validation
   const isValidEmail = (value) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   };
@@ -62,21 +52,22 @@ export function SettingsTab({
       setStatus('idle');
     }
   };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {/* GitHub Account */}
-      <div className="bg-card border border-border/40 rounded-2xl p-5 animate-fade-in-up delay-100">
-        <div className="flex justify-between items-center mb-3">
+      <div className="bg-card border border-border rounded-2xl p-5 animate-fade-in-up">
+        <div className="flex justify-between items-center mb-4">
           <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
-            <GitHubIcon size={16} />
+            <GitHubIcon size={16} className="text-muted-foreground" />
             GitHub Account
           </h3>
           <button
             onClick={onManageRepos}
-            className="premium-btn flex items-center gap-1 border border-border bg-transparent px-2 py-1 text-xs text-muted-foreground"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
             <SettingsIcon size={12} />
-            Manage
+            Manage Repos
           </button>
         </div>
         <div className="flex items-center gap-3">
@@ -85,7 +76,7 @@ export function SettingsTab({
             <div className="text-sm font-medium text-foreground">
               @{githubUser.githubUsername}
             </div>
-            <div className="text-xs font-light text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               ID: {githubUser.githubId}
             </div>
           </div>
@@ -93,51 +84,57 @@ export function SettingsTab({
       </div>
 
       {/* Payout Wallet */}
-      <div className="bg-card border border-border/40 rounded-2xl p-5 animate-fade-in-up delay-150">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
-          <WalletIcon size={16} />
+      <div className="bg-card border border-border rounded-2xl p-5 animate-fade-in-up">
+        <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-foreground">
+          <WalletIcon size={16} className="text-muted-foreground" />
           Payout Wallet
         </h3>
         {profile?.wallet ? (
           <div>
-            <div className="mb-0.5 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">
+            <div className="mb-1 text-xs text-muted-foreground uppercase tracking-wider">
               Address
             </div>
-            <div className="mb-1 break-all font-mono text-sm text-foreground">
+            <div className="mb-1 break-all font-mono text-sm text-foreground bg-secondary rounded-lg px-3 py-2">
               {profile.wallet.walletAddress.slice(0, 8)}...{profile.wallet.walletAddress.slice(-6)}
             </div>
-            <div className="mb-3 text-xs font-light text-muted-foreground">
+            <div className="mb-3 text-xs text-muted-foreground">
               Linked {new Date(profile.wallet.verifiedAt).toLocaleDateString()}
             </div>
             <div className="flex gap-2">
               <button
                 onClick={openChangeWalletModal}
-                className="premium-btn border border-border bg-transparent px-2 py-1 text-xs text-foreground"
+                className="px-3 py-1.5 rounded-full border border-border text-xs text-foreground hover:bg-secondary transition-colors"
               >
                 Change
               </button>
               <button
                 onClick={openDeleteWalletModal}
-                className="premium-btn border border-destructive/60 bg-transparent px-2 py-1 text-xs text-destructive"
+                className="px-3 py-1.5 rounded-full border border-destructive/40 text-xs text-destructive hover:bg-destructive/5 transition-colors"
               >
-                Delete
+                Remove
               </button>
             </div>
           </div>
         ) : (
-          <div className="text-center py-2">
-            <p className="mb-2 text-sm font-light text-muted-foreground">No wallet linked</p>
-            <Link href="/app/link-wallet?type=payout">
-              <button className="premium-btn bg-primary text-primary-foreground text-xs px-3 py-1.5">Link Wallet</button>
+          <div className="text-center py-4">
+            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+              <WalletIcon size={20} className="text-muted-foreground" />
+            </div>
+            <p className="mb-3 text-sm text-muted-foreground">No wallet linked</p>
+            <Link 
+              href="/app/link-wallet?type=payout"
+              className="inline-flex px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              Link Wallet
             </Link>
           </div>
         )}
       </div>
 
       {/* Notifications */}
-      <div className="bg-card border border-border/40 rounded-2xl p-5 animate-fade-in-up delay-200">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
-          <BellIcon size={16} />
+      <div className="bg-card border border-border rounded-2xl p-5 animate-fade-in-up">
+        <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-foreground">
+          <BellIcon size={16} className="text-muted-foreground" />
           Notifications
         </h3>
 
@@ -145,15 +142,15 @@ export function SettingsTab({
           <div>
             <div className="mb-3 flex items-center gap-2 flex-wrap">
               <span className="break-all text-sm text-foreground">{verifiedEmail}</span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-600">
                 <CheckCircleIcon size={10} />
                 Verified
               </span>
             </div>
-            <div className="inline-flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <input
                 type="email"
-                className="w-36 rounded-lg border border-border/60 bg-background px-2 py-1 text-xs text-foreground transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/10"
+                className="flex-1 min-w-0 h-9 rounded-full border border-border bg-background px-4 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 placeholder="New email"
                 value={email !== verifiedEmail ? email : ''}
                 onChange={(event) => setEmail(event.target.value)}
@@ -163,52 +160,52 @@ export function SettingsTab({
               <button
                 onClick={handleSendVerification}
                 disabled={!email || email === verifiedEmail || !isValidEmail(email) || status === 'loading'}
-                className="premium-btn border border-border bg-transparent px-2 py-1 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                className="px-4 py-2 rounded-full border border-border text-xs text-foreground hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {status === 'loading' ? '…' : 'Update'}
+                {status === 'loading' ? '...' : 'Update'}
               </button>
             </div>
-            {message && <p className="mt-2 text-xs font-medium text-foreground">{message}</p>}
-            {error && <p className="mt-2 text-xs font-medium text-destructive">{error}</p>}
+            {message && <p className="mt-2 text-xs text-emerald-600">{message}</p>}
+            {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
           </div>
         ) : pendingEmail ? (
           <div>
             <div className="mb-2 flex items-center gap-2 flex-wrap">
               <span className="break-all text-sm text-foreground">{pendingEmail}</span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600">
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-600">
                 Pending
               </span>
             </div>
-            <p className="mb-2 text-xs font-light text-muted-foreground">
-              Check inbox for verification link.
+            <p className="mb-3 text-xs text-muted-foreground">
+              Check your inbox for verification link.
             </p>
             <div className="flex items-center gap-2">
               <button
                 onClick={handleSendVerification}
                 disabled={status === 'loading'}
-                className="premium-btn border border-border bg-transparent px-2 py-1 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                className="px-4 py-2 rounded-full border border-border text-xs text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
               >
-                {status === 'loading' ? '…' : 'Resend'}
+                {status === 'loading' ? '...' : 'Resend'}
               </button>
               <button
                 onClick={() => { setEmail(''); setMessage(''); setError(''); }}
-                className="premium-btn border border-border bg-transparent px-2 py-1 text-xs text-muted-foreground"
+                className="px-4 py-2 rounded-full border border-border text-xs text-muted-foreground hover:bg-secondary transition-colors"
               >
                 Change
               </button>
             </div>
-            {message && <p className="mt-2 text-xs font-medium text-foreground">{message}</p>}
-            {error && <p className="mt-2 text-xs font-medium text-destructive">{error}</p>}
+            {message && <p className="mt-2 text-xs text-emerald-600">{message}</p>}
+            {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
           </div>
         ) : (
           <div>
-            <p className="mb-3 text-xs font-light text-muted-foreground">
+            <p className="mb-3 text-xs text-muted-foreground">
               Get notified when bounties are paid.
             </p>
-            <div className="inline-flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <input
                 type="email"
-                className="w-36 rounded-lg border border-border/60 bg-background px-2 py-1 text-xs text-foreground transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/10"
+                className="flex-1 min-w-0 h-9 rounded-full border border-border bg-background px-4 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
@@ -218,28 +215,28 @@ export function SettingsTab({
               <button
                 onClick={handleSendVerification}
                 disabled={!email || !isValidEmail(email) || status === 'loading'}
-                className="premium-btn bg-primary text-primary-foreground px-2 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-full text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {status === 'loading' ? '…' : 'Verify'}
+                {status === 'loading' ? '...' : 'Verify'}
               </button>
             </div>
-            {message && <p className="mt-2 text-xs font-medium text-foreground">{message}</p>}
-            {error && <p className="mt-2 text-xs font-medium text-destructive">{error}</p>}
+            {message && <p className="mt-2 text-xs text-emerald-600">{message}</p>}
+            {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
           </div>
         )}
       </div>
 
       {/* Logout */}
-      <div className="bg-destructive/5 border border-destructive/20 rounded-2xl p-5 animate-fade-in-up delay-250">
-        <h3 className="mb-2 text-sm font-medium text-destructive">Logout</h3>
-        <p className="mb-3 text-xs font-light text-muted-foreground">
-          End your session and sign out
+      <div className="bg-destructive/5 border border-destructive/20 rounded-2xl p-5 animate-fade-in-up">
+        <h3 className="mb-2 text-sm font-medium text-destructive">Sign Out</h3>
+        <p className="mb-4 text-xs text-muted-foreground">
+          End your session and sign out of BountyPay
         </p>
         <button
           onClick={logout}
-          className="premium-btn bg-destructive px-3 py-1.5 text-xs text-destructive-foreground"
+          className="px-4 py-2 bg-destructive text-white rounded-full text-xs font-medium hover:opacity-90 transition-opacity"
         >
-          Logout
+          Log out
         </button>
       </div>
     </div>
