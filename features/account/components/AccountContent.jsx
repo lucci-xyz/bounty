@@ -1,6 +1,4 @@
 'use client';
-
-import { useState } from 'react';
 import { cn } from '@/shared/lib';
 import Link from 'next/link';
 import { SponsoredTab } from '@/features/account/components/tabs/SponsoredTab';
@@ -66,14 +64,6 @@ function PlusIcon({ className }) {
   );
 }
 
-function MenuIcon({ className }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-    </svg>
-  );
-}
-
 /**
  * Main component for the user account page.
  * Renders sidebar navigation, settings, modals, and account data.
@@ -81,7 +71,6 @@ function MenuIcon({ className }) {
  */
 export function AccountContent({ initialTab: initialTabOverride } = {}) {
   const allowlistEnabled = useFlag('allowlistFeature', false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const {
     githubUser,
@@ -137,7 +126,6 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
-    setMobileMenuOpen(false);
   };
 
   return (
@@ -169,39 +157,8 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
             >
               <PlusIcon className="w-4 h-4" />
             </Link>
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="flex items-center justify-center w-9 h-9 border border-border rounded-full hover:bg-secondary transition-colors"
-            >
-              <MenuIcon className="w-5 h-5 text-muted-foreground" />
-            </button>
           </div>
         </div>
-
-        {/* Mobile Navigation Menu */}
-        {mobileMenuOpen && (
-          <div className="bg-card border border-border rounded-xl p-2 mb-4 animate-fade-in-up">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleTabChange(item.id)}
-                  className={cn(
-                    'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all',
-                    isActive 
-                      ? 'bg-primary/10 text-foreground font-medium' 
-                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                  )}
-                >
-                  <Icon className={cn('w-5 h-5', isActive ? 'text-primary' : '')} />
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
 
         {/* Mobile Tab Pills (scrollable) */}
         <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
