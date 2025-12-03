@@ -1,6 +1,6 @@
 # Logging
 
-`shared/lib/logger` wraps `console` with sensible defaults and redaction. It is safe to import from both server and client code; client logging is silenced in production builds.
+`lib/logger` wraps `console` with sensible defaults and redaction. It is safe to import from both server and client code; client logging is silenced in production builds.
 
 ```mermaid
 flowchart LR
@@ -18,7 +18,7 @@ flowchart LR
 ## Usage
 Import `logger` and prefer structured objects over string interpolation:
 ```js
-import { logger } from '@/shared/lib/logger';
+import { logger } from '@/lib/logger';
 
 logger.info('Creating bounty', { repoFullName, network });
 logger.warn('Unexpected network', { alias, supported: Object.keys(REGISTRY) });
@@ -29,7 +29,7 @@ logger.error('Webhook failed', error);
 If you need consistent fields, wrap the logger rather than sprinkling string literals:
 ```js
 // shared/server/github/log.js
-import { logger } from '@/shared/lib/logger';
+import { logger } from '@/lib/logger';
 export const ghLog = {
   event: (type, payload) => logger.info('GitHub event', { type, action: payload.action }),
   failure: (context, error) => logger.error('GitHub handler failed', { context, error })

@@ -3,13 +3,13 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
-      "@shared/*": ["./shared/*"],
-      "@features/*": ["./features/*"],
-      "@data/*": ["./shared/data/*"],
-      "@hooks/*": ["./shared/hooks/*"],
-      "@templates/*": ["./templates/*"]
+      "@/ui/*": ["./ui/*"],
+      "@/server/*": ["./server/*"],
+      "@/integrations/*": ["./integrations/*"],
+      "@/lib/*": ["./lib/*"],
+      "@/api/*": ["./api/*"],
+      "@/config/*": ["./config/*"]
     }
   },
   "exclude": ["node_modules", ".next"]
 }
-

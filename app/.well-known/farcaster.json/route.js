@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { MINI_APP_MANIFEST } from '@/app/(public)/base-mini-app/manifest';
+import { MINI_APP_MANIFEST } from '@/app/base-mini-app/manifest';
 
 /**
  * Handles GET requests to the farcaster.json endpoint.

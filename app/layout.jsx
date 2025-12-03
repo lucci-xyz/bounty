@@ -1,16 +1,16 @@
-import './globals.css';
+import '@/styles/globals.css';
 import '@rainbow-me/rainbowkit/styles.css';
-import { Providers } from '@/shared/providers/Providers';
-import { NetworkProvider } from '@/shared/providers/NetworkProvider';
-import { BetaAccessProvider } from '@/features/beta-access/providers/BetaAccessProvider';
-import Navbar from '@/shared/components/Navbar';
-import Footer from '@/shared/components/Footer';
+import { Providers } from '@/ui/providers/Providers';
+import { NetworkProvider } from '@/ui/providers/NetworkProvider';
+import { BetaAccessProvider } from '@/ui/providers/BetaAccessProvider';
+import Navbar from '@/ui/components/Navbar';
+import Footer from '@/ui/components/Footer';
 import { Analytics } from '@vercel/analytics/react';
-import { MINI_APP_EMBED } from '@/app/(public)/base-mini-app/manifest';
-import { getLinkHref } from '@/shared/config/links';
-import { FlagProvider } from '@/shared/providers/FlagProvider';
-import { FlagsInspector } from '@/shared/providers/FlagsInspector';
-import { getFlags, getFlagProviderData } from '@/shared/lib/flags';
+import { MINI_APP_EMBED } from '@/app/base-mini-app/manifest';
+import { getLinkHref } from '@/config/links';
+import { FlagProvider } from '@/ui/providers/FlagProvider';
+import { FlagsInspector } from '@/ui/providers/FlagsInspector';
+import { getFlags, getFlagProviderData } from '@/lib/flags';
 
 export const metadata = {
   title: 'BountyPay - Automated GitHub Bounty Payments',

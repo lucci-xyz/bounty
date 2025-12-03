@@ -1,6 +1,6 @@
 # Database Reference (Visual)
 
-> Prisma schema: `shared/server/db/schema.prisma`  
+> Prisma schema: `server/db/schema.prisma`  
 > Migrate: `npx prisma migrate dev`  
 > Generate client: `npx prisma generate`
 
@@ -155,9 +155,9 @@ The `lifecycle.state` field adds one additional state for open bounties:
 ## Usage Notes
 
 - `CONFIG.envTarget` is written to `Bounty.environment`; always filter queries by it.  
-- Prefer helpers in `shared/server/db/prisma.js` for:
+- Prefer helpers in `server/db/prisma.js` for:
   - BigInt conversions (`repoId`, etc.).
   - Optional issue metadata detection.
   - Status validation (rejects invalid status values).
 - Links by `bountyId` (`PrClaim`, `Allowlist`) are enforced in application logic, not DB FKs.
-- Use `shared/lib/status` for status constants and helpers, never hardcode status strings.
+- Use `lib/status` for status constants and helpers, never hardcode status strings.
