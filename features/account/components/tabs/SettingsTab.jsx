@@ -150,7 +150,7 @@ export function SettingsTab({
             <div className="flex items-center gap-2">
               <input
                 type="email"
-                className="flex-1 min-w-0 h-9 mb-0 rounded-full border border-border bg-background px-4 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="flex-1 min-w-0 !h-9 !mb-0 rounded-full border border-border bg-background px-4 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 placeholder="New email"
                 value={email !== verifiedEmail ? email : ''}
                 onChange={(event) => setEmail(event.target.value)}
@@ -160,7 +160,7 @@ export function SettingsTab({
               <button
                 onClick={handleSendVerification}
                 disabled={!email || email === verifiedEmail || !isValidEmail(email) || status === 'loading'}
-                className="px-4 py-2 rounded-full border border-border text-xs text-foreground hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 h-9 inline-flex items-center justify-center rounded-full border border-border text-xs text-foreground hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {status === 'loading' ? '...' : 'Update'}
               </button>
@@ -205,7 +205,7 @@ export function SettingsTab({
             <div className="flex items-center gap-2">
               <input
                 type="email"
-                className="flex-1 min-w-0 h-9 mb-0 rounded-full border border-border bg-background px-4 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="flex-1 min-w-0 !h-9 !mb-0 rounded-full border border-border bg-background px-4 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
@@ -215,7 +215,7 @@ export function SettingsTab({
               <button
                 onClick={handleSendVerification}
                 disabled={!email || !isValidEmail(email) || status === 'loading'}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-full text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 h-9 inline-flex items-center justify-center bg-primary text-primary-foreground rounded-full text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {status === 'loading' ? '...' : 'Verify'}
               </button>
