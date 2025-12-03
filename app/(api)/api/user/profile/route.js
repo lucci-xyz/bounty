@@ -16,6 +16,16 @@ export async function GET(request) {
       ? await userQueries.findLatestPendingEmailVerification(user.id)
       : null;
     
+    // Log profile fetch for debugging
+    logger.debug('Profile fetched', {
+      githubId: session.githubId,
+      hasUser: !!user,
+      hasUserEmail: !!user?.email,
+      userEmail: user?.email ? '***@' + user.email.split('@')[1] : null,
+      hasWallet: !!wallet?.walletAddress,
+      hasPendingVerification: !!emailVerification
+    });
+    
     return Response.json({
       user: user || {
         githubId: session.githubId,

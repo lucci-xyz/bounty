@@ -5,8 +5,8 @@
  * Handles GitHub OAuth, wallet connection, and optional email for notifications.
  */
 
-import { Suspense, useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useWalletClient } from 'wagmi';
 import { GitHubIcon, CheckCircleIcon, WalletIcon, MailIcon } from '@/shared/components/Icons';
@@ -24,6 +24,7 @@ const cardClasses = 'rounded-2xl border border-border/60 bg-card p-6 shadow-sm';
  */
 function SignInContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const returnTo = searchParams.get('returnTo') || '/app';
   
   // Auth state
@@ -37,9 +38,11 @@ function SignInContent() {
   const [checkingProfile, setCheckingProfile] = useState(false);
   const [hasLinkedWallet, setHasLinkedWallet] = useState(false);
   const [hasVerifiedEmail, setHasVerifiedEmail] = useState(false);
+  const [userEmail, setUserEmail] = useState(null); // Store the actual email value
   const [profileCreated, setProfileCreated] = useState(false);
   const [status, setStatus] = useState({ message: '', type: '' });
   const [isProcessing, setIsProcessing] = useState(false);
+  const [profileError, setProfileError] = useState(null);
   
   // Email state
   const [email, setEmail] = useState('');
@@ -49,8 +52,20 @@ function SignInContent() {
   // Current step tracking
   const [currentStep, setCurrentStep] = useState(1);
   
+  // Welcome back redirect state
+  const [showWelcomeBack, setShowWelcomeBack] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+  const redirectTimerRef = useRef(null);
+  
   useEffect(() => {
     setIsMounted(true);
+    
+    // Cleanup redirect timer on unmount
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+      }
+    };
   }, []);
   
   // Check user's profile when GitHub user is available
@@ -62,6 +77,7 @@ function SignInContent() {
     
     const checkProfile = async () => {
       setCheckingProfile(true);
+      setProfileError(null);
       
       // Add timeout to prevent hanging
       const timeoutId = setTimeout(() => {
@@ -76,19 +92,37 @@ function SignInContent() {
         clearTimeout(timeoutId);
         if (cancelled) return;
         
-        if (profile?.wallet?.walletAddress) {
+        // Check wallet - handle both object and null/undefined cases
+        const walletAddress = profile?.wallet?.walletAddress;
+        const hasWallet = Boolean(walletAddress && typeof walletAddress === 'string' && walletAddress.length > 0);
+        
+        if (hasWallet) {
           setHasLinkedWallet(true);
           setCurrentStep(3);
         } else {
           setCurrentStep(2);
         }
-        if (profile?.user?.email) {
+        
+        // Check email - handle both object and null/undefined cases
+        // The email is stored on the user object when verified
+        const verifiedEmail = profile?.user?.email;
+        const hasEmail = Boolean(verifiedEmail && typeof verifiedEmail === 'string' && verifiedEmail.length > 0);
+        
+        if (hasEmail) {
           setHasVerifiedEmail(true);
+          setUserEmail(verifiedEmail);
+        }
+        
+        // If user has all three (GitHub + wallet + email), show welcome back
+        if (hasWallet && hasEmail) {
+          setShowWelcomeBack(true);
         }
       } catch (err) {
         clearTimeout(timeoutId);
         if (cancelled) return;
-        // No profile yet, that's fine - proceed to wallet step
+        // Log error but proceed to wallet step
+        console.error('Error fetching profile:', err);
+        setProfileError(err?.message || 'Failed to load profile');
         setCurrentStep(2);
       } finally {
         if (!cancelled) {
@@ -103,6 +137,20 @@ function SignInContent() {
       cancelled = true;
     };
   }, [githubUser?.githubId]);
+  
+  // Handle "Welcome back" auto-redirect with animation
+  useEffect(() => {
+    if (showWelcomeBack && hasLinkedWallet && hasVerifiedEmail && !redirecting) {
+      setRedirecting(true);
+      
+      // Delay redirect to show the welcome message
+      redirectTimerRef.current = setTimeout(() => {
+        // Navigate to the bounties homepage (or returnTo if specified)
+        const destination = returnTo === '/app' ? '/' : returnTo;
+        router.push(destination);
+      }, 2500); // 2.5 second delay for animation
+    }
+  }, [showWelcomeBack, hasLinkedWallet, hasVerifiedEmail, redirecting, returnTo, router]);
   
   // Auto-link wallet when connected
   useEffect(() => {
@@ -179,6 +227,20 @@ function SignInContent() {
       setHasLinkedWallet(true);
       setCurrentStep(3);
       setStatus({ message: 'Wallet linked successfully!', type: 'success' });
+      
+      // Re-fetch profile to check if user has email - if so, show welcome back
+      try {
+        const updatedProfile = await getUserProfile();
+        const verifiedEmail = updatedProfile?.user?.email;
+        if (verifiedEmail && typeof verifiedEmail === 'string' && verifiedEmail.length > 0) {
+          setHasVerifiedEmail(true);
+          setUserEmail(verifiedEmail);
+          setShowWelcomeBack(true);
+        }
+      } catch (err) {
+        // Non-critical, continue without welcome back flow
+        console.error('Error checking email after wallet link:', err);
+      }
       
       setTimeout(() => setStatus({ message: '', type: '' }), 2000);
     } catch (err) {
@@ -259,26 +321,31 @@ function SignInContent() {
   const shortAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '';
   
   // Determine what to show
+  // User is "fully set up" when they have a linked wallet (email is optional)
   const isFullySetUp = hasLinkedWallet;
+  // User gets "welcome back" treatment when they have all three: GitHub + wallet + email
+  const isReturningUser = hasLinkedWallet && hasVerifiedEmail && showWelcomeBack;
   
   return (
     <div className="max-w-lg mx-auto px-6 py-16 space-y-8">
       {/* Header */}
-      <header className="text-center space-y-3">
+      <header className={`text-center space-y-3 transition-opacity duration-500 ${redirecting ? 'opacity-0' : 'opacity-100'}`}>
         <h1 className="font-instrument-serif text-4xl text-foreground">
-          {!githubUser ? 'Sign in' : isFullySetUp ? 'Welcome back' : 'Complete setup'}
+          {!githubUser ? 'Sign in' : isReturningUser ? 'Welcome back' : isFullySetUp ? 'You\'re all set' : 'Complete setup'}
         </h1>
         <p className="text-sm text-muted-foreground max-w-sm mx-auto">
           {!githubUser 
             ? 'Sign in with GitHub to sponsor bounties or claim rewards.'
-            : isFullySetUp
-              ? 'Your account is ready for bounty payouts.'
-              : 'Connect your wallet to receive bounty payments.'}
+            : isReturningUser
+              ? 'Your account is ready for bounty payouts'
+              : isFullySetUp
+                ? 'Your account is ready to receive bounty payments.'
+                : 'Connect your wallet to receive bounty payments.'}
         </p>
       </header>
       
-      {/* Progress indicator */}
-      {githubUser && !isFullySetUp && (
+      {/* Progress indicator - hide when redirecting or in welcome back state */}
+      {githubUser && !isFullySetUp && !isReturningUser && !redirecting && (
         <div className="flex items-center justify-center gap-2">
           <div className={`w-2 h-2 rounded-full ${currentStep >= 1 ? 'bg-primary' : 'bg-border'}`} />
           <div className={`w-8 h-px ${currentStep >= 2 ? 'bg-primary' : 'bg-border'}`} />
@@ -374,8 +441,52 @@ function SignInContent() {
         </div>
       )}
       
-      {/* Step 3: All set (with optional email) */}
-      {githubUser && !checkingProfile && hasLinkedWallet && (
+      {/* Welcome back state - shown when all three are linked (GitHub + wallet + email) */}
+      {githubUser && !checkingProfile && showWelcomeBack && hasLinkedWallet && hasVerifiedEmail && (
+        <div 
+          className={`${cardClasses} transition-all duration-700 ease-out ${redirecting ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}
+        >
+          <div className="text-center space-y-5">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto animate-[pulse_2s_ease-in-out_infinite]">
+              <CheckCircleIcon size={32} className="text-emerald-600" />
+            </div>
+            
+            <div className="space-y-2">
+              <h2 className="text-xl font-medium text-foreground">Welcome back</h2>
+              <p className="text-sm text-muted-foreground">
+                Your account is ready for bounty payouts
+              </p>
+            </div>
+            
+            {/* Account summary */}
+            <div className="rounded-xl border border-border/50 bg-secondary/30 p-4 text-left space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">GitHub</span>
+                <span className="text-sm font-medium text-foreground">@{githubUser.githubUsername}</span>
+              </div>
+              <div className="border-t border-border/40" />
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Wallet</span>
+                <span className="text-sm font-mono text-foreground">{shortAddress || 'Linked'}</span>
+              </div>
+              <div className="border-t border-border/40" />
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Email</span>
+                <span className="text-sm text-foreground">{userEmail}</span>
+              </div>
+            </div>
+            
+            {/* Redirecting indicator */}
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin" />
+              <span>Redirecting to bounties...</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Step 3: All set (with optional email) - only shown when NOT in welcome back state */}
+      {githubUser && !checkingProfile && hasLinkedWallet && !showWelcomeBack && (
         <div className={cardClasses}>
           <div className="text-center space-y-5">
             <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
@@ -400,9 +511,19 @@ function SignInContent() {
                 <span className="text-sm text-muted-foreground">Wallet</span>
                 <span className="text-sm font-mono text-foreground">{shortAddress || 'Linked'}</span>
               </div>
+              {/* Show email in summary if verified */}
+              {hasVerifiedEmail && userEmail && (
+                <>
+                  <div className="border-t border-border/40" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Email</span>
+                    <span className="text-sm text-foreground">{userEmail}</span>
+                  </div>
+                </>
+              )}
             </div>
             
-            {/* Optional email section */}
+            {/* Optional email section - ONLY show when user does NOT have a verified email */}
             {!hasVerifiedEmail && !emailSent && (
               <div className="pt-4 border-t border-border/40">
                 <div className="space-y-3">
