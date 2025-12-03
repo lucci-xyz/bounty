@@ -1,6 +1,6 @@
 # Networks & Contracts
 
-Network support is driven by the registry in `shared/config/chain-registry.js`. Each alias declares RPC, chain metadata, escrow address, and token details; ethers ABIs for escrow/erc20 are defined in the same file.
+Network support is driven by the registry in `config/chain-registry.js`. Each alias declares RPC, chain metadata, escrow address, and token details; ethers ABIs for escrow/erc20 are defined in the same file.
 
 ```mermaid
 flowchart TD
@@ -37,7 +37,7 @@ Testnets fall back to the curated defaults above; mainnets must be fully configu
 - `getBounty(bytes32 bountyId)` → tuple (`repoIdHash`, `sponsor`, `resolver`, `amount`, `deadline`, `issueNumber`, `status`)
 - `computeBountyId(address sponsor, bytes32 repoIdHash, uint64 issueNumber)`
 
-Use `shared/server/blockchain/contract.js` helpers for all contract interactions; they handle non-1559 networks and registry lookups for you.
+Use `server/blockchain/contract.js` helpers for all contract interactions; they handle non-1559 networks and registry lookups for you.
 
 ## Add a new network
 1. Add the alias to `CURATED_ALIASES` if it is not already present (or reuse an existing alias).

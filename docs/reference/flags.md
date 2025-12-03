@@ -1,6 +1,6 @@
 # Feature Flags
 
-Flags are defined in `shared/lib/flags/index.js` using Vercel’s `flags/next` package. Values resolve in this order: `FLAGS_LOCAL_OVERRIDES` / `NEXT_PUBLIC_FLAGS_LOCAL_OVERRIDES` (JSON), Edge Config item `flags`, then the declaration’s `defaultValue`.
+Flags are defined in `lib/flags/index.js` using Vercel's `flags/next` package. Values resolve in this order: `FLAGS_LOCAL_OVERRIDES` / `NEXT_PUBLIC_FLAGS_LOCAL_OVERRIDES` (JSON), Edge Config item `flags`, then the declaration's `defaultValue`.
 
 ```mermaid
 flowchart TD
@@ -13,14 +13,12 @@ flowchart TD
 ```
 
 ## Current flags
-- `improvedNav` (`improved-nav`) — gated UI navigation changes.
-- `betaWalletFlow` (`beta-wallet-flow`) — experimental wallet linking; only true when the user has beta access (transform applies).
 - `allowlistFeature` (`allowlist-feature`) — enables allowlist functionality for restricting bounty claims to specific wallet addresses.
 - `refundFeature` (`refund-feature`) — enables refund functionality for requesting refunds on expired bounties.
 
 ## Define a new flag
 ```js
-// shared/lib/flags/index.js
+// lib/flags/index.js
 const newFeature = createFlagDeclaration({
   name: 'newFeature',
   key: 'new-feature',
@@ -42,16 +40,16 @@ export { newFeature };
 Add the key to Edge Config (or a local override) to enable it without redeploying.
 
 ## Reading flags
-- **Server**: `const flags = await getFlags(); const enableBeta = await getFlagValue('betaWalletFlow');`
-- **Client**: `const showNav = useFlag('improvedNav', false);`
+- **Server**: `const flags = await getFlags(); const allowlist = await getFlagValue('allowlistFeature');`
+- **Client**: `const showAllowlist = useFlag('allowlistFeature', false);`
 - **Inspector**: `FlagsInspector` (mounted in `app/layout.jsx`) shows definitions/values for quick debugging.
 
 ## Configuring Edge Config
 1. Set `EDGE_CONFIG` to a Vercel Edge Config that contains a JSON item named `flags`, e.g.:
    ```json
-   { "improved-nav": false, "beta-wallet-flow": true, "allowlist-feature": false, "refund-feature": false }
+   { "allowlist-feature": false, "refund-feature": false }
    ```
-2. Optional local overrides: `FLAGS_LOCAL_OVERRIDES='{"improved-nav":true}'` or `NEXT_PUBLIC_FLAGS_LOCAL_OVERRIDES` for client-visible toggles.
+2. Optional local overrides: `FLAGS_LOCAL_OVERRIDES='{"allowlist-feature":true}'` or `NEXT_PUBLIC_FLAGS_LOCAL_OVERRIDES` for client-visible toggles.
 
 ## When to use flags
 - Gate UI experiments or gradual rollouts without code splits.

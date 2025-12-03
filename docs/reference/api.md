@@ -1,6 +1,6 @@
 # API Reference
 
-Base path: `/api/*`. Responses are JSON with either `{ success, ... }` or `{ error }`. Sessions are managed by `iron-session`; GitHub OAuth populates `githubId`/`githubUsername`, and SIWE verification stores `walletAddress`/`chainId`.
+Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with either `{ success, ... }` or `{ error }`. Sessions are managed by `iron-session` (see `lib/session`); GitHub OAuth populates `githubId`/`githubUsername`, and SIWE verification stores `walletAddress`/`chainId`.
 
 ## Auth & identity
 | Method | Path | Auth | Notes |

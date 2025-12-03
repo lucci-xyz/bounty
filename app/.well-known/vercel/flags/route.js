@@ -1,5 +1,5 @@
 import { createFlagsDiscoveryEndpoint, getProviderData } from 'flags/next';
-import { flagRegistry } from '@/shared/lib/flags';
+import { flagRegistry } from '@/lib/flags';
 
 const getApiData = () => getProviderData(flagRegistry);
 
