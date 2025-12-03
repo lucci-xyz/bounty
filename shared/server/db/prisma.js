@@ -649,8 +649,8 @@ export const userQueries = {
     const user = await prisma.user.upsert({
       where: { githubId: BigInt(githubData.githubId) },
       update: {
+        // Only update GitHub-sourced fields; never overwrite verified email
         githubUsername: githubData.githubUsername,
-        email: githubData.email || null,
         avatarUrl: githubData.avatarUrl || null,
         updatedAt: BigInt(Date.now())
       },
