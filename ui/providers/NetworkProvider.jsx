@@ -141,6 +141,20 @@ export function NetworkProvider({ children }) {
       if (!targetGroup || targetGroup === networkGroup) {
         return;
       }
+      if (!registry) {
+        throw new Error('Network configuration is still loading. Please try again in a moment.');
+      }
+
+      const hasTargetNetworks = Object.values(registry).some(
+        (config) => config.group === targetGroup
+      );
+      if (!hasTargetNetworks) {
+        throw new Error(
+          targetGroup === 'testnet'
+            ? 'Testnets are currently disabled.'
+            : `No ${targetGroup} networks are configured.`
+        );
+      }
 
       setIsSwitchingGroup(true);
       try {

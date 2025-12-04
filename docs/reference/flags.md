@@ -15,6 +15,7 @@ flowchart TD
 ## Current flags
 - `allowlistFeature` (`allowlist-feature`) — enables allowlist functionality for restricting bounty claims to specific wallet addresses.
 - `refundFeature` (`refund-feature`) — enables refund functionality for requesting refunds on expired bounties.
+- `testnetNetworks` (`testnet-networks`) — exposes Base Sepolia / Mezo Testnet networks in the UI. Default: disabled.
 
 ## Define a new flag
 ```js
