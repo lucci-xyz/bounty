@@ -6,6 +6,7 @@ import { EarningsTab } from '@/ui/pages/account/tabs/EarningsTab';
 import { ControlsTab } from '@/ui/pages/account/tabs/ControlsTab';
 import { SettingsTab } from '@/ui/pages/account/tabs/SettingsTab';
 import { AdminTab } from '@/ui/pages/account/tabs/AdminTab';
+import { ChangeWalletModal } from '@/ui/pages/account/modals/ChangeWalletModal';
 import { DeleteWalletModal } from '@/ui/pages/account/modals/DeleteWalletModal';
 import { ManageReposModal } from '@/ui/pages/account/modals/ManageReposModal';
 import { AllowlistModal } from '@/ui/pages/account/modals/AllowlistModal';
@@ -288,13 +289,10 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                   githubUser={githubUser}
                   profile={profile.data}
                   onManageRepos={repoManager.handleManageRepos}
+                  onChangeWallet={walletManagement.changeModal.open}
                   openDeleteWalletModal={walletManagement.deleteModal.open}
                   logout={logout}
                   refreshProfile={accountActions.refreshProfile}
-                  connectedAddress={wallet.address}
-                  isWalletConnected={wallet.isConnected}
-                  onWalletChange={walletManagement.changeModal.handleChangeWallet}
-                  walletChangeStatus={walletManagement.changeModal.status}
                 />
               )
             )}
@@ -315,6 +313,14 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
       </div>
 
       {/* Modals */}
+      <ChangeWalletModal
+        isOpen={walletManagement.changeModal.isOpen}
+        onClose={walletManagement.changeModal.close}
+        connectedAddress={wallet.address}
+        isConnected={wallet.isConnected}
+        onConfirm={walletManagement.changeModal.handleChangeWallet}
+        status={walletManagement.changeModal.status}
+      />
       <DeleteWalletModal deleteModal={walletManagement.deleteModal} />
       <ManageReposModal
         show={repoManager.showManageReposModal}
