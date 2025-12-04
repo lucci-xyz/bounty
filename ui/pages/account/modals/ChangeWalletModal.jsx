@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useDisconnect } from 'wagmi';
 import { WalletIcon } from '@/ui/components/Icons';
 
 /**
  * Modal for changing payout wallet.
- * Uses RainbowKit's ConnectButton.Custom for reliable wallet connection.
+ * Forces users to connect a wallet and automatically links it once connected.
  */
 export function ChangeWalletModal({ 
   isOpen, 
@@ -18,15 +18,27 @@ export function ChangeWalletModal({
   status 
 }) {
   const { disconnect } = useDisconnect();
-
-  const formatAddress = useCallback((addr) => {
-    if (!addr) return '';
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  }, []);
-
   const isProcessing = status?.type === 'info' || status?.message?.includes('...');
+  const lastLinkedAddressRef = useRef(null);
 
-  if (!isOpen) return null;
+  // Reset previous attempts and disconnect any existing wallet when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    lastLinkedAddressRef.current = null;
+
+    // Ensure RainbowKit prompts for a new wallet every time
+    disconnect();
+  }, [isOpen, disconnect]);
+
+  // Automatically trigger the change flow when a wallet connects
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!isConnected || !connectedAddress) return;
+    if (lastLinkedAddressRef.current === connectedAddress) return;
+
+    lastLinkedAddressRef.current = connectedAddress;
+    onConfirm?.();
+  }, [isOpen, isConnected, connectedAddress, onConfirm]);
 
   return (
     <div
@@ -37,9 +49,12 @@ export function ChangeWalletModal({
         className="bg-card rounded-2xl max-w-sm w-full p-6 shadow-lg border border-border/40"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-medium text-foreground text-center mb-4">
+        <h2 className="text-lg font-medium text-foreground text-center mb-2">
           Change Payout Wallet
         </h2>
+        <p className="text-sm text-muted-foreground text-center mb-4">
+          Connect a wallet to set as your payout address.
+        </p>
 
         {/* Status message */}
         {status?.message && (
@@ -51,62 +66,18 @@ export function ChangeWalletModal({
           </div>
         )}
 
-        {/* Connected wallet section */}
-        {isConnected && connectedAddress ? (
-          <div className="space-y-4">
-            <div className="bg-secondary/50 rounded-xl p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Connected Wallet</p>
-              <p className="font-mono text-sm text-foreground">{formatAddress(connectedAddress)}</p>
-            </div>
-
+        <ConnectButton.Custom>
+          {({ openConnectModal }) => (
             <button
-              onClick={onConfirm}
+              onClick={() => openConnectModal?.()}
               disabled={isProcessing}
-              className="w-full py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="w-full py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {isProcessing ? 'Processing...' : 'Use This Wallet'}
+              <WalletIcon size={16} />
+              Connect Wallet
             </button>
-
-            <ConnectButton.Custom>
-              {({ openConnectModal }) => (
-                <button
-                  onClick={() => {
-                    disconnect();
-                    // Small delay to ensure disconnect completes before opening connect modal
-                    setTimeout(() => {
-                      if (openConnectModal) openConnectModal();
-                    }, 100);
-                  }}
-                  disabled={isProcessing}
-                  className="w-full py-2.5 border border-border rounded-full text-sm text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
-                >
-                  Switch Wallet
-                </button>
-              )}
-            </ConnectButton.Custom>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground text-center">
-              Connect a wallet to set as your payout address.
-            </p>
-
-            <ConnectButton.Custom>
-              {({ openConnectModal }) => (
-                <button
-                  onClick={() => {
-                    if (openConnectModal) openConnectModal();
-                  }}
-                  disabled={isProcessing}
-                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <WalletIcon size={16} />
-                  Connect Wallet
-                </button>
-              )}
-            </ConnectButton.Custom>
-          </div>
-        )}
+          )}
+        </ConnectButton.Custom>
 
         <button
           onClick={onClose}
