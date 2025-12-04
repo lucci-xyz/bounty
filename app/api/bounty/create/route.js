@@ -7,6 +7,8 @@ import { computeBountyIdOnNetwork, createRepoIdHash } from '@/server/blockchain/
 import { getGitHubApp, getOctokit, initGitHubApp } from '@/integrations/github/client';
 import { getActiveAliasFromCookies } from '@/lib/network';
 import { REGISTRY } from '@/config/chain-registry';
+import { sendNewBountyNotification } from '@/integrations/discord';
+import { formatAmount } from '@/lib/format/amount';
 
 export async function POST(request) {
   try {
@@ -146,6 +148,24 @@ export async function POST(request) {
       }
     } else {
       logger.info('Skipping GitHub comment (no installation ID)');
+    }
+
+    // Send Discord notification (non-blocking)
+    try {
+      const issueUrl = `https://github.com/${repoFullName}/issues/${issueNumber}`;
+      await sendNewBountyNotification({
+        title: issueTitle || `Issue #${issueNumber}`,
+        repoName: repoFullName,
+        issueUrl,
+        amount: formatAmount(amount, tokenSymbolFinal),
+        tokenSymbol: tokenSymbolFinal,
+        network: networkConfig.name,
+        deadline: new Date(deadline * 1000).toISOString(),
+        createdByGithubUsername: session?.githubUsername || 'Unknown'
+      });
+      logger.info('Discord notification sent for new bounty');
+    } catch (discordError) {
+      logger.warn('Failed to send Discord notification (non-critical):', discordError.message);
     }
 
     return Response.json({
