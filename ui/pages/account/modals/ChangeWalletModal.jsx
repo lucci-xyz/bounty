@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useDisconnect } from 'wagmi';
 import { WalletIcon } from '@/ui/components/Icons';
 
 /**
  * Modal for changing payout wallet.
- * Forces users to connect a wallet and automatically links it once connected.
+ * Always prompts user to connect a fresh wallet and automatically links it.
  */
 export function ChangeWalletModal({ 
   isOpen, 
@@ -19,26 +19,49 @@ export function ChangeWalletModal({
 }) {
   const { disconnect } = useDisconnect();
   const isProcessing = status?.type === 'info' || status?.message?.includes('...');
-  const lastLinkedAddressRef = useRef(null);
+  
+  // Track the address we started with and whether we've already processed the new connection
+  const initialAddressRef = useRef(null);
+  const hasTriggeredConfirmRef = useRef(false);
+  const [isReady, setIsReady] = useState(false);
 
-  // Reset previous attempts and disconnect any existing wallet when modal opens
+  // When modal opens, disconnect any existing wallet and prepare for fresh connection
   useEffect(() => {
-    if (!isOpen) return;
-    lastLinkedAddressRef.current = null;
+    if (!isOpen) {
+      // Reset state when modal closes
+      initialAddressRef.current = null;
+      hasTriggeredConfirmRef.current = false;
+      setIsReady(false);
+      return;
+    }
 
-    // Ensure RainbowKit prompts for a new wallet every time
-    disconnect();
-  }, [isOpen, disconnect]);
+    // Store the initial address (if any) so we can detect when a NEW wallet connects
+    initialAddressRef.current = connectedAddress || null;
+    hasTriggeredConfirmRef.current = false;
 
-  // Automatically trigger the change flow when a wallet connects
+    // Disconnect any existing wallet so user starts fresh
+    if (isConnected) {
+      disconnect();
+    }
+    
+    // Small delay to ensure disconnect completes before showing connect button
+    const timer = setTimeout(() => setIsReady(true), 150);
+    return () => clearTimeout(timer);
+  }, [isOpen]); // Only run when isOpen changes, not on every render
+
+  // Automatically trigger confirm when a NEW wallet connects (not the one we started with)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !isReady) return;
     if (!isConnected || !connectedAddress) return;
-    if (lastLinkedAddressRef.current === connectedAddress) return;
+    if (hasTriggeredConfirmRef.current) return;
+    
+    // Only trigger if this is a different wallet than we started with
+    // (or if there was no wallet when modal opened)
+    if (connectedAddress === initialAddressRef.current) return;
 
-    lastLinkedAddressRef.current = connectedAddress;
+    hasTriggeredConfirmRef.current = true;
     onConfirm?.();
-  }, [isOpen, isConnected, connectedAddress, onConfirm]);
+  }, [isOpen, isReady, isConnected, connectedAddress, onConfirm]);
 
   if (!isOpen) return null;
 
@@ -72,11 +95,11 @@ export function ChangeWalletModal({
           {({ openConnectModal }) => (
             <button
               onClick={() => openConnectModal?.()}
-              disabled={isProcessing}
+              disabled={isProcessing || !isReady}
               className="w-full py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <WalletIcon size={16} />
-              Connect Wallet
+              {isReady ? 'Connect Wallet' : 'Preparing...'}
             </button>
           )}
         </ConnectButton.Custom>
