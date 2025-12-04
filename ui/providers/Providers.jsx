@@ -4,14 +4,29 @@ import { useState } from 'react';
 import { RainbowKitProvider, lightTheme, connectorsForWallets } from '@rainbow-me/rainbowkit';
 import { injectedWallet, metaMaskWallet, coinbaseWallet, walletConnectWallet, rainbowWallet } from '@rainbow-me/rainbowkit/wallets';
 import { WagmiProvider, createConfig, http } from 'wagmi';
-import { baseSepolia } from 'wagmi/chains';
+import { base, baseSepolia } from 'wagmi/chains';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { ErrorModalProvider } from '@/ui/providers/ErrorModalProvider';
 import { getLinkHref } from '@/config/links';
 
-// Define custom Mezo Testnet chain
+const baseMainnetRpc = getLinkHref('rpc', 'baseMainnet');
+const baseMainnetExplorer = getLinkHref('explorers', 'baseMainnet');
+const baseSepoliaRpc = getLinkHref('rpc', 'baseSepolia');
 const mezoTestnetRpc = getLinkHref('rpc', 'mezoDrpc');
 const mezoTestnetExplorer = getLinkHref('explorers', 'mezoTestnet');
+
+const baseMainnet = {
+  ...base,
+  rpcUrls: {
+    default: { http: [baseMainnetRpc] },
+    public: { http: [baseMainnetRpc] },
+  },
+  blockExplorers: {
+    default: { name: 'Basescan', url: baseMainnetExplorer },
+  },
+};
+
+// Define custom Mezo Testnet chain
 
 const mezoTestnet = {
   id: 31611,
@@ -32,7 +47,7 @@ const mezoTestnet = {
 };
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '73b4fe978f9e3084af5e7c7595365793';
-const chains = [baseSepolia, mezoTestnet];
+const chains = [baseMainnet, baseSepolia, mezoTestnet];
 
 // Configure wallets with injectedWallet first to catch all browser wallets
 const connectors = connectorsForWallets(
@@ -58,8 +73,9 @@ const config = createConfig({
   connectors,
   chains,
   transports: {
-    [baseSepolia.id]: http(),
-    [mezoTestnet.id]: http(),
+    [baseMainnet.id]: http(baseMainnetRpc),
+    [baseSepolia.id]: http(baseSepoliaRpc),
+    [mezoTestnet.id]: http(mezoTestnetRpc),
   },
   ssr: true,
 });

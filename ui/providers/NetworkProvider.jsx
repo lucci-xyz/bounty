@@ -9,13 +9,25 @@ function getFallbackAlias(registry, group) {
   if (!registry) {
     return null;
   }
-  const entry = Object.entries(registry).find(([, config]) => config.group === group);
-  return entry ? entry[0] : null;
+
+  const matches = Object.entries(registry).filter(([, config]) => config.group === group);
+  if (matches.length === 0) {
+    return null;
+  }
+
+  if (group === 'mainnet') {
+    const baseMainnet = matches.find(([alias]) => alias === 'BASE_MAINNET');
+    if (baseMainnet) {
+      return baseMainnet[0];
+    }
+  }
+
+  return matches[0][0];
 }
 
 export function NetworkProvider({ children }) {
   const [registry, setRegistry] = useState(null);
-  const [networkGroup, setNetworkGroup] = useState('testnet');
+  const [networkGroup, setNetworkGroup] = useState('mainnet');
   const [defaultAlias, setDefaultAlias] = useState(null);
   const [selectedAlias, setSelectedAliasState] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,7 +55,7 @@ export function NetworkProvider({ children }) {
         }
         setRegistry(registryPayload.registry);
 
-        let resolvedGroup = 'testnet';
+        let resolvedGroup = 'mainnet';
         try {
           const envResponse = await fetch('/api/network/env', { credentials: 'include' });
           if (envResponse.ok) {
