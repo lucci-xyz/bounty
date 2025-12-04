@@ -2,7 +2,7 @@
 import { logger } from '@/lib/logger';
 
 import { useCallback, useEffect, useState } from 'react';
-import { getNonce, linkWallet, buildSiweMessage } from '@/api/wallet';
+import { getNonce, linkWallet, buildSiweMessage, verifyWalletSignature } from '@/api/wallet';
 
 const DELETE_CONFIRMATION_TEXT = 'i want to remove my wallet';
 
@@ -181,11 +181,18 @@ export function useWalletManagement({
       });
 
       setChangeWalletStatus({ message: 'Verifying signature...', type: 'info' });
-      await linkWallet({
-        address,
-        signature,
+      // First verify the signature (stores wallet in session)
+      await verifyWalletSignature({
         message,
-        chainId: chain?.id || 1
+        signature
+      });
+
+      setChangeWalletStatus({ message: 'Linking wallet...', type: 'info' });
+      // Then link the wallet with GitHub account
+      await linkWallet({
+        githubId: githubUser.githubId,
+        githubUsername: githubUser.githubUsername,
+        walletAddress: address
       });
 
       setChangeWalletStatus({
