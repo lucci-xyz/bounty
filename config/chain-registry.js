@@ -18,6 +18,16 @@ const CURATED_ALIASES = {
       name: 'ETH',
       symbol: 'ETH',
       decimals: 18
+    },
+    // Once the production escrow is live we expose curated defaults just like testnets.
+    // Env vars still override these when present.
+    defaultContracts: {
+      escrow: '0xC81A53A0967fc9599d813693B58EcDC7d11e4f36'
+    },
+    defaultToken: {
+      address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+      symbol: 'USDC',
+      decimals: 6
     }
   },
   MEZO_MAINNET: {
@@ -145,14 +155,18 @@ function buildRegistry() {
       // RPC URL: use env override or curated default
       const rpcUrl = process.env[`${alias}_RPC_URL`] || curated.rpcUrl;
 
-      // Contracts and token: for testnets, allow curated defaults. For mainnets, require env.
-      const isTestnet = curated.group === 'testnet';
+      // Contracts and token: allow curated defaults (used for testnets or preconfigured mainnets).
+      const allowCuratedDefaults =
+        Boolean(curated.defaultContracts?.escrow) &&
+        Boolean(curated.defaultToken?.address) &&
+        Boolean(curated.defaultToken?.symbol) &&
+        curated.defaultToken?.decimals !== undefined;
       const escrowEnv = process.env[`${alias}_ESCROW_ADDRESS`];
       const tokenEnv = process.env[`${alias}_TOKEN_ADDRESS`];
       const tokenSymbolEnv = process.env[`${alias}_TOKEN_SYMBOL`];
       const tokenDecimalsEnv = process.env[`${alias}_TOKEN_DECIMALS`];
 
-      const escrowAddress = escrowEnv || (isTestnet ? curated.defaultContracts?.escrow : undefined);
+      const escrowAddress = escrowEnv || (allowCuratedDefaults ? curated.defaultContracts?.escrow : undefined);
       if (!escrowAddress) {
         skippedAliases.push({
           alias,
@@ -168,11 +182,11 @@ function buildRegistry() {
         continue;
       }
 
-      const tokenAddress = tokenEnv || (isTestnet ? curated.defaultToken?.address : undefined);
-      const tokenSymbol = tokenSymbolEnv || (isTestnet ? curated.defaultToken?.symbol : undefined);
+      const tokenAddress = tokenEnv || (allowCuratedDefaults ? curated.defaultToken?.address : undefined);
+      const tokenSymbol = tokenSymbolEnv || (allowCuratedDefaults ? curated.defaultToken?.symbol : undefined);
       const tokenDecimals = tokenDecimalsEnv !== undefined && tokenDecimalsEnv !== null
         ? Number(tokenDecimalsEnv)
-        : (isTestnet ? curated.defaultToken?.decimals : undefined);
+        : (allowCuratedDefaults ? curated.defaultToken?.decimals : undefined);
 
       if (!tokenAddress || !tokenSymbol || tokenDecimals === undefined || tokenDecimals === null) {
         skippedAliases.push({

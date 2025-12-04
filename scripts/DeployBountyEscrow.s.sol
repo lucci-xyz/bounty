@@ -5,12 +5,24 @@ import {Script, console2} from "forge-std/Script.sol";
 import {BountyEscrow} from "@/contracts/current/BountyEscrow.sol";
 
 contract DeployBountyEscrow is Script {
+    address internal constant BASE_MAINNET_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     address internal constant BASE_SEPOLIA_USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
     address internal constant MEZO_TESTNET_MUSD = 0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503;
     uint16 internal constant FEE_BPS = 100;
 
     function run() external returns (BountyEscrow deployed) {
         return deployBaseSepolia();
+    }
+
+    function deployBaseMainnet() public returns (BountyEscrow deployed) {
+        address initialOwner = vm.envAddress("NEXT_PUBLIC_BASE_OWNER_ADDRESS");
+        uint256 deployerKey = _loadPrivateKey("NEXT_PUBLIC_BASE_OWNER_PRIVATE_KEY");
+
+        vm.startBroadcast(deployerKey);
+        deployed = new BountyEscrow(BASE_MAINNET_USDC, FEE_BPS, initialOwner);
+        vm.stopBroadcast();
+
+        console2.log("BountyEscrow deployed to Base Mainnet:", address(deployed));
     }
 
     function deployBaseSepolia() public returns (BountyEscrow deployed) {
