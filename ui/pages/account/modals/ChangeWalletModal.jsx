@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback } from 'react';
-import { useConnectModal, useAccountModal } from '@rainbow-me/rainbowkit';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useDisconnect } from 'wagmi';
 import { WalletIcon } from '@/ui/components/Icons';
 
 /**
- * Simple modal for changing payout wallet.
- * Shows connected wallet and asks user to confirm the change.
+ * Modal for changing payout wallet.
+ * Uses RainbowKit's ConnectButton.Custom for reliable wallet connection.
  */
 export function ChangeWalletModal({ 
   isOpen, 
@@ -17,8 +17,6 @@ export function ChangeWalletModal({
   onConfirm, 
   status 
 }) {
-  const { openConnectModal } = useConnectModal();
-  const { openAccountModal } = useAccountModal();
   const { disconnect } = useDisconnect();
 
   const formatAddress = useCallback((addr) => {
@@ -28,61 +26,6 @@ export function ChangeWalletModal({
 
   const isProcessing = status?.type === 'info' || status?.message?.includes('...');
 
-  const handleSwitchWallet = useCallback(() => {
-    console.log('[ChangeWalletModal] Switch wallet clicked');
-    console.log('[ChangeWalletModal] openAccountModal:', typeof openAccountModal);
-    console.log('[ChangeWalletModal] openConnectModal:', typeof openConnectModal);
-    
-    // Close our modal first to avoid z-index conflicts with RainbowKit
-    onClose();
-    
-    // Small delay to let our modal close, then open RainbowKit
-    setTimeout(() => {
-      if (typeof openAccountModal === 'function') {
-        console.log('[ChangeWalletModal] Opening account modal');
-        openAccountModal();
-      } else if (typeof openConnectModal === 'function') {
-        console.log('[ChangeWalletModal] Fallback: disconnect and open connect modal');
-        disconnect();
-        openConnectModal();
-      } else {
-        console.error('[ChangeWalletModal] No modal function available!');
-      }
-    }, 150);
-  }, [onClose, openAccountModal, openConnectModal, disconnect]);
-
-  const handleDisconnectAndConnect = useCallback(() => {
-    console.log('[ChangeWalletModal] Disconnect and connect clicked');
-    
-    // Close our modal first
-    onClose();
-    
-    // Disconnect current wallet and open connect modal
-    setTimeout(() => {
-      disconnect();
-      if (typeof openConnectModal === 'function') {
-        openConnectModal();
-      }
-    }, 150);
-  }, [onClose, disconnect, openConnectModal]);
-
-  const handleConnectWallet = useCallback(() => {
-    console.log('[ChangeWalletModal] Connect wallet clicked');
-    console.log('[ChangeWalletModal] openConnectModal:', typeof openConnectModal);
-    
-    // Close our modal first to avoid z-index conflicts
-    onClose();
-    
-    setTimeout(() => {
-      if (typeof openConnectModal === 'function') {
-        openConnectModal();
-      } else {
-        console.error('[ChangeWalletModal] openConnectModal not available!');
-      }
-    }, 150);
-  }, [onClose, openConnectModal]);
-
-  // Don't render if not open, but hooks are already called above
   if (!isOpen) return null;
 
   return (
@@ -124,21 +67,23 @@ export function ChangeWalletModal({
               {isProcessing ? 'Processing...' : 'Use This Wallet'}
             </button>
 
-            <button
-              onClick={handleSwitchWallet}
-              disabled={isProcessing}
-              className="w-full py-2.5 border border-border rounded-full text-sm text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
-            >
-              Switch Wallet
-            </button>
-
-            <button
-              onClick={handleDisconnectAndConnect}
-              disabled={isProcessing}
-              className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-            >
-              Disconnect &amp; Connect Different Wallet
-            </button>
+            <ConnectButton.Custom>
+              {({ openConnectModal }) => (
+                <button
+                  onClick={() => {
+                    disconnect();
+                    // Small delay to ensure disconnect completes before opening connect modal
+                    setTimeout(() => {
+                      if (openConnectModal) openConnectModal();
+                    }, 100);
+                  }}
+                  disabled={isProcessing}
+                  className="w-full py-2.5 border border-border rounded-full text-sm text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+                >
+                  Switch Wallet
+                </button>
+              )}
+            </ConnectButton.Custom>
           </div>
         ) : (
           <div className="space-y-4">
@@ -146,13 +91,20 @@ export function ChangeWalletModal({
               Connect a wallet to set as your payout address.
             </p>
 
-            <button
-              onClick={handleConnectWallet}
-              className="w-full py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-            >
-              <WalletIcon size={16} />
-              Connect Wallet
-            </button>
+            <ConnectButton.Custom>
+              {({ openConnectModal }) => (
+                <button
+                  onClick={() => {
+                    if (openConnectModal) openConnectModal();
+                  }}
+                  disabled={isProcessing}
+                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <WalletIcon size={16} />
+                  Connect Wallet
+                </button>
+              )}
+            </ConnectButton.Custom>
           </div>
         )}
 
