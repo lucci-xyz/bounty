@@ -12,7 +12,7 @@ import { logger } from '@/lib/logger';
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useAccount, useWalletClient } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { useErrorModal } from '@/ui/providers/ErrorModalProvider';
 import { useBetaApplications } from '@/ui/hooks/useBetaApplications';
 import { useWalletManagement } from '@/ui/hooks/useWalletManagement';
@@ -32,7 +32,6 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
 
   // Wallet/account info
   const { address, isConnected, chain } = useAccount();
-  const { data: walletClient } = useWalletClient();
   const { showError } = useErrorModal();
 
   // Feature/data hooks
@@ -69,7 +68,6 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
     isLocalMode,
     address,
     isConnected,
-    walletClient,
     chain,
     showError,
     fetchEarningsData: actions.refreshEarnings,

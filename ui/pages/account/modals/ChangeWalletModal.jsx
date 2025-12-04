@@ -64,9 +64,16 @@ export function ChangeWalletModal({
             </button>
 
             <ConnectButton.Custom>
-              {({ openAccountModal }) => (
+              {({ openAccountModal, openConnectModal }) => (
                 <button
-                  onClick={openAccountModal}
+                  onClick={() => {
+                    // Try openAccountModal first, fallback to openConnectModal
+                    if (openAccountModal) {
+                      openAccountModal();
+                    } else if (openConnectModal) {
+                      openConnectModal();
+                    }
+                  }}
                   disabled={isProcessing}
                   className="w-full py-2.5 border border-border rounded-full text-sm text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
                 >
@@ -84,7 +91,7 @@ export function ChangeWalletModal({
             <ConnectButton.Custom>
               {({ openConnectModal }) => (
                 <button
-                  onClick={openConnectModal}
+                  onClick={() => openConnectModal && openConnectModal()}
                   className="w-full py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                 >
                   <WalletIcon size={16} />
@@ -106,4 +113,3 @@ export function ChangeWalletModal({
     </div>
   );
 }
-

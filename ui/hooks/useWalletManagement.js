@@ -1,7 +1,8 @@
 'use client';
 import { logger } from '@/lib/logger';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useSignMessage } from 'wagmi';
 import { getNonce, linkWallet, buildSiweMessage, verifyWalletSignature } from '@/api/wallet';
 
 const DELETE_CONFIRMATION_TEXT = 'i want to remove my wallet';
@@ -17,7 +18,6 @@ const DELETE_CONFIRMATION_TEXT = 'i want to remove my wallet';
  * @param {boolean} props.isLocalMode       True if app is in local mode
  * @param {string} props.address            Connected wallet address
  * @param {boolean} props.isConnected       True if a wallet is connected
- * @param {object} props.walletClient       Wallet client for signing messages
  * @param {object} props.chain              Chain info
  * @param {function} props.showError        Show error modal function
  * @param {function} props.fetchEarningsData Refreshes earnings after changes
@@ -30,13 +30,15 @@ export function useWalletManagement({
   isLocalMode,
   address,
   isConnected,
-  walletClient,
   chain,
   showError,
   fetchEarningsData,
   fetchSponsoredData,
   refreshProfileData
 }) {
+  // Use wagmi's useSignMessage hook for reliable message signing
+  const { signMessageAsync } = useSignMessage();
+
   // Delete wallet modal state
   const [showDeleteWalletModal, setShowDeleteWalletModal] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
@@ -149,10 +151,6 @@ export function useWalletManagement({
         throw new Error('Please connect your wallet first');
       }
 
-      if (!walletClient) {
-        throw new Error('Wallet client not available');
-      }
-
       setChangeWalletStatus({
         message: 'Getting verification nonce...',
         type: 'info'
@@ -176,9 +174,9 @@ export function useWalletManagement({
         message: 'Please sign the message in your wallet...',
         type: 'info'
       });
-      const signature = await walletClient.signMessage({
-        message
-      });
+      
+      // Use wagmi's signMessageAsync hook - more reliable than walletClient
+      const signature = await signMessageAsync({ message });
 
       setChangeWalletStatus({ message: 'Verifying signature...', type: 'info' });
       // First verify the signature (stores wallet in session)
@@ -234,13 +232,10 @@ export function useWalletManagement({
     isConnected,
     isLocalMode,
     showError,
-    walletClient,
-    refreshProfileData
+    signMessageAsync,
+    refreshProfileData,
+    isProcessingChange
   ]);
-
-  // Note: We removed the auto-trigger useEffect that called handleChangeWallet()
-  // The user must now explicitly click "Confirm Change" to trigger the wallet change flow.
-  // This provides better UX by letting users review the new wallet before signing.
 
   return {
     deleteModal: {
@@ -263,4 +258,3 @@ export function useWalletManagement({
     }
   };
 }
-
