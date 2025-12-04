@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useDisconnect } from 'wagmi';
-import { WalletIcon } from '@/ui/components/Icons';
+import { WalletIcon, CheckCircleIcon } from '@/ui/components/Icons';
 
 /**
  * Modal for changing payout wallet.
@@ -19,6 +19,7 @@ export function ChangeWalletModal({
 }) {
   const { disconnect } = useDisconnect();
   const isProcessing = status?.type === 'info' || status?.message?.includes('...');
+  const isSuccess = status?.type === 'success';
   
   // Track the address we started with and whether we've already processed the new connection
   const initialAddressRef = useRef(null);
@@ -65,6 +66,12 @@ export function ChangeWalletModal({
 
   if (!isOpen) return null;
 
+  // Format address for display
+  const formatAddress = (addr) => {
+    if (!addr) return '';
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
+
   return (
     <div
       className="fixed inset-0 bg-background/70 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
@@ -74,43 +81,70 @@ export function ChangeWalletModal({
         className="bg-card rounded-2xl max-w-sm w-full p-6 shadow-lg border border-border/40"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-medium text-foreground text-center mb-2">
-          Change Payout Wallet
-        </h2>
-        <p className="text-sm text-muted-foreground text-center mb-4">
-          Connect a wallet to set as your payout address.
-        </p>
-
-        {/* Status message */}
-        {status?.message && (
-          <div className={`text-sm text-center mb-4 ${
-            status.type === 'error' ? 'text-destructive' : 
-            status.type === 'success' ? 'text-primary' : 'text-muted-foreground'
-          }`}>
-            {status.message}
-          </div>
-        )}
-
-        <ConnectButton.Custom>
-          {({ openConnectModal }) => (
+        {/* Success state */}
+        {isSuccess ? (
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
+              <CheckCircleIcon size={32} className="text-emerald-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-medium text-foreground mb-1">
+                Wallet Updated!
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Your payout wallet has been changed to
+              </p>
+              <p className="font-mono text-sm text-foreground mt-1">
+                {formatAddress(connectedAddress)}
+              </p>
+            </div>
             <button
-              onClick={() => openConnectModal?.()}
-              disabled={isProcessing || !isReady}
-              className="w-full py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+              onClick={onClose}
+              className="w-full py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-opacity"
             >
-              <WalletIcon size={16} />
-              {isReady ? 'Connect Wallet' : 'Preparing...'}
+              Done
             </button>
-          )}
-        </ConnectButton.Custom>
+          </div>
+        ) : (
+          <>
+            <h2 className="text-lg font-medium text-foreground text-center mb-2">
+              Change Payout Wallet
+            </h2>
+            <p className="text-sm text-muted-foreground text-center mb-4">
+              Connect a wallet to set as your payout address.
+            </p>
 
-        <button
-          onClick={onClose}
-          disabled={isProcessing}
-          className="w-full mt-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-        >
-          Cancel
-        </button>
+            {/* Status message (for processing/error states) */}
+            {status?.message && !isSuccess && (
+              <div className={`text-sm text-center mb-4 ${
+                status.type === 'error' ? 'text-destructive' : 'text-muted-foreground'
+              }`}>
+                {status.message}
+              </div>
+            )}
+
+            <ConnectButton.Custom>
+              {({ openConnectModal }) => (
+                <button
+                  onClick={() => openConnectModal?.()}
+                  disabled={isProcessing || !isReady}
+                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <WalletIcon size={16} />
+                  {isReady ? 'Connect Wallet' : 'Preparing...'}
+                </button>
+              )}
+            </ConnectButton.Custom>
+
+            <button
+              onClick={onClose}
+              disabled={isProcessing}
+              className="w-full mt-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

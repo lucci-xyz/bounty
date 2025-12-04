@@ -81,13 +81,14 @@ export function useWalletManagement({
   }, []);
 
   /**
-   * Close the wallet change modal unless a change is processing.
+   * Close the wallet change modal unless a change is processing (but allow closing on success).
    */
   const closeChangeWalletModal = useCallback(() => {
-    if (isProcessingChange) return;
+    // Allow closing if success, but not if still processing
+    if (isProcessingChange && changeWalletStatus.type !== 'success') return;
     setShowChangeWalletModal(false);
     setChangeWalletStatus({ message: '', type: '' });
-  }, [isProcessingChange]);
+  }, [isProcessingChange, changeWalletStatus.type]);
 
   /**
    * Handles deleting the connected wallet after user confirmation.
@@ -198,14 +199,14 @@ export function useWalletManagement({
         type: 'success'
       });
 
-      await fetchEarningsData?.();
-      await fetchSponsoredData?.();
-      await refreshProfileData?.();
-
-      setTimeout(() => {
-        setShowChangeWalletModal(false);
-        setChangeWalletStatus({ message: '', type: '' });
-      }, 1500);
+      // Refresh all data to ensure consistency across the app
+      await Promise.all([
+        fetchEarningsData?.(),
+        fetchSponsoredData?.(),
+        refreshProfileData?.()
+      ]);
+      
+      // Don't auto-close - let user click "Done" to dismiss
     } catch (error) {
       logger.error('Error changing wallet:', error);
       const errorMessage =
