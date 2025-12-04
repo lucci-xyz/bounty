@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { GitHubIcon, SettingsIcon, WalletIcon, BellIcon, CheckCircleIcon } from '@/ui/components/Icons';
 import UserAvatar from '@/ui/components/UserAvatar';
 import { requestEmailVerification } from '@/api/user';
@@ -14,10 +15,14 @@ export function SettingsTab({
   githubUser,
   profile,
   onManageRepos,
-  openChangeWalletModal,
   openDeleteWalletModal,
   logout,
-  refreshProfile
+  refreshProfile,
+  // Wallet state from parent
+  connectedAddress,
+  isWalletConnected,
+  onWalletChange,
+  walletChangeStatus
 }) {
   const verifiedEmail = profile?.user?.email || '';
   const pendingEmail = profile?.emailVerification?.email || '';
@@ -25,6 +30,12 @@ export function SettingsTab({
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  const currentPayoutWallet = profile?.wallet?.walletAddress;
+
+  // Check if connected wallet is different from saved payout wallet
+  const isDifferentWallet = isWalletConnected && connectedAddress && currentPayoutWallet &&
+    connectedAddress.toLowerCase() !== currentPayoutWallet.toLowerCase();
 
   const isValidEmail = (value) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -51,6 +62,12 @@ export function SettingsTab({
     } finally {
       setStatus('idle');
     }
+  };
+
+  // Format address for display
+  const formatAddress = (addr) => {
+    if (!addr) return '';
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
   return (
@@ -95,18 +112,54 @@ export function SettingsTab({
               Address
             </div>
             <div className="mb-1 break-all font-mono text-sm text-foreground bg-secondary rounded-lg px-3 py-2">
-              {profile.wallet.walletAddress.slice(0, 8)}...{profile.wallet.walletAddress.slice(-6)}
+              {formatAddress(currentPayoutWallet)}
             </div>
             <div className="mb-3 text-xs text-muted-foreground">
               Linked {new Date(profile.wallet.verifiedAt).toLocaleDateString()}
             </div>
+
+            {/* Show update prompt when a different wallet is connected */}
+            {isDifferentWallet && (
+              <div className="mb-3 p-3 bg-accent/10 border border-accent/30 rounded-xl">
+                <p className="text-xs text-muted-foreground mb-2">
+                  Connected wallet differs from payout wallet:
+                </p>
+                <div className="font-mono text-xs text-primary mb-2">
+                  {formatAddress(connectedAddress)}
+                </div>
+                {walletChangeStatus?.message ? (
+                  <div className={`text-xs ${walletChangeStatus.type === 'error' ? 'text-destructive' : 'text-accent'}`}>
+                    {walletChangeStatus.message}
+                  </div>
+                ) : (
+                  <button
+                    onClick={onWalletChange}
+                    className="px-3 py-1.5 bg-primary text-primary-foreground rounded-full text-xs font-medium hover:opacity-90 transition-opacity"
+                  >
+                    Update Payout Wallet
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-2">
-              <button
-                onClick={openChangeWalletModal}
-                className="px-3 py-1.5 rounded-full border border-border text-xs text-foreground hover:bg-secondary transition-colors"
-              >
-                Change
-              </button>
+              {/* RainbowKit Connect Button for wallet management */}
+              <ConnectButton.Custom>
+                {({ openAccountModal, openConnectModal }) => (
+                  <button
+                    onClick={() => {
+                      if (isWalletConnected && openAccountModal) {
+                        openAccountModal();
+                      } else if (openConnectModal) {
+                        openConnectModal();
+                      }
+                    }}
+                    className="px-3 py-1.5 rounded-full border border-border text-xs text-foreground hover:bg-secondary transition-colors"
+                  >
+                    {isWalletConnected ? 'Change' : 'Connect Wallet'}
+                  </button>
+                )}
+              </ConnectButton.Custom>
               <button
                 onClick={openDeleteWalletModal}
                 className="px-3 py-1.5 rounded-full border border-destructive/40 text-xs text-destructive hover:bg-destructive/5 transition-colors"
