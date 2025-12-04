@@ -231,30 +231,9 @@ export function useWalletManagement({
     refreshProfileData
   ]);
 
-  /**
-   * Automatically triggers wallet change flow if all required data is present
-   * and the change modal is open.
-   */
-  useEffect(() => {
-    if (
-      showChangeWalletModal &&
-      githubUser &&
-      isConnected &&
-      address &&
-      walletClient &&
-      !isProcessingChange
-    ) {
-      handleChangeWallet();
-    }
-  }, [
-    address,
-    githubUser,
-    handleChangeWallet,
-    isConnected,
-    isProcessingChange,
-    showChangeWalletModal,
-    walletClient
-  ]);
+  // Note: We removed the auto-trigger useEffect that called handleChangeWallet()
+  // The user must now explicitly click "Confirm Change" to trigger the wallet change flow.
+  // This provides better UX by letting users review the new wallet before signing.
 
   return {
     deleteModal: {

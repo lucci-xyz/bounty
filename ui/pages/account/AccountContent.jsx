@@ -317,6 +317,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
         changeModal={walletManagement.changeModal}
         isConnected={wallet.isConnected}
         address={wallet.address}
+        currentPayoutWallet={profile?.data?.wallet?.walletAddress}
       />
       <DeleteWalletModal deleteModal={walletManagement.deleteModal} />
       <ManageReposModal
