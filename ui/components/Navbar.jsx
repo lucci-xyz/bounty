@@ -5,12 +5,13 @@ import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useNetwork } from '@/ui/providers/NetworkProvider';
 import UserAvatar from '@/ui/components/UserAvatar';
 import { useGithubUser } from '@/ui/hooks/useGithubUser';
 import { useErrorModal } from '@/ui/providers/ErrorModalProvider';
 import { cn } from '@/lib';
-import { PlusIcon, UserIcon, LogoutIcon, NetworkIcon } from '@/ui/components/Icons';
+import { UserIcon, LogoutIcon, NetworkIcon } from '@/ui/components/Icons';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -18,10 +19,11 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
-  const { networkGroup, switchNetworkGroup, isSwitchingGroup } = useNetwork();
+  const { networkGroup, switchNetworkGroup, isSwitchingGroup, currentNetwork } = useNetwork();
   const networkEnv = networkGroup || 'testnet';
   const { githubUser } = useGithubUser();
   const { showError } = useErrorModal();
+  const networkLabel = currentNetwork?.name || (networkEnv === 'mainnet' ? 'Mainnet' : 'Testnet');
 
   // Detect if user is in the app vs landing page
   const isAppRoute = pathname?.startsWith('/app');
@@ -146,38 +148,46 @@ export default function Navbar() {
                 <div className="absolute top-full mt-2 right-0 w-44 bg-card/95 backdrop-blur-xl border border-border/60 rounded-xl shadow-lg overflow-hidden z-50">
                   {/* Network Switcher */}
                   <div className="p-1.5 border-b border-border/40">
-                    <button
-                      onClick={handleNetworkSwitch}
-                      disabled={isSwitchingGroup}
-                      type="button"
-                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <span
-                        className={cn(
-                          'w-1.5 h-1.5 rounded-full',
-                          networkEnv === 'mainnet' ? 'bg-emerald-500' : 'bg-amber-500'
-                        )}
-                      />
-                      <span className="text-xs text-foreground">
-                        {networkEnv === 'mainnet' ? 'Mainnet' : 'Testnet'}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground ml-auto">switch</span>
-                    </button>
+                    <ConnectButton.Custom>
+                      {({ account, mounted, openConnectModal }) => {
+                        const ready = mounted;
+                        const isConnected = Boolean(ready && account);
+                        const statusLabel = isConnected ? 'switch' : 'Connect Wallet';
+                        const indicatorClass = isConnected ? 'bg-emerald-500' : 'bg-amber-500';
+
+                        return (
+                          <button
+                            onClick={(event) => {
+                              event.preventDefault();
+                              if (isConnected) {
+                                handleNetworkSwitch();
+                              } else if (ready && openConnectModal) {
+                                openConnectModal();
+                              }
+                            }}
+                            disabled={isSwitchingGroup && isConnected}
+                            type="button"
+                            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <span className={cn('w-1.5 h-1.5 rounded-full', indicatorClass)} />
+                            <span className="text-xs text-foreground">
+                              {isConnected ? networkLabel : 'Connect Wallet'}
+                            </span>
+                            {isConnected && (
+                              <span
+                                className="text-[10px] text-muted-foreground ml-auto"
+                              >
+                                {statusLabel}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      }}
+                    </ConnectButton.Custom>
                   </div>
 
                   {/* Navigation Links */}
                   <div className="p-1.5">
-                    <Link
-                      href="/app/attach-bounty"
-                      onClick={() => setShowDropdown(false)}
-                      className={cn(
-                        'flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors hover:bg-secondary',
-                        pathname?.startsWith('/app/attach-bounty') ? 'bg-secondary' : ''
-                      )}
-                    >
-                      <PlusIcon className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-foreground">Create Bounty</span>
-                    </Link>
                     <Link
                       href="/app/account?tab=sponsored"
                       onClick={() => setShowDropdown(false)}

@@ -1,17 +1,45 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { RainbowKitProvider, lightTheme, connectorsForWallets } from '@rainbow-me/rainbowkit';
 import { injectedWallet, metaMaskWallet, coinbaseWallet, walletConnectWallet, rainbowWallet } from '@rainbow-me/rainbowkit/wallets';
 import { WagmiProvider, createConfig, http } from 'wagmi';
-import { baseSepolia } from 'wagmi/chains';
+import { base, baseSepolia } from 'wagmi/chains';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { ErrorModalProvider } from '@/ui/providers/ErrorModalProvider';
 import { getLinkHref } from '@/config/links';
+import { useFlag } from '@/ui/providers/FlagProvider';
 
-// Define custom Mezo Testnet chain
+const baseMainnetRpc = getLinkHref('rpc', 'baseMainnet');
+const baseMainnetExplorer = getLinkHref('explorers', 'baseMainnet');
+const baseSepoliaRpc = getLinkHref('rpc', 'baseSepolia');
+const baseSepoliaExplorer = getLinkHref('explorers', 'baseSepolia');
 const mezoTestnetRpc = getLinkHref('rpc', 'mezoDrpc');
 const mezoTestnetExplorer = getLinkHref('explorers', 'mezoTestnet');
+
+const baseMainnet = {
+  ...base,
+  rpcUrls: {
+    default: { http: [baseMainnetRpc] },
+    public: { http: [baseMainnetRpc] },
+  },
+  blockExplorers: {
+    default: { name: 'Basescan', url: baseMainnetExplorer },
+  },
+};
+
+const baseSepoliaChain = {
+  ...baseSepolia,
+  rpcUrls: {
+    default: { http: [baseSepoliaRpc] },
+    public: { http: [baseSepoliaRpc] },
+  },
+  blockExplorers: {
+    default: { name: 'Basescan (Sepolia)', url: baseSepoliaExplorer },
+  },
+};
+
+// Define custom Mezo Testnet chain
 
 const mezoTestnet = {
   id: 31611,
@@ -32,7 +60,6 @@ const mezoTestnet = {
 };
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '73b4fe978f9e3084af5e7c7595365793';
-const chains = [baseSepolia, mezoTestnet];
 
 // Configure wallets with injectedWallet first to catch all browser wallets
 const connectors = connectorsForWallets(
@@ -54,16 +81,6 @@ const connectors = connectorsForWallets(
   }
 );
 
-const config = createConfig({
-  connectors,
-  chains,
-  transports: {
-    [baseSepolia.id]: http(),
-    [mezoTestnet.id]: http(),
-  },
-  ssr: true,
-});
-
 const customTheme = lightTheme({
   accentColor: '#00827B',
   accentColorForeground: 'white',
@@ -80,6 +97,32 @@ export function Providers({ children }) {
       },
     },
   }));
+  const testnetsEnabled = useFlag('testnetNetworks', false);
+
+  const selectedChains = useMemo(
+    () => (testnetsEnabled ? [baseMainnet, baseSepoliaChain, mezoTestnet] : [baseMainnet]),
+    [testnetsEnabled]
+  );
+
+  const config = useMemo(() => {
+    const transports = {};
+    for (const chain of selectedChains) {
+      if (chain.id === baseMainnet.id) {
+        transports[chain.id] = http(baseMainnetRpc);
+      } else if (chain.id === baseSepoliaChain.id) {
+        transports[chain.id] = http(baseSepoliaRpc);
+      } else if (chain.id === mezoTestnet.id) {
+        transports[chain.id] = http(mezoTestnetRpc);
+      }
+    }
+
+    return createConfig({
+      connectors,
+      chains: selectedChains,
+      transports,
+      ssr: true,
+    });
+  }, [selectedChains]);
 
   return (
     <WagmiProvider config={config}>
