@@ -1,6 +1,8 @@
 "use client";
 
+import { useCallback } from 'react';
 import { useConnectModal, useAccountModal } from '@rainbow-me/rainbowkit';
+import { useDisconnect } from 'wagmi';
 import { WalletIcon } from '@/ui/components/Icons';
 
 /**
@@ -17,33 +19,75 @@ export function ChangeWalletModal({
 }) {
   const { openConnectModal } = useConnectModal();
   const { openAccountModal } = useAccountModal();
+  const { disconnect } = useDisconnect();
 
-  if (!isOpen) return null;
-
-  const formatAddress = (addr) => {
+  const formatAddress = useCallback((addr) => {
     if (!addr) return '';
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  };
+  }, []);
 
   const isProcessing = status?.type === 'info' || status?.message?.includes('...');
 
-  const handleSwitchWallet = () => {
-    if (isConnected && openAccountModal) {
-      openAccountModal();
-    } else if (openConnectModal) {
-      openConnectModal();
-    }
-  };
+  const handleSwitchWallet = useCallback(() => {
+    console.log('[ChangeWalletModal] Switch wallet clicked');
+    console.log('[ChangeWalletModal] openAccountModal:', typeof openAccountModal);
+    console.log('[ChangeWalletModal] openConnectModal:', typeof openConnectModal);
+    
+    // Close our modal first to avoid z-index conflicts with RainbowKit
+    onClose();
+    
+    // Small delay to let our modal close, then open RainbowKit
+    setTimeout(() => {
+      if (typeof openAccountModal === 'function') {
+        console.log('[ChangeWalletModal] Opening account modal');
+        openAccountModal();
+      } else if (typeof openConnectModal === 'function') {
+        console.log('[ChangeWalletModal] Fallback: disconnect and open connect modal');
+        disconnect();
+        openConnectModal();
+      } else {
+        console.error('[ChangeWalletModal] No modal function available!');
+      }
+    }, 150);
+  }, [onClose, openAccountModal, openConnectModal, disconnect]);
 
-  const handleConnectWallet = () => {
-    if (openConnectModal) {
-      openConnectModal();
-    }
-  };
+  const handleDisconnectAndConnect = useCallback(() => {
+    console.log('[ChangeWalletModal] Disconnect and connect clicked');
+    
+    // Close our modal first
+    onClose();
+    
+    // Disconnect current wallet and open connect modal
+    setTimeout(() => {
+      disconnect();
+      if (typeof openConnectModal === 'function') {
+        openConnectModal();
+      }
+    }, 150);
+  }, [onClose, disconnect, openConnectModal]);
+
+  const handleConnectWallet = useCallback(() => {
+    console.log('[ChangeWalletModal] Connect wallet clicked');
+    console.log('[ChangeWalletModal] openConnectModal:', typeof openConnectModal);
+    
+    // Close our modal first to avoid z-index conflicts
+    onClose();
+    
+    setTimeout(() => {
+      if (typeof openConnectModal === 'function') {
+        openConnectModal();
+      } else {
+        console.error('[ChangeWalletModal] openConnectModal not available!');
+      }
+    }, 150);
+  }, [onClose, openConnectModal]);
+
+  // Don't render if not open, but hooks are already called above
+  if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 bg-background/70 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]"
+      className="fixed inset-0 bg-background/70 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
       onClick={() => !isProcessing && onClose()}
     >
       <div
@@ -86,6 +130,14 @@ export function ChangeWalletModal({
               className="w-full py-2.5 border border-border rounded-full text-sm text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
             >
               Switch Wallet
+            </button>
+
+            <button
+              onClick={handleDisconnectAndConnect}
+              disabled={isProcessing}
+              className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            >
+              Disconnect &amp; Connect Different Wallet
             </button>
           </div>
         ) : (
