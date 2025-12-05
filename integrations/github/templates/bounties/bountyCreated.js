@@ -7,15 +7,24 @@ export function renderBountyCreatedComment({
   iconUrl,
   amountFormatted,
   tokenSymbol,
+  feeFormatted,
+  totalFormatted,
+  feePercent,
   networkName,
   deadlineDate,
   txUrl,
   linkWalletUrl,
   brandSignature
 }) {
-  return `${renderCommentHeader({ iconUrl, title: `Bounty: ${amountFormatted} ${tokenSymbol}` })}
+  const feeLine = feeFormatted ? `**Platform fee:** ${feeFormatted} ${tokenSymbol} (${feePercent ?? '1.00'}%)  
+` : '';
+  const totalLine = totalFormatted ? `**Total paid by sponsor:** ${totalFormatted} ${tokenSymbol}  
+` : '';
 
-**Network:** ${networkName}  
+  return `${renderCommentHeader({ iconUrl, title: `Bounty posted` })}
+
+**Bounty (claimer receives):** ${amountFormatted} ${tokenSymbol}  
+${feeLine}${totalLine}**Network:** ${networkName}  
 **Deadline:** ${deadlineDate}  
 **Transaction:** ${renderLink(txUrl, 'View on Explorer')}
 

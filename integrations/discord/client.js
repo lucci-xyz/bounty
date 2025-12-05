@@ -23,7 +23,10 @@ export function isDiscordConfigured() {
  * @param {string} bounty.title - Issue/bounty title
  * @param {string} bounty.repoName - Repository name (owner/repo)
  * @param {string} bounty.issueUrl - URL to the GitHub issue
- * @param {string} bounty.amount - Bounty amount (formatted)
+ * @param {string} bounty.amount - Bounty amount (claimer receives, formatted)
+ * @param {string} [bounty.platformFee] - Platform fee (formatted)
+ * @param {string} [bounty.total] - Total sponsor payment (formatted)
+ * @param {number} [bounty.feeBps] - Platform fee in bps
  * @param {string} bounty.tokenSymbol - Token symbol (USDC, MUSD)
  * @param {string} bounty.network - Network name
  * @param {string} bounty.deadline - Deadline date string
@@ -36,6 +39,9 @@ export function formatBountyEmbed(bounty) {
     repoName,
     issueUrl,
     amount,
+    platformFee,
+    total,
+    feeBps,
     tokenSymbol,
     network,
     deadline,
@@ -56,17 +62,25 @@ export function formatBountyEmbed(bounty) {
     // keep original string
   }
 
+  const feePercentDisplay = Number.isFinite(Number(feeBps))
+    ? (Number(feeBps) / 100).toFixed(2)
+    : '1.00';
+
   const descriptionLines = [
     `**${title || 'New bounty available'}**`,
     '',
-    `💵 **Reward:** ${amount} ${tokenSymbol}`,
-    `🌐**Network:** ${network}`,
+    `💵 **Reward (claimer receives):** ${amount} ${tokenSymbol}`,
+    platformFee
+      ? `🏷️ **Platform fee (${feePercentDisplay}%):** ${platformFee} ${tokenSymbol} (paid by sponsor)`
+      : null,
+    total ? `💰 **Total you pay:** ${total} ${tokenSymbol}` : null,
+    `🌐 **Network:** ${network}`,
     `📁 **Repository:** [${repoName}](https://github.com/${repoName})`,
     `📅 **Deadline:** ${deadlineDisplay}`,
     `👤 **Sponsor:** [@${createdByGithubUsername}](https://github.com/${createdByGithubUsername})`,
     '',
     `[View issue](${issueUrl})`
-  ];
+  ].filter(Boolean);
 
   return {
     embeds: [

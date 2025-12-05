@@ -154,7 +154,7 @@ export function renderBountyExpiredEmail({
                             color: #4b5563;
                           "
                         >
-                          Bounty amount
+                          Bounty (claimer would receive)
                         </td>
                         <td
                           style="
@@ -325,7 +325,7 @@ Hi ${username},
 
 You have a bounty that has reached its deadline and is now expired.
 
-Bounty amount: ${bountyAmount} ${tokenSymbol}
+Bounty (claimer would receive): ${bountyAmount} ${tokenSymbol}
 Repository: ${repoFullName}
 Issue: #${issueNumber}${issueTitle ? ` - ${issueTitle}` : ''} (${issueUrl})
 Status: Eligible for refund

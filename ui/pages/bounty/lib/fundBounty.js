@@ -104,6 +104,7 @@ export async function fundBounty({
   issueData,
   walletContext,
   networkContext,
+  feeBps: feeBpsOverride,
   callbacks
 }) {
   const {
@@ -179,8 +180,32 @@ export async function fundBounty({
   const deadlineTimestamp = ensureDeadline(deadline, blockTimestamp);
   const amountWei = ethers.parseUnits(amount, network.token.decimals);
 
+  // Determine platform fee (bps) and total required (amount + fee)
+  let escrowFeeBps = typeof feeBpsOverride === 'number' ? feeBpsOverride : null;
+  try {
+    if (escrowFeeBps === null || Number.isNaN(escrowFeeBps)) {
+      const feeReader = new ethers.Contract(
+        network.contracts.escrow,
+        ['function feeBps() view returns (uint16)'],
+        signer
+      );
+      escrowFeeBps = Number(await feeReader.feeBps());
+    }
+  } catch (feeError) {
+    console.warn('Failed to read feeBps from contract, defaulting to 1%', feeError);
+    escrowFeeBps = 100; // fall back to 1%
+  }
+
+  const feeWei = (amountWei * BigInt(escrowFeeBps)) / 10000n;
+  const totalRequiredWei = amountWei + feeWei;
+  const formattedFee = ethers.formatUnits(feeWei, network.token.decimals);
+  const formattedTotal = ethers.formatUnits(totalRequiredWei, network.token.decimals);
+
   // Check balance and approve escrow contract if needed
-  showStatus(`Checking ${network.token.symbol} balance...`, 'loading');
+  showStatus(
+    `Checking ${network.token.symbol} balance (need ${formattedTotal} incl. fee)...`,
+    'loading'
+  );
   const token = new ethers.Contract(
     network.token.address,
     [
@@ -192,21 +217,26 @@ export async function fundBounty({
   );
 
   const balance = await token.balanceOf(address);
-  if (balance < amountWei) {
+  if (balance < totalRequiredWei) {
     const formattedBalance = ethers.formatUnits(balance, network.token.decimals);
-    const formattedRequired = ethers.formatUnits(amountWei, network.token.decimals);
-    throw new Error(`Insufficient ${network.token.symbol} balance. You have ${formattedBalance} ${network.token.symbol}, but need ${formattedRequired}.`);
+    const formattedRequired = ethers.formatUnits(totalRequiredWei, network.token.decimals);
+    throw new Error(
+      `Insufficient ${network.token.symbol} balance. You have ${formattedBalance} ${network.token.symbol}, but need ${formattedRequired} (includes platform fee).`
+    );
   }
 
   const currentAllowance = await token.allowance(address, network.contracts.escrow);
-  if (currentAllowance < amountWei) {
-    showStatus(`Approving ${network.token.symbol}...`, 'loading');
+  if (currentAllowance < totalRequiredWei) {
+    showStatus(
+      `Approving ${network.token.symbol} (covering ${formattedTotal} incl. fee)...`,
+      'loading'
+    );
     try {
-      const approveTx = await token.approve(network.contracts.escrow, amountWei);
+      const approveTx = await token.approve(network.contracts.escrow, totalRequiredWei);
       await approveTx.wait();
 
       const newAllowance = await token.allowance(address, network.contracts.escrow);
-      if (newAllowance < amountWei) {
+      if (newAllowance < totalRequiredWei) {
         throw new Error('Approval transaction mined but allowance not updated. Please retry.');
       }
     } catch (approveError) {
@@ -239,13 +269,17 @@ export async function fundBounty({
   const resolverAddress = await fetchResolver(networkAliasToSend);
 
   // Prepare to create the bounty on-chain
-  showStatus('Creating bounty on-chain...', 'loading');
+  showStatus(
+    `Creating bounty on-chain (total ${formattedTotal} ${network.token.symbol}, fee ${formattedFee})...`,
+    'loading'
+  );
+  // ABI matches contracts/current/BountyEscrow.sol - getBounty includes token field
   const escrow = new ethers.Contract(
     network.contracts.escrow,
     [
       'function createBounty(address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) external returns (bytes32)',
       'function computeBountyId(address sponsor, bytes32 repoIdHash, uint64 issueNumber) public pure returns (bytes32)',
-      'function getBounty(bytes32 bountyId) external view returns (tuple(bytes32 repoIdHash, address sponsor, address resolver, uint96 amount, uint64 deadline, uint64 issueNumber, uint8 status))',
+      'function getBounty(bytes32 bountyId) external view returns (tuple(bytes32 repoIdHash, address sponsor, address resolver, address token, uint96 amount, uint64 deadline, uint64 issueNumber, uint8 status))',
       'function paused() external view returns (bool)'
     ],
     signer
@@ -366,7 +400,10 @@ export async function fundBounty({
         txHash: receipt.hash,
         installationId: parseInt(installationId, 10) || 0,
         network: networkAliasToSend,
-        tokenSymbol: network.token.symbol
+        tokenSymbol: network.token.symbol,
+        feeBps: escrowFeeBps,
+        platformFee: feeWei.toString(),
+        totalPaid: totalRequiredWei.toString()
       })
     });
 

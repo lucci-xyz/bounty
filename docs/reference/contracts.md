@@ -14,7 +14,7 @@ flowchart TD
 ## Supported aliases
 - `BASE_MAINNET` (mainnet) — requires env-provided escrow/token addresses.
 - `MEZO_MAINNET` (mainnet) — requires env-provided escrow/token addresses.
-- `BASE_SEPOLIA` (testnet) — defaults: escrow `0x3C1AF89cf9773744e0DAe9EBB7e3289e1AeCF0E7`, token `USDC` at `0x036CbD53842c5426634e7929541eC2318f3dCF7e`.
+- `BASE_SEPOLIA` (testnet) — defaults: escrow proxy `0x7218b25e9fbA2974faF7b0056203Fd57591fF8F3` (upgradeable), token `USDC` at `0x036CbD53842c5426634e7929541eC2318f3dCF7e`.
 - `MEZO_TESTNET` (testnet) — defaults: escrow `0xcBaf5066aDc2299C14112E8A79645900eeb3A76a`, token `MUSD` at `0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503`.
 
 Testnets fall back to the curated defaults above; mainnets must be fully configured through environment variables.
@@ -31,11 +31,16 @@ Testnets fall back to the curated defaults above; mainnets must be fully configu
 - Bounty creation stores the alias, chainId, token symbol, and token address alongside the bounty. `/api/contract/bounty/[bountyId]` and payout flows use the saved alias to read/write on-chain.
 - `/api/resolver?network=ALIAS` derives the resolver address from configured wallets; `/api/tokens` returns token metadata derived from the registry.
 
-## Escrow ABI surface (summary)
-- `createBounty(address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) returns (bytes32 bountyId)`
+## Escrow ABI surface (summary, upgradeable version)
+- `initialize(address primaryToken_, uint16 feeBps, address initialOwner)`
+- `createBounty(address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount)`
+- `createBountyWithToken(address token, address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount)`
 - `resolve(bytes32 bountyId, address recipient)`
-- `getBounty(bytes32 bountyId)` → tuple (`repoIdHash`, `sponsor`, `resolver`, `amount`, `deadline`, `issueNumber`, `status`)
+- `refundExpired(bytes32 bountyId)`
+- `getBounty(bytes32 bountyId)` → tuple (`repoIdHash`, `sponsor`, `resolver`, `token`, `amount`, `deadline`, `issueNumber`, `status`)
 - `computeBountyId(address sponsor, bytes32 repoIdHash, uint64 issueNumber)`
+- Fees: `availableFees(address token)`, `withdrawFees(address token, address to, uint256 amount)`, `feeBps()`, `totalFeesAccrued()`
+- Status enum: `None, Open, Resolved, Refunded` (no cancel flow).
 
 Use `server/blockchain/contract.js` helpers for all contract interactions; they handle non-1559 networks and registry lookups for you.
 

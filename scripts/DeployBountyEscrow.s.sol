@@ -3,48 +3,61 @@ pragma solidity ^0.8.24;
 
 import {Script, console2} from "forge-std/Script.sol";
 import {BountyEscrow} from "@/contracts/current/BountyEscrow.sol";
+import {BountyEscrowProxy} from "@/contracts/proxy/BountyEscrowProxy.sol";
 
+/**
+ * Deploys the upgradeable BountyEscrow + proxy.
+ *
+ * - Deploy implementation (no constructor)
+ * - Deploy Transparent Proxy pointing to implementation
+ * - Initialize via proxy with:
+ *     primaryToken = Base Sepolia USDC
+ *     feeBps      = 100 (1%)
+ *     owner/admin = EOA from OWNER_PK_BASE_SEPOLIA
+ *
+ * NOTE: Protocol fees are withdrawn later via
+ *       withdrawFees(token, TREASURY_BASE_SEPOLIA, amount)
+ */
 contract DeployBountyEscrow is Script {
-    address internal constant BASE_MAINNET_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     address internal constant BASE_SEPOLIA_USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
-    address internal constant MEZO_TESTNET_MUSD = 0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503;
     uint16 internal constant FEE_BPS = 100;
 
-    function run() external returns (BountyEscrow deployed) {
+    function run() external returns (address implementation, address proxy) {
         return deployBaseSepolia();
     }
 
-    function deployBaseMainnet() public returns (BountyEscrow deployed) {
-        address initialOwner = vm.envAddress("NEXT_PUBLIC_BASE_OWNER_ADDRESS");
-        uint256 deployerKey = _loadPrivateKey("NEXT_PUBLIC_BASE_OWNER_PRIVATE_KEY");
+    function deployBaseSepolia() public returns (address implementation, address proxy) {
+        uint256 deployerKey = _loadPrivateKey("OWNER_PK_BASE_SEPOLIA");
+        address owner = vm.addr(deployerKey);
 
         vm.startBroadcast(deployerKey);
-        deployed = new BountyEscrow(BASE_MAINNET_USDC, FEE_BPS, initialOwner);
+
+        // Deploy implementation (upgradeable, no constructor)
+        BountyEscrow impl = new BountyEscrow();
+
+        // Encode initialize data for the proxy
+        bytes memory initData = abi.encodeCall(
+            BountyEscrow.initialize,
+            (BASE_SEPOLIA_USDC, FEE_BPS, owner)
+        );
+
+        // Deploy transparent proxy pointing to implementation
+        BountyEscrowProxy proxyInstance = new BountyEscrowProxy(
+            address(impl),
+            owner,
+            initData
+        );
+
         vm.stopBroadcast();
 
-        console2.log("BountyEscrow deployed to Base Mainnet:", address(deployed));
-    }
+        console2.log("BountyEscrow implementation:", address(impl));
+        console2.log("BountyEscrow Proxy (use this in app):", address(proxyInstance));
+        console2.log("Upgrade admin / owner:", owner);
+        console2.log(
+            "To withdraw fees later, call withdrawFees(token, TREASURY_BASE_SEPOLIA, amount) from owner."
+        );
 
-    function deployBaseSepolia() public returns (BountyEscrow deployed) {
-        address initialOwner = vm.envAddress("BASE_SEPOLIA_OWNER_WALLET");
-        uint256 deployerKey = _loadPrivateKey("BASE_SEPOLIA_OWNER_PRIVATE_KEY");
-
-        vm.startBroadcast(deployerKey);
-        deployed = new BountyEscrow(BASE_SEPOLIA_USDC, FEE_BPS, initialOwner);
-        vm.stopBroadcast();
-
-        console2.log("BountyEscrow deployed to Base Sepolia:", address(deployed));
-    }
-
-    function deployMezoTestnet() public returns (BountyEscrow deployed) {
-        address initialOwner = vm.envAddress("MEZO_TESTNET_OWNER_WALLET");
-        uint256 deployerKey = _loadPrivateKey("MEZO_TESTNET_OWNER_PRIVATE_KEY");
-
-        vm.startBroadcast(deployerKey);
-        deployed = new BountyEscrow(MEZO_TESTNET_MUSD, FEE_BPS, initialOwner);
-        vm.stopBroadcast();
-
-        console2.log("BountyEscrow deployed to Mezo Testnet:", address(deployed));
+        return (address(impl), address(proxyInstance));
     }
 
     function _loadPrivateKey(string memory envVar) internal returns (uint256 key) {

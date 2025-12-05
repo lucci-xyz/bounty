@@ -126,6 +126,7 @@ export async function getBountyFromContract(bountyId, alias) {
     repoIdHash: bounty.repoIdHash,
     sponsor: bounty.sponsor,
     resolver: bounty.resolver,
+    token: bounty.token, // New field in contracts/current/BountyEscrow.sol
     amount: bounty.amount.toString(),
     deadline: Number(bounty.deadline),
     issueNumber: Number(bounty.issueNumber),

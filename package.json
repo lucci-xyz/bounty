@@ -21,6 +21,7 @@
   "license": "MIT",
   "dependencies": {
     "@farcaster/miniapp-sdk": "^0.2.1",
+    "@openzeppelin/contracts-upgradeable": "^5.0.2",
     "@prisma/client": "^6.19.0",
     "@radix-ui/react-avatar": "^1.1.11",
     "@rainbow-me/rainbowkit": "^2.2.9",

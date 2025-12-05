@@ -54,6 +54,7 @@ function AttachBountyContent() {
     supportedNetworkNames,
     isChainSupported,
     network,
+    fundingSummary,
     networkGroup,
     wallet,
     hasIssueData,
@@ -223,7 +224,7 @@ function AttachBountyContent() {
             <div className="space-y-4">
               <div>
                 <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground/70">
-                  Bounty Amount ({network?.token.symbol || 'TOKEN'})
+                  Bounty Amount (claimer receives) ({network?.token.symbol || 'TOKEN'})
                 </label>
                 <input
                   type="number"
@@ -246,6 +247,33 @@ function AttachBountyContent() {
                   className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
                 />
               </div>
+            </div>
+
+            {/* Funding summary */}
+            <div className="rounded-3xl border border-border/60 bg-muted/30 p-5 text-sm text-foreground space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Bounty (claimer receives)</span>
+                <span className="font-semibold">
+                  {fundingSummary.amountFormatted} {network?.token.symbol || 'TOKEN'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">
+                  Platform fee ({(fundingSummary.feeBps / 100).toFixed(2)}%)
+                </span>
+                <span className="font-semibold">
+                  {fundingSummary.feeFormatted} {network?.token.symbol || 'TOKEN'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-t border-border/60 pt-3">
+                <span className="text-muted-foreground">Total you pay</span>
+                <span className="font-semibold">
+                  {fundingSummary.totalFormatted} {network?.token.symbol || 'TOKEN'}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                The platform fee is charged upfront to you as the sponsor. The claimer receives the full bounty amount.
+              </p>
             </div>
 
             {/* Fund bounty button */}

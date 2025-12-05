@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { cookies } from 'next/headers';
+import { ethers } from 'ethers';
 import { getSession } from '@/lib/session';
 import { bountyQueries, userQueries } from '@/server/db/prisma';
 import { handleBountyCreated } from '@/integrations/github/webhooks';
@@ -55,6 +56,42 @@ export async function POST(request) {
     const chainId = networkConfig.chainId;
     const tokenAddress = token || networkConfig.token.address;
     const tokenSymbolFinal = tokenSymbol || networkConfig.token.symbol;
+
+    // Resolve on-chain fee bps and compute breakdown
+    let feeBps = 100;
+    try {
+      const provider = new ethers.JsonRpcProvider(networkConfig.rpcUrl);
+      const feeReader = new ethers.Contract(
+        networkConfig.contracts.escrow,
+        ['function feeBps() view returns (uint16)'],
+        provider
+      );
+      feeBps = Number(await feeReader.feeBps());
+    } catch (err) {
+      logger.warn('Failed to read feeBps for bounty creation, defaulting to 1%', err);
+    }
+
+    const decimals = networkConfig.token.decimals;
+    const feeAmount = (BigInt(amount) * BigInt(feeBps)) / BigInt(10000);
+    const totalPaid = BigInt(amount) + feeAmount;
+    const formattedAmount = formatAmount(amount, tokenSymbolFinal, {
+      decimals,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      useGrouping: true
+    });
+    const formattedFee = formatAmount(feeAmount.toString(), tokenSymbolFinal, {
+      decimals,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      useGrouping: true
+    });
+    const formattedTotal = formatAmount(totalPaid.toString(), tokenSymbolFinal, {
+      decimals,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      useGrouping: true
+    });
 
     // Auto-create or update user if session exists (backward compatible)
     if (session && session.githubId) {
@@ -135,12 +172,18 @@ export async function POST(request) {
           issueNumber,
           bountyId,
           amount,
+          platformFee: feeAmount.toString(),
+          totalPaid: totalPaid.toString(),
           deadline,
           sponsorAddress,
           txHash,
           installationId,
           network: alias,
-          tokenSymbol: tokenSymbolFinal
+          tokenSymbol: tokenSymbolFinal,
+          feeBps,
+          formattedAmount,
+          formattedFee,
+          formattedTotal
         });
       } catch (githubError) {
         logger.warn('Failed to post GitHub comment (non-critical):', githubError.message);
@@ -157,7 +200,10 @@ export async function POST(request) {
         title: issueTitle || `Issue #${issueNumber}`,
         repoName: repoFullName,
         issueUrl,
-        amount: formatAmount(amount, tokenSymbolFinal),
+        amount: formattedAmount,
+        platformFee: formattedFee,
+        total: formattedTotal,
+        feeBps,
         tokenSymbol: tokenSymbolFinal,
         network: networkConfig.name,
         deadline: new Date(deadline * 1000).toISOString(),

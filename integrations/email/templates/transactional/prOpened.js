@@ -157,7 +157,7 @@ export function renderPrOpenedEmail({
                             color: #4b5563;
                           "
                         >
-                          Bounty amount
+                          Bounty (claimer receives)
                         </td>
                         <td
                           style="
@@ -268,7 +268,7 @@ export function renderPrOpenedEmail({
                     "
                   >
                     When you review and merge this pull request and it closes the linked issue,
-                    the bounty will be paid out automatically from escrow.
+                    the full bounty will be paid out automatically from escrow. The 1% platform fee was already paid upfront by you as the sponsor.
                   </td>
                 </tr>
 
@@ -367,13 +367,13 @@ Hi ${username},
 
 A contributor has opened a pull request for one of your bounties on BountyPay.
 
-Bounty amount: ${bountyAmount} ${tokenSymbol}
+Bounty (claimer receives): ${bountyAmount} ${tokenSymbol}
 Repository: ${repoFullName}
 Issue: #${issueNumber} (${issueUrl})
 Pull request: #${prNumber}${prTitle ? ` - ${prTitle}` : ''} (${prUrl})
 Status: Waiting for review
 
-When you review and merge this pull request and it closes the linked issue, the bounty will be paid out automatically from escrow.
+When you review and merge this pull request and it closes the linked issue, the full bounty will be paid out automatically from escrow. The 1% platform fee was already paid upfront by you as the sponsor.
 
 You can review this bounty from your dashboard: ${dashboardUrl}
 

@@ -27,8 +27,9 @@ export async function GET() {
         const provider = new ethers.JsonRpcProvider(network.rpcUrl);
         const escrow = new ethers.Contract(network.contracts.escrow, ABIS.escrow, provider);
 
+        // New ABI: availableFees(token) - pass the network's token address
         const [availableFees, totalFeesAccrued, feeBps] = await Promise.all([
-          escrow.availableFees(),
+          escrow.availableFees(network.token.address),
           escrow.totalFeesAccrued(),
           escrow.feeBps()
         ]);

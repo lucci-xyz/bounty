@@ -1,11 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { ethers } from 'ethers';
 import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
 import { useNetwork } from '@/ui/providers/NetworkProvider';
 import { useBetaAccess } from '@/ui/hooks/useBetaAccess';
 import { useErrorModal } from '@/ui/providers/ErrorModalProvider';
 import { fundBounty } from '@/ui/pages/bounty/lib/fundBounty';
+import { logger } from '@/lib/logger';
 
 /**
  * React hook for managing the state and logic of the Attach Bounty form.
@@ -28,6 +30,8 @@ export function useAttachBountyForm({ issueData }) {
   // Beta modal control
   const [showBetaModal, setShowBetaModal] = useState(false);
   const modalOpenedRef = useRef(false);
+  // Fee state (bps) for funding breakdown
+  const [feeBps, setFeeBps] = useState(100);
 
   // Wallet/account/network context
   const { address, isConnected, chain } = useAccount();
@@ -128,6 +132,35 @@ export function useAttachBountyForm({ issueData }) {
   }, [issueData.presetAmount]);
 
   /**
+   * Fetch the current platform fee (bps) from the escrow contract for the selected network.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    const fetchFeeBps = async () => {
+      if (!network?.contracts?.escrow || !network?.rpcUrl) return;
+      try {
+        const provider = new ethers.JsonRpcProvider(network.rpcUrl);
+        const feeReader = new ethers.Contract(
+          network.contracts.escrow,
+          ['function feeBps() view returns (uint16)'],
+          provider
+        );
+        const onchainFeeBps = Number(await feeReader.feeBps());
+        if (!cancelled && Number.isFinite(onchainFeeBps)) {
+          setFeeBps(onchainFeeBps);
+        }
+      } catch (err) {
+        logger.warn('Failed to fetch feeBps for network', network?.name, err);
+      }
+    };
+
+    fetchFeeBps();
+    return () => {
+      cancelled = true;
+    };
+  }, [network?.contracts?.escrow, network?.name, network?.rpcUrl]);
+
+  /**
    * Shows a status message (success, error, etc.).
    *
    * @param {string} message - The message to show.
@@ -170,6 +203,7 @@ export function useAttachBountyForm({ issueData }) {
           setSelectedAlias,
           supportedNetworks
         },
+        feeBps,
         callbacks: {
           showStatus,
           showError
@@ -196,6 +230,7 @@ export function useAttachBountyForm({ issueData }) {
     isProcessing,
     issueData,
     network,
+    feeBps,
     networkGroup,
     registry,
     selectedAlias,
@@ -206,6 +241,40 @@ export function useAttachBountyForm({ issueData }) {
     switchChain,
     walletClient
   ]);
+
+  /**
+   * Derived funding summary for the UI (net bounty, fee, total).
+   */
+  const fundingSummary = useMemo(() => {
+    if (!network || !amount) {
+      return {
+        amountFormatted: '0',
+        feeFormatted: '0',
+        totalFormatted: '0',
+        feeBps
+      };
+    }
+
+    try {
+      const amountWei = ethers.parseUnits(amount || '0', network.token.decimals);
+      const feeWei = (amountWei * BigInt(feeBps)) / 10000n;
+      const totalWei = amountWei + feeWei;
+
+      return {
+        amountFormatted: ethers.formatUnits(amountWei, network.token.decimals),
+        feeFormatted: ethers.formatUnits(feeWei, network.token.decimals),
+        totalFormatted: ethers.formatUnits(totalWei, network.token.decimals),
+        feeBps
+      };
+    } catch {
+      return {
+        amountFormatted: '0',
+        feeFormatted: '0',
+        totalFormatted: '0',
+        feeBps
+      };
+    }
+  }, [amount, feeBps, network]);
 
   /**
    * Returns true if required issue data (repoFullName, issueNumber, repoId) is present.
@@ -230,6 +299,8 @@ export function useAttachBountyForm({ issueData }) {
     supportedNetworkNames,
     isChainSupported,
     network,
+    feeBps,
+    fundingSummary,
     wallet: {
       address,
       isConnected,

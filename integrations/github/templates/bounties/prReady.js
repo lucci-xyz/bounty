@@ -14,7 +14,7 @@ export function renderPrReadyComment({
   return `${renderCommentHeader({ iconUrl, title: 'Bounty: Ready to Pay' })}
 
 **Issues:** ${issueLinks}  
-**Value:** ${totalAmount} ${tokenSymbol}  
+**Value (you receive):** ${totalAmount} ${tokenSymbol}  
 **Recipient:** \`${walletDisplay}\`
 
 When this PR is merged, payment will be sent automatically to your linked wallet.

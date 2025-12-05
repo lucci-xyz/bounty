@@ -4,6 +4,9 @@ import { getLinkHref } from '@/config/links';
 
 let hasLoggedSkippedAliases = false;
 
+// Base Sepolia upgradeable proxy (default for staging/test)
+const BASE_SEPOLIA_ESCROW_DEFAULT = process.env.BASE_SEPOLIA_ESCROW_ADDRESS || '0x7218b25e9fbA2974faF7b0056203Fd57591fF8F3';
+
 // Curated network aliases with baseline configuration
 const CURATED_ALIASES = {
   BASE_MAINNET: {
@@ -22,10 +25,10 @@ const CURATED_ALIASES = {
     // Once the production escrow is live we expose curated defaults just like testnets.
     // Env vars still override these when present.
     defaultContracts: {
-      escrow: '0xC81A53A0967fc9599d813693B58EcDC7d11e4f36'
+      escrow: process.env.BASE_MAINNET_ESCROW_ADDRESS || '0xC81A53A0967fc9599d813693B58EcDC7d11e4f36'
     },
     defaultToken: {
-      address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+      address: process.env.BASE_MAINNET_TOKEN_ADDRESS || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
       symbol: 'USDC',
       decimals: 6
     }
@@ -59,10 +62,11 @@ const CURATED_ALIASES = {
     },
     // Hardcoded defaults for local/staging convenience (can be overridden via env)
     defaultContracts: {
-      escrow: '0x3C1AF89cf9773744e0DAe9EBB7e3289e1AeCF0E7'
+      // Upgradeable proxy on Base Sepolia (use this address in app/bots)
+      escrow: process.env.BASE_SEPOLIA_ESCROW_ADDRESS || '0x7218b25e9fbA2974faF7b0056203Fd57591fF8F3'
     },
     defaultToken: {
-      address: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+      address: process.env.BASE_SEPOLIA_TOKEN_ADDRESS || '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
       symbol: 'USDC',
       decimals: 6
     }
@@ -82,10 +86,10 @@ const CURATED_ALIASES = {
     },
     // Hardcoded defaults for local/staging convenience (can be overridden via env)
     defaultContracts: {
-      escrow: '0xcBaf5066aDc2299C14112E8A79645900eeb3A76a'
+      escrow: process.env.MEZO_TESTNET_ESCROW_ADDRESS || '0xcBaf5066aDc2299C14112E8A79645900eeb3A76a'
     },
     defaultToken: {
-      address: '0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503',
+      address: process.env.MEZO_TESTNET_TOKEN_ADDRESS || '0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503',
       symbol: 'MUSD',
       decimals: 18
     }
@@ -94,9 +98,11 @@ const CURATED_ALIASES = {
 
 // ABIs used throughout the application
 const ESCROW_ABI_BASE = [
+  'function initialize(address primaryToken_, uint16 _feeBps, address initialOwner) external',
   'function createBounty(address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) external returns (bytes32)',
+  'function createBountyWithToken(address token, address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) external returns (bytes32)',
   'function resolve(bytes32 bountyId, address recipient) external',
-  'function getBounty(bytes32 bountyId) external view returns (tuple(bytes32 repoIdHash, address sponsor, address resolver, uint96 amount, uint64 deadline, uint64 issueNumber, uint8 status))',
+  'function getBounty(bytes32 bountyId) external view returns (tuple(bytes32 repoIdHash, address sponsor, address resolver, address token, uint96 amount, uint64 deadline, uint64 issueNumber, uint8 status))',
   'function computeBountyId(address sponsor, bytes32 repoIdHash, uint64 issueNumber) external pure returns (bytes32)',
   'event Resolved(bytes32 indexed bountyId, address indexed recipient, uint256 net, uint256 fee)',
   'event BountyCreated(bytes32 indexed bountyId, address indexed sponsor, bytes32 indexed repoIdHash, uint64 issueNumber, uint64 deadline, address resolver, uint256 amount)'
@@ -110,10 +116,10 @@ const ESCROW_REFUND_FRAGMENTS = [
 
 // Admin fee-related fragments
 const ESCROW_FEE_FRAGMENTS = [
-  'function availableFees() external view returns (uint256)',
+  'function availableFees(address token) external view returns (uint256)',
   'function totalFeesAccrued() external view returns (uint256)',
   'function feeBps() external view returns (uint16)',
-  'function withdrawFees(address to, uint256 amount) external',
+  'function withdrawFees(address token, address to, uint256 amount) external',
   'function owner() external view returns (address)'
 ];
 

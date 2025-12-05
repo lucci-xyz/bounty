@@ -17,7 +17,7 @@ export function renderPrLinkedComment({
   return `${renderCommentHeader({ iconUrl, title: 'Bounty: Linked to PR' })}
 
 **Issues:** ${issueLinks}  
-**Value:** ${totalAmount} ${tokenSymbol}
+**Value (you receive):** ${totalAmount} ${tokenSymbol}
 
 Link your wallet to receive payment when this PR is merged:
 

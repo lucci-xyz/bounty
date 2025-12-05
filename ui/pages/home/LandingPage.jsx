@@ -556,7 +556,7 @@ function FAQSection() {
     },
     {
       question: 'Are there any fees?',
-      answer: 'BountyPay takes a 1% platform fee on successful bounty completions. There are no fees for posting bounties or if work is not completed.'
+      answer: 'BountyPay charges a 1% platform fee when you fund a bounty. The sponsor pays this upfront; contributors receive the full bounty amount.'
     },
   ];
 
