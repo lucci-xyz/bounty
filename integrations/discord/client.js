@@ -42,7 +42,6 @@ export function formatBountyEmbed(bounty) {
     createdByGithubUsername
   } = bounty;
 
-  // Parse deadline for display
   let deadlineDisplay = deadline;
   try {
     const deadlineDate = new Date(deadline);
@@ -54,42 +53,27 @@ export function formatBountyEmbed(bounty) {
       });
     }
   } catch {
-    // Keep original deadline string if parsing fails
+    // keep original string
   }
+
+  const descriptionLines = [
+    `**${title || 'New bounty available'}**`,
+    '',
+    `**Reward:** ${amount} ${tokenSymbol}`,
+    `**Network:** ${network}`,
+    `**Repository:** [${repoName}](https://github.com/${repoName})`,
+    `**Deadline:** ${deadlineDisplay}`,
+    `**Sponsor:** [@${createdByGithubUsername}](https://github.com/${createdByGithubUsername})`,
+    '',
+    `[View issue](${issueUrl})`
+  ];
 
   return {
     embeds: [
       {
-        title: '💰 New Bounty Posted!',
-        description: title || 'A new bounty is available',
-        color: 0x22c55e, // Green color
-        fields: [
-          {
-            name: '💵 Reward',
-            value: `**${amount} ${tokenSymbol}**`,
-            inline: true
-          },
-          {
-            name: '🌐 Network',
-            value: network,
-            inline: true
-          },
-          {
-            name: '📁 Repository',
-            value: `[${repoName}](https://github.com/${repoName})`,
-            inline: true
-          },
-          {
-            name: '📅 Deadline',
-            value: deadlineDisplay,
-            inline: true
-          },
-          {
-            name: '👤 Sponsor',
-            value: `[@${createdByGithubUsername}](https://github.com/${createdByGithubUsername})`,
-            inline: true
-          }
-        ],
+        title: 'New bounty posted',
+        description: descriptionLines.join('\n'),
+        color: 0x0ea5e9, // calmer blue accent
         url: issueUrl,
         timestamp: new Date().toISOString(),
         footer: {

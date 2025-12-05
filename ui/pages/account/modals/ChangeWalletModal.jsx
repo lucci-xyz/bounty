@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from 'react';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useDisconnect } from 'wagmi';
 import { WalletIcon, CheckCircleIcon } from '@/ui/components/Icons';
 
@@ -20,11 +20,12 @@ export function ChangeWalletModal({
   status 
 }) {
   const { disconnect } = useDisconnect();
+  const { openConnectModal } = useConnectModal();
   const isProcessing = status?.type === 'info' || status?.message?.includes('...');
   const isSuccess = status?.type === 'success';
 
   // Handle the connect wallet button click
-  const handleConnectClick = useCallback((openConnectModal) => {
+  const handleConnectClick = useCallback(() => {
     if (!openConnectModal) return;
     
     // Tell the parent we're initiating a wallet change
@@ -36,14 +37,11 @@ export function ChangeWalletModal({
       disconnect();
     }
     
-    // Close our modal and open RainbowKit after a brief delay
-    // This avoids z-index conflicts between our modal and RainbowKit's modal
+    // Close our modal and open RainbowKit immediately
+    // Using the hook-based openConnectModal works even after our modal closes
     onClose();
-    
-    setTimeout(() => {
-      openConnectModal();
-    }, 100);
-  }, [isConnected, disconnect, onClose, onInitiateChange]);
+    openConnectModal();
+  }, [isConnected, disconnect, onClose, onInitiateChange, openConnectModal]);
 
   if (!isOpen) return null;
 
@@ -104,18 +102,14 @@ export function ChangeWalletModal({
               </div>
             )}
 
-            <ConnectButton.Custom>
-              {({ openConnectModal }) => (
-                <button
-                  onClick={() => handleConnectClick(openConnectModal)}
-                  disabled={isProcessing}
-                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <WalletIcon size={16} />
-                  Connect Wallet
-                </button>
-              )}
-            </ConnectButton.Custom>
+            <button
+              onClick={handleConnectClick}
+              disabled={isProcessing || !openConnectModal}
+              className="w-full py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <WalletIcon size={16} />
+              Connect Wallet
+            </button>
 
             <button
               onClick={onClose}
