@@ -80,11 +80,14 @@ export function useWalletManagement({
 
   /**
    * Open the modal to change (replace) the connected wallet.
+   * Disconnects any existing wallet so RainbowKit's connect modal is available.
    */
   const openChangeWalletModal = useCallback(() => {
     setShowChangeWalletModal(true);
     setChangeWalletStatus({ message: '', type: '' });
     setIsProcessingChange(false);
+    // Reset waiting state in case it was left over
+    waitingForWalletRef.current = false;
   }, []);
 
   /**
