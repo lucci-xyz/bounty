@@ -37,6 +37,7 @@ function SignInContent() {
   const [isMounted, setIsMounted] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(false);
   const [hasLinkedWallet, setHasLinkedWallet] = useState(false);
+  const [linkedWalletAddress, setLinkedWalletAddress] = useState(null); // The actual payout wallet from DB
   const [hasVerifiedEmail, setHasVerifiedEmail] = useState(false);
   const [userEmail, setUserEmail] = useState(null); // Store the actual email value
   const [profileCreated, setProfileCreated] = useState(false);
@@ -85,6 +86,7 @@ function SignInContent() {
       setCheckingProfile(true);
       setProfileError(null);
       setHasLinkedWallet(false);
+      setLinkedWalletAddress(null);
       setHasVerifiedEmail(false);
       setUserEmail(null);
       setShowWelcomeBack(false);
@@ -109,8 +111,10 @@ function SignInContent() {
         
         if (hasWallet) {
           setHasLinkedWallet(true);
+          setLinkedWalletAddress(walletAddress);
           setCurrentStep(3);
         } else {
+          setLinkedWalletAddress(null);
           setCurrentStep(2);
         }
         
@@ -236,6 +240,7 @@ function SignInContent() {
       
       setProfileCreated(true);
       setHasLinkedWallet(true);
+      setLinkedWalletAddress(address);
       setCurrentStep(3);
       setStatus({ message: 'Wallet linked successfully!', type: 'success' });
       
@@ -301,8 +306,9 @@ function SignInContent() {
     window.location.href = returnTo;
   };
   
-  // Calculate short address early so it's available in early returns
-  const shortAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '';
+  // Calculate short address for display - prefer linked wallet from DB, fallback to connected wallet
+  const displayAddress = linkedWalletAddress || address;
+  const shortAddress = displayAddress ? `${displayAddress.slice(0, 6)}...${displayAddress.slice(-4)}` : '';
   
   // Loading state - only show during initial mount
   if (!isMounted) {
