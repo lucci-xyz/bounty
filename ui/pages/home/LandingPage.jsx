@@ -552,7 +552,7 @@ function FAQSection() {
     },
     {
       question: "What happens if work isn't completed?",
-      answer: 'If the bounty deadline passes without a merged PR, sponsors can claim a full refund of their funds from the escrow contract.'
+      answer: 'If the bounty deadline passes without a merged PR, sponsors can request a refund of the bounty amount from the escrow contract. The 1% platform fee paid at funding is non-refundable.'
     },
     {
       question: 'Are there any fees?',

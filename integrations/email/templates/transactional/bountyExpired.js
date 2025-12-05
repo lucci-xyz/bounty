@@ -269,7 +269,7 @@ export function renderBountyExpiredEmail({
                       padding-top: 12px;
                     "
                   >
-                    The issue itself remains open on GitHub. Only the bounty reward has expired.
+                    The deadline has passed so this bounty is now eligible for refund. You can refund the bounty amount to your wallet from your dashboard. Note: the 1% platform fee paid upfront is not refundable. The GitHub issue remains open if you'd like to extend or create a new bounty.
                   </td>
                 </tr>
               </table>
@@ -332,7 +332,7 @@ Status: Eligible for refund
 
 Manage this bounty from your dashboard: ${dashboardUrl}
 
-The issue itself remains open on GitHub. Only the bounty reward has expired.
+The deadline has passed so this bounty is now eligible for refund. You can refund the bounty amount to your wallet from your dashboard. Note: the 1% platform fee paid upfront is not refundable. The GitHub issue remains open if you'd like to extend or create a new bounty.
 
 BountyPay by Lucci Labs (luccilabs.xyz)
   `.trim();
