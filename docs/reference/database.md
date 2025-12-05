@@ -22,7 +22,7 @@ erDiagram
     string token             "ERC-20 address"
     string amount            "raw units (string)"
     int    deadline          "unix seconds"
-    string status            "open|resolved|refunded|canceled"
+    string status            "open|resolved|refunded"
     string txHash?           "optional"
     string network           "alias"
     int    chainId
@@ -125,16 +125,15 @@ erDiagram
 
 ## Status Values
 
-### Bounty Status (follows contract standard, centralized in `shared/lib/status/index.js`)
+### Bounty Status (follows contract standard, centralized in `lib/status/index.js`)
 
 | Status | Contract Enum | Description |
 |--------|---------------|-------------|
 | `open` | 1 | Bounty is active, awaiting PR merge or expiry |
 | `resolved` | 2 | Bounty paid to contributor |
-| `refunded` | 3 | Bounty refunded to sponsor after expiry |
-| `canceled` | 4 | Bounty canceled by sponsor before deadline |
+| `refunded` | 3 | Bounty refunded to sponsor after deadline passed |
 
-Contract enum `0` = `None` (bounty doesn't exist, never returned to UI).
+Contract enum `0` = `None` (bounty doesn't exist, never returned to UI). There is no `cancel` function in the new contract; sponsors can only refund after the deadline passes.
 
 ### Lifecycle States
 

@@ -2,8 +2,8 @@ import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 import { prClaimQueries, bountyQueries } from '@/server/db/prisma';
 
-// Bounties in these statuses have no funds left (sponsor withdrew)
-const WITHDRAWN_STATUSES = new Set(['canceled', 'refunded']);
+// Bounties in these statuses have no funds left (sponsor refunded after deadline)
+const WITHDRAWN_STATUSES = new Set(['refunded']);
 
 export async function GET(request) {
   try {
