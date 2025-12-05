@@ -8,6 +8,7 @@
 import { useMemo, Suspense, useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useDisconnect } from 'wagmi';
 import BetaAccessModal from '@/ui/pages/beta/BetaAccessModal';
 import StatusNotice from '@/ui/components/StatusNotice';
 import { useAttachBountyForm } from '@/ui/hooks/useAttachBountyForm';
@@ -26,6 +27,7 @@ import { goBackOrPush } from '@/lib/navigation';
 function AttachBountyContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { disconnect } = useDisconnect();
 
   // Extract issue info from search params
   const issueData = useMemo(
@@ -190,14 +192,18 @@ function AttachBountyContent() {
 
             {/* Wallet/account actions (change wallet or network) */}
             <ConnectButton.Custom>
-              {({ openAccountModal, openChainModal }) => (
+              {({ openConnectModal, openChainModal }) => (
                 <div className="grid gap-3 md:grid-cols-2">
                   <button
                     onClick={(e) => {
                       e.preventDefault();
-                      openAccountModal?.();
+                      // Disconnect current wallet and open connect modal to select a new one
+                      disconnect();
+                      setTimeout(() => {
+                        openConnectModal?.();
+                      }, 100);
                     }}
-                    disabled={!isMounted || !openAccountModal}
+                    disabled={!isMounted}
                     className="inline-flex items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Change Wallet

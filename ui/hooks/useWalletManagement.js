@@ -1,7 +1,7 @@
 'use client';
 import { logger } from '@/lib/logger';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { useSignMessage } from 'wagmi';
 import { getNonce, linkWallet, buildSiweMessage, verifyWalletSignature } from '@/api/wallet';
 
@@ -52,6 +52,13 @@ export function useWalletManagement({
     type: ''
   });
   const [isProcessingChange, setIsProcessingChange] = useState(false);
+  
+  // Track when we're waiting for a new wallet connection (modal closed but waiting)
+  const waitingForWalletRef = useRef(false);
+  const previousAddressRef = useRef(null);
+
+  // Reference to handleChangeWallet for use in effect
+  const handleChangeWalletRef = useRef(null);
 
   /**
    * Open the wallet deletion confirmation modal.
@@ -89,6 +96,14 @@ export function useWalletManagement({
     setShowChangeWalletModal(false);
     setChangeWalletStatus({ message: '', type: '' });
   }, [isProcessingChange, changeWalletStatus.type]);
+
+  /**
+   * Called when user initiates wallet change - stores current address and marks waiting state.
+   */
+  const initiateWalletChange = useCallback(() => {
+    previousAddressRef.current = address || null;
+    waitingForWalletRef.current = true;
+  }, [address]);
 
   /**
    * Handles deleting the connected wallet after user confirmation.
@@ -140,8 +155,13 @@ export function useWalletManagement({
       return;
     }
 
+    // Clear waiting state
+    waitingForWalletRef.current = false;
+
     try {
       setIsProcessingChange(true);
+      // Re-open modal to show status
+      setShowChangeWalletModal(true);
       setChangeWalletStatus({ message: 'Connecting...', type: 'info' });
 
       if (!githubUser && !isLocalMode) {
@@ -238,6 +258,21 @@ export function useWalletManagement({
     isProcessingChange
   ]);
 
+  // Keep ref updated so effect can call it
+  handleChangeWalletRef.current = handleChangeWallet;
+
+  // Detect when a new wallet connects while we're waiting for change
+  useEffect(() => {
+    if (!waitingForWalletRef.current) return;
+    if (!isConnected || !address) return;
+    
+    // Check if this is a different wallet than before
+    if (address === previousAddressRef.current) return;
+    
+    // New wallet connected - trigger the change flow
+    handleChangeWalletRef.current?.();
+  }, [isConnected, address]);
+
   return {
     deleteModal: {
       isOpen: showDeleteWalletModal,
@@ -255,7 +290,8 @@ export function useWalletManagement({
       close: closeChangeWalletModal,
       status: changeWalletStatus,
       isProcessing: isProcessingChange,
-      handleChangeWallet
+      handleChangeWallet,
+      initiateWalletChange
     }
   };
 }

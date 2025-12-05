@@ -319,6 +319,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
         connectedAddress={wallet.address}
         isConnected={wallet.isConnected}
         onConfirm={walletManagement.changeModal.handleChangeWallet}
+        onInitiateChange={walletManagement.changeModal.initiateWalletChange}
         status={walletManagement.changeModal.status}
       />
       <DeleteWalletModal deleteModal={walletManagement.deleteModal} />

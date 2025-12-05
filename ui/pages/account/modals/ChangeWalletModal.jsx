@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useDisconnect } from 'wagmi';
 import { WalletIcon, CheckCircleIcon } from '@/ui/components/Icons';
 
 /**
  * Modal for changing payout wallet.
- * Always prompts user to connect a fresh wallet and automatically links it.
+ * Closes itself when opening RainbowKit to avoid z-index conflicts,
+ * then re-processes when a new wallet connects.
  */
 export function ChangeWalletModal({ 
   isOpen, 
@@ -15,54 +16,34 @@ export function ChangeWalletModal({
   connectedAddress, 
   isConnected, 
   onConfirm, 
+  onInitiateChange,
   status 
 }) {
   const { disconnect } = useDisconnect();
   const isProcessing = status?.type === 'info' || status?.message?.includes('...');
   const isSuccess = status?.type === 'success';
-  
-  // Track the address we started with and whether we've already processed the new connection
-  const initialAddressRef = useRef(null);
-  const hasTriggeredConfirmRef = useRef(false);
-  const [isReady, setIsReady] = useState(false);
 
-  // When modal opens, disconnect any existing wallet and prepare for fresh connection
-  useEffect(() => {
-    if (!isOpen) {
-      // Reset state when modal closes
-      initialAddressRef.current = null;
-      hasTriggeredConfirmRef.current = false;
-      setIsReady(false);
-      return;
-    }
-
-    // Store the initial address (if any) so we can detect when a NEW wallet connects
-    initialAddressRef.current = connectedAddress || null;
-    hasTriggeredConfirmRef.current = false;
-
-    // Disconnect any existing wallet so user starts fresh
+  // Handle the connect wallet button click
+  const handleConnectClick = useCallback((openConnectModal) => {
+    if (!openConnectModal) return;
+    
+    // Tell the parent we're initiating a wallet change
+    // This stores the current address and sets up the listener
+    onInitiateChange?.();
+    
+    // Disconnect current wallet if connected
     if (isConnected) {
       disconnect();
     }
     
-    // Small delay to ensure disconnect completes before showing connect button
-    const timer = setTimeout(() => setIsReady(true), 150);
-    return () => clearTimeout(timer);
-  }, [isOpen]); // Only run when isOpen changes, not on every render
-
-  // Automatically trigger confirm when a NEW wallet connects (not the one we started with)
-  useEffect(() => {
-    if (!isOpen || !isReady) return;
-    if (!isConnected || !connectedAddress) return;
-    if (hasTriggeredConfirmRef.current) return;
+    // Close our modal and open RainbowKit after a brief delay
+    // This avoids z-index conflicts between our modal and RainbowKit's modal
+    onClose();
     
-    // Only trigger if this is a different wallet than we started with
-    // (or if there was no wallet when modal opened)
-    if (connectedAddress === initialAddressRef.current) return;
-
-    hasTriggeredConfirmRef.current = true;
-    onConfirm?.();
-  }, [isOpen, isReady, isConnected, connectedAddress, onConfirm]);
+    setTimeout(() => {
+      openConnectModal();
+    }, 100);
+  }, [isConnected, disconnect, onClose, onInitiateChange]);
 
   if (!isOpen) return null;
 
@@ -74,7 +55,7 @@ export function ChangeWalletModal({
 
   return (
     <div
-      className="fixed inset-0 bg-background/70 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
+      className="fixed inset-0 bg-background/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
       onClick={() => !isProcessing && onClose()}
     >
       <div
@@ -126,12 +107,12 @@ export function ChangeWalletModal({
             <ConnectButton.Custom>
               {({ openConnectModal }) => (
                 <button
-                  onClick={() => openConnectModal?.()}
-                  disabled={isProcessing || !isReady}
+                  onClick={() => handleConnectClick(openConnectModal)}
+                  disabled={isProcessing}
                   className="w-full py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <WalletIcon size={16} />
-                  {isReady ? 'Connect Wallet' : 'Preparing...'}
+                  Connect Wallet
                 </button>
               )}
             </ConnectButton.Custom>
