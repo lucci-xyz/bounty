@@ -16,7 +16,8 @@ export function ChangeWalletModal({
   onStartChange,
   updatedAddress,
   isAwaitingWallet,
-  onCancel
+  onCancel,
+  initialAddress
 }) {
   const { address: connectedAddress, isConnected } = useAccount();
   const { openConnectModal, connectModalOpen } = useConnectModal();
@@ -69,10 +70,23 @@ export function ChangeWalletModal({
 
   useEffect(() => {
     if (!isAwaitingWallet) return;
-    if (isConnected) return;
     if (connectModalOpen || accountModalOpen) return;
-    onCancel?.();
-  }, [accountModalOpen, connectModalOpen, isAwaitingWallet, isConnected, onCancel]);
+    if (!isConnected) {
+      onCancel?.();
+      return;
+    }
+    if (initialAddress && connectedAddress === initialAddress) {
+      onCancel?.();
+    }
+  }, [
+    accountModalOpen,
+    connectModalOpen,
+    isAwaitingWallet,
+    isConnected,
+    onCancel,
+    initialAddress,
+    connectedAddress
+  ]);
 
   if (!isOpen) return null;
 

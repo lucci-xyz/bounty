@@ -319,6 +319,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
         isProcessing={walletManagement.changeModal.isProcessing}
         updatedAddress={walletManagement.changeModal.updatedAddress}
         isAwaitingWallet={walletManagement.changeModal.isAwaitingWallet}
+        initialAddress={walletManagement.changeModal.awaitingInitialAddress}
         onStartChange={walletManagement.changeModal.startPayoutWalletChange}
         onCancel={() => {
           walletManagement.changeModal.cancelPayoutWalletChange();

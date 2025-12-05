@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount, useSignMessage } from 'wagmi';
 import { isAddress } from 'viem';
 import { logger } from '@/lib/logger';
@@ -25,6 +25,8 @@ export function useWalletManagement({
   const waitingForPayoutChangeRef = useRef(false);
   const handleChangeWalletRef = useRef(null);
   const callbacksRef = useRef({ onDone: null, onError: null });
+  const initialAddressRef = useRef(null);
+  const initialChainRef = useRef(null);
 
   // Delete wallet modal state
   const [showDeleteWalletModal, setShowDeleteWalletModal] = useState(false);
@@ -38,6 +40,8 @@ export function useWalletManagement({
   const [isProcessingChange, setIsProcessingChange] = useState(false);
   const [isAwaitingWallet, setIsAwaitingWallet] = useState(false);
   const [updatedWalletAddress, setUpdatedWalletAddress] = useState(null);
+  const [awaitingInitialAddress, setAwaitingInitialAddress] = useState(null);
+  const [awaitingInitialChainId, setAwaitingInitialChainId] = useState(null);
 
   const clearChangeFlow = useCallback(() => {
     waitingForPayoutChangeRef.current = false;
@@ -45,6 +49,8 @@ export function useWalletManagement({
     callbacksRef.current = { onDone: null, onError: null };
     setIsAwaitingWallet(false);
     setIsProcessingChange(false);
+    setAwaitingInitialAddress(null);
+    setAwaitingInitialChainId(null);
   }, []);
 
   const { address: connectedAddress, chain } = useAccount({
@@ -57,6 +63,29 @@ export function useWalletManagement({
       clearChangeFlow();
     }
   });
+
+  useEffect(() => {
+    if (!waitingForPayoutChangeRef.current) return;
+    if (!handleChangeWalletRef.current) return;
+
+    const nextAddress = connectedAddress;
+    const nextChainId = chain?.id ?? null;
+    const sameAddress =
+      initialAddressRef.current && nextAddress === initialAddressRef.current;
+    const sameChain =
+      initialChainRef.current !== null &&
+      nextChainId !== null &&
+      nextChainId === initialChainRef.current;
+
+    if (!nextAddress) return;
+    if (sameAddress && sameChain) return;
+
+    handleChangeWalletRef.current({
+      address: nextAddress,
+      chain: { id: nextChainId },
+      chainId: nextChainId
+    });
+  }, [connectedAddress, chain]);
 
   const chainId = chain?.id;
 
@@ -157,6 +186,10 @@ export function useWalletManagement({
         clearChangeFlow();
       }
 
+      initialAddressRef.current = connectedAddress || null;
+      initialChainRef.current = chain?.id ?? null;
+      setAwaitingInitialAddress(initialAddressRef.current);
+      setAwaitingInitialChainId(initialChainRef.current);
       setUpdatedWalletAddress(null);
       setChangeWalletStatus({
         message: 'Waiting for wallet selection...',
@@ -311,7 +344,8 @@ export function useWalletManagement({
       isAwaitingWallet,
       updatedAddress: updatedWalletAddress,
       startPayoutWalletChange,
-      cancelPayoutWalletChange
+      cancelPayoutWalletChange,
+      awaitingInitialAddress
     }
   };
 }
