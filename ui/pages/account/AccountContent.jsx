@@ -320,6 +320,10 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
         updatedAddress={walletManagement.changeModal.updatedAddress}
         isAwaitingWallet={walletManagement.changeModal.isAwaitingWallet}
         onStartChange={walletManagement.changeModal.startPayoutWalletChange}
+        onCancel={() => {
+          walletManagement.changeModal.cancelPayoutWalletChange();
+          walletManagement.changeModal.close();
+        }}
       />
       <DeleteWalletModal deleteModal={walletManagement.deleteModal} />
       <ManageReposModal

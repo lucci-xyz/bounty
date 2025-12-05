@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useAccountModal, useConnectModal } from '@rainbow-me/rainbowkit';
 import { WalletIcon, CheckCircleIcon } from '@/ui/components/Icons';
@@ -15,17 +15,17 @@ export function ChangeWalletModal({
   isProcessing,
   onStartChange,
   updatedAddress,
-  isAwaitingWallet
+  isAwaitingWallet,
+  onCancel
 }) {
   const { address: connectedAddress, isConnected } = useAccount();
-  const { openConnectModal } = useConnectModal();
-  const { openAccountModal } = useAccountModal();
+  const { openConnectModal, connectModalOpen } = useConnectModal();
+  const { openAccountModal, accountModalOpen } = useAccountModal();
 
   const isSuccess = status?.type === 'success';
   const statusMessage = status?.message;
   const isActionDisabled =
     isProcessing ||
-    isAwaitingWallet ||
     (!openAccountModal && !openConnectModal);
 
   const formatAddress = (addr) => {
@@ -42,9 +42,14 @@ export function ChangeWalletModal({
   const handleWalletAction = useCallback(() => {
     if (!onStartChange) return;
 
-    const started = onStartChange(
-      () => {},
-      () => {}
+    const started = onStartChange?.(
+      () => {
+        onClose?.();
+      },
+      (err) => {
+        onCancel?.();
+        console.error('Payout wallet change failed:', err);
+      }
     );
 
     if (!started) {
@@ -60,7 +65,14 @@ export function ChangeWalletModal({
     } else {
       openConnectModal?.();
     }
-  }, [isConnected, onStartChange, openAccountModal, openConnectModal]);
+  }, [isConnected, onStartChange, openAccountModal, openConnectModal, onClose, onCancel]);
+
+  useEffect(() => {
+    if (!isAwaitingWallet) return;
+    if (isConnected) return;
+    if (connectModalOpen || accountModalOpen) return;
+    onCancel?.();
+  }, [accountModalOpen, connectModalOpen, isAwaitingWallet, isConnected, onCancel]);
 
   if (!isOpen) return null;
 
@@ -121,7 +133,7 @@ export function ChangeWalletModal({
             </button>
 
             <button
-              onClick={onClose}
+              onClick={onCancel}
               disabled={isProcessing}
               className="w-full mt-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
             >

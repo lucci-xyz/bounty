@@ -44,6 +44,7 @@ export function useWalletManagement({
     handleChangeWalletRef.current = null;
     callbacksRef.current = { onDone: null, onError: null };
     setIsAwaitingWallet(false);
+    setIsProcessingChange(false);
   }, []);
 
   const { address: connectedAddress, chain } = useAccount({
@@ -126,7 +127,6 @@ export function useWalletManagement({
     setShowChangeWalletModal(true);
     setUpdatedWalletAddress(null);
     setChangeWalletStatus(DEFAULT_STATUS);
-    setIsProcessingChange(false);
   }, [clearChangeFlow]);
 
   /**
@@ -137,8 +137,13 @@ export function useWalletManagement({
     clearChangeFlow();
     setShowChangeWalletModal(false);
     setUpdatedWalletAddress(null);
-    setChangeWalletStatus(DEFAULT_STATUS);
   }, [changeWalletStatus.type, clearChangeFlow, isProcessingChange]);
+
+  const cancelPayoutWalletChange = useCallback(() => {
+    clearChangeFlow();
+    setChangeWalletStatus(DEFAULT_STATUS);
+    setUpdatedWalletAddress(null);
+  }, [clearChangeFlow]);
 
   /**
    * Start the payout wallet change flow by waiting for RainbowKit to connect a wallet.
@@ -146,8 +151,10 @@ export function useWalletManagement({
    */
   const startPayoutWalletChange = useCallback(
     (onDone, onError) => {
-      if (isProcessingChange || isAwaitingWallet) {
-        return false;
+      if (isProcessingChange) return false;
+
+      if (isAwaitingWallet) {
+        clearChangeFlow();
       }
 
       setUpdatedWalletAddress(null);
@@ -303,7 +310,8 @@ export function useWalletManagement({
       isProcessing: isProcessingChange,
       isAwaitingWallet,
       updatedAddress: updatedWalletAddress,
-      startPayoutWalletChange
+      startPayoutWalletChange,
+      cancelPayoutWalletChange
     }
   };
 }
