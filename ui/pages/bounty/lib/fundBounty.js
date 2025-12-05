@@ -203,32 +203,18 @@ export async function fundBounty({
     showStatus(`Approving ${network.token.symbol}...`, 'loading');
     try {
       const approveTx = await token.approve(network.contracts.escrow, amountWei);
-      const approveReceipt = await approveTx.wait();
+      await approveTx.wait();
 
-      // Deterministic allowance confirmation:
-      // - Wait for at least one new block after the approval receipt
-      // - Re-check allowance; repeat up to 3 blocks
-      showStatus('Confirming approval...', 'loading');
-      const startBlock = approveReceipt.blockNumber;
-      let confirmed = false;
-
-      for (let i = 1; i <= 3; i++) {
-        await provider.waitForBlock(startBlock + i);
-        const newAllowance = await token.allowance(address, network.contracts.escrow);
-        if (newAllowance >= amountWei) {
-          confirmed = true;
-          break;
-        }
-      }
-
-      if (!confirmed) {
-        throw new Error('Approval confirmed on-chain, but allowance not reflected. Please try again.');
+      const newAllowance = await token.allowance(address, network.contracts.escrow);
+      if (newAllowance < amountWei) {
+        throw new Error('Approval transaction mined but allowance not updated. Please retry.');
       }
     } catch (approveError) {
       console.error('Approval error:', approveError);
-      const errorMsg = approveError.code === 'ACTION_REJECTED'
-        ? 'Transaction rejected by user'
-        : approveError.message?.substring(0, 100) || 'Transaction rejected or failed';
+      const errorMsg =
+        approveError.code === 'ACTION_REJECTED'
+          ? 'Transaction rejected by user'
+          : approveError.message?.substring(0, 120) || 'Transaction rejected or failed';
       throw new Error(`Failed to approve ${network.token.symbol}: ${errorMsg}`);
     }
   }

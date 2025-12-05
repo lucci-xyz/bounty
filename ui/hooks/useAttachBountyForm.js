@@ -175,6 +175,14 @@ export function useAttachBountyForm({ issueData }) {
           showError
         }
       });
+    } catch (error) {
+      console.error('Fund bounty error:', error);
+      const message = error?.message || 'Failed to fund bounty';
+      showStatus(message, 'error');
+      showError?.({
+        title: 'Funding failed',
+        message
+      });
     } finally {
       setIsProcessing(false);
     }
