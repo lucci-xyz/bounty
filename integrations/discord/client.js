@@ -59,11 +59,11 @@ export function formatBountyEmbed(bounty) {
   const descriptionLines = [
     `**${title || 'New bounty available'}**`,
     '',
-    `**Reward:** ${amount} ${tokenSymbol}`,
-    `**Network:** ${network}`,
-    `**Repository:** [${repoName}](https://github.com/${repoName})`,
-    `**Deadline:** ${deadlineDisplay}`,
-    `**Sponsor:** [@${createdByGithubUsername}](https://github.com/${createdByGithubUsername})`,
+    `💵 **Reward:** ${amount} ${tokenSymbol}`,
+    `🌐**Network:** ${network}`,
+    `📁 **Repository:** [${repoName}](https://github.com/${repoName})`,
+    `📅 **Deadline:** ${deadlineDisplay}`,
+    `👤 **Sponsor:** [@${createdByGithubUsername}](https://github.com/${createdByGithubUsername})`,
     '',
     `[View issue](${issueUrl})`
   ];
@@ -71,7 +71,7 @@ export function formatBountyEmbed(bounty) {
   return {
     embeds: [
       {
-        title: 'New bounty posted',
+        title: '💰 New Bounty Posted!',
         description: descriptionLines.join('\n'),
         color: 0x0ea5e9, // calmer blue accent
         url: issueUrl,
