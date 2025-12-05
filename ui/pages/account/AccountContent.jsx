@@ -46,7 +46,6 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
     beta,
     networkFees,
     allowlistModal,
-    wallet,
     logout,
     accountActions
   } = useAccountPage({ initialTab: initialTabOverride });
@@ -316,11 +315,11 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
       <ChangeWalletModal
         isOpen={walletManagement.changeModal.isOpen}
         onClose={walletManagement.changeModal.close}
-        connectedAddress={wallet.address}
-        isConnected={wallet.isConnected}
-        onConfirm={walletManagement.changeModal.handleChangeWallet}
-        onInitiateChange={walletManagement.changeModal.initiateWalletChange}
         status={walletManagement.changeModal.status}
+        isProcessing={walletManagement.changeModal.isProcessing}
+        updatedAddress={walletManagement.changeModal.updatedAddress}
+        isAwaitingWallet={walletManagement.changeModal.isAwaitingWallet}
+        onStartChange={walletManagement.changeModal.startPayoutWalletChange}
       />
       <DeleteWalletModal deleteModal={walletManagement.deleteModal} />
       <ManageReposModal
