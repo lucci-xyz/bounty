@@ -40,7 +40,11 @@ export async function GET() {
           chainId: network.chainId,
           escrowAddress: network.contracts.escrow,
           supports1559: network.supports1559,
-          token: { symbol: network.token.symbol, decimals: network.token.decimals },
+          token: {
+            address: network.token.address,
+            symbol: network.token.symbol,
+            decimals: network.token.decimals
+          },
           fees: {
             available: availableFees.toString(),
             availableFormatted: ethers.formatUnits(availableFees, network.token.decimals),
@@ -57,7 +61,11 @@ export async function GET() {
           chainId: network.chainId,
           escrowAddress: network.contracts.escrow,
           supports1559: network.supports1559,
-          token: { symbol: network.token.symbol, decimals: network.token.decimals },
+          token: {
+            address: network.token.address,
+            symbol: network.token.symbol,
+            decimals: network.token.decimals
+          },
           fees: null,
           error: error.message
         };

@@ -72,6 +72,7 @@ function ApplicationCard({ app, onApprove, onReject, isProcessing, showActions }
 
 /**
  * Network fee card with wallet-based withdrawal
+ * Shows per-token fees for multi-token escrow support.
  */
 function NetworkFeeCard({ network, onWithdraw, isWithdrawing, withdrawStatus, onClearStatus, wallet, onConnectWallet, showError }) {
   const [treasury, setTreasury] = useState('');
@@ -108,7 +109,14 @@ function NetworkFeeCard({ network, onWithdraw, isWithdrawing, withdrawStatus, on
             {network.escrowAddress.slice(0, 8)}...{network.escrowAddress.slice(-6)}
           </div>
         </div>
-        <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded">{network.token.symbol}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded">{network.token.symbol}</span>
+          {network.token.address && (
+            <span className="text-[10px] text-muted-foreground/70 font-mono hidden md:inline">
+              {network.token.address.slice(0, 6)}...{network.token.address.slice(-4)}
+            </span>
+          )}
+        </div>
       </div>
 
       {network.error ? (
@@ -117,26 +125,31 @@ function NetworkFeeCard({ network, onWithdraw, isWithdrawing, withdrawStatus, on
         <>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
-              <div className="text-xs text-muted-foreground mb-0.5">Available</div>
+              <div className="text-xs text-muted-foreground mb-0.5">
+                Available ({network.token.symbol})
+              </div>
               <div className="text-lg font-semibold text-foreground">
                 {parseFloat(network.fees.availableFormatted).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
               </div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground mb-0.5">Total Accrued</div>
+              <div className="text-xs text-muted-foreground mb-0.5">Total Accrued (all-time)</div>
               <div className="text-lg font-semibold text-muted-foreground">
                 {parseFloat(network.fees.totalAccruedFormatted).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
               </div>
             </div>
           </div>
-          <div className="text-xs text-muted-foreground mb-3">Fee rate: {(network.fees.feeBps / 100).toFixed(2)}%</div>
+          <div className="text-xs text-muted-foreground mb-3">
+            Fee rate: <span className="font-medium text-foreground">{(network.fees.feeBps / 100).toFixed(2)}%</span>
+            <span className="text-muted-foreground/60 ml-1">({network.fees.feeBps} bps, max 1000)</span>
+          </div>
 
           {withdrawStatus && <div className="mb-3"><StatusMessage status={withdrawStatus} onDismiss={() => onClearStatus?.(network.alias)} /></div>}
 
           {hasAvailableFees && !showWithdrawForm && (
             <button onClick={handleStartWithdraw} disabled={isWithdrawing} className="premium-btn w-full text-xs bg-primary text-primary-foreground py-2 flex items-center justify-center gap-2">
               {!wallet.isConnected && <WalletIcon size={14} />}
-              {wallet.isConnected ? 'Withdraw Fees' : 'Connect Wallet'}
+              {wallet.isConnected ? `Withdraw ${network.token.symbol} Fees` : 'Connect Wallet'}
             </button>
           )}
 
@@ -147,7 +160,7 @@ function NetworkFeeCard({ network, onWithdraw, isWithdrawing, withdrawStatus, on
                 <span className="font-mono text-foreground">{wallet.address?.slice(0, 6)}...{wallet.address?.slice(-4)}</span>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Treasury Address</label>
+                <label className="text-xs text-muted-foreground mb-1 block">Treasury Address (receives {network.token.symbol})</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -163,7 +176,7 @@ function NetworkFeeCard({ network, onWithdraw, isWithdrawing, withdrawStatus, on
               </div>
               {localError && <div className="text-xs text-destructive">{localError}</div>}
               <div className="text-xs text-amber-500/80 bg-amber-500/10 rounded p-2">
-                ⚠️ Connected wallet must be the contract owner.
+                ⚠️ Connected wallet must be the contract owner. Withdraws {network.fees.availableFormatted} {network.token.symbol}.
               </div>
               <div className="flex gap-2">
                 <button onClick={handleWithdraw} disabled={isWithdrawing} className="premium-btn flex-1 text-xs bg-primary text-primary-foreground py-2 disabled:opacity-50">
@@ -175,7 +188,7 @@ function NetworkFeeCard({ network, onWithdraw, isWithdrawing, withdrawStatus, on
               </div>
             </div>
           )}
-          {!hasAvailableFees && <div className="text-xs text-muted-foreground text-center py-2">No fees available</div>}
+          {!hasAvailableFees && <div className="text-xs text-muted-foreground text-center py-2">No fees available for {network.token.symbol}</div>}
         </>
       ) : (
         <div className="text-xs text-muted-foreground">Loading...</div>
@@ -285,7 +298,10 @@ export function AdminTab({ betaApplications, betaLoading, betaError, handleRevie
       {/* Protocol Fees */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-foreground">Protocol Fees</h2>
+          <div>
+            <h2 className="text-lg font-medium text-foreground">Protocol Fees</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Per-token fees across all networks</p>
+          </div>
           {wallet.isConnected ? (
             <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
               <div className="w-2 h-2 rounded-full bg-primary" />
@@ -298,6 +314,35 @@ export function AdminTab({ betaApplications, betaLoading, betaError, handleRevie
             </button>
           )}
         </div>
+
+        {/* Admin info box */}
+        <div className="mb-4 text-xs bg-muted/30 border border-border/40 rounded-lg p-3 space-y-1.5">
+          <div className="flex items-start gap-2">
+            <span className="text-primary">ℹ️</span>
+            <div>
+              <p className="text-muted-foreground">
+                <span className="font-medium text-foreground">Multi-token support:</span> Fees are tracked per-token. The escrow stores <code className="bg-muted px-1 rounded">totalEscrowedByToken[token]</code> and <code className="bg-muted px-1 rounded">availableFees(token)</code> returns withdrawable fees for each token.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-amber-500">⏸️</span>
+            <div>
+              <p className="text-muted-foreground">
+                <span className="font-medium text-foreground">Pausing:</span> When paused, user flows (create/fund/resolve/refund) are blocked. Admin actions (withdraw fees, rescue tokens, sweep native) remain callable.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-muted-foreground">🔄</span>
+            <div>
+              <p className="text-muted-foreground">
+                <span className="font-medium text-foreground">Statuses:</span> None, Open, Resolved, Refunded. No cancel function exists; sponsors can only refund after the deadline passes.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {feesError && <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{feesError}</div>}
         {feesLoading ? (
           <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>

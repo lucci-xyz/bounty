@@ -32,15 +32,39 @@ Testnets fall back to the curated defaults above; mainnets must be fully configu
 - `/api/resolver?network=ALIAS` derives the resolver address from configured wallets; `/api/tokens` returns token metadata derived from the registry.
 
 ## Escrow ABI surface (summary, upgradeable version)
-- `initialize(address primaryToken_, uint16 feeBps, address initialOwner)`
-- `createBounty(address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount)`
-- `createBountyWithToken(address token, address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount)`
-- `resolve(bytes32 bountyId, address recipient)`
-- `refundExpired(bytes32 bountyId)`
+
+### Core functions
+- `initialize(address primaryToken_, uint16 feeBps, address initialOwner)` — proxy initialization
+- `createBounty(address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount)` — uses primary token
+- `createBountyWithToken(address token, address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount)` — any allowed token
+- `fund(bytes32 bountyId, uint256 amount)` — add to existing bounty
+- `resolve(bytes32 bountyId, address recipient)` — pays claimer (before/at deadline)
+- `refundExpired(bytes32 bountyId)` — returns funds to sponsor (after deadline only)
+
+### Reads
 - `getBounty(bytes32 bountyId)` → tuple (`repoIdHash`, `sponsor`, `resolver`, `token`, `amount`, `deadline`, `issueNumber`, `status`)
 - `computeBountyId(address sponsor, bytes32 repoIdHash, uint64 issueNumber)`
-- Fees: `availableFees(address token)`, `withdrawFees(address token, address to, uint256 amount)`, `feeBps()`, `totalFeesAccrued()`
-- Status enum: `None, Open, Resolved, Refunded` (no cancel flow).
+- `primaryToken()`, `usdc()`, `usdcDecimals()` — legacy compatibility getters
+
+### Multi-token fees
+- `availableFees(address token)` — withdrawable fee balance for the given token
+- `withdrawFees(address token, address to, uint256 amount)` — owner-only, withdraw to treasury
+- `feeBps()` — current fee rate in basis points (max 1000 = 10%)
+- `setFeeBps(uint16 newFeeBps)` — owner-only
+- `totalFeesAccrued()` — cumulative all-time fees (informational)
+- `totalEscrowedByToken(address token)` — locked escrow per token (internal tracking)
+
+### Token allowlist
+- `allowedTokens(address token)` — returns true if token is allowed
+- `setAllowedToken(address token, bool allowed)` — owner-only
+
+### Status enum
+`None = 0`, `Open = 1`, `Resolved = 2`, `Refunded = 3` — **no cancel**.
+
+### Pausing
+- `pause()`, `unpause()` — owner-only
+- When paused: `createBounty`, `createBountyWithToken`, `fund`, `resolve`, `refundExpired` are blocked.
+- When paused: `withdrawFees`, `rescueToken`, `sweepNative` remain callable (admin can always withdraw).
 
 Use `server/blockchain/contract.js` helpers for all contract interactions; they handle non-1559 networks and registry lookups for you.
 

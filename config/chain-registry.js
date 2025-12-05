@@ -101,11 +101,14 @@ const ESCROW_ABI_BASE = [
   'function initialize(address primaryToken_, uint16 _feeBps, address initialOwner) external',
   'function createBounty(address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) external returns (bytes32)',
   'function createBountyWithToken(address token, address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) external returns (bytes32)',
+  'function fund(bytes32 bountyId, uint256 amount) external',
   'function resolve(bytes32 bountyId, address recipient) external',
   'function getBounty(bytes32 bountyId) external view returns (tuple(bytes32 repoIdHash, address sponsor, address resolver, address token, uint96 amount, uint64 deadline, uint64 issueNumber, uint8 status))',
   'function computeBountyId(address sponsor, bytes32 repoIdHash, uint64 issueNumber) external pure returns (bytes32)',
+  'function paused() external view returns (bool)',
   'event Resolved(bytes32 indexed bountyId, address indexed recipient, uint256 net, uint256 fee)',
-  'event BountyCreated(bytes32 indexed bountyId, address indexed sponsor, bytes32 indexed repoIdHash, uint64 issueNumber, uint64 deadline, address resolver, uint256 amount)'
+  'event BountyCreated(bytes32 indexed bountyId, address indexed sponsor, bytes32 indexed repoIdHash, uint64 issueNumber, uint64 deadline, address resolver, uint256 amount)',
+  'event Funded(bytes32 indexed bountyId, address indexed sponsor, uint256 amount)'
 ];
 
 // Ensure refund flow fragments are always present (was missing in a prior ABI)
@@ -118,9 +121,21 @@ const ESCROW_REFUND_FRAGMENTS = [
 const ESCROW_FEE_FRAGMENTS = [
   'function availableFees(address token) external view returns (uint256)',
   'function totalFeesAccrued() external view returns (uint256)',
+  'function totalEscrowedByToken(address token) external view returns (uint256)',
   'function feeBps() external view returns (uint16)',
+  'function setFeeBps(uint16 newFeeBps) external',
   'function withdrawFees(address token, address to, uint256 amount) external',
-  'function owner() external view returns (address)'
+  'function owner() external view returns (address)',
+  // Token allowlist
+  'function allowedTokens(address token) external view returns (bool)',
+  'function setAllowedToken(address token, bool allowed) external',
+  'function primaryToken() external view returns (address)',
+  // Pausing
+  'function pause() external',
+  'function unpause() external',
+  // Rescue
+  'function rescueToken(address token, address to, uint256 amount) external',
+  'function sweepNative(address to) external'
 ];
 
 export const ABIS = {
