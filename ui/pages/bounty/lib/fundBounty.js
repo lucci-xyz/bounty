@@ -344,6 +344,8 @@ export async function fundBounty({
   let receipt;
   try {
     let tx;
+    // Fixed gas limit used only for fallback when estimation fails on some RPCs
+    const fallbackGasLimit = 260000;
     if (!network.supports1559) {
       // Legacy gas mode for certain networks
       const feeData = await provider.getFeeData();
@@ -383,30 +385,55 @@ export async function fundBounty({
       tx = await signer.sendTransaction(txRequest);
     } else {
       // EIP-1559 path
-      if (isPrimaryToken) {
-        tx = await escrow.createBounty(
-          resolverAddress,
-          repoIdHash,
-          parseInt(issueNumber, 10),
-          deadlineTimestamp,
-          amountWei
-        );
-      } else {
-        tx = await escrow.createBountyWithToken(
+      const sendCreate = async (overrides = {}) => {
+        if (isPrimaryToken) {
+          return escrow.createBounty(
+            resolverAddress,
+            repoIdHash,
+            parseInt(issueNumber, 10),
+            deadlineTimestamp,
+            amountWei,
+            overrides
+          );
+        }
+        return escrow.createBountyWithToken(
           selectedToken.address,
           resolverAddress,
           repoIdHash,
           parseInt(issueNumber, 10),
           deadlineTimestamp,
-          amountWei
+          amountWei,
+          overrides
         );
+      };
+
+      try {
+        tx = await sendCreate();
+      } catch (primaryError) {
+        // Some wallet RPCs fail gas estimation with "missing revert data".
+        // Retry with a fixed gas limit to avoid false-negative simulation failures.
+        const message = primaryError?.message || '';
+        const isMissingRevertData =
+          primaryError?.code === 'CALL_EXCEPTION' &&
+          !primaryError?.data &&
+          message.toLowerCase().includes('missing revert data');
+
+        if (!isMissingRevertData) {
+          throw primaryError;
+        }
+
+        console.warn('Gas estimation failed, retrying with fixed gas limit', fallbackGasLimit, primaryError);
+        tx = await sendCreate({ gasLimit: fallbackGasLimit });
       }
     }
 
     receipt = await tx.wait();
   } catch (contractError) {
     console.error('Contract call error:', contractError);
-    throw new Error(`Contract call failed: ${mapContractError(contractError)}`);
+    const msg = mapContractError(contractError);
+    throw new Error(
+      `Contract call failed: ${msg}. If this persists, ensure you're on Base Mainnet, have ETH for gas, and retry.`
+    );
   }
 
   // Record the bounty in the backend database
