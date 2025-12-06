@@ -14,7 +14,7 @@ export function SettingsTab({
   githubUser,
   profile,
   onManageRepos,
-  openChangeWalletModal,
+  onChangeWallet,
   openDeleteWalletModal,
   logout,
   refreshProfile
@@ -25,6 +25,8 @@ export function SettingsTab({
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  const currentPayoutWallet = profile?.wallet?.walletAddress;
 
   const isValidEmail = (value) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -51,6 +53,11 @@ export function SettingsTab({
     } finally {
       setStatus('idle');
     }
+  };
+
+  const formatAddress = (addr) => {
+    if (!addr) return '';
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
   return (
@@ -91,18 +98,15 @@ export function SettingsTab({
         </h3>
         {profile?.wallet ? (
           <div>
-            <div className="mb-1 text-xs text-muted-foreground uppercase tracking-wider">
-              Address
-            </div>
             <div className="mb-1 break-all font-mono text-sm text-foreground bg-secondary rounded-lg px-3 py-2">
-              {profile.wallet.walletAddress.slice(0, 8)}...{profile.wallet.walletAddress.slice(-6)}
+              {formatAddress(currentPayoutWallet)}
             </div>
             <div className="mb-3 text-xs text-muted-foreground">
               Linked {new Date(profile.wallet.verifiedAt).toLocaleDateString()}
             </div>
             <div className="flex gap-2">
               <button
-                onClick={openChangeWalletModal}
+                onClick={onChangeWallet}
                 className="px-3 py-1.5 rounded-full border border-border text-xs text-foreground hover:bg-secondary transition-colors"
               >
                 Change

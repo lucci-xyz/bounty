@@ -79,7 +79,7 @@ export function SponsoredTab({
     }
 
     // 2. Status Filter - use lifecycle.state from API
-    // States: open, expired, resolved, refunded, canceled
+    // States: open, expired, resolved, refunded (no cancel in new contract)
     if (statusFilter !== "all") {
       result = result.filter((bounty) => {
         const state = bounty.lifecycle?.state || "open";
@@ -265,7 +265,6 @@ export function SponsoredTab({
                     <option value="expired">Expired</option>
                     <option value="resolved">Resolved</option>
                     <option value="refunded">Refunded</option>
-                    <option value="canceled">Canceled</option>
                   </select>
                 </div>
 
@@ -362,7 +361,6 @@ export function SponsoredTab({
                   const isTerminal = [
                     "resolved",
                     "refunded",
-                    "canceled",
                   ].includes(lifecycleState);
                   const isExpired =
                     bounty.isExpired || lifecycleState === "expired";

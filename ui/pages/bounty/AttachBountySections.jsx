@@ -113,7 +113,7 @@ export function WalletSummaryCard({ wallet, network }) {
       </div>
       <div className="flex items-center justify-between text-foreground mt-2">
         <span>Network</span>
-        <span className="font-medium">{wallet.chain?.name || network?.name} ({network?.token.symbol})</span>
+        <span className="font-medium">{wallet.chain?.name || network?.name}</span>
       </div>
     </div>
   );

@@ -263,9 +263,9 @@
   transform: none;
 }
 
-/* Form styles for other pages */
-input,
-select {
+/* Form styles for legacy pages only - scoped to avoid overriding Tailwind */
+.legacy-form input,
+.legacy-form select {
   width: 100%;
   padding: 14px 16px;
   border: 1px solid var(--color-border);
@@ -277,8 +277,8 @@ select {
   color: var(--color-text-primary);
 }
 
-input:focus,
-select:focus {
+.legacy-form input:focus,
+.legacy-form select:focus {
   outline: none;
   border-color: var(--color-primary);
 }

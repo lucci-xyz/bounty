@@ -37,6 +37,7 @@ function SignInContent() {
   const [isMounted, setIsMounted] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(false);
   const [hasLinkedWallet, setHasLinkedWallet] = useState(false);
+  const [linkedWalletAddress, setLinkedWalletAddress] = useState(null); // The actual payout wallet from DB
   const [hasVerifiedEmail, setHasVerifiedEmail] = useState(false);
   const [userEmail, setUserEmail] = useState(null); // Store the actual email value
   const [profileCreated, setProfileCreated] = useState(false);
@@ -57,8 +58,13 @@ function SignInContent() {
   const [redirecting, setRedirecting] = useState(false);
   const redirectTimerRef = useRef(null);
   
+  // Track mount count to force profile re-check on each page visit
+  const [mountKey, setMountKey] = useState(0);
+  
   useEffect(() => {
     setIsMounted(true);
+    // Increment mount key to trigger profile re-fetch on navigation
+    setMountKey(prev => prev + 1);
     
     // Cleanup redirect timer on unmount
     return () => {
@@ -69,15 +75,21 @@ function SignInContent() {
   }, []);
   
   // Check user's profile when GitHub user is available
+  // Runs on mount AND when githubId changes to always get fresh data
   useEffect(() => {
     if (!githubUser) return;
-    if (checkingProfile) return;
     
     let cancelled = false;
     
     const checkProfile = async () => {
+      // Reset state before fetching to ensure fresh data
       setCheckingProfile(true);
       setProfileError(null);
+      setHasLinkedWallet(false);
+      setLinkedWalletAddress(null);
+      setHasVerifiedEmail(false);
+      setUserEmail(null);
+      setShowWelcomeBack(false);
       
       // Add timeout to prevent hanging
       const timeoutId = setTimeout(() => {
@@ -88,6 +100,7 @@ function SignInContent() {
       }, 5000);
       
       try {
+        // Add cache-busting param to ensure fresh data
         const profile = await getUserProfile();
         clearTimeout(timeoutId);
         if (cancelled) return;
@@ -98,8 +111,10 @@ function SignInContent() {
         
         if (hasWallet) {
           setHasLinkedWallet(true);
+          setLinkedWalletAddress(walletAddress);
           setCurrentStep(3);
         } else {
+          setLinkedWalletAddress(null);
           setCurrentStep(2);
         }
         
@@ -136,7 +151,7 @@ function SignInContent() {
     return () => {
       cancelled = true;
     };
-  }, [githubUser?.githubId]);
+  }, [githubUser?.githubId, mountKey]);
   
   // Handle "Welcome back" auto-redirect with animation
   useEffect(() => {
@@ -225,6 +240,7 @@ function SignInContent() {
       
       setProfileCreated(true);
       setHasLinkedWallet(true);
+      setLinkedWalletAddress(address);
       setCurrentStep(3);
       setStatus({ message: 'Wallet linked successfully!', type: 'success' });
       
@@ -290,8 +306,9 @@ function SignInContent() {
     window.location.href = returnTo;
   };
   
-  // Calculate short address early so it's available in early returns
-  const shortAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '';
+  // Calculate short address for display - prefer linked wallet from DB, fallback to connected wallet
+  const displayAddress = linkedWalletAddress || address;
+  const shortAddress = displayAddress ? `${displayAddress.slice(0, 6)}...${displayAddress.slice(-4)}` : '';
   
   // Loading state - only show during initial mount
   if (!isMounted) {

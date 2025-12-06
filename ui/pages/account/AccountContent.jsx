@@ -46,7 +46,6 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
     beta,
     networkFees,
     allowlistModal,
-    wallet,
     logout,
     accountActions
   } = useAccountPage({ initialTab: initialTabOverride });
@@ -289,7 +288,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                   githubUser={githubUser}
                   profile={profile.data}
                   onManageRepos={repoManager.handleManageRepos}
-                  openChangeWalletModal={walletManagement.changeModal.open}
+                  onChangeWallet={walletManagement.changeModal.open}
                   openDeleteWalletModal={walletManagement.deleteModal.open}
                   logout={logout}
                   refreshProfile={accountActions.refreshProfile}
@@ -314,9 +313,18 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
 
       {/* Modals */}
       <ChangeWalletModal
-        changeModal={walletManagement.changeModal}
-        isConnected={wallet.isConnected}
-        address={wallet.address}
+        isOpen={walletManagement.changeModal.isOpen}
+        onClose={walletManagement.changeModal.close}
+        status={walletManagement.changeModal.status}
+        isProcessing={walletManagement.changeModal.isProcessing}
+        updatedAddress={walletManagement.changeModal.updatedAddress}
+        isAwaitingWallet={walletManagement.changeModal.isAwaitingWallet}
+        initialAddress={walletManagement.changeModal.awaitingInitialAddress}
+        onStartChange={walletManagement.changeModal.startPayoutWalletChange}
+        onCancel={() => {
+          walletManagement.changeModal.cancelPayoutWalletChange();
+          walletManagement.changeModal.close();
+        }}
       />
       <DeleteWalletModal deleteModal={walletManagement.deleteModal} />
       <ManageReposModal

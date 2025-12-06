@@ -60,7 +60,7 @@ export function NetworkProvider({ children }) {
           const envResponse = await fetch('/api/network/env', { credentials: 'include' });
           if (envResponse.ok) {
             const envData = await envResponse.json();
-            resolvedGroup = envData?.env === 'mainnet' ? 'mainnet' : 'testnet';
+            resolvedGroup = envData?.env === 'testnet' ? 'testnet' : 'mainnet';
           }
         } catch (envError) {
           logger.warn('Unable to fetch network env:', envError);

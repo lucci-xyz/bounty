@@ -552,11 +552,11 @@ function FAQSection() {
     },
     {
       question: "What happens if work isn't completed?",
-      answer: 'If the bounty deadline passes without a merged PR, sponsors can claim a full refund of their funds from the escrow contract.'
+      answer: 'If the bounty deadline passes without a merged PR, sponsors can request a refund from the escrow contract.'
     },
     {
       question: 'Are there any fees?',
-      answer: 'BountyPay takes a 1% platform fee on successful bounty completions. There are no fees for posting bounties or if work is not completed.'
+      answer: 'BountyPay charges a small platform fee when you fund a bounty. Contributors receive the full bounty amount.'
     },
   ];
 

@@ -33,6 +33,7 @@ function mapContractError(error) {
  * @param {Object} params.network - Network config (chainId, contracts, token, supports1559)
  * @param {string} params.treasury - Recipient address for withdrawn fees
  * @param {string} [params.amount='0'] - Amount in wei (0 = withdraw all available)
+ * @param {string} [params.tokenAddress] - Token address to withdraw fees for (defaults to network.token.address)
  * @param {Object} params.walletContext - Wagmi wallet state (address, isConnected, chain, walletClient)
  * @param {Function} params.switchChain - Chain switching function from useSwitchChain
  * @param {Function} [params.onStatusChange] - Callback for UI status updates
@@ -43,6 +44,7 @@ export async function withdrawFees({
   network,
   treasury,
   amount = '0',
+  tokenAddress: tokenAddressOverride,
   walletContext,
   switchChain,
   onStatusChange
@@ -107,27 +109,35 @@ export async function withdrawFees({
     );
   }
 
-  // Check available fees
+  // Check available fees (new ABI: availableFees(token))
   updateStatus('Checking available fees...');
-  const availableFees = await escrowContract.availableFees();
-  if (availableFees === 0n) throw new Error('No fees available to withdraw');
+  const tokenAddress = tokenAddressOverride || network.token.address;
+  if (!tokenAddress) throw new Error('Token address not configured for this network');
+  
+  // Find token info (for symbol/decimals)
+  const allTokens = [network.token, ...(network.additionalTokens || [])];
+  const tokenInfo = allTokens.find(t => t.address.toLowerCase() === tokenAddress.toLowerCase()) || network.token;
+
+  const availableFeesAmount = await escrowContract.availableFees(tokenAddress);
+  if (availableFeesAmount === 0n) throw new Error('No fees available to withdraw');
 
   const withdrawAmount = BigInt(amount);
-  if (withdrawAmount > 0n && withdrawAmount > availableFees) {
-    const available = ethers.formatUnits(availableFees, network.token.decimals);
-    throw new Error(`Insufficient fees. Available: ${available} ${network.token.symbol}`);
+  if (withdrawAmount > 0n && withdrawAmount > availableFeesAmount) {
+    const available = ethers.formatUnits(availableFeesAmount, tokenInfo.decimals);
+    throw new Error(`Insufficient fees. Available: ${available} ${tokenInfo.symbol}`);
   }
 
-  const actualAmount = withdrawAmount === 0n ? availableFees : withdrawAmount;
-  const formattedAmount = ethers.formatUnits(actualAmount, network.token.decimals);
+  const actualAmount = withdrawAmount === 0n ? availableFeesAmount : withdrawAmount;
+  const formattedAmount = ethers.formatUnits(actualAmount, tokenInfo.decimals);
 
   // Execute withdrawal
-  updateStatus(`Withdrawing ${formattedAmount} ${network.token.symbol}...`);
+  updateStatus(`Withdrawing ${formattedAmount} ${tokenInfo.symbol}...`);
   logger.info('Initiating fee withdrawal:', { network: network.alias, amount: actualAmount.toString(), treasury });
 
   let receipt;
   try {
     let tx;
+    // New ABI: withdrawFees(token, to, amount)
     if (!network.supports1559) {
       // Legacy transaction for non-EIP-1559 networks (e.g., Mezo)
       const feeData = await provider.getFeeData();
@@ -138,7 +148,7 @@ export async function withdrawFees({
       tx = await signer.sendTransaction({
         to: network.contracts.escrow,
         from: address,
-        data: escrowContract.interface.encodeFunctionData('withdrawFees', [treasury, withdrawAmount]),
+        data: escrowContract.interface.encodeFunctionData('withdrawFees', [tokenAddress, treasury, withdrawAmount]),
         type: 0,
         gasPrice,
         gasLimit: 100000,
@@ -146,7 +156,7 @@ export async function withdrawFees({
         value: 0
       });
     } else {
-      tx = await escrowContract.withdrawFees(treasury, withdrawAmount);
+      tx = await escrowContract.withdrawFees(tokenAddress, treasury, withdrawAmount);
     }
 
     updateStatus('Waiting for confirmation...');
@@ -157,7 +167,7 @@ export async function withdrawFees({
   }
 
   logger.info('Fee withdrawal complete:', { txHash: receipt.hash, amount: actualAmount.toString() });
-  updateStatus(`Withdrawn ${formattedAmount} ${network.token.symbol}!`, 'success');
+  updateStatus(`Withdrawn ${formattedAmount} ${tokenInfo.symbol}!`, 'success');
 
   return {
     success: true,
@@ -166,6 +176,8 @@ export async function withdrawFees({
     amount: actualAmount.toString(),
     formattedAmount,
     treasury,
-    network: { alias: network.alias, name: network.name, tokenSymbol: network.token.symbol }
+    tokenAddress,
+    tokenSymbol: tokenInfo.symbol,
+    network: { alias: network.alias, name: network.name, tokenSymbol: tokenInfo.symbol }
   };
 }

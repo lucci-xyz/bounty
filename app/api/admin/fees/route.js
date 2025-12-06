@@ -6,7 +6,7 @@ import { requireAdmin } from '@/server/auth/admin';
 
 /**
  * GET /api/admin/fees
- * Returns protocol fee balances for all configured networks.
+ * Returns protocol fee balances for all configured networks and all tokens.
  * Admin-only endpoint - requires authenticated admin session.
  */
 export async function GET() {
@@ -27,11 +27,44 @@ export async function GET() {
         const provider = new ethers.JsonRpcProvider(network.rpcUrl);
         const escrow = new ethers.Contract(network.contracts.escrow, ABIS.escrow, provider);
 
-        const [availableFees, totalFeesAccrued, feeBps] = await Promise.all([
-          escrow.availableFees(),
+        // Get fee rate and total accrued (shared across all tokens)
+        const [totalFeesAccrued, feeBps, owner] = await Promise.all([
           escrow.totalFeesAccrued(),
-          escrow.feeBps()
+          escrow.feeBps(),
+          escrow.owner()
         ]);
+
+        // Collect all tokens (primary + additional)
+        const allTokens = [
+          network.token,
+          ...(network.additionalTokens || [])
+        ];
+
+        // Fetch available fees for each token
+        const tokenFees = await Promise.all(
+          allTokens.map(async (token) => {
+            try {
+              const availableFees = await escrow.availableFees(token.address);
+              return {
+                address: token.address,
+                symbol: token.symbol,
+                decimals: token.decimals,
+                available: availableFees.toString(),
+                availableFormatted: ethers.formatUnits(availableFees, token.decimals),
+              };
+            } catch (err) {
+              logger.warn(`Failed to fetch fees for ${token.symbol} on ${alias}:`, err.message);
+              return {
+                address: token.address,
+                symbol: token.symbol,
+                decimals: token.decimals,
+                available: '0',
+                availableFormatted: '0',
+                error: err.message
+              };
+            }
+          })
+        );
 
         return {
           alias,
@@ -39,13 +72,12 @@ export async function GET() {
           chainId: network.chainId,
           escrowAddress: network.contracts.escrow,
           supports1559: network.supports1559,
-          token: { symbol: network.token.symbol, decimals: network.token.decimals },
+          owner,
           fees: {
-            available: availableFees.toString(),
-            availableFormatted: ethers.formatUnits(availableFees, network.token.decimals),
             totalAccrued: totalFeesAccrued.toString(),
             totalAccruedFormatted: ethers.formatUnits(totalFeesAccrued, network.token.decimals),
-            feeBps: Number(feeBps)
+            feeBps: Number(feeBps),
+            tokens: tokenFees
           }
         };
       } catch (error) {
@@ -56,7 +88,6 @@ export async function GET() {
           chainId: network.chainId,
           escrowAddress: network.contracts.escrow,
           supports1559: network.supports1559,
-          token: { symbol: network.token.symbol, decimals: network.token.decimals },
           fees: null,
           error: error.message
         };

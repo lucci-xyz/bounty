@@ -2,6 +2,7 @@ import { renderCommentHeader, renderLink } from '../shared';
 
 /**
  * Comment posted when a new bounty is created on an issue.
+ * Shows the bounty amount (what the claimer receives) without fee breakdown.
  */
 export function renderBountyCreatedComment({
   iconUrl,

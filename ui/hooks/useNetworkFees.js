@@ -58,9 +58,13 @@ export function useNetworkFees({ enabled = true, onUnauthorized } = {}) {
   }, [fetchFees, enabled]);
 
   /**
-   * Withdraw fees from a network. Requires connected wallet to be contract owner.
+   * Withdraw fees from a network for a specific token. Requires connected wallet to be contract owner.
+   * @param {string} alias - Network alias
+   * @param {string} treasury - Recipient address
+   * @param {string} amount - Amount in wei (0 = withdraw all)
+   * @param {string} [tokenAddress] - Token address (defaults to primary token)
    */
-  const withdraw = useCallback(async (alias, treasury, amount = '0') => {
+  const withdraw = useCallback(async (alias, treasury, amount = '0', tokenAddress) => {
     if (!enabled) throw new Error('Admin access required');
     if (!isConnected || !address) throw new Error('Please connect your wallet');
     if (!walletClient) throw new Error('Wallet not available. Please reconnect.');
@@ -68,13 +72,18 @@ export function useNetworkFees({ enabled = true, onUnauthorized } = {}) {
     const network = networks.find(n => n.alias === alias);
     if (!network) throw new Error(`Network ${alias} not found`);
 
+    // Find all tokens for this network from the fees response
+    const allTokens = network.fees?.tokens || [];
+    const primaryToken = allTokens[0] || { address: tokenAddress, symbol: 'TOKEN', decimals: 6 };
+    
     // Build full network config for the withdrawal utility
     const networkConfig = {
       alias: network.alias,
       name: network.name,
       chainId: network.chainId,
       contracts: { escrow: network.escrowAddress },
-      token: network.token,
+      token: primaryToken,
+      additionalTokens: allTokens.slice(1),
       supports1559: network.supports1559 !== false
     };
 
@@ -86,6 +95,7 @@ export function useNetworkFees({ enabled = true, onUnauthorized } = {}) {
         network: networkConfig,
         treasury,
         amount,
+        tokenAddress,
         walletContext: { address, isConnected, chain, walletClient },
         switchChain: switchChainAsync,
         onStatusChange: status => setWithdrawStatus(prev => ({ ...prev, [alias]: status }))
@@ -108,13 +118,15 @@ export function useNetworkFees({ enabled = true, onUnauthorized } = {}) {
     });
   }, []);
 
-  // Aggregate totals
+  // Aggregate totals across all tokens
   const totals = networks.reduce((acc, n) => {
     if (n.fees) {
-      const available = parseFloat(n.fees.availableFormatted || '0');
-      acc.totalAvailable += available;
+      // Sum up available fees from all tokens
+      const tokens = n.fees.tokens || [];
+      const totalAvailableForNetwork = tokens.reduce((sum, t) => sum + parseFloat(t.availableFormatted || '0'), 0);
+      acc.totalAvailable += totalAvailableForNetwork;
       acc.totalAccrued += parseFloat(n.fees.totalAccruedFormatted || '0');
-      acc.networksWithFees += available > 0 ? 1 : 0;
+      acc.networksWithFees += totalAvailableForNetwork > 0 ? 1 : 0;
     }
     return acc;
   }, { totalAvailable: 0, totalAccrued: 0, networksWithFees: 0 });

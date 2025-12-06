@@ -104,6 +104,8 @@ export async function fundBounty({
   issueData,
   walletContext,
   networkContext,
+  token: tokenOverride,
+  feeBps: feeBpsOverride,
   callbacks
 }) {
   const {
@@ -123,6 +125,10 @@ export async function fundBounty({
     setSelectedAlias,
     supportedNetworks
   } = networkContext;
+
+  // Use passed token or fall back to network's primary token
+  const selectedToken = tokenOverride || network.token;
+  const isPrimaryToken = selectedToken.address.toLowerCase() === network.token.address.toLowerCase();
 
   const { showStatus, showError } = callbacks;
   const { repoFullName, issueNumber, repoId, installationId } = issueData;
@@ -177,12 +183,36 @@ export async function fundBounty({
   const currentBlock = await provider.getBlock('latest');
   const blockTimestamp = Number(currentBlock.timestamp);
   const deadlineTimestamp = ensureDeadline(deadline, blockTimestamp);
-  const amountWei = ethers.parseUnits(amount, network.token.decimals);
+  const amountWei = ethers.parseUnits(amount, selectedToken.decimals);
+
+  // Determine platform fee (bps) and total required (amount + fee)
+  let escrowFeeBps = typeof feeBpsOverride === 'number' ? feeBpsOverride : null;
+  try {
+    if (escrowFeeBps === null || Number.isNaN(escrowFeeBps)) {
+      const feeReader = new ethers.Contract(
+        network.contracts.escrow,
+        ['function feeBps() view returns (uint16)'],
+        signer
+      );
+      escrowFeeBps = Number(await feeReader.feeBps());
+    }
+  } catch (feeError) {
+    console.warn('Failed to read feeBps from contract, defaulting to 1%', feeError);
+    escrowFeeBps = 100; // fall back to 1%
+  }
+
+  const feeWei = (amountWei * BigInt(escrowFeeBps)) / 10000n;
+  const totalRequiredWei = amountWei + feeWei;
+  const formattedFee = ethers.formatUnits(feeWei, selectedToken.decimals);
+  const formattedTotal = ethers.formatUnits(totalRequiredWei, selectedToken.decimals);
 
   // Check balance and approve escrow contract if needed
-  showStatus(`Checking ${network.token.symbol} balance...`, 'loading');
-  const token = new ethers.Contract(
-    network.token.address,
+  showStatus(
+    `Checking ${selectedToken.symbol} balance (need ${formattedTotal} incl. fee)...`,
+    'loading'
+  );
+  const tokenContract = new ethers.Contract(
+    selectedToken.address,
     [
       'function balanceOf(address) view returns (uint256)',
       'function approve(address spender, uint256 amount) external returns (bool)',
@@ -191,25 +221,34 @@ export async function fundBounty({
     signer
   );
 
-  const balance = await token.balanceOf(address);
-  if (balance < amountWei) {
-    const formattedBalance = ethers.formatUnits(balance, network.token.decimals);
-    const formattedRequired = ethers.formatUnits(amountWei, network.token.decimals);
-    throw new Error(`Insufficient ${network.token.symbol} balance. You have ${formattedBalance} ${network.token.symbol}, but need ${formattedRequired}.`);
+  const balance = await tokenContract.balanceOf(address);
+  if (balance < totalRequiredWei) {
+    const formattedBalance = ethers.formatUnits(balance, selectedToken.decimals);
+    const formattedRequired = ethers.formatUnits(totalRequiredWei, selectedToken.decimals);
+    throw new Error(
+      `Insufficient ${selectedToken.symbol} balance. You have ${formattedBalance} ${selectedToken.symbol}, but need ${formattedRequired} (includes platform fee).`
+    );
   }
 
-  const currentAllowance = await token.allowance(address, network.contracts.escrow);
-  if (currentAllowance < amountWei) {
-    showStatus(`Approving ${network.token.symbol}...`, 'loading');
+  // Check current allowance and approve if needed (standard ERC20 pattern)
+  const currentAllowance = await tokenContract.allowance(address, network.contracts.escrow);
+  if (currentAllowance < totalRequiredWei) {
+    showStatus(
+      `Approving ${selectedToken.symbol} (covering ${formattedTotal} incl. fee)...`,
+      'loading'
+    );
     try {
-      const approveTx = await token.approve(network.contracts.escrow, amountWei);
+      const approveTx = await tokenContract.approve(network.contracts.escrow, totalRequiredWei);
       await approveTx.wait();
+      // Approval confirmed - proceed directly to funding without re-checking allowance
+      // The funding tx will be the source of truth if something went wrong
     } catch (approveError) {
       console.error('Approval error:', approveError);
-      const errorMsg = approveError.code === 'ACTION_REJECTED'
-        ? 'Transaction rejected by user'
-        : approveError.message?.substring(0, 100) || 'Transaction rejected or failed';
-      throw new Error(`Failed to approve ${network.token.symbol}: ${errorMsg}`);
+      const errorMsg =
+        approveError.code === 'ACTION_REJECTED'
+          ? 'Transaction rejected by user'
+          : approveError.message?.substring(0, 120) || 'Transaction rejected or failed';
+      throw new Error(`Failed to approve ${selectedToken.symbol}: ${errorMsg}`);
     }
   }
 
@@ -233,13 +272,18 @@ export async function fundBounty({
   const resolverAddress = await fetchResolver(networkAliasToSend);
 
   // Prepare to create the bounty on-chain
-  showStatus('Creating bounty on-chain...', 'loading');
+  showStatus(
+    `Creating bounty on-chain (total ${formattedTotal} ${selectedToken.symbol}, fee ${formattedFee})...`,
+    'loading'
+  );
+  // ABI matches contracts/current/BountyEscrow.sol - includes createBountyWithToken for non-primary tokens
   const escrow = new ethers.Contract(
     network.contracts.escrow,
     [
       'function createBounty(address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) external returns (bytes32)',
+      'function createBountyWithToken(address token, address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) external returns (bytes32)',
       'function computeBountyId(address sponsor, bytes32 repoIdHash, uint64 issueNumber) public pure returns (bytes32)',
-      'function getBounty(bytes32 bountyId) external view returns (tuple(bytes32 repoIdHash, address sponsor, address resolver, uint96 amount, uint64 deadline, uint64 issueNumber, uint8 status))',
+      'function getBounty(bytes32 bountyId) external view returns (tuple(bytes32 repoIdHash, address sponsor, address resolver, address token, uint96 amount, uint64 deadline, uint64 issueNumber, uint8 status))',
       'function paused() external view returns (bool)'
     ],
     signer
@@ -296,6 +340,7 @@ export async function fundBounty({
   }
 
   // Send the bounty creation transaction
+  // Use createBountyWithToken for non-primary tokens, createBounty for primary token
   let receipt;
   try {
     let tx;
@@ -307,13 +352,22 @@ export async function fundBounty({
           ? feeData.gasPrice
           : ethers.parseUnits('1', 'gwei');
 
-      const callData = escrow.interface.encodeFunctionData('createBounty', [
-        resolverAddress,
-        repoIdHash,
-        parseInt(issueNumber, 10),
-        deadlineTimestamp,
-        amountWei
-      ]);
+      const callData = isPrimaryToken
+        ? escrow.interface.encodeFunctionData('createBounty', [
+            resolverAddress,
+            repoIdHash,
+            parseInt(issueNumber, 10),
+            deadlineTimestamp,
+            amountWei
+          ])
+        : escrow.interface.encodeFunctionData('createBountyWithToken', [
+            selectedToken.address,
+            resolverAddress,
+            repoIdHash,
+            parseInt(issueNumber, 10),
+            deadlineTimestamp,
+            amountWei
+          ]);
 
       const txRequest = {
         to: network.contracts.escrow,
@@ -329,13 +383,24 @@ export async function fundBounty({
       tx = await signer.sendTransaction(txRequest);
     } else {
       // EIP-1559 path
-      tx = await escrow.createBounty(
-        resolverAddress,
-        repoIdHash,
-        parseInt(issueNumber, 10),
-        deadlineTimestamp,
-        amountWei
-      );
+      if (isPrimaryToken) {
+        tx = await escrow.createBounty(
+          resolverAddress,
+          repoIdHash,
+          parseInt(issueNumber, 10),
+          deadlineTimestamp,
+          amountWei
+        );
+      } else {
+        tx = await escrow.createBountyWithToken(
+          selectedToken.address,
+          resolverAddress,
+          repoIdHash,
+          parseInt(issueNumber, 10),
+          deadlineTimestamp,
+          amountWei
+        );
+      }
     }
 
     receipt = await tx.wait();
@@ -360,7 +425,11 @@ export async function fundBounty({
         txHash: receipt.hash,
         installationId: parseInt(installationId, 10) || 0,
         network: networkAliasToSend,
-        tokenSymbol: network.token.symbol
+        tokenSymbol: selectedToken.symbol,
+        tokenAddress: selectedToken.address,
+        feeBps: escrowFeeBps,
+        platformFee: feeWei.toString(),
+        totalPaid: totalRequiredWei.toString()
       })
     });
 

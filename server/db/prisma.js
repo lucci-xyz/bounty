@@ -113,7 +113,7 @@ export const bountyQueries = {
     
     const status = bountyData.status || BOUNTY_STATUS.OPEN;
     if (!isValidStatus(status)) {
-      throw new Error(`Invalid bounty status: ${status}. Valid: open, resolved, refunded, canceled`);
+      throw new Error(`Invalid bounty status: ${status}. Valid: open, resolved, refunded`);
     }
     
     const data = {
@@ -199,7 +199,7 @@ export const bountyQueries = {
    */
   updateStatus: async (bountyId, status, txHash = null) => {
     if (!isValidStatus(status)) {
-      throw new Error(`Invalid bounty status: ${status}. Valid: open, resolved, refunded, canceled`);
+      throw new Error(`Invalid bounty status: ${status}. Valid: open, resolved, refunded`);
     }
     const bountySelect = await getBountySelect();
     const bounty = await prisma.bounty.update({

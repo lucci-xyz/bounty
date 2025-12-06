@@ -9,7 +9,7 @@ import { getDefaultAliasForGroup } from '@/config/chain-registry';
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const group = searchParams.get('group') || 'testnet';
+    const group = searchParams.get('group') || 'mainnet';
 
     if (group !== 'mainnet' && group !== 'testnet') {
       return NextResponse.json(

@@ -1,16 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { ethers } from 'ethers';
 import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
 import { useNetwork } from '@/ui/providers/NetworkProvider';
 import { useBetaAccess } from '@/ui/hooks/useBetaAccess';
 import { useErrorModal } from '@/ui/providers/ErrorModalProvider';
+import { useFlag } from '@/ui/providers/FlagProvider';
 import { fundBounty } from '@/ui/pages/bounty/lib/fundBounty';
+import { logger } from '@/lib/logger';
 
 /**
  * React hook for managing the state and logic of the Attach Bounty form.
  *
- * Handles input values, network selection, beta access, and bounty funding flow.
+ * Handles input values, network selection, token selection, beta access, and bounty funding flow.
  *
  * @param {Object} params
  * @param {Object} params.issueData - Data about the GitHub issue.
@@ -20,6 +23,8 @@ export function useAttachBountyForm({ issueData }) {
   // Form fields
   const [amount, setAmount] = useState('');
   const [deadline, setDeadline] = useState('');
+  // Token selection (for multi-token support)
+  const [selectedTokenIndex, setSelectedTokenIndex] = useState(0);
   // Status for success/error messages
   const [status, setStatus] = useState({ message: '', type: '' });
   // Processing state for funding
@@ -28,6 +33,10 @@ export function useAttachBountyForm({ issueData }) {
   // Beta modal control
   const [showBetaModal, setShowBetaModal] = useState(false);
   const modalOpenedRef = useRef(false);
+  // Fee state (bps) for funding breakdown
+  const [feeBps, setFeeBps] = useState(100);
+  // Multi-token feature flag
+  const multiTokenEnabled = useFlag('multiTokenFeature', false);
 
   // Wallet/account/network context
   const { address, isConnected, chain } = useAccount();
@@ -52,6 +61,33 @@ export function useAttachBountyForm({ issueData }) {
     () => supportedNetworks.map((config) => config.name),
     [supportedNetworks]
   );
+
+  /**
+   * Returns the list of available tokens for the current network.
+   * Includes the default token plus any additional tokens.
+   */
+  const availableTokens = useMemo(() => {
+    if (!network) return [];
+    const tokens = [network.token];
+    if (multiTokenEnabled && network.additionalTokens?.length > 0) {
+      tokens.push(...network.additionalTokens);
+    }
+    return tokens;
+  }, [network, multiTokenEnabled]);
+
+  /**
+   * The currently selected token (defaults to primary token).
+   */
+  const selectedToken = useMemo(() => {
+    return availableTokens[selectedTokenIndex] || availableTokens[0] || network?.token;
+  }, [availableTokens, selectedTokenIndex, network?.token]);
+
+  /**
+   * Reset token selection when network changes.
+   */
+  useEffect(() => {
+    setSelectedTokenIndex(0);
+  }, [network?.chainId]);
 
   /**
    * Checks if the wallet's currently selected chain is supported.
@@ -128,6 +164,35 @@ export function useAttachBountyForm({ issueData }) {
   }, [issueData.presetAmount]);
 
   /**
+   * Fetch the current platform fee (bps) from the escrow contract for the selected network.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    const fetchFeeBps = async () => {
+      if (!network?.contracts?.escrow || !network?.rpcUrl) return;
+      try {
+        const provider = new ethers.JsonRpcProvider(network.rpcUrl);
+        const feeReader = new ethers.Contract(
+          network.contracts.escrow,
+          ['function feeBps() view returns (uint16)'],
+          provider
+        );
+        const onchainFeeBps = Number(await feeReader.feeBps());
+        if (!cancelled && Number.isFinite(onchainFeeBps)) {
+          setFeeBps(onchainFeeBps);
+        }
+      } catch (err) {
+        logger.warn('Failed to fetch feeBps for network', network?.name, err);
+      }
+    };
+
+    fetchFeeBps();
+    return () => {
+      cancelled = true;
+    };
+  }, [network?.contracts?.escrow, network?.name, network?.rpcUrl]);
+
+  /**
    * Shows a status message (success, error, etc.).
    *
    * @param {string} message - The message to show.
@@ -147,6 +212,8 @@ export function useAttachBountyForm({ issueData }) {
       showStatus('Network configuration not ready yet. Please wait a moment and try again.', 'error');
       return;
     }
+
+    const token = selectedToken || network.token;
 
     setIsProcessing(true);
     try {
@@ -170,10 +237,21 @@ export function useAttachBountyForm({ issueData }) {
           setSelectedAlias,
           supportedNetworks
         },
+        // Pass selected token for multi-token support
+        token,
+        feeBps,
         callbacks: {
           showStatus,
           showError
         }
+      });
+    } catch (error) {
+      console.error('Fund bounty error:', error);
+      const message = error?.message || 'Failed to fund bounty';
+      showStatus(message, 'error');
+      showError?.({
+        title: 'Funding failed',
+        message
       });
     } finally {
       setIsProcessing(false);
@@ -188,6 +266,8 @@ export function useAttachBountyForm({ issueData }) {
     isProcessing,
     issueData,
     network,
+    selectedToken,
+    feeBps,
     networkGroup,
     registry,
     selectedAlias,
@@ -198,6 +278,44 @@ export function useAttachBountyForm({ issueData }) {
     switchChain,
     walletClient
   ]);
+
+  /**
+   * Derived funding summary for the UI (net bounty, fee, total).
+   */
+  const fundingSummary = useMemo(() => {
+    const token = selectedToken || network?.token;
+    if (!token || !amount) {
+      return {
+        amountFormatted: '0',
+        feeFormatted: '0',
+        totalFormatted: '0',
+        feeBps,
+        tokenSymbol: token?.symbol || ''
+      };
+    }
+
+    try {
+      const amountWei = ethers.parseUnits(amount || '0', token.decimals);
+      const feeWei = (amountWei * BigInt(feeBps)) / 10000n;
+      const totalWei = amountWei + feeWei;
+
+      return {
+        amountFormatted: ethers.formatUnits(amountWei, token.decimals),
+        feeFormatted: ethers.formatUnits(feeWei, token.decimals),
+        totalFormatted: ethers.formatUnits(totalWei, token.decimals),
+        feeBps,
+        tokenSymbol: token.symbol
+      };
+    } catch {
+      return {
+        amountFormatted: '0',
+        feeFormatted: '0',
+        totalFormatted: '0',
+        feeBps,
+        tokenSymbol: token?.symbol || ''
+      };
+    }
+  }, [amount, feeBps, network?.token, selectedToken]);
 
   /**
    * Returns true if required issue data (repoFullName, issueNumber, repoId) is present.
@@ -222,6 +340,14 @@ export function useAttachBountyForm({ issueData }) {
     supportedNetworkNames,
     isChainSupported,
     network,
+    feeBps,
+    fundingSummary,
+    // Token selection (multi-token support)
+    availableTokens,
+    selectedToken,
+    selectedTokenIndex,
+    setSelectedTokenIndex,
+    multiTokenEnabled,
     wallet: {
       address,
       isConnected,

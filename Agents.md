@@ -253,7 +253,7 @@ See `docs/reference/database.md` for full schema. Key models:
 
 ### Status Values
 
-**Bounty status:** `'open'`, `'resolved'`, `'refunded'`, `'canceled'`
+**Bounty status:** `'open'`, `'resolved'`, `'refunded'` (no cancel — sponsors can only refund after deadline)
 **PrClaim status:** `'pending'`, `'paid'`, `'failed'`
 **BetaAccess status:** `'pending'`, `'approved'`, `'rejected'`
 

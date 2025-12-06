@@ -9,6 +9,17 @@ const nextConfig = {
     esmExternals: true,
   },
 
+  // Allow external images for token icons
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'logo.svgcdn.com',
+        pathname: '/token-branded/**',
+      },
+    ],
+  },
+
   // Allow public access to environment variables with NEXT_PUBLIC_ prefix
   env: {
     NEXT_PUBLIC_MEZO_RPC_URL: process.env.NEXT_PUBLIC_MEZO_RPC_URL,

@@ -17,8 +17,6 @@ export function renderPaymentSentComment({
 **Amount:** ${amountFormatted} ${tokenSymbol}  
 **Transaction:** ${renderLink(txUrl, 'View on Explorer')}
 
-Payment sent successfully.
-
 ${brandSignature}`;
 }
 

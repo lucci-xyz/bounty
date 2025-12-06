@@ -1,55 +1,93 @@
 'use client';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAccount, useSignMessage } from 'wagmi';
+import { isAddress } from 'viem';
 import { logger } from '@/lib/logger';
 
-import { useCallback, useEffect, useState } from 'react';
-import { getNonce, linkWallet, buildSiweMessage } from '@/api/wallet';
+import { buildSiweMessage, getNonce, linkWallet, verifyWalletSignature } from '@/api/wallet';
 
 const DELETE_CONFIRMATION_TEXT = 'i want to remove my wallet';
+const DEFAULT_STATUS = { message: '', type: '' };
 
 /**
- * Hook for managing wallet removal and wallet change flows.
- *
- * Provides state and handlers for showing modals, confirming deletion,
- * updating wallet, and handling loading/status states.
- *
- * @param {object} props
- * @param {object} props.githubUser         GitHub user object, if logged in
- * @param {boolean} props.isLocalMode       True if app is in local mode
- * @param {string} props.address            Connected wallet address
- * @param {boolean} props.isConnected       True if a wallet is connected
- * @param {object} props.walletClient       Wallet client for signing messages
- * @param {object} props.chain              Chain info
- * @param {function} props.showError        Show error modal function
- * @param {function} props.fetchEarningsData Refreshes earnings after changes
- * @param {function} props.fetchSponsoredData Refreshes sponsored data after changes
- * @param {function} props.refreshProfileData Refreshes profile/wallet data after changes
- * @returns {object} Modal state and handlers for both deleting and changing wallet
+ * Hook for managing payout wallet updates and deletions.
  */
 export function useWalletManagement({
   githubUser,
   isLocalMode,
-  address,
-  isConnected,
-  walletClient,
-  chain,
   showError,
   fetchEarningsData,
   fetchSponsoredData,
   refreshProfileData
 }) {
+  const { signMessageAsync } = useSignMessage();
+
+  const waitingForPayoutChangeRef = useRef(false);
+  const handleChangeWalletRef = useRef(null);
+  const callbacksRef = useRef({ onDone: null, onError: null });
+  const initialAddressRef = useRef(null);
+  const initialChainRef = useRef(null);
+
   // Delete wallet modal state
   const [showDeleteWalletModal, setShowDeleteWalletModal] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
-  // Change wallet modal state
+  // Change wallet modal + status state
   const [showChangeWalletModal, setShowChangeWalletModal] = useState(false);
-  const [changeWalletStatus, setChangeWalletStatus] = useState({
-    message: '',
-    type: ''
-  });
+  const [changeWalletStatus, setChangeWalletStatus] = useState(DEFAULT_STATUS);
   const [isProcessingChange, setIsProcessingChange] = useState(false);
+  const [isAwaitingWallet, setIsAwaitingWallet] = useState(false);
+  const [updatedWalletAddress, setUpdatedWalletAddress] = useState(null);
+  const [awaitingInitialAddress, setAwaitingInitialAddress] = useState(null);
+  const [awaitingInitialChainId, setAwaitingInitialChainId] = useState(null);
+
+  const clearChangeFlow = useCallback(() => {
+    waitingForPayoutChangeRef.current = false;
+    handleChangeWalletRef.current = null;
+    callbacksRef.current = { onDone: null, onError: null };
+    setIsAwaitingWallet(false);
+    setIsProcessingChange(false);
+    setAwaitingInitialAddress(null);
+    setAwaitingInitialChainId(null);
+  }, []);
+
+  const { address: connectedAddress, chain } = useAccount({
+    onConnect(connectInfo) {
+      if (waitingForPayoutChangeRef.current && handleChangeWalletRef.current) {
+        handleChangeWalletRef.current(connectInfo);
+      }
+    },
+    onDisconnect() {
+      clearChangeFlow();
+    }
+  });
+
+  useEffect(() => {
+    if (!waitingForPayoutChangeRef.current) return;
+    if (!handleChangeWalletRef.current) return;
+
+    const nextAddress = connectedAddress;
+    const nextChainId = chain?.id ?? null;
+    const sameAddress =
+      initialAddressRef.current && nextAddress === initialAddressRef.current;
+    const sameChain =
+      initialChainRef.current !== null &&
+      nextChainId !== null &&
+      nextChainId === initialChainRef.current;
+
+    if (!nextAddress) return;
+    if (sameAddress && sameChain) return;
+
+    handleChangeWalletRef.current({
+      address: nextAddress,
+      chain: { id: nextChainId },
+      chainId: nextChainId
+    });
+  }, [connectedAddress, chain]);
+
+  const chainId = chain?.id;
 
   /**
    * Open the wallet deletion confirmation modal.
@@ -68,24 +106,6 @@ export function useWalletManagement({
     setDeleteConfirmation('');
     setDeleteError('');
   }, []);
-
-  /**
-   * Open the modal to change (replace) the connected wallet.
-   */
-  const openChangeWalletModal = useCallback(() => {
-    setShowChangeWalletModal(true);
-    setChangeWalletStatus({ message: '', type: '' });
-    setIsProcessingChange(false);
-  }, []);
-
-  /**
-   * Close the wallet change modal unless a change is processing.
-   */
-  const closeChangeWalletModal = useCallback(() => {
-    if (isProcessingChange) return;
-    setShowChangeWalletModal(false);
-    setChangeWalletStatus({ message: '', type: '' });
-  }, [isProcessingChange]);
 
   /**
    * Handles deleting the connected wallet after user confirmation.
@@ -129,132 +149,180 @@ export function useWalletManagement({
   }, [deleteConfirmation, fetchEarningsData, refreshProfileData]);
 
   /**
-   * Handles updating the user's wallet by requesting a SIWE message signature.
-   * Verifies the signature and links the wallet. Shows UI status throughout.
+   * Open the modal to change (replace) the connected wallet.
    */
-  const handleChangeWallet = useCallback(async () => {
-    if (isProcessingChange) {
-      return;
-    }
-
-    try {
-      setIsProcessingChange(true);
-      setChangeWalletStatus({ message: 'Connecting...', type: 'info' });
-
-      if (!githubUser && !isLocalMode) {
-        throw new Error('GitHub authentication required');
-      }
-
-      if (!address || !isConnected) {
-        throw new Error('Please connect your wallet first');
-      }
-
-      if (!walletClient) {
-        throw new Error('Wallet client not available');
-      }
-
-      setChangeWalletStatus({
-        message: 'Getting verification nonce...',
-        type: 'info'
-      });
-      const { nonce } = await getNonce();
-
-      const { message } = await buildSiweMessage({
-        address,
-        nonce,
-        chainId: chain?.id || 1,
-        domain: window.location.host,
-        uri: window.location.origin,
-        statement: 'Sign in with Ethereum to link your wallet to BountyPay'
-      });
-
-      if (!message) {
-        throw new Error('Failed to build SIWE message');
-      }
-
-      setChangeWalletStatus({
-        message: 'Please sign the message in your wallet...',
-        type: 'info'
-      });
-      const signature = await walletClient.signMessage({
-        message
-      });
-
-      setChangeWalletStatus({ message: 'Verifying signature...', type: 'info' });
-      await linkWallet({
-        address,
-        signature,
-        message,
-        chainId: chain?.id || 1
-      });
-
-      setChangeWalletStatus({
-        message: 'Wallet updated successfully!',
-        type: 'success'
-      });
-
-      await fetchEarningsData?.();
-      await fetchSponsoredData?.();
-      await refreshProfileData?.();
-
-      setTimeout(() => {
-        setShowChangeWalletModal(false);
-        setChangeWalletStatus({ message: '', type: '' });
-      }, 1500);
-    } catch (error) {
-      logger.error('Error changing wallet:', error);
-      const errorMessage =
-        error.message || 'An error occurred while updating your wallet';
-      showError?.({
-        title: 'Wallet Update Failed',
-        message: errorMessage,
-        primaryActionLabel: 'Try Again',
-        onPrimaryAction: () => handleChangeWallet()
-      });
-      setChangeWalletStatus({
-        message: errorMessage || 'Failed to update wallet',
-        type: 'error'
-      });
-    } finally {
-      setIsProcessingChange(false);
-    }
-  }, [
-    address,
-    chain?.id,
-    fetchEarningsData,
-    fetchSponsoredData,
-    githubUser,
-    isConnected,
-    isLocalMode,
-    showError,
-    walletClient,
-    refreshProfileData
-  ]);
+  const openChangeWalletModal = useCallback(() => {
+    clearChangeFlow();
+    setShowChangeWalletModal(true);
+    setUpdatedWalletAddress(null);
+    setChangeWalletStatus(DEFAULT_STATUS);
+  }, [clearChangeFlow]);
 
   /**
-   * Automatically triggers wallet change flow if all required data is present
-   * and the change modal is open.
+   * Close the wallet change modal unless a change is processing (but allow closing on success).
    */
-  useEffect(() => {
-    if (
-      showChangeWalletModal &&
-      githubUser &&
-      isConnected &&
-      address &&
-      walletClient &&
-      !isProcessingChange
-    ) {
-      handleChangeWallet();
-    }
-  }, [
-    address,
-    githubUser,
-    handleChangeWallet,
-    isConnected,
-    isProcessingChange,
-    showChangeWalletModal,
-    walletClient
-  ]);
+  const closeChangeWalletModal = useCallback(() => {
+    if (isProcessingChange && changeWalletStatus.type !== 'success') return;
+    clearChangeFlow();
+    setShowChangeWalletModal(false);
+    setUpdatedWalletAddress(null);
+  }, [changeWalletStatus.type, clearChangeFlow, isProcessingChange]);
+
+  const cancelPayoutWalletChange = useCallback(() => {
+    clearChangeFlow();
+    setChangeWalletStatus(DEFAULT_STATUS);
+    setUpdatedWalletAddress(null);
+  }, [clearChangeFlow]);
+
+  /**
+   * Start the payout wallet change flow by waiting for RainbowKit to connect a wallet.
+   * Returns true if the flow started, false if already in progress.
+   */
+  const startPayoutWalletChange = useCallback(
+    (onDone, onError) => {
+      if (isProcessingChange) return false;
+
+      if (isAwaitingWallet) {
+        clearChangeFlow();
+      }
+
+      initialAddressRef.current = connectedAddress || null;
+      initialChainRef.current = chain?.id ?? null;
+      setAwaitingInitialAddress(initialAddressRef.current);
+      setAwaitingInitialChainId(initialChainRef.current);
+      setUpdatedWalletAddress(null);
+      setChangeWalletStatus({
+        message: 'Waiting for wallet selection...',
+        type: 'info'
+      });
+
+      callbacksRef.current = {
+        onDone: onDone || null,
+        onError: onError || null
+      };
+      waitingForPayoutChangeRef.current = true;
+      setIsAwaitingWallet(true);
+
+      handleChangeWalletRef.current = async (connectInfo) => {
+        waitingForPayoutChangeRef.current = false;
+        setIsAwaitingWallet(false);
+
+        try {
+          setIsProcessingChange(true);
+
+          if (!githubUser && !isLocalMode) {
+            throw new Error('GitHub authentication required');
+          }
+
+          const nextAddress =
+            connectInfo?.address ||
+            connectInfo?.account?.address ||
+            connectedAddress;
+          const nextChainId =
+            connectInfo?.chain?.id ??
+            connectInfo?.chainId ??
+            chainId;
+
+          if (!nextAddress || !isAddress(nextAddress)) {
+            throw new Error('Invalid wallet address');
+          }
+
+          if (typeof nextChainId !== 'number') {
+            throw new Error('Invalid network');
+          }
+
+          setChangeWalletStatus({
+            message: 'Getting verification nonce...',
+            type: 'info'
+          });
+          const { nonce } = await getNonce();
+
+          const domain =
+            typeof window !== 'undefined' ? window.location.host : 'localhost';
+          const uri =
+            typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+
+          const { message } = await buildSiweMessage({
+            address: nextAddress,
+            nonce,
+            chainId: nextChainId,
+            domain,
+            uri,
+            statement: 'Sign in with Ethereum to link your wallet to BountyPay'
+          });
+
+          if (!message) {
+            throw new Error('Failed to build SIWE message');
+          }
+
+          setChangeWalletStatus({
+            message: 'Please sign the message in your wallet...',
+            type: 'info'
+          });
+          const signature = await signMessageAsync({ message });
+
+          setChangeWalletStatus({ message: 'Verifying signature...', type: 'info' });
+          await verifyWalletSignature({
+            message,
+            signature
+          });
+
+          setChangeWalletStatus({ message: 'Linking wallet...', type: 'info' });
+          await linkWallet({
+            githubId: githubUser.githubId,
+            githubUsername: githubUser.githubUsername,
+            walletAddress: nextAddress
+          });
+
+          setChangeWalletStatus({
+            message: 'Wallet updated successfully!',
+            type: 'success'
+          });
+          setUpdatedWalletAddress(nextAddress);
+
+          await Promise.all([
+            fetchEarningsData?.(),
+            fetchSponsoredData?.(),
+            refreshProfileData?.()
+          ]);
+
+          callbacksRef.current.onDone?.(nextAddress);
+        } catch (error) {
+          logger.error('Error changing wallet:', error);
+          const errorMessage =
+            error?.message || 'An error occurred while updating your wallet';
+          setChangeWalletStatus({
+            message: errorMessage,
+            type: 'error'
+          });
+          callbacksRef.current.onError?.(error);
+          showError?.({
+            title: 'Wallet Update Failed',
+            message: errorMessage
+          });
+        } finally {
+          setIsProcessingChange(false);
+          clearChangeFlow();
+        }
+      };
+
+      return true;
+    },
+    [
+      chainId,
+      clearChangeFlow,
+      connectedAddress,
+      fetchEarningsData,
+      fetchSponsoredData,
+      githubUser,
+      isAwaitingWallet,
+      isLocalMode,
+      isProcessingChange,
+      refreshProfileData,
+      showError,
+      signMessageAsync
+    ]
+  );
 
   return {
     deleteModal: {
@@ -273,8 +341,11 @@ export function useWalletManagement({
       close: closeChangeWalletModal,
       status: changeWalletStatus,
       isProcessing: isProcessingChange,
-      handleChangeWallet
+      isAwaitingWallet,
+      updatedAddress: updatedWalletAddress,
+      startPayoutWalletChange,
+      cancelPayoutWalletChange,
+      awaitingInitialAddress
     }
   };
 }
-

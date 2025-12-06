@@ -39,8 +39,7 @@ const baseSepoliaChain = {
   },
 };
 
-// Define custom Mezo Testnet chain
-
+// Define custom Mezo Testnet chain with icon
 const mezoTestnet = {
   id: 31611,
   name: 'Mezo Testnet',
@@ -57,6 +56,7 @@ const mezoTestnet = {
     default: { name: 'Mezo Explorer', url: mezoTestnetExplorer },
   },
   testnet: true,
+  iconUrl: '/icons/mezo-logo.svg',
 };
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '73b4fe978f9e3084af5e7c7595365793';
@@ -82,7 +82,7 @@ const connectors = connectorsForWallets(
 );
 
 const customTheme = lightTheme({
-  accentColor: '#00827B',
+  accentColor: '#374151', // Gray-700 for selected states
   accentColorForeground: 'white',
   borderRadius: 'medium',
   fontStack: 'system',

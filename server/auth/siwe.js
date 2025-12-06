@@ -131,19 +131,25 @@ export async function verifySIWE(message, signature) {
 }
 
 /**
- * Get the default chainId for SIWE messages (usually testnet).
+ * Get the default chainId for SIWE messages (prefers mainnet).
  * @returns {number}
  */
 function getDefaultChainId() {
   try {
-    const defaultAlias = getDefaultAliasForGroup('testnet');
+    // Try mainnet first, fall back to testnet
+    const defaultAlias = getDefaultAliasForGroup('mainnet');
     return REGISTRY[defaultAlias].chainId;
-  } catch (error) {
-    const firstAlias = Object.keys(REGISTRY)[0];
-    if (firstAlias) {
-      return REGISTRY[firstAlias].chainId;
+  } catch {
+    try {
+      const testnetAlias = getDefaultAliasForGroup('testnet');
+      return REGISTRY[testnetAlias].chainId;
+    } catch {
+      const firstAlias = Object.keys(REGISTRY)[0];
+      if (firstAlias) {
+        return REGISTRY[firstAlias].chainId;
+      }
+      throw new Error('No blockchain networks configured');
     }
-    throw new Error('No blockchain networks configured');
   }
 }
 

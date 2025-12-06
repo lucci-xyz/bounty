@@ -8,7 +8,24 @@ import { OG_ICON, FRONTEND_BASE, BRAND_SIGNATURE } from '../../constants.js';
 import { getLinkHref } from '@/config/links';
 
 export async function handleBountyCreated(bountyData) {
-  const { repoFullName, issueNumber, bountyId, amount, deadline, sponsorAddress, txHash, installationId, network, tokenSymbol } = bountyData;
+  const {
+    repoFullName,
+    issueNumber,
+    bountyId,
+    amount,
+    platformFee,
+    totalPaid,
+    deadline,
+    sponsorAddress,
+    txHash,
+    installationId,
+    network,
+    tokenSymbol,
+    feeBps,
+    formattedAmount,
+    formattedFee,
+    formattedTotal
+  } = bountyData;
 
   if (!network) {
     throw new Error('Network alias is required for bounty creation');
@@ -22,7 +39,15 @@ export async function handleBountyCreated(bountyData) {
     const [owner, repo] = repoFullName.split('/');
 
     const deadlineDate = new Date(deadline * 1000).toISOString().split('T')[0];
-    const amountFormatted = formatAmountByToken(amount, tokenSymbol);
+    const parsedFeeBps = feeBps || 100;
+    const computedFee = (BigInt(amount) * BigInt(parsedFeeBps)) / BigInt(10000);
+    const parsedPlatformFee = platformFee ? BigInt(platformFee) : computedFee;
+    const parsedTotal = totalPaid ? BigInt(totalPaid) : BigInt(amount) + parsedPlatformFee;
+    const feePercentDisplay = (parsedFeeBps / 100).toFixed(2);
+
+    const amountFormatted = formattedAmount || formatAmountByToken(amount, tokenSymbol);
+    const feeFormatted = formattedFee || formatAmountByToken(parsedPlatformFee, tokenSymbol);
+    const totalFormatted = formattedTotal || formatAmountByToken(parsedTotal, tokenSymbol);
     const net = networkMeta(network);
     const issueUrl = getLinkHref('github', 'issue', { repoFullName, issueNumber });
 
@@ -30,6 +55,9 @@ export async function handleBountyCreated(bountyData) {
       iconUrl: OG_ICON,
       amountFormatted,
       tokenSymbol,
+      feeFormatted,
+      totalFormatted,
+      feePercent: feePercentDisplay,
       networkName: net.name,
       deadlineDate,
       txUrl: net.explorerTx(txHash),

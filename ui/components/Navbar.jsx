@@ -20,7 +20,7 @@ export default function Navbar() {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
   const { networkGroup, switchNetworkGroup, isSwitchingGroup, currentNetwork } = useNetwork();
-  const networkEnv = networkGroup || 'testnet';
+  const networkEnv = networkGroup || 'mainnet';
   const { githubUser } = useGithubUser();
   const { showError } = useErrorModal();
   const networkLabel = currentNetwork?.name || (networkEnv === 'mainnet' ? 'Mainnet' : 'Testnet');

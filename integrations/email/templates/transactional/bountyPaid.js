@@ -155,7 +155,7 @@ export function renderBountyPaidEmail({
                               color: #4b5563;
                             "
                           >
-                            Bounty amount
+                            Bounty
                           </td>
                           <td
                             style="
@@ -298,7 +298,7 @@ export function renderBountyPaidEmail({
                         padding-top: 12px;
                       "
                     >
-                      Depending on your wallet and network, it may take a moment for the updated balance to appear.
+                    Depending on your wallet and network, it may take a moment for the updated balance to appear.
                     </td>
                   </tr>
                 </table>
@@ -357,7 +357,7 @@ export function renderBountyPaidEmail({
   
   Your bounty reward has been paid to your linked wallet.
   
-  Bounty amount: ${bountyAmount} ${tokenSymbol}
+  Bounty: ${bountyAmount} ${tokenSymbol}
   Repository: ${repoFullName}
   Issue: #${issueNumber}${issueTitle ? ` - ${issueTitle}` : ''} (${issueUrl})
   Status: Paid${

@@ -12,7 +12,6 @@ import { logger } from '@/lib/logger';
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useAccount, useWalletClient } from 'wagmi';
 import { useErrorModal } from '@/ui/providers/ErrorModalProvider';
 import { useBetaApplications } from '@/ui/hooks/useBetaApplications';
 import { useWalletManagement } from '@/ui/hooks/useWalletManagement';
@@ -30,9 +29,6 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [expandedBountyId, setExpandedBountyId] = useState(null);
 
-  // Wallet/account info
-  const { address, isConnected, chain } = useAccount();
-  const { data: walletClient } = useWalletClient();
   const { showError } = useErrorModal();
 
   // Feature/data hooks
@@ -67,10 +63,6 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
   const walletManagement = useWalletManagement({
     githubUser,
     isLocalMode,
-    address,
-    isConnected,
-    walletClient,
-    chain,
     showError,
     fetchEarningsData: actions.refreshEarnings,
     fetchSponsoredData: actions.refreshSponsor,
@@ -157,10 +149,6 @@ export function useAccountPage({ initialTab: initialTabOverride } = {}) {
     walletManagement,
     beta,
     networkFees,
-    wallet: {
-      address,
-      isConnected
-    },
     allowlistModal: {
       bounty: allowlistModalBounty,
       bountyId: allowlist.allowlistModalBountyId,

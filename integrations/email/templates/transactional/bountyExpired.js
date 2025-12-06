@@ -154,7 +154,7 @@ export function renderBountyExpiredEmail({
                             color: #4b5563;
                           "
                         >
-                          Bounty amount
+                          Bounty
                         </td>
                         <td
                           style="
@@ -269,7 +269,7 @@ export function renderBountyExpiredEmail({
                       padding-top: 12px;
                     "
                   >
-                    The issue itself remains open on GitHub. Only the bounty reward has expired.
+                    The deadline has passed so this bounty is now eligible for refund. You can refund the bounty to your wallet from your dashboard. The GitHub issue remains open if you'd like to create a new bounty.
                   </td>
                 </tr>
               </table>
@@ -325,14 +325,14 @@ Hi ${username},
 
 You have a bounty that has reached its deadline and is now expired.
 
-Bounty amount: ${bountyAmount} ${tokenSymbol}
+Bounty: ${bountyAmount} ${tokenSymbol}
 Repository: ${repoFullName}
 Issue: #${issueNumber}${issueTitle ? ` - ${issueTitle}` : ''} (${issueUrl})
 Status: Eligible for refund
 
 Manage this bounty from your dashboard: ${dashboardUrl}
 
-The issue itself remains open on GitHub. Only the bounty reward has expired.
+The deadline has passed so this bounty is now eligible for refund. You can refund the bounty to your wallet from your dashboard. The GitHub issue remains open if you'd like to create a new bounty.
 
 BountyPay by Lucci Labs (luccilabs.xyz)
   `.trim();

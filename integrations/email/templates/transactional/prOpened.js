@@ -157,7 +157,7 @@ export function renderPrOpenedEmail({
                             color: #4b5563;
                           "
                         >
-                          Bounty amount
+                          Bounty
                         </td>
                         <td
                           style="
@@ -367,7 +367,7 @@ Hi ${username},
 
 A contributor has opened a pull request for one of your bounties on BountyPay.
 
-Bounty amount: ${bountyAmount} ${tokenSymbol}
+Bounty: ${bountyAmount} ${tokenSymbol}
 Repository: ${repoFullName}
 Issue: #${issueNumber} (${issueUrl})
 Pull request: #${prNumber}${prTitle ? ` - ${prTitle}` : ''} (${prUrl})
