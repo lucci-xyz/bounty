@@ -8,27 +8,57 @@ import {BountyEscrowProxy} from "@/contracts/proxy/BountyEscrowProxy.sol";
 /**
  * Deploys the upgradeable BountyEscrow + proxy.
  *
- * - Deploy implementation (no constructor)
- * - Deploy Transparent Proxy pointing to implementation
- * - Initialize via proxy with:
- *     primaryToken = Base Sepolia USDC
- *     feeBps      = 100 (1%)
- *     owner/admin = EOA from OWNER_PK_BASE_SEPOLIA
+ * Usage:
+ *   Base Sepolia: forge script scripts/DeployBountyEscrow.s.sol:DeployBountyEscrow \
+ *                   --sig "deployBaseSepolia()" --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast
+ *
+ *   Mezo Testnet: forge script scripts/DeployBountyEscrow.s.sol:DeployBountyEscrow \
+ *                   --sig "deployMezoTestnet()" --rpc-url $MEZO_TESTNET_RPC_URL --broadcast
  *
  * NOTE: Protocol fees are withdrawn later via
- *       withdrawFees(token, TREASURY_BASE_SEPOLIA, amount)
+ *       withdrawFees(token, TREASURY_<NETWORK>, amount)
  */
 contract DeployBountyEscrow is Script {
+    // Token addresses
     address internal constant BASE_SEPOLIA_USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
-    uint16 internal constant FEE_BPS = 100;
+    address internal constant MEZO_TESTNET_MUSD = 0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503;
+    
+    uint16 internal constant FEE_BPS = 100; // 1%
 
     function run() external returns (address implementation, address proxy) {
         return deployBaseSepolia();
     }
 
     function deployBaseSepolia() public returns (address implementation, address proxy) {
-        uint256 deployerKey = _loadPrivateKey("OWNER_PK_BASE_SEPOLIA");
+        return _deploy(
+            "OWNER_PK_BASE_SEPOLIA",
+            BASE_SEPOLIA_USDC,
+            "Base Sepolia",
+            "TREASURY_BASE_SEPOLIA"
+        );
+    }
+
+    function deployMezoTestnet() public returns (address implementation, address proxy) {
+        return _deploy(
+            "OWNER_PK_MEZO_TESTNET",
+            MEZO_TESTNET_MUSD,
+            "Mezo Testnet",
+            "TREASURY_MEZO_TESTNET"
+        );
+    }
+
+    function _deploy(
+        string memory ownerKeyEnv,
+        address primaryToken,
+        string memory networkName,
+        string memory treasuryEnv
+    ) internal returns (address implementation, address proxy) {
+        uint256 deployerKey = _loadPrivateKey(ownerKeyEnv);
         address owner = vm.addr(deployerKey);
+
+        console2.log("Deploying to:", networkName);
+        console2.log("Primary token:", primaryToken);
+        console2.log("Owner:", owner);
 
         vm.startBroadcast(deployerKey);
 
@@ -38,7 +68,7 @@ contract DeployBountyEscrow is Script {
         // Encode initialize data for the proxy
         bytes memory initData = abi.encodeCall(
             BountyEscrow.initialize,
-            (BASE_SEPOLIA_USDC, FEE_BPS, owner)
+            (primaryToken, FEE_BPS, owner)
         );
 
         // Deploy transparent proxy pointing to implementation
@@ -50,12 +80,13 @@ contract DeployBountyEscrow is Script {
 
         vm.stopBroadcast();
 
+        console2.log("----------------------------------------");
         console2.log("BountyEscrow implementation:", address(impl));
         console2.log("BountyEscrow Proxy (use this in app):", address(proxyInstance));
         console2.log("Upgrade admin / owner:", owner);
-        console2.log(
-            "To withdraw fees later, call withdrawFees(token, TREASURY_BASE_SEPOLIA, amount) from owner."
-        );
+        console2.log("----------------------------------------");
+        console2.log("To withdraw fees later, call:");
+        console2.log("  withdrawFees(token,", treasuryEnv, ", amount)");
 
         return (address(impl), address(proxyInstance));
     }

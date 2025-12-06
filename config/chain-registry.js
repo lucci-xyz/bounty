@@ -94,7 +94,8 @@ const CURATED_ALIASES = {
     },
     // Hardcoded defaults for local/staging convenience (can be overridden via env)
     defaultContracts: {
-      escrow: process.env.MEZO_TESTNET_ESCROW_ADDRESS || '0xcBaf5066aDc2299C14112E8A79645900eeb3A76a'
+      // Upgradeable proxy on Mezo Testnet (deployed 2024-12-06)
+      escrow: process.env.MEZO_TESTNET_ESCROW_ADDRESS || '0xA0d0dF8190772449bD764a52Ec1BcBCC8d556b38'
     },
     defaultToken: {
       address: process.env.MEZO_TESTNET_TOKEN_ADDRESS || '0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503',
