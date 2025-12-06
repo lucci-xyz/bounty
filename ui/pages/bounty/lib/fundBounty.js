@@ -230,6 +230,7 @@ export async function fundBounty({
     );
   }
 
+  // Check current allowance and approve if needed (standard ERC20 pattern)
   const currentAllowance = await tokenContract.allowance(address, network.contracts.escrow);
   if (currentAllowance < totalRequiredWei) {
     showStatus(
@@ -239,11 +240,8 @@ export async function fundBounty({
     try {
       const approveTx = await tokenContract.approve(network.contracts.escrow, totalRequiredWei);
       await approveTx.wait();
-
-      const newAllowance = await tokenContract.allowance(address, network.contracts.escrow);
-      if (newAllowance < totalRequiredWei) {
-        throw new Error('Approval transaction mined but allowance not updated. Please retry.');
-      }
+      // Approval confirmed - proceed directly to funding without re-checking allowance
+      // The funding tx will be the source of truth if something went wrong
     } catch (approveError) {
       console.error('Approval error:', approveError);
       const errorMsg =
