@@ -205,7 +205,8 @@ function AttachBountyContent() {
             {/* Wallet/account actions (change wallet, network, or token) */}
             <ConnectButton.Custom>
               {({ openConnectModal, openChainModal, openAccountModal }) => {
-                const showTokenButton = multiTokenEnabled && availableTokens.length > 1;
+                // Always show token button when multi-token is enabled (even with 1 token)
+                const showTokenButton = multiTokenEnabled;
                 return (
                   <div className={`grid gap-3 ${showTokenButton ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
                     <button

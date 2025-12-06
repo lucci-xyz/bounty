@@ -5,11 +5,12 @@ import { createPortal } from 'react-dom';
 import Image from 'next/image';
 
 /**
- * Known token icons from external CDN
+ * Known token icons - prefer local, fallback to CDN
  */
 const TOKEN_ICONS = {
   USDC: 'https://logo.svgcdn.com/token-branded/usdc.png',
   EURC: 'https://logo.svgcdn.com/token-branded/eurc.png',
+  MUSD: '/icons/MUSD.svg',
 };
 
 /**
