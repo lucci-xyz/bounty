@@ -52,19 +52,26 @@ let escrowContract;
 let tokenContract;
 
 /**
- * Initialize legacy blockchain clients (using default testnet).
+ * Initialize legacy blockchain clients (prefers mainnet, falls back to testnet).
  */
 export function initBlockchain() {
   try {
-    const defaultTestnetAlias = getDefaultAliasForGroup('testnet');
-    const clients = getNetworkClients(defaultTestnetAlias);
+    // Try mainnet first, fall back to testnet
+    let defaultAlias;
+    try {
+      defaultAlias = getDefaultAliasForGroup('mainnet');
+    } catch {
+      defaultAlias = getDefaultAliasForGroup('testnet');
+    }
+    
+    const clients = getNetworkClients(defaultAlias);
 
     provider = clients.provider;
     resolverWallet = clients.wallet;
     escrowContract = clients.escrowContract;
     tokenContract = clients.tokenContract;
 
-    logger.info(`Blockchain initialized with ${defaultTestnetAlias}`);
+    logger.info(`Blockchain initialized with ${defaultAlias}`);
   } catch (error) {
     logger.warn('Could not initialize default blockchain clients:', error.message);
   }

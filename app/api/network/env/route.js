@@ -51,7 +51,7 @@ export async function POST(request) {
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    const env = cookieStore.get(NETWORK_ENV_COOKIE)?.value || 'testnet';
+    const env = cookieStore.get(NETWORK_ENV_COOKIE)?.value || 'mainnet';
     
     return Response.json({ env });
   } catch (error) {
