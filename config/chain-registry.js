@@ -4,9 +4,6 @@ import { getLinkHref } from '@/config/links';
 
 let hasLoggedSkippedAliases = false;
 
-// Base Sepolia upgradeable proxy (default for staging/test)
-const BASE_SEPOLIA_ESCROW_DEFAULT = process.env.BASE_SEPOLIA_ESCROW_ADDRESS || '0x7218b25e9fbA2974faF7b0056203Fd57591fF8F3';
-
 // Curated network aliases with baseline configuration
 const CURATED_ALIASES = {
   BASE_MAINNET: {
@@ -22,10 +19,10 @@ const CURATED_ALIASES = {
       symbol: 'ETH',
       decimals: 18
     },
-    // Once the production escrow is live we expose curated defaults just like testnets.
+    // Upgradeable proxy deployed 2025-12-06
     // Env vars still override these when present.
     defaultContracts: {
-      escrow: process.env.BASE_MAINNET_ESCROW_ADDRESS || '0xC81A53A0967fc9599d813693B58EcDC7d11e4f36'
+      escrow: process.env.BASE_MAINNET_ESCROW_ADDRESS || '0xd0A0ae89fb06AB705c28cA99A059a10E7C532cF9'
     },
     defaultToken: {
       address: process.env.BASE_MAINNET_TOKEN_ADDRESS || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',

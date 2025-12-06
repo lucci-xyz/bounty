@@ -9,17 +9,21 @@ import {BountyEscrowProxy} from "@/contracts/proxy/BountyEscrowProxy.sol";
  * Deploys the upgradeable BountyEscrow + proxy.
  *
  * Usage:
+ *   Base Mainnet: forge script scripts/DeployBountyEscrow.s.sol:DeployBountyEscrow \
+ *                   --sig "deployBaseMainnet()" --rpc-url $BASE_MAINNET_RPC_URL --broadcast --verify
+ *
  *   Base Sepolia: forge script scripts/DeployBountyEscrow.s.sol:DeployBountyEscrow \
  *                   --sig "deployBaseSepolia()" --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast
  *
  *   Mezo Testnet: forge script scripts/DeployBountyEscrow.s.sol:DeployBountyEscrow \
- *                   --sig "deployMezoTestnet()" --rpc-url $MEZO_TESTNET_RPC_URL --broadcast
+ *                   --sig "deployMezoTestnet()" --rpc-url $MEZO_TESTNET_RPC_URL --broadcast --legacy
  *
  * NOTE: Protocol fees are withdrawn later via
  *       withdrawFees(token, TREASURY_<NETWORK>, amount)
  */
 contract DeployBountyEscrow is Script {
     // Token addresses
+    address internal constant BASE_MAINNET_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     address internal constant BASE_SEPOLIA_USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
     address internal constant MEZO_TESTNET_MUSD = 0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503;
     
@@ -27,6 +31,15 @@ contract DeployBountyEscrow is Script {
 
     function run() external returns (address implementation, address proxy) {
         return deployBaseSepolia();
+    }
+
+    function deployBaseMainnet() public returns (address implementation, address proxy) {
+        return _deploy(
+            "OWNER_PK_BASE_MAINNET",
+            BASE_MAINNET_USDC,
+            "Base Mainnet",
+            "TREASURY_BASE_MAINNET"
+        );
     }
 
     function deployBaseSepolia() public returns (address implementation, address proxy) {
