@@ -6,7 +6,7 @@ import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
 import { useNetwork } from '@/ui/providers/NetworkProvider';
 import { useBetaAccess } from '@/ui/hooks/useBetaAccess';
 import { useErrorModal } from '@/ui/providers/ErrorModalProvider';
-import { useFlag } from '@/ui/hooks/useFlag';
+import { useFlag } from '@/ui/providers/FlagProvider';
 import { fundBounty } from '@/ui/pages/bounty/lib/fundBounty';
 import { logger } from '@/lib/logger';
 
