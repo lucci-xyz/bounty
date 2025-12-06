@@ -414,8 +414,9 @@ export async function fundBounty({
         // Retry with a fixed gas limit to avoid false-negative simulation failures.
         const message = primaryError?.message || '';
         const isMissingRevertData =
-          message.toLowerCase().includes('missing revert data') ||
-          message.toLowerCase().includes('call exception');
+          primaryError?.code === 'CALL_EXCEPTION' &&
+          !primaryError?.data &&
+          message.toLowerCase().includes('missing revert data');
 
         if (!isMissingRevertData) {
           throw primaryError;
