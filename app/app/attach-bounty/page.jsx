@@ -10,6 +10,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import BetaAccessModal from '@/ui/pages/beta/BetaAccessModal';
 import StatusNotice from '@/ui/components/StatusNotice';
+import TokenSelectorModal from '@/ui/components/TokenSelectorModal';
 import { useAttachBountyForm } from '@/ui/hooks/useAttachBountyForm';
 import {
   AttachBountyLoadingState,
@@ -74,6 +75,9 @@ function AttachBountyContent() {
   // This prevents flickering when beta access state updates during loading
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const modalOpenedRef = useRef(false);
+  
+  // Token selector modal state
+  const [tokenModalOpen, setTokenModalOpen] = useState(false);
   
   useEffect(() => {
     // Only update when not loading and conditions change
@@ -194,59 +198,64 @@ function AttachBountyContent() {
               supportedNetworkNames={supportedNetworkNames}
             />
 
-            {/* Wallet/account actions (change wallet or network) */}
+            {/* Wallet/account actions (change wallet, network, or token) */}
             <ConnectButton.Custom>
-              {({ openConnectModal, openChainModal, openAccountModal }) => (
-                <div className="grid gap-3 md:grid-cols-2">
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (openAccountModal) {
-                        openAccountModal();
-                      } else {
-                        openConnectModal?.();
-                      }
-                    }}
-                    disabled={!isMounted}
-                    className="inline-flex items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Change Wallet
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      openChainModal?.();
-                    }}
-                    disabled={!isMounted || !openChainModal}
-                    className="inline-flex items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Switch Network
-                  </button>
-                </div>
-              )}
+              {({ openConnectModal, openChainModal, openAccountModal }) => {
+                const showTokenButton = multiTokenEnabled && availableTokens.length > 1;
+                return (
+                  <div className={`grid gap-3 ${showTokenButton ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (openAccountModal) {
+                          openAccountModal();
+                        } else {
+                          openConnectModal?.();
+                        }
+                      }}
+                      disabled={!isMounted}
+                      className="inline-flex items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Change Wallet
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        openChainModal?.();
+                      }}
+                      disabled={!isMounted || !openChainModal}
+                      className="inline-flex items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Switch Network
+                    </button>
+                    {showTokenButton && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setTokenModalOpen(true);
+                        }}
+                        disabled={!isMounted}
+                        className="inline-flex items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {selectedToken?.symbol || 'Select Token'}
+                      </button>
+                    )}
+                  </div>
+                );
+              }}
             </ConnectButton.Custom>
+
+            {/* Token selector modal */}
+            <TokenSelectorModal
+              isOpen={tokenModalOpen}
+              onClose={() => setTokenModalOpen(false)}
+              tokens={availableTokens}
+              selectedIndex={selectedTokenIndex}
+              onSelect={setSelectedTokenIndex}
+            />
 
             {/* Bounty amount and deadline form */}
             <div className="space-y-4">
-              {/* Token selector (shown when multi-token is enabled and multiple tokens available) */}
-              {multiTokenEnabled && availableTokens.length > 1 && (
-                <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground/70">
-                    Token
-                  </label>
-                  <select
-                    value={selectedTokenIndex}
-                    onChange={(e) => setSelectedTokenIndex(Number(e.target.value))}
-                    className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
-                  >
-                    {availableTokens.map((token, index) => (
-                      <option key={token.address} value={index}>
-                        {token.symbol}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
               <div>
                 <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground/70">
                   Bounty Amount ({selectedToken?.symbol || network?.token.symbol || 'TOKEN'})
