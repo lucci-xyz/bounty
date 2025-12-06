@@ -58,7 +58,13 @@ function AttachBountyContent() {
     networkGroup,
     wallet,
     hasIssueData,
-    fundBounty
+    fundBounty,
+    // Token selection (multi-token support)
+    availableTokens,
+    selectedToken,
+    selectedTokenIndex,
+    setSelectedTokenIndex,
+    multiTokenEnabled
   } = useAttachBountyForm({ issueData });
 
   // Navigate back (or push) handler - wrapped in useCallback for stability
@@ -222,14 +228,33 @@ function AttachBountyContent() {
 
             {/* Bounty amount and deadline form */}
             <div className="space-y-4">
+              {/* Token selector (shown when multi-token is enabled and multiple tokens available) */}
+              {multiTokenEnabled && availableTokens.length > 1 && (
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground/70">
+                    Token
+                  </label>
+                  <select
+                    value={selectedTokenIndex}
+                    onChange={(e) => setSelectedTokenIndex(Number(e.target.value))}
+                    className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  >
+                    {availableTokens.map((token, index) => (
+                      <option key={token.address} value={index}>
+                        {token.symbol}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground/70">
-                  Bounty Amount (claimer receives) ({network?.token.symbol || 'TOKEN'})
+                  Bounty Amount ({selectedToken?.symbol || network?.token.symbol || 'TOKEN'})
                 </label>
                 <input
                   type="number"
                   min="1"
-                  step={network?.token.decimals === 18 ? '0.0001' : '0.01'}
+                  step={selectedToken?.decimals === 18 ? '0.0001' : '0.01'}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
@@ -254,7 +279,7 @@ function AttachBountyContent() {
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Bounty (claimer receives)</span>
                 <span className="font-semibold">
-                  {fundingSummary.amountFormatted} {network?.token.symbol || 'TOKEN'}
+                  {fundingSummary.amountFormatted} {fundingSummary.tokenSymbol || selectedToken?.symbol || 'TOKEN'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -262,13 +287,13 @@ function AttachBountyContent() {
                   Platform fee ({(fundingSummary.feeBps / 100).toFixed(2)}%)
                 </span>
                 <span className="font-semibold">
-                  {fundingSummary.feeFormatted} {network?.token.symbol || 'TOKEN'}
+                  {fundingSummary.feeFormatted} {fundingSummary.tokenSymbol || selectedToken?.symbol || 'TOKEN'}
                 </span>
               </div>
               <div className="flex items-center justify-between border-t border-border/60 pt-3">
                 <span className="text-muted-foreground">Total you pay</span>
                 <span className="font-semibold">
-                  {fundingSummary.totalFormatted} {network?.token.symbol || 'TOKEN'}
+                  {fundingSummary.totalFormatted} {fundingSummary.tokenSymbol || selectedToken?.symbol || 'TOKEN'}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-1">

@@ -104,6 +104,7 @@ export async function fundBounty({
   issueData,
   walletContext,
   networkContext,
+  token: tokenOverride,
   feeBps: feeBpsOverride,
   callbacks
 }) {
@@ -124,6 +125,10 @@ export async function fundBounty({
     setSelectedAlias,
     supportedNetworks
   } = networkContext;
+
+  // Use passed token or fall back to network's primary token
+  const selectedToken = tokenOverride || network.token;
+  const isPrimaryToken = selectedToken.address.toLowerCase() === network.token.address.toLowerCase();
 
   const { showStatus, showError } = callbacks;
   const { repoFullName, issueNumber, repoId, installationId } = issueData;
@@ -178,7 +183,7 @@ export async function fundBounty({
   const currentBlock = await provider.getBlock('latest');
   const blockTimestamp = Number(currentBlock.timestamp);
   const deadlineTimestamp = ensureDeadline(deadline, blockTimestamp);
-  const amountWei = ethers.parseUnits(amount, network.token.decimals);
+  const amountWei = ethers.parseUnits(amount, selectedToken.decimals);
 
   // Determine platform fee (bps) and total required (amount + fee)
   let escrowFeeBps = typeof feeBpsOverride === 'number' ? feeBpsOverride : null;
@@ -198,16 +203,16 @@ export async function fundBounty({
 
   const feeWei = (amountWei * BigInt(escrowFeeBps)) / 10000n;
   const totalRequiredWei = amountWei + feeWei;
-  const formattedFee = ethers.formatUnits(feeWei, network.token.decimals);
-  const formattedTotal = ethers.formatUnits(totalRequiredWei, network.token.decimals);
+  const formattedFee = ethers.formatUnits(feeWei, selectedToken.decimals);
+  const formattedTotal = ethers.formatUnits(totalRequiredWei, selectedToken.decimals);
 
   // Check balance and approve escrow contract if needed
   showStatus(
-    `Checking ${network.token.symbol} balance (need ${formattedTotal} incl. fee)...`,
+    `Checking ${selectedToken.symbol} balance (need ${formattedTotal} incl. fee)...`,
     'loading'
   );
-  const token = new ethers.Contract(
-    network.token.address,
+  const tokenContract = new ethers.Contract(
+    selectedToken.address,
     [
       'function balanceOf(address) view returns (uint256)',
       'function approve(address spender, uint256 amount) external returns (bool)',
@@ -216,26 +221,26 @@ export async function fundBounty({
     signer
   );
 
-  const balance = await token.balanceOf(address);
+  const balance = await tokenContract.balanceOf(address);
   if (balance < totalRequiredWei) {
-    const formattedBalance = ethers.formatUnits(balance, network.token.decimals);
-    const formattedRequired = ethers.formatUnits(totalRequiredWei, network.token.decimals);
+    const formattedBalance = ethers.formatUnits(balance, selectedToken.decimals);
+    const formattedRequired = ethers.formatUnits(totalRequiredWei, selectedToken.decimals);
     throw new Error(
-      `Insufficient ${network.token.symbol} balance. You have ${formattedBalance} ${network.token.symbol}, but need ${formattedRequired} (includes platform fee).`
+      `Insufficient ${selectedToken.symbol} balance. You have ${formattedBalance} ${selectedToken.symbol}, but need ${formattedRequired} (includes platform fee).`
     );
   }
 
-  const currentAllowance = await token.allowance(address, network.contracts.escrow);
+  const currentAllowance = await tokenContract.allowance(address, network.contracts.escrow);
   if (currentAllowance < totalRequiredWei) {
     showStatus(
-      `Approving ${network.token.symbol} (covering ${formattedTotal} incl. fee)...`,
+      `Approving ${selectedToken.symbol} (covering ${formattedTotal} incl. fee)...`,
       'loading'
     );
     try {
-      const approveTx = await token.approve(network.contracts.escrow, totalRequiredWei);
+      const approveTx = await tokenContract.approve(network.contracts.escrow, totalRequiredWei);
       await approveTx.wait();
 
-      const newAllowance = await token.allowance(address, network.contracts.escrow);
+      const newAllowance = await tokenContract.allowance(address, network.contracts.escrow);
       if (newAllowance < totalRequiredWei) {
         throw new Error('Approval transaction mined but allowance not updated. Please retry.');
       }
@@ -245,7 +250,7 @@ export async function fundBounty({
         approveError.code === 'ACTION_REJECTED'
           ? 'Transaction rejected by user'
           : approveError.message?.substring(0, 120) || 'Transaction rejected or failed';
-      throw new Error(`Failed to approve ${network.token.symbol}: ${errorMsg}`);
+      throw new Error(`Failed to approve ${selectedToken.symbol}: ${errorMsg}`);
     }
   }
 
@@ -270,14 +275,15 @@ export async function fundBounty({
 
   // Prepare to create the bounty on-chain
   showStatus(
-    `Creating bounty on-chain (total ${formattedTotal} ${network.token.symbol}, fee ${formattedFee})...`,
+    `Creating bounty on-chain (total ${formattedTotal} ${selectedToken.symbol}, fee ${formattedFee})...`,
     'loading'
   );
-  // ABI matches contracts/current/BountyEscrow.sol - getBounty includes token field
+  // ABI matches contracts/current/BountyEscrow.sol - includes createBountyWithToken for non-primary tokens
   const escrow = new ethers.Contract(
     network.contracts.escrow,
     [
       'function createBounty(address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) external returns (bytes32)',
+      'function createBountyWithToken(address token, address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) external returns (bytes32)',
       'function computeBountyId(address sponsor, bytes32 repoIdHash, uint64 issueNumber) public pure returns (bytes32)',
       'function getBounty(bytes32 bountyId) external view returns (tuple(bytes32 repoIdHash, address sponsor, address resolver, address token, uint96 amount, uint64 deadline, uint64 issueNumber, uint8 status))',
       'function paused() external view returns (bool)'
@@ -336,6 +342,7 @@ export async function fundBounty({
   }
 
   // Send the bounty creation transaction
+  // Use createBountyWithToken for non-primary tokens, createBounty for primary token
   let receipt;
   try {
     let tx;
@@ -347,13 +354,22 @@ export async function fundBounty({
           ? feeData.gasPrice
           : ethers.parseUnits('1', 'gwei');
 
-      const callData = escrow.interface.encodeFunctionData('createBounty', [
-        resolverAddress,
-        repoIdHash,
-        parseInt(issueNumber, 10),
-        deadlineTimestamp,
-        amountWei
-      ]);
+      const callData = isPrimaryToken
+        ? escrow.interface.encodeFunctionData('createBounty', [
+            resolverAddress,
+            repoIdHash,
+            parseInt(issueNumber, 10),
+            deadlineTimestamp,
+            amountWei
+          ])
+        : escrow.interface.encodeFunctionData('createBountyWithToken', [
+            selectedToken.address,
+            resolverAddress,
+            repoIdHash,
+            parseInt(issueNumber, 10),
+            deadlineTimestamp,
+            amountWei
+          ]);
 
       const txRequest = {
         to: network.contracts.escrow,
@@ -369,13 +385,24 @@ export async function fundBounty({
       tx = await signer.sendTransaction(txRequest);
     } else {
       // EIP-1559 path
-      tx = await escrow.createBounty(
-        resolverAddress,
-        repoIdHash,
-        parseInt(issueNumber, 10),
-        deadlineTimestamp,
-        amountWei
-      );
+      if (isPrimaryToken) {
+        tx = await escrow.createBounty(
+          resolverAddress,
+          repoIdHash,
+          parseInt(issueNumber, 10),
+          deadlineTimestamp,
+          amountWei
+        );
+      } else {
+        tx = await escrow.createBountyWithToken(
+          selectedToken.address,
+          resolverAddress,
+          repoIdHash,
+          parseInt(issueNumber, 10),
+          deadlineTimestamp,
+          amountWei
+        );
+      }
     }
 
     receipt = await tx.wait();
@@ -400,7 +427,8 @@ export async function fundBounty({
         txHash: receipt.hash,
         installationId: parseInt(installationId, 10) || 0,
         network: networkAliasToSend,
-        tokenSymbol: network.token.symbol,
+        tokenSymbol: selectedToken.symbol,
+        tokenAddress: selectedToken.address,
         feeBps: escrowFeeBps,
         platformFee: feeWei.toString(),
         totalPaid: totalRequiredWei.toString()

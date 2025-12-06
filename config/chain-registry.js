@@ -69,7 +69,15 @@ const CURATED_ALIASES = {
       address: process.env.BASE_SEPOLIA_TOKEN_ADDRESS || '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
       symbol: 'USDC',
       decimals: 6
-    }
+    },
+    // Additional tokens available for bounties (must be allowed in contract via setAllowedToken)
+    additionalTokens: [
+      {
+        address: '0x808456652fdb597867f38412077A9182bf77359F',
+        symbol: 'EURC',
+        decimals: 6
+      }
+    ]
   },
   MEZO_TESTNET: {
     group: 'testnet',
@@ -255,7 +263,9 @@ function buildRegistry() {
           address: tokenAddress,
           symbol: tokenSymbol,
           decimals: tokenDecimals
-        }
+        },
+        // Include additional tokens if defined (for multi-token support)
+        additionalTokens: curated.additionalTokens || []
       };
     }
   }
