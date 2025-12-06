@@ -82,7 +82,7 @@ const connectors = connectorsForWallets(
 );
 
 const customTheme = lightTheme({
-  accentColor: '#00827B',
+  accentColor: '#374151', // Gray-700 for selected states
   accentColorForeground: 'white',
   borderRadius: 'medium',
   fontStack: 'system',

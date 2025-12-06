@@ -23,8 +23,8 @@ function TokenIcon({ symbol, className = '' }) {
       <Image
         src={iconUrl}
         alt={symbol}
-        width={28}
-        height={28}
+        width={36}
+        height={36}
         className={`rounded-full ${className}`}
         unoptimized
       />
@@ -41,7 +41,7 @@ function TokenIcon({ symbol, className = '' }) {
   const colorIndex = symbol.charCodeAt(0) % colors.length;
   
   return (
-    <div className={`flex items-center justify-center rounded-full ${colors[colorIndex]} text-white font-semibold text-xs w-7 h-7 ${className}`}>
+    <div className={`flex items-center justify-center rounded-full ${colors[colorIndex]} text-white font-semibold text-sm w-9 h-9 ${className}`}>
       {symbol.slice(0, 2)}
     </div>
   );
@@ -98,25 +98,25 @@ export function TokenSelectorModal({
     >
       <div
         ref={modalRef}
-        className="relative w-full max-w-[400px] mx-4 bg-white rounded-3xl shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-200"
+        className="relative w-full max-w-[340px] mx-4 bg-white rounded-3xl shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-2">
-          <h2 className="text-base font-semibold text-gray-900">Select Token</h2>
+        <div className="flex items-center justify-between px-[18px] pt-[18px] pb-2">
+          <h2 className="text-[17px] font-bold text-[#25292E]">Select Token</h2>
           <button
             onClick={onClose}
-            className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+            className="flex items-center justify-center w-[28px] h-[28px] rounded-full bg-[#F5F5F7] hover:bg-[#E8E8EA] transition-colors"
             aria-label="Close"
           >
-            <svg width="10" height="10" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="11" height="11" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M1 1L13 13M1 13L13 1" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </button>
         </div>
 
         {/* Token list */}
-        <div className="px-3 pb-3">
+        <div className="px-[14px] pb-[18px] pt-1">
           <div className="space-y-1">
             {tokens.map((token, index) => {
               const isSelected = index === selectedIndex;
@@ -125,10 +125,10 @@ export function TokenSelectorModal({
                   key={token.address}
                   onClick={() => handleSelect(index)}
                   className={`
-                    w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-150
+                    w-full flex items-center gap-[12px] px-[12px] py-[12px] rounded-xl transition-all duration-150
                     ${isSelected 
-                      ? 'bg-gray-100' 
-                      : 'hover:bg-gray-50'
+                      ? 'bg-[#F5F5F7]' 
+                      : 'hover:bg-[#F5F5F7]/60'
                     }
                   `}
                 >
@@ -137,17 +137,17 @@ export function TokenSelectorModal({
                   
                   {/* Token info */}
                   <div className="flex-1 text-left min-w-0">
-                    <div className="font-medium text-gray-900 text-sm">
+                    <div className="font-bold text-[#25292E] text-[16px]">
                       {token.symbol}
                     </div>
                   </div>
 
                   {/* Selected indicator */}
                   {isSelected && (
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-xs font-medium text-gray-500">Selected</span>
+                    <div className="flex items-center gap-[6px] shrink-0">
+                      <span className="text-[14px] font-medium text-[#A0A4AB]">Selected</span>
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M2.5 7L5.5 10L11.5 4" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M2.5 7L5.5 10L11.5 4" stroke="#A0A4AB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </div>
                   )}

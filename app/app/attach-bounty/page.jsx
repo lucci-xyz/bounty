@@ -11,6 +11,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import BetaAccessModal from '@/ui/pages/beta/BetaAccessModal';
 import StatusNotice from '@/ui/components/StatusNotice';
 import TokenSelectorModal from '@/ui/components/TokenSelectorModal';
+import DatePickerModal from '@/ui/components/DatePickerModal';
 import { useAttachBountyForm } from '@/ui/hooks/useAttachBountyForm';
 import {
   AttachBountyLoadingState,
@@ -78,6 +79,9 @@ function AttachBountyContent() {
   
   // Token selector modal state
   const [tokenModalOpen, setTokenModalOpen] = useState(false);
+  
+  // Date picker modal state
+  const [dateModalOpen, setDateModalOpen] = useState(false);
   
   useEffect(() => {
     // Only update when not loading and conditions change
@@ -277,11 +281,24 @@ function AttachBountyContent() {
                 <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60">
                   Deadline
                 </label>
-                <input
-                  type="date"
+                <button
+                  type="button"
+                  onClick={() => setDateModalOpen(true)}
+                  className="w-full rounded-full border border-border/60 bg-background px-4 py-2.5 text-sm text-foreground transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 text-left flex items-center justify-between"
+                >
+                  <span className={deadline ? 'text-foreground' : 'text-muted-foreground'}>
+                    {deadline ? new Date(deadline + 'T00:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }) : 'Select date'}
+                  </span>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-muted-foreground">
+                    <path d="M5 2V4M11 2V4M2 7H14M4 3H12C13.1046 3 14 3.89543 14 5V12C14 13.1046 13.1046 14 12 14H4C2.89543 14 2 13.1046 2 12V5C2 3.89543 2.89543 3 4 3Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                <DatePickerModal
+                  isOpen={dateModalOpen}
+                  onClose={() => setDateModalOpen(false)}
                   value={deadline}
-                  onChange={(e) => setDeadline(e.target.value)}
-                  className="w-full rounded-full border border-border/60 bg-background px-4 py-2.5 text-sm text-foreground transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                  onChange={setDeadline}
+                  minDate={new Date().toISOString().split('T')[0]}
                 />
               </div>
 
