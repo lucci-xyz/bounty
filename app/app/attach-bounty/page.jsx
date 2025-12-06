@@ -205,10 +205,8 @@ function AttachBountyContent() {
             {/* Wallet/account actions (change wallet, network, or token) */}
             <ConnectButton.Custom>
               {({ openConnectModal, openChainModal, openAccountModal }) => {
-                // Always show token button when multi-token is enabled (even with 1 token)
-                const showTokenButton = multiTokenEnabled;
                 return (
-                  <div className={`grid gap-3 ${showTokenButton ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+                  <div className="grid gap-3 md:grid-cols-3">
                     <button
                       onClick={(e) => {
                         e.preventDefault();
@@ -233,18 +231,17 @@ function AttachBountyContent() {
                     >
                       Switch Network
                     </button>
-                    {showTokenButton && (
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setTokenModalOpen(true);
-                        }}
-                        disabled={!isMounted}
-                        className="inline-flex items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {selectedToken?.symbol || 'Select Token'}
-                      </button>
-                    )}
+                    {/* Always show token selector button */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setTokenModalOpen(true);
+                      }}
+                      disabled={!isMounted}
+                      className="inline-flex items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {selectedToken?.symbol || network?.token?.symbol || 'Token'}
+                    </button>
                   </div>
                 );
               }}
