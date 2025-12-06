@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo, useCallback } from 'react';
-import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { useConnectModal, useAccountModal } from '@rainbow-me/rainbowkit';
+import { useDisconnect } from 'wagmi';
 import { formatDate, getStatusColor } from '@/lib';
 import { useErrorModal } from '@/ui/providers/ErrorModalProvider';
 import { StatBlock } from '@/ui/pages/account/StatBlock';
@@ -71,11 +72,10 @@ function ApplicationCard({ app, onApprove, onReject, isProcessing, showActions }
 }
 
 /**
- * Network fee card with simple one-click withdrawal.
- * Fees are sent to the connected wallet (must be contract owner).
+ * Token fee row - shows fees for a single token
  */
-function NetworkFeeCard({ network, onWithdraw, isWithdrawing, withdrawStatus, onClearStatus, wallet, onConnectWallet, showError }) {
-  const hasAvailableFees = network.fees && parseFloat(network.fees.availableFormatted) > 0;
+function TokenFeeRow({ token, networkAlias, onWithdraw, isWithdrawing, wallet, onConnectWallet, showError }) {
+  const hasAvailableFees = parseFloat(token.availableFormatted) > 0;
 
   const handleWithdraw = useCallback(async () => {
     if (!wallet.isConnected || !wallet.address) {
@@ -83,49 +83,106 @@ function NetworkFeeCard({ network, onWithdraw, isWithdrawing, withdrawStatus, on
       return;
     }
     try {
-      // Withdraw to connected wallet address
-      await onWithdraw(network.alias, wallet.address, '0');
+      await onWithdraw(networkAlias, wallet.address, '0', token.address);
     } catch (err) {
       if (err.message?.includes('owner')) {
         showError({ title: 'Permission Denied', message: err.message });
       }
     }
-  }, [wallet.isConnected, wallet.address, network.alias, onWithdraw, onConnectWallet, showError]);
+  }, [wallet.isConnected, wallet.address, networkAlias, token.address, onWithdraw, onConnectWallet, showError]);
+
+  return (
+    <div className="flex items-center justify-between py-3 border-b border-border/30 last:border-0">
+      <div className="flex items-center gap-3">
+        <span className="text-xs font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded">
+          {token.symbol}
+        </span>
+        <div>
+          <div className="text-lg font-semibold text-foreground">
+            {parseFloat(token.availableFormatted).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+          </div>
+          <div className="text-[10px] text-muted-foreground">Available to withdraw</div>
+        </div>
+      </div>
+      {hasAvailableFees && (
+        <button
+          onClick={handleWithdraw}
+          disabled={isWithdrawing}
+          className="text-xs font-medium text-primary hover:text-primary/80 disabled:opacity-50"
+        >
+          {isWithdrawing ? 'Processing...' : 'Withdraw'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Network fee card with multi-token support.
+ * Shows fees for each token available on the network.
+ */
+function NetworkFeeCard({ network, onWithdraw, isWithdrawing, withdrawStatus, onClearStatus, wallet, onConnectWallet, showError }) {
+  const tokens = network.fees?.tokens || [];
+  const hasAnyFees = tokens.some(t => parseFloat(t.availableFormatted) > 0);
+  const isOwner = wallet.isConnected && wallet.address?.toLowerCase() === network.owner?.toLowerCase();
 
   return (
     <div className="bg-card border border-border/40 rounded-xl p-5">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div>
           <h4 className="text-base font-medium text-foreground">{network.name}</h4>
           <div className="text-xs text-muted-foreground font-mono">
-            {network.escrowAddress.slice(0, 10)}...{network.escrowAddress.slice(-8)}
+            {network.escrowAddress?.slice(0, 10)}...{network.escrowAddress?.slice(-8)}
           </div>
         </div>
-        <span className="text-sm font-medium text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
-          {network.token.symbol}
-        </span>
+        {network.fees && (
+          <div className="text-right">
+            <div className="text-xs text-muted-foreground">Fee rate</div>
+            <div className="text-sm font-medium text-foreground">{(network.fees.feeBps / 100).toFixed(2)}%</div>
+          </div>
+        )}
       </div>
+
+      {/* Owner info */}
+      {network.owner && (
+        <div className={`text-xs rounded-lg p-2 mb-3 ${isOwner ? 'bg-primary/10 text-primary' : 'bg-amber-500/10 text-amber-600'}`}>
+          {isOwner ? (
+            <span className="flex items-center gap-1.5">
+              <CheckIcon size={12} />
+              You are the contract owner
+            </span>
+          ) : (
+            <span>
+              Owner: <span className="font-mono">{network.owner?.slice(0, 8)}...{network.owner?.slice(-6)}</span>
+              {wallet.isConnected && (
+                <span className="block mt-1 text-[10px]">
+                  Switch to owner wallet to withdraw
+                </span>
+              )}
+            </span>
+          )}
+        </div>
+      )}
 
       {network.error ? (
         <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">Error: {network.error}</div>
       ) : network.fees ? (
-        <div className="space-y-4">
-          {/* Fee amounts */}
-          <div className="flex items-end justify-between">
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Available to withdraw</div>
-              <div className="text-2xl font-semibold text-foreground">
-                {parseFloat(network.fees.availableFormatted).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                <span className="text-sm font-normal text-muted-foreground ml-1">{network.token.symbol}</span>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-xs text-muted-foreground mb-1">All-time</div>
-              <div className="text-sm text-muted-foreground">
-                {parseFloat(network.fees.totalAccruedFormatted).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-            </div>
+        <div className="space-y-2">
+          {/* Token fees list */}
+          <div className="divide-y divide-border/30">
+            {tokens.map((token) => (
+              <TokenFeeRow
+                key={token.address}
+                token={token}
+                networkAlias={network.alias}
+                onWithdraw={onWithdraw}
+                isWithdrawing={isWithdrawing}
+                wallet={wallet}
+                onConnectWallet={onConnectWallet}
+                showError={showError}
+              />
+            ))}
           </div>
 
           {/* Status message */}
@@ -133,31 +190,20 @@ function NetworkFeeCard({ network, onWithdraw, isWithdrawing, withdrawStatus, on
             <StatusMessage status={withdrawStatus} onDismiss={() => onClearStatus?.(network.alias)} />
           )}
 
-          {/* Withdraw button */}
-          {hasAvailableFees ? (
+          {/* Connect wallet prompt */}
+          {!wallet.isConnected && hasAnyFees && (
             <button
-              onClick={handleWithdraw}
-              disabled={isWithdrawing}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+              onClick={onConnectWallet}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-muted/50 hover:bg-muted px-4 py-2.5 text-xs font-medium text-muted-foreground transition-colors"
             >
-              {isWithdrawing ? (
-                'Processing...'
-              ) : !wallet.isConnected ? (
-                <>
-                  <WalletIcon size={16} />
-                  Connect to Withdraw
-                </>
-              ) : (
-                `Withdraw to ${wallet.address?.slice(0, 6)}...${wallet.address?.slice(-4)}`
-              )}
+              <WalletIcon size={14} />
+              Connect wallet to withdraw
             </button>
-          ) : (
-            <div className="text-center text-sm text-muted-foreground py-2">No fees available</div>
           )}
 
-          {/* Fee rate info */}
-          <div className="text-xs text-muted-foreground text-center">
-            Fee rate: {(network.fees.feeBps / 100).toFixed(2)}%
+          {/* All-time total */}
+          <div className="text-xs text-muted-foreground text-center pt-2 border-t border-border/30">
+            All-time accrued: {parseFloat(network.fees.totalAccruedFormatted).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
       ) : (
@@ -192,6 +238,8 @@ function CollapsibleSection({ title, count, children, defaultOpen = false }) {
  */
 export function AdminTab({ betaApplications, betaLoading, betaError, handleReview, betaProcessing, networkFees = {} }) {
   const { openConnectModal } = useConnectModal();
+  const { openAccountModal } = useAccountModal();
+  const { disconnect } = useDisconnect();
   const { showError } = useErrorModal();
 
   const { networks = [], loading: feesLoading, error: feesError, withdrawing = {}, withdrawStatus = {}, totals = {}, wallet = {}, withdraw, clearStatus } = networkFees;
@@ -204,6 +252,8 @@ export function AdminTab({ betaApplications, betaLoading, betaError, handleRevie
   const onApprove = id => handleReview(id, 'approve');
   const onReject = id => handleReview(id, 'reject');
   const handleConnectWallet = () => openConnectModal?.();
+  const handleChangeWallet = () => openAccountModal?.();
+  const handleDisconnect = () => disconnect?.();
 
   // Show critical errors in modal
   if (betaError && !betaApplications?.length) {
@@ -270,9 +320,23 @@ export function AdminTab({ betaApplications, betaLoading, betaError, handleRevie
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-foreground">Protocol Fees</h2>
           {wallet.isConnected ? (
-            <div className="flex items-center gap-2 text-xs bg-primary/10 text-primary rounded-full px-3 py-1.5">
-              <CheckIcon size={12} />
-              <span className="font-mono">{wallet.address?.slice(0, 6)}...{wallet.address?.slice(-4)}</span>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 text-xs bg-primary/10 text-primary rounded-full px-3 py-1.5">
+                <CheckIcon size={12} />
+                <span className="font-mono">{wallet.address?.slice(0, 6)}...{wallet.address?.slice(-4)}</span>
+              </div>
+              <button 
+                onClick={handleChangeWallet}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Change
+              </button>
+              <button 
+                onClick={handleDisconnect}
+                className="text-xs text-destructive/70 hover:text-destructive transition-colors"
+              >
+                Disconnect
+              </button>
             </div>
           ) : (
             <button onClick={handleConnectWallet} className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 hover:bg-muted rounded-full px-3 py-1.5 transition-colors">
