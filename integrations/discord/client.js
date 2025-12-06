@@ -62,25 +62,13 @@ export function formatBountyEmbed(bounty) {
     // keep original string
   }
 
-  const feePercentDisplay = Number.isFinite(Number(feeBps))
-    ? (Number(feeBps) / 100).toFixed(2)
-    : '1.00';
-
   const descriptionLines = [
-    `**${title || 'New bounty available'}**`,
+    `💵 **Bounty:** ${amount} ${tokenSymbol}`,
     '',
-    `💵 **Reward (claimer receives):** ${amount} ${tokenSymbol}`,
-    platformFee
-      ? `🏷️ **Platform fee (${feePercentDisplay}%):** ${platformFee} ${tokenSymbol} (paid by sponsor)`
-      : null,
-    total ? `💰 **Total you pay:** ${total} ${tokenSymbol}` : null,
-    `🌐 **Network:** ${network}`,
-    `📁 **Repository:** [${repoName}](https://github.com/${repoName})`,
     `📅 **Deadline:** ${deadlineDisplay}`,
-    `👤 **Sponsor:** [@${createdByGithubUsername}](https://github.com/${createdByGithubUsername})`,
     '',
-    `[View issue](${issueUrl})`
-  ].filter(Boolean);
+    `👤 **Sponsor:** [@${createdByGithubUsername}](https://github.com/${createdByGithubUsername})`
+  ];
 
   return {
     embeds: [

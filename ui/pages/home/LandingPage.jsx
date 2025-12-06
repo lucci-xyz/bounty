@@ -552,11 +552,11 @@ function FAQSection() {
     },
     {
       question: "What happens if work isn't completed?",
-      answer: 'If the bounty deadline passes without a merged PR, sponsors can request a refund of the bounty amount from the escrow contract. The 1% platform fee paid at funding is non-refundable.'
+      answer: 'If the bounty deadline passes without a merged PR, sponsors can request a refund from the escrow contract.'
     },
     {
       question: 'Are there any fees?',
-      answer: 'BountyPay charges a 1% platform fee when you fund a bounty. The sponsor pays this upfront; contributors receive the full bounty amount.'
+      answer: 'BountyPay charges a small platform fee when you fund a bounty. Contributors receive the full bounty amount.'
     },
   ];
 

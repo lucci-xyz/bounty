@@ -17,8 +17,6 @@ export function renderPaymentSentComment({
 **Amount:** ${amountFormatted} ${tokenSymbol}  
 **Transaction:** ${renderLink(txUrl, 'View on Explorer')}
 
-Payment sent successfully. Platform fee was paid by the sponsor upfront; the recipient receives the full bounty.
-
 ${brandSignature}`;
 }
 

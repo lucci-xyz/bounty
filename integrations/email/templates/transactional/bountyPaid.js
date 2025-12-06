@@ -155,7 +155,7 @@ export function renderBountyPaidEmail({
                               color: #4b5563;
                             "
                           >
-                            Bounty payout (you received)
+                            Bounty
                           </td>
                           <td
                             style="
@@ -298,7 +298,7 @@ export function renderBountyPaidEmail({
                         padding-top: 12px;
                       "
                     >
-                    Platform fee was paid by the sponsor upfront; you received the full bounty amount. Depending on your wallet and network, it may take a moment for the updated balance to appear.
+                    Depending on your wallet and network, it may take a moment for the updated balance to appear.
                     </td>
                   </tr>
                 </table>
@@ -357,7 +357,7 @@ export function renderBountyPaidEmail({
   
   Your bounty reward has been paid to your linked wallet.
   
-  Bounty payout (you received): ${bountyAmount} ${tokenSymbol}
+  Bounty: ${bountyAmount} ${tokenSymbol}
   Repository: ${repoFullName}
   Issue: #${issueNumber}${issueTitle ? ` - ${issueTitle}` : ''} (${issueUrl})
   Status: Paid${
@@ -369,7 +369,7 @@ export function renderBountyPaidEmail({
   
   You can view this bounty and your payout history from your dashboard: ${dashboardUrl}
   
-  Platform fee was paid by the sponsor upfront; you received the full bounty amount. Depending on your wallet and network, it may take a moment for the updated balance to appear.
+  Depending on your wallet and network, it may take a moment for the updated balance to appear.
   
   BountyPay by Lucci Labs (luccilabs.xyz)
     `.trim();

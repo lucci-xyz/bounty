@@ -17,8 +17,6 @@ export function renderBountyResolvedComment({
 **Amount:** ${amountFormatted} ${tokenSymbol}  
 **Transaction:** ${renderLink(txUrl, 'View on Explorer')}
 
-Platform fee was paid by the sponsor upfront; the contributor received the full bounty.
-
 ${brandSignature}`;
 }
 

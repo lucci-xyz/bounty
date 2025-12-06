@@ -17,7 +17,7 @@ export function renderBountyRefundedComment({
 **Network:** ${networkName}  
 **Transaction:** ${renderLink(txUrl, 'View on Explorer')}
 
-This bounty has been refunded to the sponsor. The issue is no longer eligible for payment. Platform fees were paid upfront and are not included in this refund.
+This bounty has been refunded to the sponsor. The issue is no longer eligible for payment.
 
 ${brandSignature}`;
 }
