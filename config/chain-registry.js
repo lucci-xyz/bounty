@@ -28,7 +28,10 @@ const CURATED_ALIASES = {
       address: process.env.BASE_MAINNET_TOKEN_ADDRESS || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
       symbol: 'USDC',
       decimals: 6
-    }
+    },
+    // Additional tokens for Base Mainnet (must be allowed in contract via setAllowedToken)
+    // Currently empty - only USDC is allowed on mainnet
+    additionalTokens: []
   },
   MEZO_MAINNET: {
     group: 'mainnet',
