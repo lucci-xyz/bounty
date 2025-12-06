@@ -152,8 +152,8 @@ function AttachBountyContent() {
 
   // Show the Attach Bounty form and flow
   return (
-    <div className="min-h-screen bg-background/80 px-4 py-10 flex items-center justify-center">
-      <div className="w-full max-w-3xl rounded-[36px] border border-border/60 bg-card p-6 md:p-10 shadow-[0_50px_140px_rgba(15,23,42,0.18)] space-y-6">
+    <div className="min-h-screen bg-background/80 px-4 py-10 flex items-start justify-center overflow-visible">
+      <div className="w-full max-w-3xl rounded-[36px] border border-border/60 bg-card p-6 md:p-10 shadow-[0_50px_140px_rgba(15,23,42,0.18)] space-y-6 mt-10 overflow-visible">
         {/* Back button */}
         <button
           onClick={handleBack}
@@ -254,10 +254,11 @@ function AttachBountyContent() {
               onSelect={setSelectedTokenIndex}
             />
 
-            {/* Bounty amount and deadline form */}
-            <div className="space-y-4">
+            {/* Bounty details form + summary */}
+            <div className="rounded-3xl border border-border/60 bg-muted/30 p-5 space-y-4 overflow-visible">
+              {/* Bounty amount input */}
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground/70">
+                <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60">
                   Bounty Amount ({selectedToken?.symbol || network?.token.symbol || 'TOKEN'})
                 </label>
                 <input
@@ -266,48 +267,47 @@ function AttachBountyContent() {
                   step={selectedToken?.decimals === 18 ? '0.0001' : '0.01'}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  className="w-full rounded-full border border-border/60 bg-background px-4 py-2.5 text-sm text-foreground transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
                   placeholder="500"
                 />
               </div>
-              <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground/70">
+
+              {/* Deadline input */}
+              <div className="relative">
+                <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60">
                   Deadline
                 </label>
                 <input
                   type="date"
                   value={deadline}
                   onChange={(e) => setDeadline(e.target.value)}
-                  className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  className="w-full rounded-full border border-border/60 bg-background px-4 py-2.5 text-sm text-foreground transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                 />
               </div>
-            </div>
 
-            {/* Funding summary */}
-            <div className="rounded-3xl border border-border/60 bg-muted/30 p-5 text-sm text-foreground space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Bounty (claimer receives)</span>
-                <span className="font-semibold">
-                  {fundingSummary.amountFormatted} {fundingSummary.tokenSymbol || selectedToken?.symbol || 'TOKEN'}
-                </span>
+              {/* Summary breakdown */}
+              <div className="pt-3 border-t border-border/40 space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-xs">Bounty (claimer receives)</span>
+                  <span className="font-medium text-foreground">
+                    {fundingSummary.amountFormatted} {fundingSummary.tokenSymbol || selectedToken?.symbol || 'TOKEN'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-xs">
+                    Platform fee ({(fundingSummary.feeBps / 100).toFixed(2)}%)
+                  </span>
+                  <span className="font-medium text-foreground">
+                    {fundingSummary.feeFormatted} {fundingSummary.tokenSymbol || selectedToken?.symbol || 'TOKEN'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                  <span className="text-muted-foreground text-xs">Total you pay</span>
+                  <span className="font-semibold text-foreground">
+                    {fundingSummary.totalFormatted} {fundingSummary.tokenSymbol || selectedToken?.symbol || 'TOKEN'}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">
-                  Platform fee ({(fundingSummary.feeBps / 100).toFixed(2)}%)
-                </span>
-                <span className="font-semibold">
-                  {fundingSummary.feeFormatted} {fundingSummary.tokenSymbol || selectedToken?.symbol || 'TOKEN'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between border-t border-border/60 pt-3">
-                <span className="text-muted-foreground">Total you pay</span>
-                <span className="font-semibold">
-                  {fundingSummary.totalFormatted} {fundingSummary.tokenSymbol || selectedToken?.symbol || 'TOKEN'}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                The platform fee is charged upfront to you as the sponsor. The claimer receives the full bounty amount.
-              </p>
             </div>
 
             {/* Fund bounty button */}
