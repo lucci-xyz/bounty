@@ -371,10 +371,24 @@ export function SponsoredTab({
                     repoFullName: bounty.repoFullName,
                     issueNumber: bounty.issueNumber,
                   };
-                  const explorerLinkKey =
-                    bounty.network === "MEZO_TESTNET"
-                      ? "mezoTestnetTx"
-                      : "baseSepoliaTx";
+                  const getNetworkMeta = (alias) => {
+                    switch (alias) {
+                      case "BASE_MAINNET":
+                        return { label: "Base Mainnet", explorerKey: "baseMainnetTx" };
+                      case "BASE_SEPOLIA":
+                        return { label: "Base Sepolia", explorerKey: "baseSepoliaTx" };
+                      case "MEZO_MAINNET":
+                        return { label: "Mezo Mainnet", explorerKey: "mezoMainnetTx" };
+                      case "MEZO_TESTNET":
+                        return { label: "Mezo Testnet", explorerKey: "mezoTestnetTx" };
+                      default:
+                        return { label: alias || "Unknown", explorerKey: null };
+                    }
+                  };
+
+                  const { label: networkLabel, explorerKey } = getNetworkMeta(
+                    bounty.network
+                  );
 
                   return (
                     <div
@@ -452,13 +466,11 @@ export function SponsoredTab({
                                 Network
                               </span>
                               <span className="text-foreground">
-                                {bounty.network === "MEZO_TESTNET"
-                                  ? "Mezo Testnet"
-                                  : "Base Sepolia"}
+                                {networkLabel}
                               </span>
                             </div>
                             {/* Transaction link, if available */}
-                            {bounty.txHash && (
+                            {bounty.txHash && explorerKey && (
                               <div className="grid grid-cols-2 gap-2 items-center">
                                 <span className="text-muted-foreground/80 text-sm text-left">
                                   Transaction
@@ -466,7 +478,7 @@ export function SponsoredTab({
                                 <div className="text-right">
                                   <LinkFromCatalog
                                     section="explorers"
-                                    link={explorerLinkKey}
+                                    link={explorerKey}
                                     params={{ txHash: bounty.txHash }}
                                     className="font-mono text-xs break-all text-foreground/90 hover:text-primary inline-block text-right"
                                   >
