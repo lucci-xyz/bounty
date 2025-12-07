@@ -2,21 +2,18 @@
 
 _Automated, trust-minimised bounty payouts for open-source contributions. Fund with USDC on Base or MUSD on Mezo and let BountyPay handle the rest._
 
-
-**[Quick Demo Here](https://www.youtube.com/watch?v=fm-Y88apoTg)**
-
 ## Get Started in Minutes
 
-1. **Install the GitHub App**  
-   [Download BountyPay](https://github.com/apps/bountypay)
+1. **Install the GitHub App**
 
 2. **Open a New Issue** and click the `Create a bounty` button from the BountyPay bot.
 
 3. **Choose Your Network & Fund**
-   - **Base Sepolia**: Fund with USDC (EVM standard)
-   - **Mezo Testnet**: Fund with MUSD (Bitcoin L2)
 
-   Funds sit safely in escrow.
+- **Base Sepolia**: Fund with USDC (EVM standard)
+- **Mezo Testnet**: Fund with MUSD (Bitcoin L2)
+
+Funds sit safely in escrow.
 
 4. **Merge the winning PR** — BountyPay automatically pays the contributor once the PR closes the issue.
 
@@ -24,7 +21,7 @@ That's it. No invoices, no manual transfers, no spreadsheets.
 
 ## Example Workflow
 
-### As a Sponsor
+### As a Maintainer
 
 1. Open an issue describing the work needed
 2. Click "Create a bounty" in the bot comment
@@ -33,13 +30,18 @@ That's it. No invoices, no manual transfers, no spreadsheets.
 5. Set a deadline for when the work should be completed
 6. Wait for contributors to submit PRs
 
+For a detailed quick-start guide for maintainers, see our wiki:
+
+[Maintainer Quickstart](https://github.com/lucci-xyz/bounty/wiki/Maintainer-Quickstart)
+
 ### As a Contributor
 
-1. Find an issue with a bounty attached
-2. Link your GitHub account to your wallet at `/link-wallet`
-3. Submit a PR that addresses the issue
-4. When your PR is merged and closes the issue, payment is automatic
-5. Funds are sent to your linked wallet address
+1. Go to [bountypay.luccilabs.xyz](https://bountypay.luccilabs.xyz) to create your account and browse available bounties
+2. Find an issue with a bounty attached
+3. Link your GitHub account to your wallet at `/link-wallet`
+4. Submit a PR that addresses the issue
+5. When your PR is merged and closes the issue, payment is automatic
+6. Funds are sent to your linked wallet address
 
 ---
 
