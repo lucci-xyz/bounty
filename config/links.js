@@ -70,12 +70,20 @@ export const LINKS = Object.freeze({
   }),
   explorers: freezeSection({
     baseMainnet: externalStatic('https://basescan.org'),
+    baseMainnetTx: externalDynamic(({ txHash }) => {
+      const { txHash: hash } = requireParams({ txHash }, ['txHash']);
+      return `https://basescan.org/tx/${hash}`;
+    }),
     baseSepolia: externalStatic('https://sepolia.basescan.org'),
     baseSepoliaTx: externalDynamic(({ txHash }) => {
       const { txHash: hash } = requireParams({ txHash }, ['txHash']);
       return `https://sepolia.basescan.org/tx/${hash}`;
     }),
     mezoMainnet: externalStatic('https://explorer.mezo.org'),
+    mezoMainnetTx: externalDynamic(({ txHash }) => {
+      const { txHash: hash } = requireParams({ txHash }, ['txHash']);
+      return `https://explorer.mezo.org/tx/${hash}`;
+    }),
     mezoTestnet: externalStatic('https://explorer.test.mezo.org'),
     mezoTestnetTx: externalDynamic(({ txHash }) => {
       const { txHash: hash } = requireParams({ txHash }, ['txHash']);
