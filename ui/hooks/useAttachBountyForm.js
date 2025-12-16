@@ -42,7 +42,7 @@ export function useAttachBountyForm({ issueData }) {
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
   const { switchChain } = useSwitchChain();
-  const { hasAccess, betaStatus, loading: betaLoading } = useBetaAccess();
+  const { hasAccess, betaStatus, loading: betaLoading, betaProgramEnabled } = useBetaAccess();
   const { showError } = useErrorModal();
   const {
     registry,
@@ -110,6 +110,12 @@ export function useAttachBountyForm({ issueData }) {
    * Once the modal is opened, keep it open until access is granted or user dismisses it.
    */
   useEffect(() => {
+    if (!betaProgramEnabled) {
+      setShowBetaModal(false);
+      modalOpenedRef.current = false;
+      return;
+    }
+
     if (!betaLoading) {
       // Only update if modal hasn't been opened yet, or if access was just granted
       if (!modalOpenedRef.current && !hasAccess) {
@@ -121,7 +127,7 @@ export function useAttachBountyForm({ issueData }) {
         modalOpenedRef.current = false;
       }
     }
-  }, [betaLoading, hasAccess]);
+  }, [betaLoading, hasAccess, betaProgramEnabled]);
 
   /**
    * Keeps selectedAlias in sync with the current network and registry settings.
@@ -354,6 +360,7 @@ export function useAttachBountyForm({ issueData }) {
       chain
     },
     betaStatus,
+    betaProgramEnabled,
     hasIssueData,
     fundBounty: handleFundBounty,
     showStatus
