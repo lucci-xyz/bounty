@@ -22,13 +22,23 @@ import { redirectToGithubSignIn } from '@/lib/navigation';
  */
 
 export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDismiss, dismissLabel = 'Close' }) {
-  const { hasAccess, betaStatus, loading: betaLoading, refreshAccess } = useBetaAccess();
+  const {
+    hasAccess,
+    betaStatus,
+    loading: betaLoading,
+    refreshAccess,
+    betaProgramEnabled
+  } = useBetaAccess();
   const [step, setStep] = useState('loading');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
+
+  if (!betaProgramEnabled) {
+    return null;
+  }
 
   // Ensure portal rendering only after mount (fixes Next.js hydration)
   useEffect(() => {

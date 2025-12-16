@@ -16,8 +16,12 @@ import BetaAccessModal from './BetaAccessModal';
  * @param {React.ReactNode} [props.fallback] - Optional fallback while loading.
  */
 export function BetaGate({ children, fallback }) {
-  const { hasAccess, loading } = useBetaAccess();
+  const { hasAccess, loading, betaProgramEnabled } = useBetaAccess();
   const [showModal, setShowModal] = useState(false);
+
+  if (!betaProgramEnabled) {
+    return children;
+  }
 
   // Show fallback while beta access status is loading
   if (loading) {

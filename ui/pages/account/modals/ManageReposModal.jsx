@@ -21,7 +21,8 @@ export function ManageReposModal({
   loading,
   close,
   handleInstallApp,
-  hasBetaAccess
+  hasBetaAccess,
+  betaProgramEnabled = true
 }) {
   const [showBetaModal, setShowBetaModal] = useState(false);
 
@@ -36,7 +37,7 @@ export function ManageReposModal({
    * Otherwise, show the beta access modal.
    */
   const onInstallClick = () => {
-    if (hasBetaAccess) {
+    if (!betaProgramEnabled || hasBetaAccess) {
       handleInstallApp?.();
     } else {
       setShowBetaModal(true);
@@ -113,7 +114,7 @@ export function ManageReposModal({
               <p className="text-muted-foreground mb-6" style={{ fontSize: '14px', fontWeight: 300 }}>
                 BountyPay isn't installed on any repositories yet
               </p>
-              {hasBetaAccess ? (
+              {!betaProgramEnabled || hasBetaAccess ? (
                 <button
                   onClick={onInstallClick}
                   className="premium-btn bg-primary text-primary-foreground"
@@ -153,7 +154,7 @@ export function ManageReposModal({
               </div>
 
               {/* Button to add/import another repository - gated behind beta access */}
-              {hasBetaAccess ? (
+              {!betaProgramEnabled || hasBetaAccess ? (
                 <button
                   onClick={onInstallClick}
                   className="premium-btn bg-primary text-primary-foreground w-full"
@@ -172,11 +173,13 @@ export function ManageReposModal({
       </div>
 
       {/* Beta Access Modal - shown when user tries to install without beta access */}
-      <BetaAccessModal
-        isOpen={showBetaModal}
-        onClose={closeBetaModal}
-        onAccessGranted={handleAccessGranted}
-      />
+      {betaProgramEnabled && (
+        <BetaAccessModal
+          isOpen={showBetaModal}
+          onClose={closeBetaModal}
+          onAccessGranted={handleAccessGranted}
+        />
+      )}
     </>
   );
 }

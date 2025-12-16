@@ -61,6 +61,7 @@ function AttachBountyContent() {
     wallet,
     hasIssueData,
     fundBounty,
+    betaProgramEnabled,
     // Token selection (multi-token support)
     availableTokens,
     selectedToken,
@@ -124,7 +125,7 @@ function AttachBountyContent() {
    * Shown if user does not have access.
    * Once opened, stays open until dismissed or access is granted (prevents flickering during loading).
    */
-  const betaModal = (
+  const betaModal = betaProgramEnabled ? (
     <BetaAccessModal
       isOpen={modalIsOpen}
       onClose={handleModalClose}
@@ -132,7 +133,7 @@ function AttachBountyContent() {
       dismissLabel="Back"
       onAccessGranted={handleAccessGranted}
     />
-  );
+  ) : null;
 
   // Show a loading state while mounting or fetching beta status
   if (!isMounted || betaLoading) {

@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 import { prisma } from '@/server/db/prisma';
+import { getFlagValue } from '@/lib/flags';
 import { NextResponse } from 'next/server';
 
 // List of admin GitHub IDs - admins automatically get beta access
@@ -13,11 +14,21 @@ const ADMIN_GITHUB_IDS = (process.env.ADMIN_GITHUB_IDS || '')
 export async function GET() {
   try {
     const session = await getSession();
+    const betaProgramEnabled = await getFlagValue('betaProgramEnabled');
     
     if (!session.githubId) {
       return NextResponse.json({ 
         hasAccess: false, 
-        needsAuth: true 
+        needsAuth: true,
+        betaProgramEnabled
+      });
+    }
+
+    if (!betaProgramEnabled) {
+      return NextResponse.json({
+        hasAccess: true,
+        status: 'disabled',
+        betaProgramEnabled
       });
     }
     
@@ -27,7 +38,8 @@ export async function GET() {
       return NextResponse.json({
         hasAccess: true,
         status: 'approved',
-        isAdmin: true
+        isAdmin: true,
+        betaProgramEnabled
       });
     }
     
@@ -39,14 +51,16 @@ export async function GET() {
     if (!betaAccess) {
       return NextResponse.json({ 
         hasAccess: false,
-        needsApplication: true
+        needsApplication: true,
+        betaProgramEnabled
       });
     }
     
     return NextResponse.json({
       hasAccess: betaAccess.status === 'approved',
       status: betaAccess.status,
-      appliedAt: betaAccess.appliedAt.toString()
+      appliedAt: betaAccess.appliedAt.toString(),
+      betaProgramEnabled
     });
   } catch (error) {
     logger.error('Error checking beta access:', error);

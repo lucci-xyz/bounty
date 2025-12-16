@@ -334,6 +334,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
         close={repoManager.closeManageReposModal}
         handleInstallApp={repoManager.handleInstallApp}
         hasBetaAccess={repoManager.hasBetaAccess}
+        betaProgramEnabled={repoManager.betaProgramEnabled}
       />
       {allowlistEnabled && (
         <AllowlistModal

@@ -31,6 +31,7 @@ export function BetaAccessProvider({ children }) {
   const [hasAccess, setHasAccess] = useState(null);
   const [loading, setLoading] = useState(true);
   const [betaStatus, setBetaStatus] = useState(null);
+  const [betaProgramEnabled, setBetaProgramEnabled] = useState(true);
 
 
   /**
@@ -44,18 +45,21 @@ export function BetaAccessProvider({ children }) {
       const previewMode = urlParams.get('previewBetaModal') || localStorage.getItem('previewBetaModal');
       
       if (previewMode === 'apply') {
+        setBetaProgramEnabled(true);
         setHasAccess(false);
         setBetaStatus('needsApplication');
         setLoading(false);
         return;
       }
       if (previewMode === 'signin') {
+        setBetaProgramEnabled(true);
         setHasAccess(false);
         setBetaStatus('needsAuth');
         setLoading(false);
         return;
       }
       if (previewMode === 'pending') {
+        setBetaProgramEnabled(true);
         setHasAccess(false);
         setBetaStatus('pending');
         setLoading(false);
@@ -66,6 +70,15 @@ export function BetaAccessProvider({ children }) {
     try {
       const res = await fetch('/api/beta/check');
       const data = await res.json();
+      const programEnabled = data?.betaProgramEnabled !== false;
+      setBetaProgramEnabled(programEnabled);
+
+      if (!programEnabled) {
+        setHasAccess(true);
+        setBetaStatus('disabled');
+        return;
+      }
+
       const approved = data.hasAccess === true;
       setHasAccess(approved);
 
@@ -108,9 +121,10 @@ export function BetaAccessProvider({ children }) {
       hasAccess,
       betaStatus,
       refreshAccess,
-      loading
+      loading,
+      betaProgramEnabled
     }),
-    [hasAccess, betaStatus, refreshAccess, loading]
+    [hasAccess, betaStatus, refreshAccess, loading, betaProgramEnabled]
   );
 
   return (

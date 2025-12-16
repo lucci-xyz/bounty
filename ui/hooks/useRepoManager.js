@@ -21,7 +21,11 @@ export function useRepoManager({ useDummyData = false } = {}) {
   const [showManageReposModal, setShowManageReposModal] = useState(false);
 
   // Beta access context
-  const { hasAccess: hasBetaAccess, loading: betaLoading } = useBetaAccess();
+  const {
+    hasAccess: hasBetaAccess,
+    loading: betaLoading,
+    betaProgramEnabled
+  } = useBetaAccess();
 
   /**
    * Load GitHub repositories where the BountyPay app is installed.
@@ -81,6 +85,7 @@ export function useRepoManager({ useDummyData = false } = {}) {
     closeManageReposModal,
     handleInstallApp,
     hasBetaAccess: hasBetaAccess ?? false,
-    betaLoading
+    betaLoading,
+    betaProgramEnabled
   };
 }
