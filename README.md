@@ -45,4 +45,34 @@ For a detailed quick-start guide for maintainers, see our wiki:
 
 ---
 
+## Environment Variables
+
+Key environment variables required for deployment:
+
+### Core
+- `SESSION_SECRET` — Secret for session encryption (iron-session)
+- `FRONTEND_URL` — Base URL for OAuth callbacks
+- `ENV_TARGET` — Environment target: `stage` or `prod`
+
+### GitHub
+- `GITHUB_APP_ID` — GitHub App ID
+- `GITHUB_PRIVATE_KEY` or `GITHUB_PRIVATE_KEY_PATH` — GitHub App private key
+- `GITHUB_WEBHOOK_SECRET` — Secret for GitHub App webhooks
+- `GITHUB_MARKETPLACE_WEBHOOK_SECRET` — Secret for GitHub Marketplace webhooks (plan changes)
+- `GITHUB_CLIENT_ID` — OAuth client ID
+- `GITHUB_CLIENT_SECRET` — OAuth client secret
+
+### Database
+- `DATABASE_URL` — PostgreSQL connection string (pooled)
+- `DIRECT_DATABASE_URL` — Direct connection for migrations
+
+### Blockchain
+- `BLOCKCHAIN_SUPPORTED_*_ALIASES` — Enabled network aliases (e.g., `BASE_SEPOLIA`, `MEZO_TESTNET`)
+- `BLOCKCHAIN_DEFAULT_MAINNET_ALIAS` / `BLOCKCHAIN_DEFAULT_TESTNET_ALIAS` — Default networks
+- `<ALIAS>_OWNER_WALLET` / `<ALIAS>_OWNER_PRIVATE_KEY` — Resolver wallets per network
+
+For full configuration details, see `server/config.js` and `docs/reference/`.
+
+---
+
 _**Use at your own risk.** BountyPay is provided "as is" without warranties. You are responsible for the funds you deposit and the security practices you follow._

@@ -81,6 +81,7 @@ export const CONFIG = {
       return getPrivateKey();
     },
     webhookSecret: process.env.GITHUB_WEBHOOK_SECRET,
+    marketplaceWebhookSecret: process.env.GITHUB_MARKETPLACE_WEBHOOK_SECRET,
     clientId: process.env.GITHUB_CLIENT_ID,
     clientSecret: process.env.GITHUB_CLIENT_SECRET,
   },

@@ -63,6 +63,7 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 | GET | `/api/github/installations` | GitHub session | Lists repos accessible via the GitHub App for the caller. |
 | POST | `/api/github/callback` | GitHub App | Proxies raw callbacks to the configured upstream URL (keeps headers/body). |
 | POST | `/api/webhooks/github` | GitHub App | Verifies signature and dispatches to webhook handlers. |
+| POST | `/api/webhooks/marketplace` | GitHub Marketplace | Receives `marketplace_purchase` events (plan changes). Verifies `X-Hub-Signature-256` using `GITHUB_MARKETPLACE_WEBHOOK_SECRET`. Logs actions: `purchased`, `changed`, `cancelled`, `pending_change`, `pending_change_cancelled`. |
 
 ## Network & config
 | Method | Path | Auth | Notes |
