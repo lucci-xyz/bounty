@@ -18,6 +18,9 @@ import {BountyEscrowProxy} from "@/contracts/proxy/BountyEscrowProxy.sol";
  *   Mezo Testnet: forge script scripts/DeployBountyEscrow.s.sol:DeployBountyEscrow \
  *                   --sig "deployMezoTestnet()" --rpc-url $MEZO_TESTNET_RPC_URL --broadcast --legacy
  *
+ *   Mezo Mainnet: forge script scripts/DeployBountyEscrow.s.sol:DeployBountyEscrow \
+ *                   --sig "deployMezoMainnet()" --rpc-url https://mezo.drpc.org --broadcast --legacy
+ *
  * NOTE: Protocol fees are withdrawn later via
  *       withdrawFees(token, TREASURY_<NETWORK>, amount)
  */
@@ -26,6 +29,7 @@ contract DeployBountyEscrow is Script {
     address internal constant BASE_MAINNET_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     address internal constant BASE_SEPOLIA_USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
     address internal constant MEZO_TESTNET_MUSD = 0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503;
+    address internal constant MEZO_MAINNET_MUSD = 0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186;
     
     uint16 internal constant FEE_BPS = 100; // 1%
 
@@ -57,6 +61,15 @@ contract DeployBountyEscrow is Script {
             MEZO_TESTNET_MUSD,
             "Mezo Testnet",
             "TREASURY_MEZO_TESTNET"
+        );
+    }
+
+    function deployMezoMainnet() public returns (address implementation, address proxy) {
+        return _deploy(
+            "OWNER_PK_MEZO_MAINNET",
+            MEZO_MAINNET_MUSD,
+            "Mezo Mainnet",
+            "TREASURY_MEZO_MAINNET"
         );
     }
 
