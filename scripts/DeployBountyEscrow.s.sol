@@ -26,6 +26,7 @@ contract DeployBountyEscrow is Script {
     address internal constant BASE_MAINNET_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     address internal constant BASE_SEPOLIA_USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
     address internal constant MEZO_TESTNET_MUSD = 0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503;
+    address internal constant ETHEREUM_MAINNET_MNEE = 0x8ccedbAe4916b79da7F3F612EfB2EB93A2bFD6cF;
     
     uint16 internal constant FEE_BPS = 100; // 1%
 
@@ -57,6 +58,15 @@ contract DeployBountyEscrow is Script {
             MEZO_TESTNET_MUSD,
             "Mezo Testnet",
             "TREASURY_MEZO_TESTNET"
+        );
+    }
+
+    function deployEthereumMainnet() public returns (address implementation, address proxy) {
+        return _deploy(
+            "OWNER_PK_ETHEREUM_MAINNET",
+            ETHEREUM_MAINNET_MNEE,
+            "Ethereum Mainnet",
+            "TREASURY_ETHEREUM_MAINNET"
         );
     }
 

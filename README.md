@@ -1,6 +1,6 @@
 # <img src="public/icons/og.png" alt="BountyPay logo" width="40" height="40" /> BountyPay
 
-_Automated, trust-minimised bounty payouts for open-source contributions. Fund with USDC on Base or MUSD on Mezo and let BountyPay handle the rest._
+_Automated, trust-minimised bounty payouts for open-source contributions. Fund with USDC on Base, MUSD on Mezo, or MNEE on Ethereum and let BountyPay handle the rest._
 
 ## Get Started in Minutes
 
@@ -10,8 +10,9 @@ _Automated, trust-minimised bounty payouts for open-source contributions. Fund w
 
 3. **Choose Your Network & Fund**
 
-- **Base Sepolia**: Fund with USDC (EVM standard)
-- **Mezo Testnet**: Fund with MUSD (Bitcoin L2)
+- **Base Mainnet**: Fund with USDC (EVM standard)
+- **Mezo Mainnet**: Fund with MUSD (Bitcoin L2)
+- **Ethereum Mainnet**: Fund with MNEE (USD stablecoin)
 
 Funds sit safely in escrow.
 

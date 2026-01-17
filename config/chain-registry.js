@@ -47,6 +47,31 @@ const CURATED_ALIASES = {
       decimals: 18
     }
   },
+  ETHEREUM_MAINNET: {
+    group: 'mainnet',
+    chainId: 1,
+    chainIdHex: '0x1',
+    name: 'Ethereum Mainnet',
+    rpcUrl: getLinkHref('rpc', 'ethereumMainnet'),
+    blockExplorerUrl: getLinkHref('explorers', 'ethereumMainnet'),
+    supports1559: true,
+    nativeCurrency: {
+      name: 'ETH',
+      symbol: 'ETH',
+      decimals: 18
+    },
+    // Escrow proxy will be deployed when wallet is funded
+    // Expected address: 0x6A5D6d6761E3a4c38C4F538b76C37a0130990Ad5
+    defaultContracts: {
+      escrow: process.env.ETHEREUM_MAINNET_ESCROW_ADDRESS
+    },
+    // MNEE token on Ethereum mainnet
+    defaultToken: {
+      address: process.env.ETHEREUM_MAINNET_TOKEN_ADDRESS || '0x8ccedbAe4916b79da7F3F612EfB2EB93A2bFD6cF',
+      symbol: 'MNEE',
+      decimals: 18
+    }
+  },
   BASE_SEPOLIA: {
     group: 'testnet',
     chainId: 84532,
