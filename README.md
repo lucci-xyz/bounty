@@ -1,6 +1,6 @@
 # <img src="public/icons/og.png" alt="BountyPay logo" width="40" height="40" /> BountyPay
 
-_Automated, trust-minimised bounty payouts for open-source contributions. Fund with USDC on Base, MUSD on Mezo, or MNEE on Ethereum and let BountyPay handle the rest._
+_Automated, trust-minimised bounty payouts for open-source contributions. Fund with USDC on Base and let BountyPay handle the rest._
 
 ## Get Started in Minutes
 
@@ -11,8 +11,7 @@ _Automated, trust-minimised bounty payouts for open-source contributions. Fund w
 3. **Choose Your Network & Fund**
 
 - **Base Mainnet**: Fund with USDC (EVM standard)
-- **Mezo Mainnet**: Fund with MUSD (Bitcoin L2)
-- **Ethereum Mainnet**: Fund with MNEE (USD stablecoin)
+- **Base Sepolia (testnet)**: Fund with USDC (only visible when testnets are enabled)
 
 Funds sit safely in escrow.
 
@@ -68,7 +67,7 @@ Key environment variables required for deployment:
 - `DIRECT_DATABASE_URL` — Direct connection for migrations
 
 ### Blockchain
-- `BLOCKCHAIN_SUPPORTED_*_ALIASES` — Enabled network aliases (e.g., `BASE_SEPOLIA`, `MEZO_TESTNET`)
+- `BLOCKCHAIN_SUPPORTED_*_ALIASES` — Enabled network aliases (e.g., `BASE_MAINNET`, `BASE_SEPOLIA`)
 - `BLOCKCHAIN_DEFAULT_MAINNET_ALIAS` / `BLOCKCHAIN_DEFAULT_TESTNET_ALIAS` — Default networks
 - `<ALIAS>_OWNER_WALLET` / `<ALIAS>_OWNER_PRIVATE_KEY` — Resolver wallets per network
 

@@ -13,15 +13,12 @@ flowchart TD
 
 ## Supported aliases
 - `BASE_MAINNET` (mainnet) — escrow proxy `0xd0A0ae89fb06AB705c28cA99A059a10E7C532cF9` (upgradeable), token `USDC` at `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`.
-- `MEZO_MAINNET` (mainnet) — requires env-provided escrow/token addresses.
-- `ETHEREUM_MAINNET` (mainnet) — uses `MNEE` token at `0x8ccedbAe4916b79da7F3F612EfB2EB93A2bFD6cF` (18 decimals). Requires env-provided escrow address after deployment.
 - `BASE_SEPOLIA` (testnet) — defaults: escrow proxy `0x7218b25e9fbA2974faF7b0056203Fd57591fF8F3` (upgradeable), token `USDC` at `0x036CbD53842c5426634e7929541eC2318f3dCF7e`.
-- `MEZO_TESTNET` (testnet) — defaults: escrow proxy `0xA0d0dF8190772449bD764a52Ec1BcBCC8d556b38` (upgradeable), token `MUSD` at `0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503`.
 
 All networks use curated defaults; env vars override when present.
 
 ## Configuration
-- Choose which aliases are enabled with `BLOCKCHAIN_SUPPORTED_TESTNET_ALIASES` and `BLOCKCHAIN_SUPPORTED_MAINNET_ALIASES` (comma-separated, e.g. `BASE_SEPOLIA,MEZO_TESTNET`).
+- Choose which aliases are enabled with `BLOCKCHAIN_SUPPORTED_TESTNET_ALIASES` and `BLOCKCHAIN_SUPPORTED_MAINNET_ALIASES` (comma-separated, e.g. `BASE_SEPOLIA`).
 - Required per-alias env keys when not using defaults: `<ALIAS>_RPC_URL`, `<ALIAS>_ESCROW_ADDRESS`, `<ALIAS>_TOKEN_ADDRESS`, `<ALIAS>_TOKEN_SYMBOL`, `<ALIAS>_TOKEN_DECIMALS`.
 - Resolver wallet per alias: `<ALIAS>_OWNER_WALLET` and `<ALIAS>_OWNER_PRIVATE_KEY` (hex, 0x-prefixed). These are used by `resolveBountyOnNetwork`.
 - Default alias per group: `BLOCKCHAIN_DEFAULT_TESTNET_ALIAS`, `BLOCKCHAIN_DEFAULT_MAINNET_ALIAS`. The `NetworkProvider` and `/api/network/default` rely on these.

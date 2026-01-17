@@ -254,7 +254,7 @@ function HowItWorksSection() {
 
   const sponsorSteps = [
     { number: '01', title: 'Install the GitHub App', description: 'Add BountyPay to your repository with a single click.' },
-    { number: '02', title: 'Fund an issue', description: 'Attach a bounty to any GitHub issue with USDC or MUSD.' },
+    { number: '02', title: 'Fund an issue', description: 'Attach a bounty to any GitHub issue with USDC.' },
     { number: '03', title: 'Automatic payment', description: 'Contributors are paid when their PR merges and closes the issue.' },
   ];
 
@@ -398,9 +398,9 @@ function FeaturesSection() {
         <div className="grid md:grid-cols-3 gap-4 mt-4">
           <AnimateOnScroll delay={400}>
             <div className="p-5 bg-card/80 backdrop-blur-sm rounded-xl border border-border">
-              <h3 className="text-sm font-medium text-foreground mb-1.5">Multi-chain</h3>
+              <h3 className="text-sm font-medium text-foreground mb-1.5">Base-native</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Pay with USDC on Base or MUSD on Mezo.
+                Pay with USDC on Base.
               </p>
             </div>
           </AnimateOnScroll>
@@ -544,7 +544,7 @@ function FAQSection() {
     },
     {
       question: 'Which cryptocurrencies are supported?',
-      answer: 'We currently support USDC on Base and MUSD on Mezo. More tokens and chains will be added based on community demand.'
+      answer: 'We currently support USDC on Base. Base Sepolia is available in test mode.'
     },
     {
       question: 'How do contributors get paid?',

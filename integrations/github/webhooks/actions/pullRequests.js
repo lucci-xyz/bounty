@@ -336,8 +336,8 @@ async function handlePRWithBounties(octokit, owner, repo, pull_request, reposito
   const walletMapping = await walletQueries.findByGithubId(pull_request.user.id);
 
   const totalAmount = bounties.reduce((sum, b) => {
-    const decimals = b.tokenSymbol === 'MUSD' ? 18 : 6;
-    return sum + Number(ethers.formatUnits(b.amount, decimals));
+    const symbol = b.tokenSymbol || 'USDC';
+    return sum + Number(formatAmountByToken(b.amount, symbol));
   }, 0);
 
   const tokenSymbol = bounties[0].tokenSymbol || 'USDC';

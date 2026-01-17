@@ -10,6 +10,7 @@ import { useNetwork } from '@/ui/providers/NetworkProvider';
 import UserAvatar from '@/ui/components/UserAvatar';
 import { useGithubUser } from '@/ui/hooks/useGithubUser';
 import { useErrorModal } from '@/ui/providers/ErrorModalProvider';
+import { useFlag } from '@/ui/providers/FlagProvider';
 import { cn } from '@/lib';
 import { UserIcon, LogoutIcon, NetworkIcon } from '@/ui/components/Icons';
 
@@ -23,6 +24,7 @@ export default function Navbar() {
   const networkEnv = networkGroup || 'mainnet';
   const { githubUser } = useGithubUser();
   const { showError } = useErrorModal();
+  const testnetsEnabled = useFlag('testnetNetworks', false);
   const networkLabel = currentNetwork?.name || (networkEnv === 'mainnet' ? 'Mainnet' : 'Testnet');
 
   // Detect if user is in the app vs landing page
@@ -55,6 +57,13 @@ export default function Navbar() {
       return;
     }
     const newEnv = networkEnv === 'mainnet' ? 'testnet' : 'mainnet';
+    if (newEnv === 'testnet' && !testnetsEnabled) {
+      showError({
+        title: 'Testnets are disabled',
+        message: 'Testnet networks are currently disabled.'
+      });
+      return;
+    }
     try {
       await switchNetworkGroup(newEnv);
       router.refresh();
@@ -152,6 +161,8 @@ export default function Navbar() {
                       {({ account, mounted, openConnectModal }) => {
                         const ready = mounted;
                         const isConnected = Boolean(ready && account);
+                        const disableNetworkSwitch =
+                          isConnected && networkEnv === 'mainnet' && !testnetsEnabled;
                         const statusLabel = isConnected ? 'switch' : 'Connect Wallet';
                         const indicatorClass = isConnected ? 'bg-emerald-500' : 'bg-amber-500';
 
@@ -165,7 +176,7 @@ export default function Navbar() {
                                 openConnectModal();
                               }
                             }}
-                            disabled={isSwitchingGroup && isConnected}
+                            disabled={(isSwitchingGroup && isConnected) || disableNetworkSwitch}
                             type="button"
                             className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed"
                           >

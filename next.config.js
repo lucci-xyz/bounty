@@ -21,10 +21,6 @@ const nextConfig = {
   },
 
   // Allow public access to environment variables with NEXT_PUBLIC_ prefix
-  env: {
-    NEXT_PUBLIC_MEZO_RPC_URL: process.env.NEXT_PUBLIC_MEZO_RPC_URL,
-  },
-
   // Security headers
   async headers() {
     return [

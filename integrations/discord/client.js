@@ -27,7 +27,7 @@ export function isDiscordConfigured() {
  * @param {string} [bounty.platformFee] - Platform fee (formatted)
  * @param {string} [bounty.total] - Total sponsor payment (formatted)
  * @param {number} [bounty.feeBps] - Platform fee in bps
- * @param {string} bounty.tokenSymbol - Token symbol (USDC, MUSD)
+ * @param {string} bounty.tokenSymbol - Token symbol (e.g., USDC)
  * @param {string} bounty.network - Network name
  * @param {string} bounty.deadline - Deadline date string
  * @param {string} bounty.createdByGithubUsername - Sponsor's GitHub username
@@ -136,7 +136,7 @@ export async function sendDiscordMessage(payload) {
  * @param {string} bounty.repoName - Repository name (owner/repo)
  * @param {string} bounty.issueUrl - URL to the GitHub issue
  * @param {string} bounty.amount - Bounty amount (formatted)
- * @param {string} bounty.tokenSymbol - Token symbol (USDC, MUSD)
+ * @param {string} bounty.tokenSymbol - Token symbol (e.g., USDC)
  * @param {string} bounty.network - Network name
  * @param {string} bounty.deadline - Deadline date string
  * @param {string} bounty.createdByGithubUsername - Sponsor's GitHub username

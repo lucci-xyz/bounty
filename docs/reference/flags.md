@@ -15,7 +15,7 @@ flowchart TD
 ## Current flags
 - `allowlistFeature` (`allowlist-feature`) — enables allowlist functionality for restricting bounty claims to specific wallet addresses.
 - `refundFeature` (`refund-feature`) — enables refund functionality for requesting refunds on expired bounties.
-- `testnetNetworks` (`testnet-networks`) — exposes Base Sepolia / Mezo Testnet networks in the UI. Default: disabled.
+- `testnetNetworks` (`testnet-networks`) — exposes Base Sepolia network in the UI. Default: disabled.
 - `multiTokenFeature` (`multi-token`) — enables token selection in the attach-bounty flow (USDC, EURC, etc.).
 - `betaProgramEnabled` (`beta-program-enabled`) — requires beta approval before maintainers can access the GitHub app or create bounties. Default: disabled.
 

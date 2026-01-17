@@ -10,7 +10,6 @@ import Image from 'next/image';
 const TOKEN_ICONS = {
   USDC: 'https://logo.svgcdn.com/token-branded/usdc.png',
   EURC: 'https://logo.svgcdn.com/token-branded/eurc.png',
-  MUSD: '/icons/MUSD.svg',
 };
 
 /**

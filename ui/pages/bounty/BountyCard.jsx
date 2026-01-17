@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { formatAmount, formatTimeRemaining, formatStarCount } from '@/lib';
 import { LinkFromCatalog } from '@/ui/components/LinkFromCatalog';
 
@@ -16,16 +15,7 @@ import { LinkFromCatalog } from '@/ui/components/LinkFromCatalog';
  * @param {Function} [props.onManage] - Function to call when managing the bounty
  */
 export default function BountyCard({ bounty, showActions = false, onManage }) {
-  const explorerLinkKey = bounty?.network === 'MEZO_TESTNET' ? 'mezoTestnetTx' : 'baseSepoliaTx';
-  // Responsive handling (for future extensibility)
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 640);
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const explorerLinkKey = bounty?.network === 'BASE_SEPOLIA' ? 'baseSepoliaTx' : 'baseMainnetTx';
 
   return (
     <div className="bounty-card">

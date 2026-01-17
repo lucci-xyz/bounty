@@ -49,7 +49,7 @@ export function getAlertEmailAddress() {
  * @param {string} params.prAuthor - PR author's GitHub username
  * @param {string} params.repoFullName - Full repo name (owner/repo)
  * @param {string} params.bountyAmount - Formatted bounty amount
- * @param {string} params.tokenSymbol - Token symbol (USDC, MUSD)
+ * @param {string} params.tokenSymbol - Token symbol (e.g., USDC)
  * @param {number} params.issueNumber - Issue number
  * @param {string} params.frontendUrl - Frontend URL
  */

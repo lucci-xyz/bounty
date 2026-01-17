@@ -12,8 +12,8 @@ import { sendNewBountyNotification, isDiscordConfigured } from '@/integrations/d
  *   repoName: string,        // Repository name (owner/repo)
  *   issueUrl: string,        // URL to the GitHub issue
  *   amount: string,          // Bounty amount (formatted, e.g. "100")
- *   tokenSymbol: string,     // Token symbol (USDC, MUSD)
- *   network: string,         // Network name (e.g. "Base", "Mezo Testnet")
+ *   tokenSymbol: string,     // Token symbol (e.g. "USDC")
+ *   network: string,         // Network name (e.g. "Base")
  *   deadline: string,        // Deadline date string (ISO or human-readable)
  *   createdByGithubUsername: string  // Sponsor's GitHub username
  * }

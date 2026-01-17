@@ -139,7 +139,7 @@ export async function withdrawFees({
     let tx;
     // New ABI: withdrawFees(token, to, amount)
     if (!network.supports1559) {
-      // Legacy transaction for non-EIP-1559 networks (e.g., Mezo)
+      // Legacy transaction for non-EIP-1559 networks
       const feeData = await provider.getFeeData();
       const gasPrice = feeData.gasPrice && feeData.gasPrice > 0n
         ? feeData.gasPrice

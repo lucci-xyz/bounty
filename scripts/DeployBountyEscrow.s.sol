@@ -15,9 +15,6 @@ import {BountyEscrowProxy} from "@/contracts/proxy/BountyEscrowProxy.sol";
  *   Base Sepolia: forge script scripts/DeployBountyEscrow.s.sol:DeployBountyEscrow \
  *                   --sig "deployBaseSepolia()" --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast
  *
- *   Mezo Testnet: forge script scripts/DeployBountyEscrow.s.sol:DeployBountyEscrow \
- *                   --sig "deployMezoTestnet()" --rpc-url $MEZO_TESTNET_RPC_URL --broadcast --legacy
- *
  * NOTE: Protocol fees are withdrawn later via
  *       withdrawFees(token, TREASURY_<NETWORK>, amount)
  */
@@ -25,8 +22,6 @@ contract DeployBountyEscrow is Script {
     // Token addresses
     address internal constant BASE_MAINNET_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     address internal constant BASE_SEPOLIA_USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
-    address internal constant MEZO_TESTNET_MUSD = 0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503;
-    address internal constant ETHEREUM_MAINNET_MNEE = 0x8ccedbAe4916b79da7F3F612EfB2EB93A2bFD6cF;
     
     uint16 internal constant FEE_BPS = 100; // 1%
 
@@ -49,24 +44,6 @@ contract DeployBountyEscrow is Script {
             BASE_SEPOLIA_USDC,
             "Base Sepolia",
             "TREASURY_BASE_SEPOLIA"
-        );
-    }
-
-    function deployMezoTestnet() public returns (address implementation, address proxy) {
-        return _deploy(
-            "OWNER_PK_MEZO_TESTNET",
-            MEZO_TESTNET_MUSD,
-            "Mezo Testnet",
-            "TREASURY_MEZO_TESTNET"
-        );
-    }
-
-    function deployEthereumMainnet() public returns (address implementation, address proxy) {
-        return _deploy(
-            "OWNER_PK_ETHEREUM_MAINNET",
-            ETHEREUM_MAINNET_MNEE,
-            "Ethereum Mainnet",
-            "TREASURY_ETHEREUM_MAINNET"
         );
     }
 

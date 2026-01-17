@@ -1,9 +1,21 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 import { prClaimQueries, bountyQueries } from '@/server/db/prisma';
+import { REGISTRY } from '@/config/chain-registry';
 
 // Bounties in these statuses have no funds left (sponsor refunded after deadline)
 const WITHDRAWN_STATUSES = new Set(['refunded']);
+
+function getTokenDecimalsForBounty(bounty) {
+  const network = bounty?.network;
+  const tokenAddress = bounty?.token;
+  const config = network ? REGISTRY?.[network] : null;
+  if (!config || !tokenAddress) return 6;
+
+  const tokens = [config.token, ...(config.additionalTokens || [])].filter(Boolean);
+  const match = tokens.find((t) => t?.address?.toLowerCase() === tokenAddress.toLowerCase());
+  return match?.decimals ?? config.token?.decimals ?? 6;
+}
 
 export async function GET(request) {
   try {
@@ -45,7 +57,7 @@ export async function GET(request) {
       .filter(Boolean)
       .filter(b => b && (b.claimStatus === 'resolved' || b.claimStatus === 'paid'))
       .reduce((sum, b) => {
-        const decimals = b.tokenSymbol === 'MUSD' ? 18 : 6;
+        const decimals = getTokenDecimalsForBounty(b);
         const value = Number(b.amount) / Math.pow(10, decimals);
         return sum + value;
       }, 0);

@@ -25,7 +25,12 @@ export function networkMeta(networkKey) {
 }
 
 export function formatAmountByToken(amount, tokenSymbol) {
-  const decimals = tokenSymbol === 'MUSD' ? 18 : 6;
+  const symbol = String(tokenSymbol || '').toUpperCase();
+  const decimalsBySymbol = {
+    USDC: 6,
+    EURC: 6
+  };
+  const decimals = decimalsBySymbol[symbol] ?? 6;
   try {
     return ethers.formatUnits(amount, decimals);
   } catch {

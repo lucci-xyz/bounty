@@ -78,31 +78,11 @@ export const LINKS = Object.freeze({
     baseSepoliaTx: externalDynamic(({ txHash }) => {
       const { txHash: hash } = requireParams({ txHash }, ['txHash']);
       return `https://sepolia.basescan.org/tx/${hash}`;
-    }),
-    mezoMainnet: externalStatic('https://explorer.mezo.org'),
-    mezoMainnetTx: externalDynamic(({ txHash }) => {
-      const { txHash: hash } = requireParams({ txHash }, ['txHash']);
-      return `https://explorer.mezo.org/tx/${hash}`;
-    }),
-    mezoTestnet: externalStatic('https://explorer.test.mezo.org'),
-    mezoTestnetTx: externalDynamic(({ txHash }) => {
-      const { txHash: hash } = requireParams({ txHash }, ['txHash']);
-      return `https://explorer.test.mezo.org/tx/${hash}`;
-    }),
-    ethereumMainnet: externalStatic('https://etherscan.io'),
-    ethereumMainnetTx: externalDynamic(({ txHash }) => {
-      const { txHash: hash } = requireParams({ txHash }, ['txHash']);
-      return `https://etherscan.io/tx/${hash}`;
     })
   }),
   rpc: freezeSection({
     baseMainnet: internalStatic('https://mainnet.base.org'),
     baseSepolia: internalStatic('https://sepolia.base.org'),
-    mezoMainnet: internalStatic('https://rpc-http.mezo.boar.network'),
-    mezoPublic: internalStatic('https://rpc.test.mezo.org'),
-    mezoLavender: internalStatic('https://testnet-rpc.lavenderfive.com:443/mezo/'),
-    mezoDrpc: internalStatic('https://mezo-testnet.drpc.org'),
-    ethereumMainnet: internalStatic('https://eth.llamarpc.com')
   }),
   assets: freezeSection({
     fontsApiPreconnect: internalStatic('https://fonts.googleapis.com'),

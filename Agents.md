@@ -4,7 +4,7 @@ This guide helps AI coding agents understand the BountyPay project structure, co
 
 ## Project Overview
 
-BountyPay is a Next.js application that automates bounty payments for GitHub issues. Sponsors fund bounties with USDC (Base) or MUSD (Mezo), and contributors are automatically paid when their PRs are merged and close the issue.
+BountyPay is a Next.js application that automates bounty payments for GitHub issues. Sponsors fund bounties with USDC on Base, and contributors are automatically paid when their PRs are merged and close the issue.
 
 **Key Technologies:**
 - **Framework**: Next.js 15 (App Router)
@@ -191,7 +191,6 @@ These helpers handle:
 
 These handle:
 - Network-specific RPC clients
-- Non-1559 gas for Mezo
 - Registry lookups
 - Error handling
 
@@ -200,7 +199,7 @@ These handle:
 ### Network Registry
 
 Networks are configured in `config/chain-registry.js`. Each network has:
-- `alias` (e.g., `BASE_SEPOLIA`, `MEZO_TESTNET`)
+- `alias` (e.g., `BASE_MAINNET`, `BASE_SEPOLIA`)
 - `chainId`, `rpcUrl`, `contracts.escrow`, `token` (address, symbol, decimals)
 - `supports1559` (gas pricing mode)
 

@@ -33,45 +33,6 @@ const CURATED_ALIASES = {
     // Currently empty - only USDC is allowed on mainnet
     additionalTokens: []
   },
-  MEZO_MAINNET: {
-    group: 'mainnet',
-    chainId: 31612,
-    chainIdHex: '0x7b7c',
-    name: 'Mezo Mainnet',
-    rpcUrl: getLinkHref('rpc', 'mezoMainnet'),
-    blockExplorerUrl: getLinkHref('explorers', 'mezoMainnet'),
-    supports1559: false,
-    nativeCurrency: {
-      name: 'Bitcoin',
-      symbol: 'BTC',
-      decimals: 18
-    }
-  },
-  ETHEREUM_MAINNET: {
-    group: 'mainnet',
-    chainId: 1,
-    chainIdHex: '0x1',
-    name: 'Ethereum Mainnet',
-    rpcUrl: getLinkHref('rpc', 'ethereumMainnet'),
-    blockExplorerUrl: getLinkHref('explorers', 'ethereumMainnet'),
-    supports1559: true,
-    nativeCurrency: {
-      name: 'ETH',
-      symbol: 'ETH',
-      decimals: 18
-    },
-    // Escrow proxy will be deployed when wallet is funded
-    // Expected address: 0x6A5D6d6761E3a4c38C4F538b76C37a0130990Ad5
-    defaultContracts: {
-      escrow: process.env.ETHEREUM_MAINNET_ESCROW_ADDRESS
-    },
-    // MNEE token on Ethereum mainnet
-    defaultToken: {
-      address: process.env.ETHEREUM_MAINNET_TOKEN_ADDRESS || '0x8ccedbAe4916b79da7F3F612EfB2EB93A2bFD6cF',
-      symbol: 'MNEE',
-      decimals: 18
-    }
-  },
   BASE_SEPOLIA: {
     group: 'testnet',
     chainId: 84532,
@@ -103,30 +64,6 @@ const CURATED_ALIASES = {
         decimals: 6
       }
     ]
-  },
-  MEZO_TESTNET: {
-    group: 'testnet',
-    chainId: 31611,
-    chainIdHex: '0x7b7b',
-    name: 'Mezo Testnet',
-    rpcUrl: getLinkHref('rpc', 'mezoPublic'),
-    blockExplorerUrl: getLinkHref('explorers', 'mezoTestnet'),
-    supports1559: false,
-    nativeCurrency: {
-      name: 'Bitcoin',
-      symbol: 'BTC',
-      decimals: 18
-    },
-    // Hardcoded defaults for local/staging convenience (can be overridden via env)
-    defaultContracts: {
-      // Upgradeable proxy on Mezo Testnet (deployed 2024-12-06)
-      escrow: process.env.MEZO_TESTNET_ESCROW_ADDRESS || '0xA0d0dF8190772449bD764a52Ec1BcBCC8d556b38'
-    },
-    defaultToken: {
-      address: process.env.MEZO_TESTNET_TOKEN_ADDRESS || '0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503',
-      symbol: 'MUSD',
-      decimals: 18
-    }
   }
 };
 

@@ -20,7 +20,7 @@ flowchart LR
 | --- | --- |
 | `server/config.js` | Loads env vars (session secret, frontend URL, ENV_TARGET, GitHub creds), builds resolver wallets per alias from the registry, exposes token metadata, and validates required settings. |
 | `server/auth/siwe.js` | Generates SIWE nonces, builds/validates messages, and chooses default chainIds based on the registry. |
-| `server/blockchain/contract.js` | Creates per-alias ethers clients, computes bounty IDs, reads contract state, and resolves payouts (handles non-1559 gas for Mezo). |
+| `server/blockchain/contract.js` | Creates per-alias ethers clients, computes bounty IDs, reads contract state, and resolves payouts (handles non-1559 networks). |
 | `server/blockchain/validation.js` | Normalizes and validates addresses, tx hashes, and bytes32 IDs before contract calls. |
 | `server/db/schema.prisma` | Prisma schema for Postgres; see `docs/reference/database.md`. |
 | `server/db/prisma.js` | Prisma client plus query namespaces for bounties, wallets, claims, users, allowlists, stats, and beta access; converts BigInt fields to JS numbers. |

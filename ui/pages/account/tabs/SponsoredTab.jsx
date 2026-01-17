@@ -54,6 +54,7 @@ export function SponsoredTab({
 }) {
   const allowlistEnabled = useFlag("allowlistFeature", false);
   const refundEnabled = useFlag("refundFeature", false);
+  const testnetsEnabled = useFlag("testnetNetworks", false);
 
   // Local state for toolbar filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -124,6 +125,13 @@ export function SponsoredTab({
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, statusFilter, networkFilter, sponsoredBounties.length]);
+
+  // If testnets are hidden, ensure the filter can't be stuck on Base Sepolia.
+  useEffect(() => {
+    if (!testnetsEnabled && networkFilter === "BASE_SEPOLIA") {
+      setNetworkFilter("all");
+    }
+  }, [testnetsEnabled, networkFilter]);
 
   const handlePrevPage = () => {
     setCurrentPage((prev) => Math.max(1, prev - 1));
@@ -282,8 +290,10 @@ export function SponsoredTab({
                     }}
                   >
                     <option value="all">All Networks</option>
-                    <option value="MEZO_TESTNET">Mezo Testnet</option>
-                    <option value="BASE_SEPOLIA">Base Sepolia</option>
+                    <option value="BASE_MAINNET">Base Mainnet</option>
+                    {testnetsEnabled && (
+                      <option value="BASE_SEPOLIA">Base Sepolia</option>
+                    )}
                   </select>
                 </div>
 
@@ -377,10 +387,6 @@ export function SponsoredTab({
                         return { label: "Base Mainnet", explorerKey: "baseMainnetTx" };
                       case "BASE_SEPOLIA":
                         return { label: "Base Sepolia", explorerKey: "baseSepoliaTx" };
-                      case "MEZO_MAINNET":
-                        return { label: "Mezo Mainnet", explorerKey: "mezoMainnetTx" };
-                      case "MEZO_TESTNET":
-                        return { label: "Mezo Testnet", explorerKey: "mezoTestnetTx" };
                       default:
                         return { label: alias || "Unknown", explorerKey: null };
                     }

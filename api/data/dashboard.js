@@ -242,8 +242,7 @@ export const dummyTopContributors = [
 export const dummyWalletBalance = {
   address: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
   balances: [
-    { token: 'USDC', amount: 4300.00, usdValue: 4300.00 },
-    { token: 'MUSD', amount: 0, usdValue: 0 }
+    { token: 'USDC', amount: 4300.00, usdValue: 4300.00 }
   ],
   totalUsdValue: 4300.00
 };

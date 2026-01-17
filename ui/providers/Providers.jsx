@@ -14,8 +14,6 @@ const baseMainnetRpc = getLinkHref('rpc', 'baseMainnet');
 const baseMainnetExplorer = getLinkHref('explorers', 'baseMainnet');
 const baseSepoliaRpc = getLinkHref('rpc', 'baseSepolia');
 const baseSepoliaExplorer = getLinkHref('explorers', 'baseSepolia');
-const mezoTestnetRpc = getLinkHref('rpc', 'mezoDrpc');
-const mezoTestnetExplorer = getLinkHref('explorers', 'mezoTestnet');
 
 const baseMainnet = {
   ...base,
@@ -37,26 +35,6 @@ const baseSepoliaChain = {
   blockExplorers: {
     default: { name: 'Basescan (Sepolia)', url: baseSepoliaExplorer },
   },
-};
-
-// Define custom Mezo Testnet chain with icon
-const mezoTestnet = {
-  id: 31611,
-  name: 'Mezo Testnet',
-  nativeCurrency: {
-    name: 'Bitcoin',
-    symbol: 'BTC',
-    decimals: 18,
-  },
-  rpcUrls: {
-    default: { http: [mezoTestnetRpc] },
-    public: { http: [mezoTestnetRpc] },
-  },
-  blockExplorers: {
-    default: { name: 'Mezo Explorer', url: mezoTestnetExplorer },
-  },
-  testnet: true,
-  iconUrl: '/icons/mezo-logo.svg',
 };
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '73b4fe978f9e3084af5e7c7595365793';
@@ -100,7 +78,7 @@ export function Providers({ children }) {
   const testnetsEnabled = useFlag('testnetNetworks', false);
 
   const selectedChains = useMemo(
-    () => (testnetsEnabled ? [baseMainnet, baseSepoliaChain, mezoTestnet] : [baseMainnet]),
+    () => (testnetsEnabled ? [baseMainnet, baseSepoliaChain] : [baseMainnet]),
     [testnetsEnabled]
   );
 
@@ -111,8 +89,6 @@ export function Providers({ children }) {
         transports[chain.id] = http(baseMainnetRpc);
       } else if (chain.id === baseSepoliaChain.id) {
         transports[chain.id] = http(baseSepoliaRpc);
-      } else if (chain.id === mezoTestnet.id) {
-        transports[chain.id] = http(mezoTestnetRpc);
       }
     }
 
