@@ -1,10 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ethers } from 'ethers';
 import { useAccount, useWalletClient, useSwitchChain } from 'wagmi';
 import { useNetwork } from '@/ui/providers/NetworkProvider';
-import { useBetaAccess } from '@/ui/hooks/useBetaAccess';
 import { useErrorModal } from '@/ui/providers/ErrorModalProvider';
 import { useFlag } from '@/ui/providers/FlagProvider';
 import { fundBounty } from '@/ui/pages/bounty/lib/fundBounty';
@@ -13,7 +12,7 @@ import { logger } from '@/lib/logger';
 /**
  * React hook for managing the state and logic of the Attach Bounty form.
  *
- * Handles input values, network selection, token selection, beta access, and bounty funding flow.
+ * Handles input values, network selection, token selection, and the bounty funding flow.
  *
  * @param {Object} params
  * @param {Object} params.issueData - Data about the GitHub issue.
@@ -30,9 +29,6 @@ export function useAttachBountyForm({ issueData }) {
   // Processing state for funding
   const [isProcessing, setIsProcessing] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  // Beta modal control
-  const [showBetaModal, setShowBetaModal] = useState(false);
-  const modalOpenedRef = useRef(false);
   // Fee state (bps) for funding breakdown
   const [feeBps, setFeeBps] = useState(100);
   // Multi-token feature flag
@@ -42,7 +38,6 @@ export function useAttachBountyForm({ issueData }) {
   const { address, isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
   const { switchChain } = useSwitchChain();
-  const { hasAccess, betaStatus, loading: betaLoading, betaProgramEnabled } = useBetaAccess();
   const { showError } = useErrorModal();
   const {
     registry,
@@ -103,31 +98,6 @@ export function useAttachBountyForm({ issueData }) {
   useEffect(() => {
     setIsMounted(true);
   }, []);
-
-  /**
-   * Updates the visibility of the beta access modal
-   * depending on user access state.
-   * Once the modal is opened, keep it open until access is granted or user dismisses it.
-   */
-  useEffect(() => {
-    if (!betaProgramEnabled) {
-      setShowBetaModal(false);
-      modalOpenedRef.current = false;
-      return;
-    }
-
-    if (!betaLoading) {
-      // Only update if modal hasn't been opened yet, or if access was just granted
-      if (!modalOpenedRef.current && !hasAccess) {
-        setShowBetaModal(true);
-        modalOpenedRef.current = true;
-      } else if (hasAccess && modalOpenedRef.current) {
-        // Access was granted, close modal and reset ref
-        setShowBetaModal(false);
-        modalOpenedRef.current = false;
-      }
-    }
-  }, [betaLoading, hasAccess, betaProgramEnabled]);
 
   /**
    * Keeps selectedAlias in sync with the current network and registry settings.
@@ -336,13 +306,6 @@ export function useAttachBountyForm({ issueData }) {
     status,
     isProcessing,
     isMounted,
-    showBetaModal,
-    betaLoading,
-    hasAccess,
-    hideBetaModal: () => {
-      setShowBetaModal(false);
-      modalOpenedRef.current = false;
-    },
     supportedNetworkNames,
     isChainSupported,
     network,
@@ -359,8 +322,6 @@ export function useAttachBountyForm({ issueData }) {
       isConnected,
       chain
     },
-    betaStatus,
-    betaProgramEnabled,
     hasIssueData,
     fundBounty: handleFundBounty,
     showStatus
