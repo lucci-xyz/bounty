@@ -1,7 +1,7 @@
 import { CONFIG } from '@/server/config.js';
 import { getLinkHref } from '@/config/links';
 
-export const FRONTEND_BASE = CONFIG.frontendUrl.replace(/\/$/, '');
+export const FRONTEND_BASE = (CONFIG.frontendUrl || getLinkHref('app', 'marketingSite')).replace(/\/$/, '');
 export const CTA_BUTTON = `${FRONTEND_BASE}/buttons/create-bounty.svg`;
 export const OG_ICON = `${FRONTEND_BASE}/icons/og.png`;
 export const BRAND_SIGNATURE =

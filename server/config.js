@@ -183,7 +183,7 @@ export function validateConfig() {
     errors.push('Missing required config: PROD_CALLBACK_URL (required when ENV_TARGET=prod)');
   }
 
-  // Validate REGISTRY was built successfully (chain-registry.js throws on build errors)
+  // Validate REGISTRY was built successfully
   if (Object.keys(REGISTRY).length === 0) {
     errors.push('No blockchain networks configured. Check BLOCKCHAIN_SUPPORTED_*_ALIASES environment variables.');
   }

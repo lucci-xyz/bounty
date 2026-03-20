@@ -3,6 +3,7 @@ import { isAddress } from 'ethers';
 import { getLinkHref } from '@/config/links';
 
 let hasLoggedSkippedAliases = false;
+let hasLoggedMissingRegistry = false;
 
 // Curated network aliases with baseline configuration
 const CURATED_ALIASES = {
@@ -281,14 +282,12 @@ function buildRegistry() {
   }
 
   if (Object.keys(registry).length === 0) {
-    // On client-side, return empty registry to prevent crashes
-    // On server-side, throw error to fail fast for misconfiguration
-    const isClient = typeof window !== 'undefined';
-    if (isClient) {
+    // Allow the app to boot without blockchain env so routes can fail at request time.
+    if (!hasLoggedMissingRegistry) {
       logger.warn('[chain-registry] No networks configured. Set BLOCKCHAIN_SUPPORTED_MAINNET_ALIASES and/or BLOCKCHAIN_SUPPORTED_TESTNET_ALIASES');
-      return registry; // Return empty registry
+      hasLoggedMissingRegistry = true;
     }
-    throw new Error('No networks configured. Set BLOCKCHAIN_SUPPORTED_MAINNET_ALIASES and/or BLOCKCHAIN_SUPPORTED_TESTNET_ALIASES');
+    return registry;
   }
 
   return registry;
