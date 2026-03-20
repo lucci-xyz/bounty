@@ -34,22 +34,22 @@ export function DirectSetupSection({ onBack }) {
           ← Back
         </button>
         <div className="text-center space-y-3">
-          <h1 className="text-4xl font-light text-foreground/90">Create Bounty</h1>
+          <h1 className="text-4xl font-light text-foreground/90">Install BountyPay on GitHub</h1>
           <p className="text-sm text-muted-foreground">
-            Install the Lucci GitHub App to start funding issues directly from GitHub.
+            Install the BountyPay GitHub App once, then fund issues directly from GitHub.
           </p>
         </div>
 
         <div className="rounded-3xl border border-border/60 bg-muted/40 p-6 space-y-4">
           <div className="space-y-2">
-            <h3 className="text-base font-medium text-foreground">Install GitHub App</h3>
+            <h3 className="text-base font-medium text-foreground">Start with installation</h3>
             <p className="text-sm text-muted-foreground">
               Add BountyPay to your repo, then trigger the “Attach Bounty” action from any issue.
             </p>
           </div>
           <LinkFromCatalog
             section="github"
-            link="appListing"
+            link="appInstallation"
             className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
             <GitHubIcon size={18} color="white" />
@@ -58,7 +58,7 @@ export function DirectSetupSection({ onBack }) {
         </div>
 
         <div className="rounded-3xl border border-dashed border-border/60 bg-muted/30 p-6 text-sm text-muted-foreground">
-          Once installed, open any issue and hit “Attach Bounty” to land back on this page with the issue pre-filled.
+          After installation, open any issue on GitHub and click “Attach Bounty” to come back here with the issue pre-filled.
         </div>
       </div>
     </div>

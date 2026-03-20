@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { LinkFromCatalog } from '@/ui/components/LinkFromCatalog';
 
 // Custom hook for intersection observer
 function useInView(options = {}) {
@@ -82,23 +83,31 @@ function HeroSection() {
       <div className="relative z-10 max-w-6xl mx-auto px-6 text-center">
         {/* Main headline - Larger serif */}
         <h1 className="font-instrument-serif text-6xl md:text-7xl lg:text-8xl text-foreground mb-5 leading-[1.1] tracking-tight">
-          Open source contributions,
+          Fund GitHub issues,
           <br />
-          <span className="italic">rewarded instantly</span>
+          <span className="italic">pay only when merged</span>
         </h1>
         
         {/* Subheadline - Smaller */}
         <p className="text-sm md:text-base text-muted-foreground max-w-lg mx-auto mb-8 leading-relaxed">
-          Fund GitHub issues with crypto bounties. Contributors get paid automatically when their pull requests merge.
+          Install BountyPay once, fund issues directly from GitHub, and release payment automatically when the pull request merges.
         </p>
         
-        {/* Single CTA Button - Completely rounded */}
-        <Link 
-          href="/app" 
-          className="inline-flex items-center justify-center px-6 py-3 bg-primary text-primary-foreground text-sm font-medium rounded-full transition-all duration-300 hover:opacity-90 hover:shadow-lg"
-        >
-          Get started
-        </Link>
+        <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <LinkFromCatalog
+            section="github"
+            link="appInstallation"
+            className="inline-flex items-center justify-center px-6 py-3 bg-primary text-primary-foreground text-sm font-medium rounded-full transition-all duration-300 hover:opacity-90 hover:shadow-lg"
+          >
+            Install GitHub App
+          </LinkFromCatalog>
+          <Link
+            href="/app"
+            className="inline-flex items-center justify-center px-6 py-3 border border-border bg-card/80 text-foreground text-sm font-medium rounded-full transition-colors hover:border-primary"
+          >
+            Browse open bounties
+          </Link>
+        </div>
       </div>
 
       {/* Product mockup - GitHub issue comments style */}
@@ -540,7 +549,7 @@ function FAQSection() {
   const faqs = [
     {
       question: 'How do I fund a bounty?',
-      answer: 'Connect your wallet, select a GitHub issue, set the bounty amount and deadline, then confirm the transaction. Your funds are securely held in escrow until the work is completed.'
+      answer: 'Install the BountyPay GitHub App, open the GitHub issue you want to fund, click Attach Bounty, choose the amount and deadline, and confirm the transaction. Funds stay in escrow until the pull request merges.'
     },
     {
       question: 'Which cryptocurrencies are supported?',
@@ -636,17 +645,18 @@ function CTASection() {
           <h2 className="font-instrument-serif text-4xl md:text-5xl lg:text-5xl text-foreground mb-5 leading-tight">
             Ready to fund your first
             <br />
-            <span className="italic">bounty?</span>
+            <span className="italic">issue?</span>
           </h2>
           <p className="text-sm text-muted-foreground mb-8 max-w-md mx-auto">
-            Join the growing community of sponsors and contributors building the future of open source.
+            Install once, fund from GitHub, and pay contributors automatically when their code lands.
           </p>
-          <Link 
-            href="/app/attach-bounty" 
+          <LinkFromCatalog
+            section="github"
+            link="appInstallation"
             className="inline-flex items-center justify-center px-6 py-3 bg-primary text-primary-foreground text-sm font-medium rounded-full transition-all duration-300 hover:opacity-90 hover:shadow-lg"
           >
-            Create a bounty
-          </Link>
+            Install GitHub App
+          </LinkFromCatalog>
         </div>
       </AnimateOnScroll>
     </section>
