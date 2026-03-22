@@ -72,6 +72,8 @@ function AttachBountyContent() {
   
   // Date picker modal state
   const [dateModalOpen, setDateModalOpen] = useState(false);
+  const hasTokenChoice = multiTokenEnabled && availableTokens.length > 1;
+  const showFundingControls = hasTokenChoice || !isChainSupported;
 
   if (!isMounted) {
     return <AttachBountyLoadingState />;
@@ -130,50 +132,35 @@ function AttachBountyContent() {
               supportedNetworkNames={supportedNetworkNames}
             />
 
-            {/* Wallet/account actions (change wallet, network, or token) */}
-            <ConnectButton.Custom>
-              {({ openConnectModal, openChainModal, openAccountModal }) => {
-                return (
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (openAccountModal) {
-                          openAccountModal();
-                        } else {
-                          openConnectModal?.();
-                        }
-                      }}
-                      disabled={!isMounted}
-                      className="inline-flex items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Change Wallet
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        openChainModal?.();
-                      }}
-                      disabled={!isMounted || !openChainModal}
-                      className="inline-flex items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Switch Network
-                    </button>
-                    {/* Always show token selector button */}
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setTokenModalOpen(true);
-                      }}
-                      disabled={!isMounted}
-                      className="inline-flex items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {selectedToken?.symbol || network?.token?.symbol || 'Token'}
-                    </button>
-                  </div>
-                );
-              }}
-            </ConnectButton.Custom>
+            {showFundingControls ? (
+              <div className="flex flex-wrap gap-3">
+                {!isChainSupported ? (
+                  <ConnectButton.Custom>
+                    {({ openChainModal }) => (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          openChainModal?.();
+                        }}
+                        disabled={!isMounted || !openChainModal}
+                        className="inline-flex items-center justify-center rounded-full border border-border/70 px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Switch Network
+                      </button>
+                    )}
+                  </ConnectButton.Custom>
+                ) : null}
+                {hasTokenChoice ? (
+                  <button
+                    onClick={() => setTokenModalOpen(true)}
+                    disabled={!isMounted}
+                    className="inline-flex items-center justify-center rounded-full border border-border/70 px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Token: {selectedToken?.symbol || network?.token?.symbol || 'Token'}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
 
             {/* Token selector modal */}
             <TokenSelectorModal
