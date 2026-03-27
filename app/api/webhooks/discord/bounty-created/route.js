@@ -20,6 +20,18 @@ import { sendNewBountyNotification, isDiscordConfigured } from '@/integrations/d
  */
 export async function POST(request) {
   try {
+    // Verify this is an internal call via shared secret
+    const authHeader = request.headers.get('authorization');
+    const expectedToken = process.env.INTERNAL_WEBHOOK_SECRET;
+    if (!expectedToken) {
+      logger.error('[discord-webhook] INTERNAL_WEBHOOK_SECRET not configured');
+      return Response.json({ error: 'Webhook not configured' }, { status: 503 });
+    }
+    if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
+      logger.warn('[discord-webhook] Unauthorized request');
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // Check if Discord is configured
     if (!isDiscordConfigured()) {
       logger.warn('[discord-webhook] Discord webhook not configured');
@@ -97,7 +109,7 @@ export async function POST(request) {
   } catch (error) {
     logger.error('[discord-webhook] Error processing request:', error);
     return Response.json(
-      { error: error.message || 'Internal server error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

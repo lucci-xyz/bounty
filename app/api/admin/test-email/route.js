@@ -138,8 +138,7 @@ export async function POST(request) {
   } catch (error) {
     logger.error('[test-email] Error:', error);
     return Response.json({ 
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      error: 'Internal server error'
     }, { status: 500 });
   }
 }

@@ -57,7 +57,7 @@ export async function GET(request) {
     return NextResponse.json(
       { 
         success: false, 
-        error: error.message || 'Failed to get resolver address' 
+        error: 'Failed to get resolver address'
       },
       { status: 500 }
     );

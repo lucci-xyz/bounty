@@ -9,7 +9,7 @@ export async function GET(request, { params }) {
     return Response.json({ bounties });
   } catch (error) {
     logger.error('Error fetching issue bounties:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 

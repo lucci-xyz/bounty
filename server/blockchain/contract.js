@@ -6,6 +6,27 @@ import { validateAddress, validateBytes32 } from './validation.js';
 import { contractStatusToDb } from '@/lib/status';
 import { validateRefundConfirmationResult } from './refundVerification.js';
 
+// Maximum time to wait for a transaction confirmation (5 minutes)
+const TX_TIMEOUT_MS = 5 * 60 * 1000;
+
+/**
+ * Wait for a transaction with a timeout to prevent indefinite hangs.
+ * @param {object} tx - ethers.js transaction response
+ * @param {number} timeoutMs - timeout in milliseconds
+ * @returns {Promise<object>} transaction receipt
+ */
+async function waitForTxWithTimeout(tx, timeoutMs) {
+  const receipt = await Promise.race([
+    tx.wait(),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(
+        `Transaction confirmation timed out after ${timeoutMs / 1000}s. TX hash: ${tx.hash}. The transaction may still confirm — check the explorer.`
+      )), timeoutMs)
+    )
+  ]);
+  return receipt;
+}
+
 /**
  * Get the private key for a specific network alias.
  * @param {string} alias
@@ -196,7 +217,7 @@ export async function resolveBountyOnNetwork(bountyId, recipientAddress, alias) 
     }
 
     const tx = await escrowContract.resolve(bountyId, recipientAddress, txOverrides);
-    const receipt = await tx.wait();
+    const receipt = await waitForTxWithTimeout(tx, TX_TIMEOUT_MS);
     logger.info(`Bounty resolved on ${alias}: ${bountyId.slice(0, 10)}... -> ${receipt.hash}`);
     return {
       success: true,
@@ -234,7 +255,7 @@ export async function refundExpiredOnNetwork(bountyId, alias) {
     }
 
     const tx = await escrowContract.refundExpired(bountyId, txOverrides);
-    const receipt = await tx.wait();
+    const receipt = await waitForTxWithTimeout(tx, TX_TIMEOUT_MS);
     logger.info(`Custodial refund on ${alias}: ${bountyId.slice(0, 10)}... -> ${receipt.hash}`);
     return {
       success: true,

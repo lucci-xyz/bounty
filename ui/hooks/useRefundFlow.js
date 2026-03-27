@@ -166,8 +166,8 @@ export function useRefundFlow() {
       if (!network) {
         throw new Error('Network not initialized. Please try again.');
       }
-      if (!bountyId || !bountyId.startsWith('0x')) {
-        throw new Error('Please enter a valid bounty ID (0x...)');
+      if (!bountyId || !/^0x[a-fA-F0-9]{64}$/.test(bountyId)) {
+        throw new Error('Please enter a valid bounty ID (0x followed by 64 hex characters)');
       }
 
       if (!isConnected || !address) {
@@ -260,11 +260,14 @@ export function useRefundFlow() {
       let txOverrides = {};
       if (!bountyNetwork.supports1559) {
         const feeData = await provider.getFeeData();
+        const gasPrice = feeData.gasPrice && feeData.gasPrice > 0n
+          ? feeData.gasPrice
+          : ethers.parseUnits('1', 'gwei');
         txOverrides = {
           type: 0,
-          gasPrice: feeData.gasPrice
+          gasPrice
         };
-        logger.info('Using legacy transaction with gasPrice:', ethers.formatUnits(feeData.gasPrice, 'gwei'), 'gwei');
+        logger.info('Using legacy transaction with gasPrice:', ethers.formatUnits(gasPrice, 'gwei'), 'gwei');
       }
 
       const tx = await escrow.refundExpired(currentBounty.bountyId, txOverrides);

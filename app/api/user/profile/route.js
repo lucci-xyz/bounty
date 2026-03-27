@@ -37,7 +37,7 @@ export async function GET(request) {
     });
   } catch (error) {
     logger.error('Error fetching user profile:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -68,7 +68,7 @@ export async function POST(request) {
     return Response.json(updated);
   } catch (error) {
     logger.error('Error updating user profile:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 

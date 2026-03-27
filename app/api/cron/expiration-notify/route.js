@@ -33,7 +33,7 @@ export async function GET(request) {
     logger.error('[cron/expiration-notify] Error:', error.message);
     return Response.json({
       success: false,
-      error: error.message
+      error: 'Internal server error'
     }, { status: 500 });
   }
 }

@@ -76,10 +76,6 @@ export async function withdrawFees({
     }
   }
 
-  if (effectiveChainId !== network.chainId) {
-    throw new Error(`Please switch to ${network.name} in your wallet.`);
-  }
-
   // Setup contract
   updateStatus('Preparing transaction...');
   const provider = new ethers.BrowserProvider(walletClient);

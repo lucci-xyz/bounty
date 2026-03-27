@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger';
 import { CONFIG } from '@/server/config';
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { marketplaceQueries } from '@/server/db/prisma';
 import {
   normalizeMarketplacePurchaseWebhook,
@@ -12,51 +12,31 @@ export const runtime = 'nodejs';
 
 /**
  * Verifies the HMAC signature of a GitHub Marketplace webhook.
- * 
- * @param {string} rawBody - The raw request body
- * @param {string} signature - The X-Hub-Signature-256 header value
- * @param {string} secret - The webhook secret
- * @returns {boolean} True if signature is valid
+ * Uses Node.js built-in timingSafeEqual for constant-time comparison.
  */
 function verifySignature(rawBody, signature, secret) {
   if (!signature || !secret) {
     return false;
   }
 
-  // GitHub sends signature as "sha256=<hash>"
   const [algorithm, receivedHash] = signature.split('=');
-  
-  if (algorithm !== 'sha256') {
+  if (algorithm !== 'sha256' || !receivedHash) {
     return false;
   }
 
-  // Compute HMAC
   const hmac = createHmac('sha256', secret);
   hmac.update(rawBody, 'utf8');
   const computedHash = hmac.digest('hex');
 
-  // Constant-time comparison to prevent timing attacks
-  return timingSafeEqual(
-    Buffer.from(receivedHash, 'hex'),
-    Buffer.from(computedHash, 'hex')
-  );
-}
-
-/**
- * Timing-safe comparison of two buffers.
- * Returns true if buffers are equal.
- */
-function timingSafeEqual(a, b) {
-  if (a.length !== b.length) {
+  // Use Node.js built-in timing-safe comparison
+  try {
+    return timingSafeEqual(
+      Buffer.from(receivedHash, 'hex'),
+      Buffer.from(computedHash, 'hex')
+    );
+  } catch {
     return false;
   }
-  
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a[i] ^ b[i];
-  }
-  
-  return result === 0;
 }
 
 /**
@@ -155,7 +135,7 @@ export async function POST(request) {
     }
 
     return Response.json(
-      { error: 'Webhook processing failed', details: error.message },
+      { error: 'Webhook processing failed' },
       { status: 500 }
     );
   }

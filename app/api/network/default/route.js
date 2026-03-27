@@ -30,7 +30,7 @@ export async function GET(request) {
     return NextResponse.json(
       { 
         success: false, 
-        error: error.message || 'Failed to get default network alias' 
+        error: 'Failed to get default network alias'
       },
       { status: 500 }
     );

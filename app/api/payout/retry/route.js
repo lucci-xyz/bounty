@@ -62,7 +62,7 @@ export async function POST(request) {
       result = await resolveBountyOnNetwork(bounty.bountyId, wallet.walletAddress, bounty.network);
     } catch (error) {
       logger.error('Manual payout threw', { error: error.message, bountyId: bounty.bountyId, claimId });
-      result = { success: false, error: error.message || 'Unknown error during payout' };
+      result = { success: false, error: 'Unknown error during payout' };
     }
 
     if (!result.success) {

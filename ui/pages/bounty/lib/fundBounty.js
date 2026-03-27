@@ -165,16 +165,13 @@ export async function fundBounty({
     showStatus(`Switching to ${network.name}...`, 'loading');
     try {
       await switchChain({ chainId: network.chainId });
+      // Brief delay for wallet state to propagate after chain switch
       await new Promise((resolve) => setTimeout(resolve, 800));
       effectiveChainId = network.chainId;
     } catch (switchError) {
       console.error('Network switch error:', switchError);
       throw new Error(`Failed to switch to ${network.name}. Please switch manually in your wallet and try again.`);
     }
-  }
-
-  if (effectiveChainId !== network.chainId) {
-    throw new Error(`Please switch to ${network.name} (Chain ID: ${network.chainId}) in your wallet and try again.`);
   }
 
   // Setup providers and contract instances
@@ -240,8 +237,14 @@ export async function fundBounty({
     try {
       const approveTx = await tokenContract.approve(network.contracts.escrow, totalRequiredWei);
       await approveTx.wait();
-      // Approval confirmed - proceed directly to funding without re-checking allowance
-      // The funding tx will be the source of truth if something went wrong
+
+      // Verify allowance after approval to catch edge cases
+      const postAllowance = await tokenContract.allowance(address, network.contracts.escrow);
+      if (postAllowance < totalRequiredWei) {
+        throw new Error(
+          `Approval confirmed but allowance insufficient (${ethers.formatUnits(postAllowance, selectedToken.decimals)} < ${formattedTotal}). Please try again.`
+        );
+      }
     } catch (approveError) {
       console.error('Approval error:', approveError);
       const errorMsg =
@@ -463,10 +466,14 @@ export async function fundBounty({
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
       console.error('Database recording failed:', error);
-      showStatus('⚠️ Bounty created on-chain but database sync failed. Redirecting back to GitHub...', 'error');
+      showStatus(
+        `⚠️ Bounty funded on-chain (TX: ${receipt.hash.slice(0, 14)}...) but database sync failed. ` +
+        `Your funds are safe. Contact support with TX hash: ${receipt.hash}`,
+        'error'
+      );
       setTimeout(() => {
         window.location.href = issueHref;
-      }, 4000);
+      }, 6000);
       return;
     }
 
@@ -476,9 +483,13 @@ export async function fundBounty({
     }, 2000);
   } catch (dbError) {
     console.error('Database error:', dbError);
-    showStatus('⚠️ Bounty created on-chain but database recording failed. Redirecting back to GitHub...', 'error');
+    showStatus(
+      `⚠️ Bounty funded on-chain (TX: ${receipt.hash.slice(0, 14)}...) but database sync failed. ` +
+      `Your funds are safe. Contact support with TX hash: ${receipt.hash}`,
+      'error'
+    );
     setTimeout(() => {
       window.location.href = issueHref;
-    }, 4000);
+    }, 6000);
   }
 }

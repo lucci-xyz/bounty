@@ -20,7 +20,7 @@ export async function POST(request) {
       getDefaultAliasForGroup(env);
     } catch (error) {
       return Response.json(
-        { error: `No ${env} networks configured: ${error.message}` },
+        { error: `No ${env} networks configured` },
         { status: 400 }
       );
     }
@@ -42,7 +42,7 @@ export async function POST(request) {
   } catch (error) {
     logger.error('Error setting network env:', error);
     return Response.json(
-      { error: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -57,7 +57,7 @@ export async function GET() {
   } catch (error) {
     logger.error('Error getting network env:', error);
     return Response.json(
-      { error: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

@@ -78,6 +78,6 @@ export async function GET(request) {
     return Response.json(bountiesWithStats);
   } catch (error) {
     logger.error('Error fetching user bounties:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

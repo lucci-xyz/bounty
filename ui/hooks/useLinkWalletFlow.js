@@ -77,11 +77,17 @@ export function useLinkWalletFlow() {
       // Get nonce for SIWE
       const { nonce } = await getNonce();
 
+      // Validate chain ID — never default to 1 to prevent cross-chain replay
+      const chainId = chain?.id;
+      if (!chainId) {
+        throw new Error('Unable to detect your connected network. Please reconnect your wallet.');
+      }
+
       // Prepare SIWE message
       const { message: messageText } = await buildSiweMessage({
         address,
         nonce,
-        chainId: chain?.id || 1,
+        chainId,
         domain: window.location.host,
         uri: window.location.origin,
         statement: 'Link your wallet to receive BountyPay payments.'

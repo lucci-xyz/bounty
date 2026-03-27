@@ -89,7 +89,7 @@ export async function GET() {
           escrowAddress: network.contracts.escrow,
           supports1559: network.supports1559,
           fees: null,
-          error: error.message
+          error: 'Failed to fetch fees for this network'
         };
       }
     });
@@ -100,6 +100,6 @@ export async function GET() {
     return NextResponse.json({ success: true, networks: networkFees });
   } catch (error) {
     logger.error('Error fetching admin fees:', error);
-    return NextResponse.json({ error: error.message || 'Failed to fetch fees' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch fees' }, { status: 500 });
   }
 }

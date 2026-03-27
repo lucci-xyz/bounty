@@ -71,7 +71,7 @@ export async function GET(request) {
     return NextResponse.redirect(url);
   } catch (error) {
     logger.error('OAuth error:', error.message);
-    return NextResponse.json({ error: `Authentication failed: ${error.message}` }, { status: 500 });
+    return NextResponse.json({ error: 'Authentication failed' }, { status: 500 });
   }
 }
 

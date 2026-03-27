@@ -19,6 +19,6 @@ export async function POST(request) {
   } catch (error) {
     logger.error('Error linking wallet:', error);
     const status = error.message === 'Wallet not authenticated' ? 401 : 400;
-    return Response.json({ error: error.message }, { status });
+    return Response.json({ error: status === 401 ? 'Wallet not authenticated' : 'Wallet linking failed' }, { status });
   }
 }

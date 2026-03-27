@@ -119,12 +119,13 @@ export async function GET(request) {
     if (!session?.githubId) {
       return Response.json({ error: 'Not authenticated' }, { status: 401 });
     }
-    
+
     const bounties = await bountyQueries.findBySponsor(session.githubId);
     return Response.json(bounties);
   } catch (error) {
     logger.error('Error:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    // Never expose error.message to clients — use generic messages
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 ```
@@ -259,7 +260,7 @@ See `docs/reference/database.md` for full schema. Key models:
 
 ### Error Handling
 
-- **API routes:** Return `Response.json({ error: string }, { status })`
+- **API routes:** Return `Response.json({ error: 'Generic message' }, { status })` — never expose `error.message` to clients
 - **Client:** Use `useErrorModal()` from `@/ui/providers/ErrorModalProvider`
 - **Logging:** Use `logger` from `@/lib/logger` (structured logging)
 

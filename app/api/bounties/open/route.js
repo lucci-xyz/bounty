@@ -7,7 +7,7 @@ export async function GET(request) {
     return Response.json(bounties);
   } catch (error) {
     logger.error('Error fetching open bounties:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 

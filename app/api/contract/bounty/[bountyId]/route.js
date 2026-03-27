@@ -18,7 +18,7 @@ export async function GET(request, { params }) {
     return Response.json(bounty);
   } catch (error) {
     logger.error('Error fetching contract bounty:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 

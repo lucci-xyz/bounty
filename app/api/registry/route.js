@@ -32,7 +32,7 @@ export async function GET() {
     return NextResponse.json(
       { 
         success: false, 
-        error: error.message || 'Failed to load network registry' 
+        error: 'Failed to load network registry'
       },
       { status: 500 }
     );

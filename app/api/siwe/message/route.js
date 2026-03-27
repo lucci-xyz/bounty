@@ -41,7 +41,7 @@ export async function POST(request) {
     return Response.json({ message });
   } catch (error) {
     return Response.json(
-      { error: error.message || 'Failed to build SIWE message' },
+      { error: 'Failed to build SIWE message' },
       { status: 400 }
     );
   }

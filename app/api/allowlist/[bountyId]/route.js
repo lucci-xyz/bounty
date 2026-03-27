@@ -28,7 +28,7 @@ export async function GET(request, { params }) {
     return Response.json(allowlist);
   } catch (error) {
     logger.error('Error fetching allowlist:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -75,7 +75,7 @@ export async function POST(request, { params }) {
     return Response.json(entry);
   } catch (error) {
     logger.error('Error adding to allowlist:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -105,7 +105,7 @@ export async function DELETE(request, { params }) {
     return Response.json({ success: true });
   } catch (error) {
     logger.error('Error removing from allowlist:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
