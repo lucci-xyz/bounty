@@ -475,8 +475,12 @@ export const prClaimQueries = {
    * Creates a PR claim.
    */
   create: async (bountyId, prNumber, prAuthorId, repoFullName) => {
-    const claim = await prisma.prClaim.create({
-      data: {
+    const claim = await prisma.prClaim.upsert({
+      where: {
+        idx_pr_claims_bounty_pr: { bountyId, prNumber }
+      },
+      update: {},
+      create: {
         bountyId,
         prNumber,
         prAuthorGithubId: BigInt(prAuthorId),
@@ -485,7 +489,7 @@ export const prClaimQueries = {
         createdAt: BigInt(Date.now())
       }
     });
-    
+
     return {
       ...claim,
       prAuthorGithubId: Number(claim.prAuthorGithubId),
@@ -954,37 +958,43 @@ export const allowlistQueries = {
     const bounty = await prisma.bounty.findUnique({
       where: { bountyId }
     });
-    
+
     if (!bounty || !bounty.sponsorGithubId) return true;
-    
+
     const user = await prisma.user.findUnique({
       where: { githubId: bounty.sponsorGithubId }
     });
-    
+
     if (!user) return true;
-    
-    // Check bounty-specific allowlist
-    const bountyAllowlist = await prisma.allowlist.findFirst({
+
+    // Check if sponsor has ANY allowlist entries for this bounty or repo.
+    // If no entries exist, treat as open (no restrictions configured).
+    const hasAnyEntries = await prisma.allowlist.count({
       where: {
         userId: user.id,
-        bountyId,
-        allowedAddress: address.toLowerCase()
+        OR: [
+          { bountyId },
+          { repoId: bounty.repoId, bountyId: null }
+        ]
       }
     });
-    
-    if (bountyAllowlist) return true;
-    
-    // Check repo-level allowlist
-    const repoAllowlist = await prisma.allowlist.findFirst({
+
+    if (hasAnyEntries === 0) return true;
+
+    // Sponsor has configured allowlists - address must match
+    const normalizedAddress = address.toLowerCase();
+    const allowed = await prisma.allowlist.findFirst({
       where: {
         userId: user.id,
-        repoId: bounty.repoId,
-        bountyId: null,
-        allowedAddress: address.toLowerCase()
+        allowedAddress: normalizedAddress,
+        OR: [
+          { bountyId },
+          { repoId: bounty.repoId, bountyId: null }
+        ]
       }
     });
-    
-    return !!repoAllowlist;
+
+    return !!allowed;
   },
 
   /**

@@ -21,6 +21,10 @@ export async function POST(request) {
     
     const body = await request.json();
 
+    if (!session?.githubId) {
+      return Response.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
     const {
       repoFullName,
       repoId,
@@ -35,18 +39,29 @@ export async function POST(request) {
       tokenSymbol
     } = body;
 
+    // Validate required fields
+    if (!repoFullName || !repoId || !issueNumber || !sponsorAddress || !amount || !deadline || !txHash) {
+      return Response.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Validate txHash format (must be a valid 32-byte hex hash)
+    if (!/^0x[a-fA-F0-9]{64}$/.test(txHash)) {
+      return Response.json({ error: 'Invalid transaction hash format' }, { status: 400 });
+    }
+
     // Use provided network or default from cookie
     const alias = network || defaultAlias;
-    
-    logger.info('Creating bounty with network alias:', alias);
-    logger.info('Received network param:', network);
-    logger.info('Default alias from cookie:', defaultAlias);
-    
-    const networkConfig = REGISTRY[alias];
-    
-    if (!networkConfig) {
-      throw new Error(`Invalid network alias: ${alias}`);
+
+    // Validate network alias against known registry (prevent arbitrary key injection)
+    const validAliases = Object.keys(REGISTRY);
+    if (!alias || !validAliases.includes(alias)) {
+      return Response.json(
+        { error: `Invalid network. Must be one of: ${validAliases.join(', ')}` },
+        { status: 400 }
+      );
     }
+
+    const networkConfig = REGISTRY[alias];
 
     // Compute bountyId
     const repoIdHash = createRepoIdHash(repoId);
@@ -207,6 +222,6 @@ export async function POST(request) {
     });
   } catch (error) {
     logger.error('Error creating bounty:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Failed to create bounty' }, { status: 500 });
   }
 }

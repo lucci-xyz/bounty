@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 import { prClaimQueries, bountyQueries } from '@/server/db/prisma';
+import { getTokenDecimals } from '@/integrations/github/services/bountyFormatting';
 
 // Bounties in these statuses have no funds left (sponsor refunded after deadline)
 const WITHDRAWN_STATUSES = new Set(['refunded']);
@@ -45,7 +46,7 @@ export async function GET(request) {
       .filter(Boolean)
       .filter(b => b && (b.claimStatus === 'resolved' || b.claimStatus === 'paid'))
       .reduce((sum, b) => {
-        const decimals = b.tokenSymbol === 'MUSD' ? 18 : 6;
+        const decimals = getTokenDecimals(b.tokenSymbol);
         const value = Number(b.amount) / Math.pow(10, decimals);
         return sum + value;
       }, 0);
@@ -56,6 +57,6 @@ export async function GET(request) {
     });
   } catch (error) {
     logger.error('Error fetching claimed bounties:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

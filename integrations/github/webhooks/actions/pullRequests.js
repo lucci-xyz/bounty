@@ -10,7 +10,7 @@ import { bountyQueries, walletQueries, prClaimQueries, userQueries } from '@/ser
 import { resolveBountyOnNetwork } from '@/server/blockchain/contract.js';
 import { ethers } from 'ethers';
 import { notifyMaintainers } from '../../services/maintainerAlerts.js';
-import { formatAmountByToken, networkMeta } from '../../services/bountyFormatting.js';
+import { formatAmountByToken, networkMeta, getTokenDecimals } from '../../services/bountyFormatting.js';
 import {
   renderPrLinkedComment,
   renderPaymentFailedComment,
@@ -336,7 +336,7 @@ async function handlePRWithBounties(octokit, owner, repo, pull_request, reposito
   const walletMapping = await walletQueries.findByGithubId(pull_request.user.id);
 
   const totalAmount = bounties.reduce((sum, b) => {
-    const decimals = b.tokenSymbol === 'MUSD' ? 18 : 6;
+    const decimals = getTokenDecimals(b.tokenSymbol);
     return sum + Number(ethers.formatUnits(b.amount, decimals));
   }, 0);
 

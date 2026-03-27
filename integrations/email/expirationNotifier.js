@@ -7,6 +7,7 @@ import { logger } from '@/lib/logger';
 import { bountyQueries, userQueries, prisma } from '@/server/db/prisma.js';
 import { sendBountyExpiredEmail } from './email.js';
 import { ethers } from 'ethers';
+import { getTokenDecimals } from '@/integrations/github/services/bountyFormatting';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://bountypay.luccilabs.xyz';
 
@@ -56,7 +57,7 @@ export async function notifyExpiredBounties() {
         }
         
         // Format the bounty amount
-        const decimals = bounty.tokenSymbol === 'MUSD' ? 18 : 6;
+        const decimals = getTokenDecimals(bounty.tokenSymbol);
         const bountyAmount = Number(ethers.formatUnits(bounty.amount, decimals)).toFixed(2);
         
         // Send the email
@@ -125,7 +126,7 @@ export async function notifySponsorOfExpiredBounty(bountyId) {
       return { success: false, reason: 'no_email' };
     }
     
-    const decimals = bounty.tokenSymbol === 'MUSD' ? 18 : 6;
+    const decimals = getTokenDecimals(bounty.tokenSymbol);
     const bountyAmount = Number(ethers.formatUnits(bounty.amount, decimals)).toFixed(2);
     
     const result = await sendBountyExpiredEmail({

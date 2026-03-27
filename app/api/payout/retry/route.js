@@ -67,7 +67,7 @@ export async function POST(request) {
 
     if (!result.success) {
       await prClaimQueries.updateStatus(claim.id, 'failed');
-      return Response.json({ error: result.error || 'Payout transaction failed' }, { status: 502 });
+      return Response.json({ error: result.error || 'Payout transaction failed' }, { status: 422 });
     }
 
     await bountyQueries.updateStatus(bounty.bountyId, 'resolved', result.txHash);
@@ -79,7 +79,7 @@ export async function POST(request) {
     });
   } catch (error) {
     logger.error('Error processing manual payout retry:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 

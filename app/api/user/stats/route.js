@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 import { bountyQueries, prClaimQueries } from '@/server/db/prisma';
+import { getTokenDecimals } from '@/integrations/github/services/bountyFormatting';
 
 export async function GET(request) {
   try {
@@ -23,7 +24,7 @@ export async function GET(request) {
     
     // Calculate TVL and total paid
     bounties.forEach(b => {
-      const decimals = b.tokenSymbol === 'MUSD' ? 18 : 6;
+      const decimals = getTokenDecimals(b.tokenSymbol);
       const value = Number(b.amount) / Math.pow(10, decimals);
       
       if (b.status === 'open') {
@@ -50,7 +51,7 @@ export async function GET(request) {
     return Response.json(stats);
   } catch (error) {
     logger.error('Error fetching user stats:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 

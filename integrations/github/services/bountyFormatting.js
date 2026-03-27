@@ -24,12 +24,29 @@ export function networkMeta(networkKey) {
   };
 }
 
+/**
+ * Resolve token decimals from the registry. Falls back to well-known defaults.
+ */
+function getTokenDecimals(tokenSymbol) {
+  // Check all registry entries for a matching token
+  for (const config of Object.values(REGISTRY)) {
+    if (config.token.symbol === tokenSymbol) return config.token.decimals;
+    const additional = (config.additionalTokens || []).find(t => t.symbol === tokenSymbol);
+    if (additional) return additional.decimals;
+  }
+  // Well-known fallbacks
+  if (tokenSymbol === 'MUSD') return 18;
+  return 6;
+}
+
 export function formatAmountByToken(amount, tokenSymbol) {
-  const decimals = tokenSymbol === 'MUSD' ? 18 : 6;
+  const decimals = getTokenDecimals(tokenSymbol);
   try {
     return ethers.formatUnits(amount, decimals);
   } catch {
     return amount;
   }
 }
+
+export { getTokenDecimals };
 

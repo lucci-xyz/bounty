@@ -65,6 +65,7 @@ model PrClaim {
   resolvedAt         BigInt? @map("resolved_at")
   txHash             String? @map("tx_hash")
 
+  @@unique([bountyId, prNumber], name: "idx_pr_claims_bounty_pr")
   @@index([bountyId], name: "idx_pr_claims_bounty")
   @@map("pr_claims")
 }

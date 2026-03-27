@@ -28,6 +28,10 @@ export async function POST(request) {
       return Response.json({ error: 'bountyId and txHash are required' }, { status: 400 });
     }
 
+    if (!/^0x[a-fA-F0-9]{64}$/.test(txHash)) {
+      return Response.json({ error: 'Invalid transaction hash format' }, { status: 400 });
+    }
+
     const bounty = await bountyQueries.findById(bountyId);
     if (!bounty) {
       return Response.json({ error: 'Bounty not found' }, { status: 404 });
@@ -81,7 +85,7 @@ export async function POST(request) {
     });
   } catch (error) {
     logger.error('Error confirming refund:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 

@@ -9,13 +9,15 @@ const CRON_SECRET = process.env.CRON_SECRET;
 
 export async function GET(request) {
   try {
-    // Verify cron secret if configured
-    if (CRON_SECRET) {
-      const authHeader = request.headers.get('authorization');
-      if (authHeader !== `Bearer ${CRON_SECRET}`) {
-        logger.warn('[cron/expiration-notify] Unauthorized cron request');
-        return Response.json({ error: 'Unauthorized' }, { status: 401 });
-      }
+    // Verify cron secret - always required to prevent unauthorized invocations
+    if (!CRON_SECRET) {
+      logger.error('[cron/expiration-notify] CRON_SECRET not configured');
+      return Response.json({ error: 'Cron endpoint not configured' }, { status: 503 });
+    }
+    const authHeader = request.headers.get('authorization');
+    if (authHeader !== `Bearer ${CRON_SECRET}`) {
+      logger.warn('[cron/expiration-notify] Unauthorized cron request');
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
     logger.info('[cron/expiration-notify] Starting expiration notification check');

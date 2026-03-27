@@ -1,3 +1,20 @@
+/**
+ * Validates an Ethereum address format.
+ * Uses ethers.js checksum validation when available, falls back to regex.
+ */
+async function validateEthereumAddress(value) {
+  if (typeof value !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(value)) {
+    return null;
+  }
+  try {
+    const { ethers } = await import('ethers');
+    return ethers.getAddress(value);
+  } catch {
+    // If ethers is unavailable (e.g. test env), regex match above is sufficient
+    return value;
+  }
+}
+
 function isLikelyEthereumAddress(value) {
   return typeof value === 'string' && /^0x[a-fA-F0-9]{40}$/.test(value);
 }

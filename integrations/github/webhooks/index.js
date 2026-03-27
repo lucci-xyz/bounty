@@ -37,7 +37,7 @@ export async function handleWebhook(event, payload) {
         break;
     }
   } catch (error) {
-    logger.error('Error handling webhook:', error.message);
+    logger.error('Error handling webhook:', error.message, error.stack);
 
     try {
       const { repository, installation, issue, pull_request } = payload;
@@ -62,7 +62,8 @@ export async function handleWebhook(event, payload) {
       logger.error('Could not notify maintainers of webhook error:', notifyError.message);
     }
 
-    throw error;
+    // Don't re-throw: the webhook route returns 200 to prevent GitHub retry storms.
+    // Errors are logged above and maintainers are notified.
   }
 }
 
