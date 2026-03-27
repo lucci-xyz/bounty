@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { CONFIG } from '../config.js';
 import { isValidStatus, BOUNTY_STATUS } from '@/lib/status';
+import { buildMarketplaceSubscriptionState } from '@/server/marketplace/github';
 
 // Prisma client instance
 const prisma = new PrismaClient();
@@ -91,6 +92,65 @@ function normalizeBounty(bounty) {
     updatedAt: Number(bounty.updatedAt),
     pinnedCommentId: bounty.pinnedCommentId ? Number(bounty.pinnedCommentId) : null
   };
+}
+
+function toOptionalBigInt(value) {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  if (typeof value === 'bigint') {
+    return value;
+  }
+
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+    return BigInt(Math.trunc(value));
+  }
+
+  if (typeof value === 'string' && /^\d+$/.test(value.trim())) {
+    return BigInt(value.trim());
+  }
+
+  return null;
+}
+
+function normalizeMarketplaceSubscription(subscription) {
+  if (!subscription) return null;
+
+  return {
+    ...subscription,
+    accountId: subscription.accountId ? subscription.accountId.toString() : null,
+    freeTrialEndsOn: subscription.freeTrialEndsOn ? Number(subscription.freeTrialEndsOn) : null,
+    nextBillingDate: subscription.nextBillingDate ? Number(subscription.nextBillingDate) : null,
+    pendingEffectiveDate: subscription.pendingEffectiveDate
+      ? Number(subscription.pendingEffectiveDate)
+      : null,
+    cancelledAt: subscription.cancelledAt ? Number(subscription.cancelledAt) : null,
+    createdAt: Number(subscription.createdAt),
+    updatedAt: Number(subscription.updatedAt)
+  };
+}
+
+function buildMarketplaceIdentityWhere(accountId, accountLogin) {
+  const clauses = [];
+  const normalizedAccountId = toOptionalBigInt(accountId);
+
+  if (normalizedAccountId !== null) {
+    clauses.push({ accountId: normalizedAccountId });
+  }
+
+  if (accountLogin) {
+    clauses.push({ accountLogin });
+  }
+
+  if (clauses.length === 0) {
+    return null;
+  }
+
+  return clauses.length === 1 ? clauses[0] : { OR: clauses };
 }
 
 /**
@@ -935,6 +995,134 @@ export const allowlistQueries = {
       where: { id }
     });
     return { success: true };
+  }
+};
+
+export const marketplaceQueries = {
+  findByGithubIdentity: async (githubId, githubUsername) => {
+    const identityWhere = buildMarketplaceIdentityWhere(githubId, githubUsername);
+    if (!identityWhere) {
+      return null;
+    }
+
+    const subscription = await prisma.marketplaceSubscription.findFirst({
+      where: identityWhere
+    });
+
+    return normalizeMarketplaceSubscription(subscription);
+  },
+
+  findActiveByGithubIdentity: async (githubId, githubUsername) => {
+    const identityWhere = buildMarketplaceIdentityWhere(githubId, githubUsername);
+    if (!identityWhere) {
+      return null;
+    }
+
+    const subscription = await prisma.marketplaceSubscription.findFirst({
+      where: {
+        AND: [
+          identityWhere,
+          { status: 'active' }
+        ]
+      }
+    });
+
+    return normalizeMarketplaceSubscription(subscription);
+  },
+
+  hasProcessedDelivery: async (deliveryId) => {
+    if (!deliveryId) {
+      return false;
+    }
+
+    const existing = await prisma.marketplaceWebhookEvent.findUnique({
+      where: { deliveryId }
+    });
+
+    return Boolean(existing);
+  },
+
+  applyPurchaseWebhook: async (normalizedEvent) => {
+    const { deliveryId, githubEvent, action, accountId, accountLogin } = normalizedEvent;
+    const identityWhere = buildMarketplaceIdentityWhere(accountId, accountLogin);
+
+    if (!identityWhere) {
+      throw new Error('Marketplace webhook missing account identity');
+    }
+
+    if (deliveryId) {
+      const existing = await prisma.marketplaceWebhookEvent.findUnique({
+        where: { deliveryId }
+      });
+      if (existing) {
+        const subscription = await prisma.marketplaceSubscription.findFirst({
+          where: identityWhere
+        });
+
+        return {
+          duplicate: true,
+          subscription: normalizeMarketplaceSubscription(subscription)
+        };
+      }
+    }
+
+    const now = BigInt(Date.now());
+    const normalizedAccountId = toOptionalBigInt(accountId);
+
+    const subscription = await prisma.$transaction(async (tx) => {
+      if (deliveryId) {
+        await tx.marketplaceWebhookEvent.create({
+          data: {
+            deliveryId,
+            githubEvent,
+            action,
+            accountId: normalizedAccountId,
+            accountLogin: accountLogin || null,
+            processedAt: now,
+            payload: normalizedEvent.rawPayload
+          }
+        });
+      }
+
+      const existingSubscription = await tx.marketplaceSubscription.findFirst({
+        where: identityWhere
+      });
+
+      const nextState = buildMarketplaceSubscriptionState(
+        normalizedEvent,
+        existingSubscription?.status || 'active'
+      );
+
+      if (existingSubscription) {
+        return tx.marketplaceSubscription.update({
+          where: { id: existingSubscription.id },
+          data: {
+            ...(normalizedAccountId !== null ? { accountId: normalizedAccountId } : {}),
+            ...nextState,
+            updatedAt: now
+          }
+        });
+      }
+
+      if (!accountLogin) {
+        throw new Error('Marketplace webhook missing account login');
+      }
+
+      return tx.marketplaceSubscription.create({
+        data: {
+          ...(normalizedAccountId !== null ? { accountId: normalizedAccountId } : {}),
+          accountLogin,
+          ...nextState,
+          createdAt: now,
+          updatedAt: now
+        }
+      });
+    });
+
+    return {
+      duplicate: false,
+      subscription: normalizeMarketplaceSubscription(subscription)
+    };
   }
 };
 

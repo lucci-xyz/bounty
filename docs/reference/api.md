@@ -18,7 +18,7 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 ## Wallets
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
-| POST | `/api/wallet/link` | Wallet session | Body `{ githubId, githubUsername, walletAddress }`; requires the session wallet to match. |
+| POST | `/api/wallet/link` | Wallet + GitHub session | Body `{ walletAddress }`; GitHub identity is derived from session state and the wallet must match the verified SIWE session. |
 | GET | `/api/wallet/[githubId]` | None | Public lookup of a wallet mapping. |
 | DELETE | `/api/wallet/delete` | GitHub session | Body `{ confirmation: 'i want to remove my wallet' }`; deletes the caller’s mapping. |
 
@@ -38,6 +38,7 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
 | POST | `/api/refunds/request` | GitHub session | Custodial refund path. Body `{ bountyId }`. Requires the caller to own the bounty (by GitHub ID), checks expiry, and submits `refundExpired` using the configured custody wallet for the bounty’s network. |
+| POST | `/api/refunds/confirm` | GitHub session | Self-serve refund confirmation path. Body `{ bountyId, txHash }`. Verifies the transaction receipt and refunded on-chain state before updating Postgres. |
 
 ## User dashboards
 | Method | Path | Auth | Notes |
@@ -51,7 +52,7 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 ## Beta program
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
-| GET | `/api/beta/check` | Session | Returns beta access status (admins auto-approved). |
+| GET | `/api/beta/check` | Session | Returns beta access status. Admins auto-approved; active GitHub Marketplace subscribers are also granted access. |
 | POST | `/api/beta/apply` | GitHub session | Creates a pending beta application. |
 | GET | `/api/beta/applications` | Admin session | Lists pending/approved/rejected applications. |
 | POST | `/api/beta/review` | Admin session | Body `{ githubId, status, reason? }` to approve/reject. |
@@ -63,7 +64,7 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 | GET | `/api/github/installations` | GitHub session | Lists repos accessible via the GitHub App for the caller. |
 | POST | `/api/github/callback` | GitHub App | Proxies raw callbacks to the configured upstream URL (keeps headers/body). |
 | POST | `/api/webhooks/github` | GitHub App | Verifies signature and dispatches to webhook handlers. |
-| POST | `/api/webhooks/marketplace` | GitHub Marketplace | Receives `marketplace_purchase` events (plan changes). Verifies `X-Hub-Signature-256` using `GITHUB_MARKETPLACE_WEBHOOK_SECRET`. Logs actions: `purchased`, `changed`, `cancelled`, `pending_change`, `pending_change_cancelled`. |
+| POST | `/api/webhooks/marketplace` | GitHub Marketplace | Receives `marketplace_purchase` events, verifies `X-Hub-Signature-256`, persists delivery ids for idempotency, and updates marketplace subscription state used for access gating. Supports JSON and form-encoded payloads. |
 
 ## Network & config
 | Method | Path | Auth | Notes |

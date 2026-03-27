@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
-import { getGitHubApp } from '@/integrations/github/client';
+import { ensureGitHubApp } from '@/integrations/github/client';
 
 export async function GET(request) {
   try {
@@ -10,7 +10,7 @@ export async function GET(request) {
       return Response.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const app = getGitHubApp();
+    const app = ensureGitHubApp();
     
     // Get all installations for the authenticated user
     const { data: installations } = await app.octokit.request('GET /user/installations', {
@@ -51,4 +51,3 @@ export async function GET(request) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
-

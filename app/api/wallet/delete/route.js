@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 import { walletQueries } from '@/server/db/prisma';
+import { clearWalletSession } from '@/server/auth/walletLink';
 
 export async function DELETE(request) {
   try {
@@ -25,6 +26,8 @@ export async function DELETE(request) {
 
     // Delete the wallet
     await walletQueries.delete(session.githubId);
+    clearWalletSession(session);
+    await session.save();
     
     return Response.json({ success: true, message: 'Wallet deleted successfully' });
   } catch (error) {
@@ -32,4 +35,3 @@ export async function DELETE(request) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
-

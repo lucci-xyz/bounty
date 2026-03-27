@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
-import { prisma } from '@/server/db/prisma';
+import { marketplaceQueries, prisma } from '@/server/db/prisma';
 import { getFlagValue } from '@/lib/flags';
 import { NextResponse } from 'next/server';
 
@@ -42,6 +42,20 @@ export async function GET() {
         betaProgramEnabled
       });
     }
+
+    const marketplaceSubscription = await marketplaceQueries.findActiveByGithubIdentity(
+      session.githubId,
+      session.githubUsername
+    );
+    if (marketplaceSubscription) {
+      return NextResponse.json({
+        hasAccess: true,
+        status: 'approved',
+        accessSource: 'marketplace',
+        planName: marketplaceSubscription.planName,
+        betaProgramEnabled
+      });
+    }
     
     // Check if user has beta access
     const betaAccess = await prisma.betaAccess.findUnique({
@@ -70,4 +84,3 @@ export async function GET() {
     );
   }
 }
-

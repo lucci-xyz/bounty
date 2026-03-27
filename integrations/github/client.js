@@ -20,6 +20,13 @@ export function initGitHubApp() {
   return githubApp;
 }
 
+export function ensureGitHubApp() {
+  if (githubApp) {
+    return githubApp;
+  }
+  return initGitHubApp();
+}
+
 /**
  * Get GitHub App instance
  */
@@ -34,10 +41,21 @@ export function getGitHubApp() {
  * Get Octokit instance for a specific installation
  */
 export async function getOctokit(installationId) {
-  if (!githubApp) {
-    throw new Error('GitHub App not initialized. Check your GitHub App configuration.');
-  }
-  return await githubApp.getInstallationOctokit(installationId);
+  const app = ensureGitHubApp();
+  return await app.getInstallationOctokit(installationId);
+}
+
+export async function getRepositoryInstallationId(owner, repo) {
+  const app = ensureGitHubApp();
+  const { data } = await app.octokit.request('GET /repos/{owner}/{repo}/installation', {
+    owner,
+    repo,
+    headers: {
+      accept: 'application/vnd.github+json'
+    }
+  });
+
+  return data.id;
 }
 
 /**

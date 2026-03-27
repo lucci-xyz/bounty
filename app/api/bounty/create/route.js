@@ -5,7 +5,7 @@ import { getSession } from '@/lib/session';
 import { bountyQueries, userQueries } from '@/server/db/prisma';
 import { handleBountyCreated } from '@/integrations/github/webhooks';
 import { computeBountyIdOnNetwork, createRepoIdHash } from '@/server/blockchain/contract';
-import { getGitHubApp, getOctokit, initGitHubApp } from '@/integrations/github/client';
+import { ensureGitHubApp, getOctokit } from '@/integrations/github/client';
 import { getActiveAliasFromCookies } from '@/lib/network';
 import { REGISTRY } from '@/config/chain-registry';
 import { sendNewBountyNotification } from '@/integrations/discord';
@@ -14,7 +14,7 @@ import { formatAmount } from '@/lib/format/amount';
 export async function POST(request) {
   try {
     const session = await getSession();
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     
     // Get active network alias from cookie (or use provided one)
     const defaultAlias = getActiveAliasFromCookies(cookieStore);
@@ -113,13 +113,7 @@ export async function POST(request) {
 
     if (installationId && installationId > 0 && repoFullName) {
       try {
-        try {
-          getGitHubApp();
-        } catch {
-          logger.info('Initializing GitHub App...');
-          initGitHubApp();
-        }
-
+        ensureGitHubApp();
         const octokit = await getOctokit(installationId);
         const [owner, repo] = repoFullName.split('/');
 
@@ -159,14 +153,7 @@ export async function POST(request) {
     // Post GitHub comment (skip in local mode or if no installation)
     if (installationId && installationId > 0) {
       try {
-        // Initialize GitHub App if needed
-        try {
-          getGitHubApp();
-        } catch {
-          logger.info('Initializing GitHub App...');
-          initGitHubApp();
-        }
-
+        ensureGitHubApp();
         await handleBountyCreated({
           repoFullName,
           issueNumber,
@@ -223,4 +210,3 @@ export async function POST(request) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
-

@@ -3,6 +3,7 @@ import { getSession } from '@/lib/session';
 import { bountyQueries } from '@/server/db/prisma';
 import { refundExpiredOnNetwork } from '@/server/blockchain/contract';
 import { handleBountyRefunded } from '@/integrations/github/webhooks';
+import { getRepositoryInstallationId } from '@/integrations/github/client';
 
 export async function POST(request) {
   try {
@@ -44,19 +45,22 @@ export async function POST(request) {
     await bountyQueries.updateStatus(bountyId, 'refunded', result.txHash);
 
     // Post GitHub notification (non-blocking)
-    if (bounty.installationId && bounty.repoFullName && bounty.issueNumber) {
-      handleBountyRefunded({
-        repoFullName: bounty.repoFullName,
-        issueNumber: bounty.issueNumber,
-        bountyId,
-        amount: bounty.amount,
-        txHash: result.txHash,
-        installationId: bounty.installationId,
-        network: bounty.network,
-        tokenSymbol: bounty.tokenSymbol
-      }).catch(err => {
-        logger.error('Failed to post refund notification to GitHub:', err.message);
-      });
+    if (bounty.repoFullName && bounty.issueNumber) {
+      const [owner, repo] = bounty.repoFullName.split('/');
+      getRepositoryInstallationId(owner, repo)
+        .then((installationId) => handleBountyRefunded({
+          repoFullName: bounty.repoFullName,
+          issueNumber: bounty.issueNumber,
+          bountyId,
+          amount: bounty.amount,
+          txHash: result.txHash,
+          installationId,
+          network: bounty.network,
+          tokenSymbol: bounty.tokenSymbol
+        }))
+        .catch(err => {
+          logger.error('Failed to post refund notification to GitHub:', err.message);
+        });
     }
 
     return Response.json({

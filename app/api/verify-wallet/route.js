@@ -4,6 +4,7 @@ import { SiweMessage } from 'siwe';
 import { createPublicClient, http } from 'viem';
 import { base, baseSepolia } from 'viem/chains';
 import { getAliasByChainId, REGISTRY } from '@/config/chain-registry';
+import { assertExpectedSiweNonce } from '@/server/auth/siweSession';
 
 // Map chainId to viem chain object
 const CHAIN_MAP = {
@@ -80,10 +81,15 @@ export async function POST(request) {
       return Response.json({ error: 'Invalid message format' }, { status: 400 });
     }
 
-    // Validate nonce if we have one stored in session
-    if (session.siweNonce && siweMessage.nonce !== session.siweNonce) {
-      logger.error('Nonce mismatch:', { expected: session.siweNonce, received: siweMessage.nonce });
-      return Response.json({ error: 'Invalid nonce' }, { status: 401 });
+    try {
+      assertExpectedSiweNonce(session.siweNonce, siweMessage.nonce);
+    } catch (nonceError) {
+      logger.error('Nonce validation failed:', {
+        expected: session.siweNonce || null,
+        received: siweMessage.nonce,
+        reason: nonceError.message
+      });
+      return Response.json({ error: nonceError.message === 'Missing nonce' ? 'Missing nonce' : 'Invalid nonce' }, { status: 401 });
     }
 
     // Validate issuedAt and expiry if present

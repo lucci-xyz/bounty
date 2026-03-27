@@ -4,6 +4,7 @@ import { CONFIG } from '../config.js';
 import { REGISTRY, ABIS, getDefaultAliasForGroup } from '../../config/chain-registry.js';
 import { validateAddress, validateBytes32 } from './validation.js';
 import { contractStatusToDb } from '@/lib/status';
+import { validateRefundConfirmationResult } from './refundVerification.js';
 
 /**
  * Get the private key for a specific network alias.
@@ -248,6 +249,36 @@ export async function refundExpiredOnNetwork(bountyId, alias) {
       error: error.message,
     };
   }
+}
+
+export async function verifyRefundConfirmationOnNetwork(bountyId, txHash, alias) {
+  bountyId = validateBytes32(bountyId, 'bountyId');
+
+  const { escrowContract, network, provider } = getNetworkClients(alias);
+  const receipt = await provider.getTransactionReceipt(txHash);
+  const normalizedBountyId = bountyId.toLowerCase();
+  const foundRefundEvent = Array.isArray(receipt?.logs) && receipt.logs.some((log) => {
+    if (log.address?.toLowerCase() !== network.contracts.escrow.toLowerCase()) {
+      return false;
+    }
+
+    try {
+      const parsed = escrowContract.interface.parseLog(log);
+      return parsed?.name === 'Refunded' && parsed?.args?.bountyId?.toLowerCase() === normalizedBountyId;
+    } catch {
+      return false;
+    }
+  });
+
+  const onChainBounty = await escrowContract.getBounty(bountyId);
+  const onChainStatus = contractStatusToDb(Number(onChainBounty.status));
+
+  return validateRefundConfirmationResult({
+    receipt,
+    expectedEscrowAddress: network.contracts.escrow,
+    foundRefundEvent,
+    onChainStatus
+  });
 }
 
 /**

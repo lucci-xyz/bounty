@@ -1,6 +1,11 @@
 import { logger } from '@/lib/logger';
 import { CONFIG } from '@/server/config';
 import { createHmac } from 'crypto';
+import { marketplaceQueries } from '@/server/db/prisma';
+import {
+  normalizeMarketplacePurchaseWebhook,
+  parseMarketplaceWebhookPayload
+} from '@/server/marketplace/github';
 
 // Disable Next.js body parsing so we can access the raw body
 export const runtime = 'nodejs';
@@ -65,6 +70,7 @@ export async function POST(request) {
     const signature = request.headers.get('x-hub-signature-256');
     const event = request.headers.get('x-github-event');
     const delivery = request.headers.get('x-github-delivery');
+    const contentType = request.headers.get('content-type') || 'application/json';
 
     // Read raw body for signature verification
     const rawBody = await request.text();
@@ -92,8 +98,8 @@ export async function POST(request) {
       );
     }
 
-    // Parse body
-    const payload = JSON.parse(rawBody);
+    // Parse body after verifying the signature against the original bytes.
+    const payload = parseMarketplaceWebhookPayload(rawBody, contentType);
 
     // Log the event
     logger.info('[MARKETPLACE_WEBHOOK] Received event', {
@@ -107,39 +113,31 @@ export async function POST(request) {
 
     // Handle marketplace_purchase events
     if (event === 'marketplace_purchase') {
-      const { action, marketplace_purchase } = payload;
-      const account = marketplace_purchase?.account?.login;
-      const plan = marketplace_purchase?.plan?.name;
+      const normalized = normalizeMarketplacePurchaseWebhook(payload, {
+        githubEvent: event,
+        deliveryId: delivery
+      });
 
-      switch (action) {
-        case 'purchased':
-          logger.info(`[MARKETPLACE_WEBHOOK] New purchase: ${account} → ${plan}`);
-          // TODO: Handle new purchase (e.g., activate features, send email)
-          break;
-
-        case 'changed':
-          logger.info(`[MARKETPLACE_WEBHOOK] Plan changed: ${account} → ${plan}`);
-          // TODO: Handle plan change (e.g., update features, send email)
-          break;
-
-        case 'cancelled':
-          logger.info(`[MARKETPLACE_WEBHOOK] Plan cancelled: ${account}`);
-          // TODO: Handle cancellation (e.g., deactivate features, send email)
-          break;
-
-        case 'pending_change':
-          logger.info(`[MARKETPLACE_WEBHOOK] Pending change: ${account} → ${plan}`);
-          // TODO: Handle pending change (if needed)
-          break;
-
-        case 'pending_change_cancelled':
-          logger.info(`[MARKETPLACE_WEBHOOK] Pending change cancelled: ${account}`);
-          // TODO: Handle cancellation of pending change
-          break;
-
-        default:
-          logger.warn(`[MARKETPLACE_WEBHOOK] Unknown action: ${action}`);
+      const action = normalized.action;
+      if (!normalized.accountId && !normalized.accountLogin) {
+        logger.warn('[MARKETPLACE_WEBHOOK] Skipping purchase event without account identity', {
+          delivery,
+          action
+        });
+        return Response.json({ success: true, skipped: true });
       }
+
+      const result = await marketplaceQueries.applyPurchaseWebhook(normalized);
+
+      logger.info('[MARKETPLACE_WEBHOOK] Subscription state updated', {
+        delivery,
+        action,
+        duplicate: result.duplicate,
+        account: normalized.accountLogin,
+        plan: normalized.planName,
+        status: result.subscription?.status,
+        pendingPlan: result.subscription?.pendingPlanName || null
+      });
     } else {
       logger.warn(`[MARKETPLACE_WEBHOOK] Unexpected event type: ${event}`);
     }
@@ -162,4 +160,3 @@ export async function POST(request) {
     );
   }
 }
-

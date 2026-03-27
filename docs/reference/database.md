@@ -94,6 +94,32 @@ erDiagram
     string reviewedBy?     "optional"
   }
 
+  MarketplaceSubscription {
+    int    id              "PK"
+    string accountId?      "GitHub account id"
+    string accountLogin    "unique"
+    string status          "active|cancelled"
+    string planName?       "optional"
+    string billingCycle?   "optional"
+    int    unitCount?      "optional"
+    string pendingPlanName? "optional"
+    DateTime pendingEffectiveDate? "optional"
+    DateTime cancelledAt?  "optional"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+
+  MarketplaceWebhookEvent {
+    int    id              "PK"
+    string deliveryId      "unique"
+    string githubEvent
+    string action?         "optional"
+    string accountId?      "optional"
+    string accountLogin?   "optional"
+    json   payload
+    DateTime processedAt
+  }
+
   %% Relationships (DB-level + app-level)
 
   User ||--o{ Allowlist : "userId"
@@ -120,6 +146,8 @@ erDiagram
 | `Allowlist`              | `allowlists`              | `id` (PK), `userId` (FK → `users.id`)                                                  | Address-level allowlists per user/bounty/repo |
 | `NotificationPreference` | `notification_preferences`| `id` (PK), `userId` (unique FK)                                                        | Email notification toggles                    |
 | `BetaAccess`             | `beta_access`             | `id` (PK), `githubId` (unique)                                                         | Beta access pipeline                          |
+| `MarketplaceSubscription`| `marketplace_subscriptions` | `id` (PK), `accountId`/`accountLogin`                                                | Current GitHub Marketplace entitlement state  |
+| `MarketplaceWebhookEvent`| `marketplace_webhook_events` | `deliveryId` (unique)                                                                | Idempotency + audit trail for webhook events  |
 
 ---
 
@@ -149,6 +177,13 @@ The `lifecycle.state` field adds one additional state for open bounties:
 | `failed` | Payout failed (retryable) |
 | `pending_wallet` | Awaiting contributor wallet link |
 
+### Marketplace Subscription Status
+
+| Status | Description |
+|--------|-------------|
+| `active` | Account currently has marketplace-backed access |
+| `cancelled` | Marketplace subscription ended and access should be removed |
+
 ---
 
 ## Usage Notes
@@ -160,3 +195,4 @@ The `lifecycle.state` field adds one additional state for open bounties:
   - Status validation (rejects invalid status values).
 - Links by `bountyId` (`PrClaim`, `Allowlist`) are enforced in application logic, not DB FKs.
 - Use `lib/status` for status constants and helpers, never hardcode status strings.
+- Marketplace webhook deliveries are persisted for idempotency before subscription state is updated.

@@ -144,3 +144,46 @@ model BetaAccess {
   @@map("beta_access")
 }
 
+model MarketplaceSubscription {
+  id                   Int      @id @default(autoincrement())
+  accountId            BigInt?  @unique @map("account_id")
+  accountLogin         String   @unique @map("account_login")
+  accountType          String?  @map("account_type")
+  status               String   @default("active")
+  planId               Int?     @map("plan_id")
+  planName             String?  @map("plan_name")
+  billingCycle         String?  @map("billing_cycle")
+  unitCount            Int?     @map("unit_count")
+  onFreeTrial          Boolean? @map("on_free_trial")
+  freeTrialEndsOn      BigInt?  @map("free_trial_ends_on")
+  nextBillingDate      BigInt?  @map("next_billing_date")
+  pendingPlanId        Int?     @map("pending_plan_id")
+  pendingPlanName      String?  @map("pending_plan_name")
+  pendingEffectiveDate BigInt?  @map("pending_effective_date")
+  cancelledAt          BigInt?  @map("cancelled_at")
+  lastEvent            String?  @map("last_event")
+  lastAction           String?  @map("last_action")
+  lastDeliveryId       String?  @map("last_delivery_id")
+  lastPayload          Json?    @map("last_payload")
+  createdAt            BigInt   @map("created_at")
+  updatedAt            BigInt   @map("updated_at")
+
+  @@index([status], name: "idx_marketplace_subscriptions_status")
+  @@index([accountLogin], name: "idx_marketplace_subscriptions_account_login")
+  @@map("marketplace_subscriptions")
+}
+
+model MarketplaceWebhookEvent {
+  id          Int     @id @default(autoincrement())
+  deliveryId  String  @unique @map("delivery_id")
+  githubEvent String  @map("github_event")
+  action      String?
+  accountId   BigInt? @map("account_id")
+  accountLogin String? @map("account_login")
+  processedAt BigInt  @map("processed_at")
+  payload     Json
+
+  @@index([accountId], name: "idx_marketplace_webhook_events_account_id")
+  @@index([accountLogin], name: "idx_marketplace_webhook_events_account_login")
+  @@map("marketplace_webhook_events")
+}
