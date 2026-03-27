@@ -15,6 +15,11 @@ export async function GET(request, { params }) {
       return Response.json({ error: 'Invalid GitHub ID' }, { status: 400 });
     }
 
+    // Users can only query their own wallet
+    if (Number(session.githubId) !== parsedId) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const mapping = await walletQueries.findByGithubId(parsedId);
 
     if (!mapping) {

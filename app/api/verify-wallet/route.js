@@ -92,6 +92,10 @@ export async function POST(request) {
       return Response.json({ error: nonceError.message === 'Missing nonce' ? 'Missing nonce' : 'Invalid nonce' }, { status: 401 });
     }
 
+    // Clear nonce immediately to prevent replay attacks (before signature verification)
+    session.siweNonce = null;
+    await session.save();
+
     // Validate issuedAt and expiry if present
     const now = new Date();
     if (siweMessage.issuedAt) {
@@ -128,10 +132,9 @@ export async function POST(request) {
       return Response.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
-    // Store wallet in session
+    // Store wallet in session (nonce already cleared before verification)
     session.walletAddress = siweMessage.address;
     session.chainId = siweMessage.chainId;
-    session.siweNonce = null; // Clear used nonce
     await session.save();
 
     logger.info('Wallet verified successfully:', siweMessage.address);

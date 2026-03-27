@@ -49,6 +49,19 @@ export async function POST(request) {
       return Response.json({ error: 'Invalid transaction hash format' }, { status: 400 });
     }
 
+    // Validate sponsorAddress format
+    if (!/^0x[a-fA-F0-9]{40}$/.test(sponsorAddress)) {
+      return Response.json({ error: 'Invalid sponsor address' }, { status: 400 });
+    }
+
+    // Validate numeric fields
+    if (!Number.isInteger(Number(repoId)) || Number(repoId) <= 0) {
+      return Response.json({ error: 'Invalid repo ID' }, { status: 400 });
+    }
+    if (!Number.isInteger(Number(issueNumber)) || Number(issueNumber) <= 0) {
+      return Response.json({ error: 'Invalid issue number' }, { status: 400 });
+    }
+
     // Use provided network or default from cookie
     const alias = network || defaultAlias;
 

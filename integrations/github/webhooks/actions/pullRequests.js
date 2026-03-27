@@ -183,8 +183,7 @@ export async function handlePullRequestMerged(payload) {
       }
 
       if (result.success) {
-        await bountyQueries.updateStatus(bounty.bountyId, 'resolved', result.txHash);
-        await prClaimQueries.updateStatus(claim.id, 'paid', result.txHash, Date.now());
+        await bountyQueries.resolveWithClaim(bounty.bountyId, result.txHash, claim.id);
 
         const tokenSymbol = bounty.tokenSymbol || 'UNKNOWN';
         const amountFormatted = formatAmountByToken(bounty.amount, tokenSymbol);

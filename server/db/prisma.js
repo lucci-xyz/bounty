@@ -276,9 +276,31 @@ export const bountyQueries = {
   },
 
   /**
+   * Atomically marks a bounty as resolved and its PR claim as paid.
+   * Uses a Prisma transaction to prevent inconsistent state.
+   * @param {string} bountyId
+   * @param {string} txHash
+   * @param {number} claimId
+   * @returns {Promise<void>}
+   */
+  resolveWithClaim: async (bountyId, txHash, claimId) => {
+    const now = BigInt(Date.now());
+    await prisma.$transaction([
+      prisma.bounty.update({
+        where: { bountyId },
+        data: { status: 'resolved', txHash, updatedAt: now }
+      }),
+      prisma.prClaim.update({
+        where: { id: claimId },
+        data: { status: 'paid', txHash, resolvedAt: now }
+      })
+    ]);
+  },
+
+  /**
    * Updates the pinned comment ID for a bounty.
-   * @param {string} bountyId 
-   * @param {string|number} commentId 
+   * @param {string} bountyId
+   * @param {string|number} commentId
    * @returns {Promise<object>}
    */
   updatePinnedComment: async (bountyId, commentId) => {

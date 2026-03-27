@@ -70,8 +70,7 @@ export async function POST(request) {
       return Response.json({ error: result.error || 'Payout transaction failed' }, { status: 422 });
     }
 
-    await bountyQueries.updateStatus(bounty.bountyId, 'resolved', result.txHash);
-    await prClaimQueries.updateStatus(claim.id, 'paid', result.txHash, Date.now());
+    await bountyQueries.resolveWithClaim(bounty.bountyId, result.txHash, claim.id);
 
     return Response.json({
       success: true,
