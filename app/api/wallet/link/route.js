@@ -2,30 +2,31 @@ import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 import { walletQueries } from '@/server/db/prisma';
 
-export async function POST(request) {
+// Links the SIWE-verified wallet in the session to the OAuth-verified GitHub
+// identity in the session. Inputs are taken exclusively from the session —
+// the request body is ignored — so a caller cannot link a wallet to anyone
+// else's GitHub account or overwrite another user's wallet mapping.
+export async function POST() {
   try {
     const session = await getSession();
-    const { githubId, githubUsername, walletAddress } = await request.json();
 
-    if (!githubId || !githubUsername || !walletAddress) {
-      return Response.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!session.githubId || !session.githubUsername) {
+      return Response.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    // Verify wallet is authenticated in session
-    if (session.walletAddress?.toLowerCase() !== walletAddress.toLowerCase()) {
+    if (!session.walletAddress) {
       return Response.json({ error: 'Wallet not authenticated' }, { status: 401 });
     }
 
-    // Store mapping
-    await walletQueries.create(githubId, githubUsername, walletAddress);
+    await walletQueries.create(
+      session.githubId,
+      session.githubUsername,
+      session.walletAddress
+    );
 
-    return Response.json({
-      success: true,
-      message: 'Wallet linked successfully'
-    });
+    return Response.json({ success: true });
   } catch (error) {
     logger.error('Error linking wallet:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Failed to link wallet' }, { status: 500 });
   }
 }
-
