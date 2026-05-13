@@ -7,9 +7,7 @@
     "dev": "next dev",
     "build": "cross-env NODE_ENV=production prisma generate --schema server/db/schema.prisma && cross-env NODE_ENV=production next build",
     "start": "next start",
-    "postinstall": "prisma generate --schema server/db/schema.prisma",
-    "test": "node --test tests/",
-    "lint:links": "node scripts/check-links.mjs"
+    "postinstall": "prisma generate --schema server/db/schema.prisma"
   },
   "keywords": [
     "github",

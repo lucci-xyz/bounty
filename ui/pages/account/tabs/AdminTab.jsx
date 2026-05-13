@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useConnectModal, useAccountModal } from '@rainbow-me/rainbowkit';
 import { useDisconnect } from 'wagmi';
 import { formatDate, getStatusColor } from '@/lib';
@@ -244,10 +244,9 @@ export function AdminTab({ betaApplications, betaLoading, betaError, handleRevie
 
   const { networks = [], loading: feesLoading, error: feesError, withdrawing = {}, withdrawStatus = {}, totals = {}, wallet = {}, withdraw, clearStatus } = networkFees;
 
-  // Filter applications by status
-  const pendingApps = useMemo(() => betaApplications?.filter(a => a.status === 'pending') || [], [betaApplications]);
-  const approvedApps = useMemo(() => betaApplications?.filter(a => a.status === 'approved') || [], [betaApplications]);
-  const rejectedApps = useMemo(() => betaApplications?.filter(a => a.status === 'rejected') || [], [betaApplications]);
+  const pendingApps = betaApplications?.filter(a => a.status === 'pending') ?? [];
+  const approvedApps = betaApplications?.filter(a => a.status === 'approved') ?? [];
+  const rejectedApps = betaApplications?.filter(a => a.status === 'rejected') ?? [];
 
   const onApprove = id => handleReview(id, 'approve');
   const onReject = id => handleReview(id, 'reject');
