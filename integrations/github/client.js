@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { App } from 'octokit';
 import { CONFIG } from '@/server/config.js';
+import { extractClosedIssues, extractMentionedIssues } from './issueRefs.js';
 
 let githubApp;
 
@@ -168,33 +169,9 @@ export async function getPR(octokit, owner, repo, prNumber) {
   return data;
 }
 
-/**
- * Check if PR closes an issue (parse PR body for "Closes #123")
- */
-export function extractClosedIssues(prBody) {
-  if (!prBody) return [];
-  
-  // Match variations: Closes #123, Fixes #456, Resolves #789
-  const regex = /(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/gi;
-  const matches = [...prBody.matchAll(regex)];
-  
-  return matches.map(match => parseInt(match[1]));
-}
-
-/**
- * Extract ALL issue numbers mentioned in PR title or body
- */
-export function extractMentionedIssues(prTitle, prBody) {
-  const text = `${prTitle} ${prBody || ''}`;
-  if (!text) return [];
-  
-  // Match any #123 pattern
-  const regex = /#(\d+)/g;
-  const matches = [...text.matchAll(regex)];
-  
-  // Return unique issue numbers
-  return [...new Set(matches.map(match => parseInt(match[1])))];
-}
+// Issue-reference parsing lives in ./issueRefs.js (pure, dependency-free).
+// Re-exported here for backwards compatibility with existing imports.
+export { extractClosedIssues, extractMentionedIssues };
 
 /**
  * Get user details
