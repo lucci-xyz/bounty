@@ -3,6 +3,7 @@ import { CONFIG } from '@/server/config';
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getLinkHref } from '@/config/links';
+import { resolveSameOriginRedirect } from '@/lib/safeRedirect';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -10,8 +11,14 @@ export async function GET(request) {
   
   const session = await getSession();
   
+  // Store only a destination on our own origin. Rejecting here means a hostile
+  // returnTo never reaches the session, so the callback cannot be tricked even
+  // if its own check were later weakened.
   if (returnTo) {
-    session.oauthReturnTo = returnTo;
+    const safe = resolveSameOriginRedirect(returnTo, CONFIG.frontendUrl || request.url);
+    if (safe) {
+      session.oauthReturnTo = safe;
+    }
   }
   
   const redirectUri = `${CONFIG.frontendUrl}/api/oauth/callback`;

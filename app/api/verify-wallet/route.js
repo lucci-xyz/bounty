@@ -12,6 +12,28 @@ const CHAIN_MAP = {
 };
 
 /**
+ * The domain a SIWE message must have been signed for.
+ *
+ * Prefers the configured FRONTEND_URL so the expectation cannot be set by the
+ * caller; falls back to the request Host header when unconfigured.
+ *
+ * @param {Request} request
+ * @returns {string|null} Host (with port when non-default), or null if unknown.
+ */
+function getExpectedDomain(request) {
+  const configured = process.env.FRONTEND_URL;
+  if (configured) {
+    try {
+      return new URL(configured).host;
+    } catch {
+      logger.warn('FRONTEND_URL is not a valid URL; falling back to request host');
+    }
+  }
+
+  return request.headers.get('host') || null;
+}
+
+/**
  * Get a viem public client for a given chainId.
  * Required for ERC-1271/ERC-6492 smart wallet signature verification.
  */
@@ -80,10 +102,40 @@ export async function POST(request) {
       return Response.json({ error: 'Invalid message format' }, { status: 400 });
     }
 
-    // Validate nonce if we have one stored in session
-    if (session.siweNonce && siweMessage.nonce !== session.siweNonce) {
-      logger.error('Nonce mismatch:', { expected: session.siweNonce, received: siweMessage.nonce });
+    // Nonce is MANDATORY and single-use.
+    //
+    // This check used to be conditional on a nonce already being in the
+    // session, so a caller who simply never requested one skipped it entirely.
+    // Any (message, signature) pair captured from any other SIWE site could
+    // then be replayed here to assert ownership of someone else's address.
+    const expectedNonce = session.siweNonce;
+
+    // Consume the nonce before verifying, so a failed attempt cannot be retried
+    // against it and a success cannot be replayed.
+    if (session.siweNonce) {
+      session.siweNonce = undefined;
+      await session.save();
+    }
+
+    if (!expectedNonce) {
+      logger.warn('SIWE verification attempted with no nonce issued for this session');
+      return Response.json({ error: 'No nonce issued. Request a nonce first.' }, { status: 401 });
+    }
+
+    if (siweMessage.nonce !== expectedNonce) {
+      logger.warn('SIWE nonce mismatch');
       return Response.json({ error: 'Invalid nonce' }, { status: 401 });
+    }
+
+    // Bind the signature to this application. Without a domain check, a
+    // signature produced for another site is equally acceptable here.
+    const expectedDomain = getExpectedDomain(request);
+    if (expectedDomain && siweMessage.domain !== expectedDomain) {
+      logger.warn('SIWE domain mismatch', {
+        expected: expectedDomain,
+        received: siweMessage.domain
+      });
+      return Response.json({ error: 'Invalid message domain' }, { status: 401 });
     }
 
     // Validate issuedAt and expiry if present

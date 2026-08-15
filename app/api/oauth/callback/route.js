@@ -3,6 +3,7 @@ import { getSession } from '@/lib/session';
 import { CONFIG } from '@/server/config';
 import { NextResponse } from 'next/server';
 import { getLinkHref } from '@/config/links';
+import { safeRedirectOrDefault } from '@/lib/safeRedirect';
 
 export async function GET(request) {
   try {
@@ -66,9 +67,16 @@ export async function GET(request) {
     delete session.oauthReturnTo;
     delete session.oauthState;
     await session.save();
-    
-    const url = new URL(returnTo, request.url);
-    return NextResponse.redirect(url);
+
+    // Never redirect off-origin after authenticating. `new URL(returnTo, base)`
+    // honours an absolute URL, so an unchecked value would walk the user from a
+    // genuine login straight onto an attacker's page.
+    const destination = safeRedirectOrDefault(returnTo, CONFIG.frontendUrl || request.url, '/');
+    if (destination !== returnTo && returnTo !== '/') {
+      logger.warn('Rejected off-origin OAuth returnTo');
+    }
+
+    return NextResponse.redirect(destination);
   } catch (error) {
     logger.error('OAuth error:', error.message);
     return NextResponse.json({ error: `Authentication failed: ${error.message}` }, { status: 500 });

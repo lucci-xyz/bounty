@@ -928,13 +928,27 @@ export const allowlistQueries = {
   },
 
   /**
-   * Removes an allowlist entry by ID.
+   * Removes an allowlist entry, scoped to the bounty it belongs to.
+   *
+   * `bountyId` is required: callers authorise against a bounty, so the delete
+   * must be constrained to that same bounty. Deleting by id alone let a sponsor
+   * who owned any one bounty delete allowlist rows belonging to every other
+   * sponsor.
+   *
+   * @param {number} id
+   * @param {string} bountyId
+   * @returns {Promise<{ success: boolean, removed: number }>}
    */
-  remove: async (id) => {
-    await prisma.allowlist.delete({
-      where: { id }
+  remove: async (id, bountyId) => {
+    if (!bountyId) {
+      throw new Error('allowlistQueries.remove requires a bountyId to scope the delete');
+    }
+
+    const { count } = await prisma.allowlist.deleteMany({
+      where: { id, bountyId }
     });
-    return { success: true };
+
+    return { success: count > 0, removed: count };
   }
 };
 
