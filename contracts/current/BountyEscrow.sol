@@ -21,12 +21,22 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable@5.0.2/acce
  * - Claimer receives full `amount` at resolve; fee is not taken again.
  * - Owner can change `feeBps` (within MAX_FEE_BPS), pause, and withdraw protocol fees.
  *
- * Time rules:
- * - Before or at deadline (block.timestamp <= deadline): resolver can resolve.
- * - After deadline (block.timestamp > deadline): sponsor can refund via refundExpired.
+ * Time rules (the two windows are disjoint — a payout and a refund never race):
+ * - Up to and including `deadline + RESOLVE_GRACE`: only the resolver can pay.
+ * - Strictly after `deadline + RESOLVE_GRACE`: only the sponsor can refund.
  * - There is NO cancel function; funds are locked until either resolution or post-deadline refund.
  *
- * Deploy behind a proxy and call `initialize(...)` once.
+ * Trust model:
+ * - The resolver named on a bounty can send its full balance to any address
+ *   before the window closes, so resolvers must be allowlisted by the owner.
+ *   A sponsor cannot appoint themselves.
+ * - The owner can change `feeBps` (within MAX_FEE_BPS), pause, manage the token
+ *   and resolver allowlists, and withdraw accrued fees — never escrowed funds.
+ *
+ * Deploy behind a proxy and call `initialize(...)` once. When upgrading an
+ * existing proxy, the owner must call `setAllowedResolver(resolver, true)`
+ * afterwards; `initialize` does not run again and bounty creation reverts with
+ * `ResolverNotAllowed` until a resolver is approved.
  */
 contract BountyEscrow is
     Initializable,
@@ -41,6 +51,23 @@ contract BountyEscrow is
 
     /// @dev Basis point denominator (10_000 = 100%).
     uint256 private constant FEE_DENOM = 10_000;
+
+    /**
+     * @notice Extra window after `deadline` during which the resolver may still pay.
+     *
+     * A payout is triggered by an off-chain webhook: a PR merges, a server
+     * observes it, and a transaction is broadcast. Any delay in that chain — a
+     * webhook retry, an RPC outage, a stuck nonce — used to be unrecoverable,
+     * because `resolve` reverted the moment `block.timestamp` passed `deadline`
+     * while `refundExpired` opened at the same instant. A contributor whose work
+     * merged just before the deadline could therefore never be paid, and the
+     * sponsor could take the money back and keep the merged work.
+     *
+     * The grace window separates the two rights in time instead of leaving them
+     * to race: the resolver may pay up to `deadline + RESOLVE_GRACE`, and only
+     * after that may the sponsor refund.
+     */
+    uint64 public constant RESOLVE_GRACE = 1 days;
 
     enum Status {
         None,
@@ -81,8 +108,28 @@ contract BountyEscrow is
     /// @notice Cumulative fees accrued over the lifetime of the contract (informational only).
     uint256 public totalFeesAccrued;
 
+    /**
+     * @notice Resolvers the owner permits to be named on new bounties.
+     *
+     * The resolver holds unilateral power to send a bounty's full balance to any
+     * address before the deadline. `createBounty` takes that address from its
+     * caller, so a sponsor could name themselves and self-resolve — collecting a
+     * contributor's merged work and taking the escrow back, while the product
+     * advertised the bounty as trust-minimised. Restricting the set to
+     * owner-approved resolvers is what makes that advertisement true.
+     *
+     * Only creation is gated. Bounties created before this existed keep the
+     * resolver they were created with.
+     */
+    mapping(address => bool) public allowedResolvers;
+
     // Storage gap for future upgrades.
-    uint256[44] private __gap;
+    //
+    // APPEND ONLY. New variables go immediately above this gap, and the gap
+    // shrinks by exactly the number of slots they occupy, so that every existing
+    // slot keeps its meaning across an upgrade. `allowedResolvers` took one slot,
+    // so this went from 44 to 43.
+    uint256[43] private __gap;
 
     // -------- Events --------
 
@@ -115,6 +162,8 @@ contract BountyEscrow is
 
     event AllowedTokenUpdated(address indexed token, bool allowed);
 
+    event AllowedResolverUpdated(address indexed resolver, bool allowed);
+
     event FeesWithdrawn(address indexed token, address indexed to, uint256 amount);
 
     event TokenRescued(address indexed token, address indexed to, uint256 amount);
@@ -138,6 +187,23 @@ contract BountyEscrow is
     error InsufficientFees();
     error TokenNotAllowed();
     error CannotRescueAllowedToken();
+    error ResolverNotAllowed();
+
+    // -------- Constructor --------
+
+    /**
+     * @dev Locks the implementation contract so it can never be initialized.
+     *
+     * Without this, anyone can call `initialize` directly on the deployed
+     * implementation (not the proxy) and become its owner. That does not touch
+     * proxy state, but it leaves an owned, callable contract sitting at a
+     * verified address — and it is a prerequisite for a selfdestruct-style
+     * takeover of any future UUPS implementation.
+     */
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     // -------- Initializer (for proxy) --------
 
@@ -147,13 +213,23 @@ contract BountyEscrow is
      *                      Must be part of the allowlist.
      * @param _feeBps       Initial protocol fee in basis points (≤ MAX_FEE_BPS).
      * @param initialOwner  Contract owner (admin for pause/fees/withdraw).
+     * @param initialResolver Resolver permitted on new bounties. Bounty creation
+     *                        reverts until at least one resolver is allowed, so
+     *                        this must be the platform's resolver wallet.
+     *
+     * @dev UPGRADING AN EXISTING PROXY: `initialize` does not run again, so the
+     *      owner must call `setAllowedResolver(resolver, true)` after the
+     *      upgrade. Until they do, `createBounty` reverts with
+     *      `ResolverNotAllowed`.
      */
     function initialize(
         address primaryToken_,
         uint16 _feeBps,
-        address initialOwner
+        address initialOwner,
+        address initialResolver
     ) external initializer {
         if (primaryToken_ == address(0) || initialOwner == address(0)) revert ZeroAddress();
+        if (initialResolver == address(0)) revert ZeroAddress();
         if (_feeBps > MAX_FEE_BPS) revert InvalidParams();
 
         __ReentrancyGuard_init();
@@ -173,6 +249,9 @@ contract BountyEscrow is
         // Allowlist primary token by default.
         allowedTokens[primaryToken_] = true;
         emit AllowedTokenUpdated(primaryToken_, true);
+
+        allowedResolvers[initialResolver] = true;
+        emit AllowedResolverUpdated(initialResolver, true);
 
         feeBps = _feeBps;
     }
@@ -249,6 +328,18 @@ contract BountyEscrow is
         emit AllowedTokenUpdated(token, allowed);
     }
 
+    /**
+     * @notice Add or remove a resolver that sponsors may name on new bounties.
+     * @dev Removing a resolver does not affect bounties already created with it;
+     *      those remain resolvable by that address until they settle.
+     */
+    function setAllowedResolver(address resolver, bool allowed) external onlyOwner {
+        if (resolver == address(0)) revert ZeroAddress();
+
+        allowedResolvers[resolver] = allowed;
+        emit AllowedResolverUpdated(resolver, allowed);
+    }
+
     // -------- Core Flows --------
 
     /**
@@ -306,6 +397,9 @@ contract BountyEscrow is
     ) internal returns (bytes32 bountyId) {
         if (!allowedTokens[token]) revert TokenNotAllowed();
         if (resolver == address(0)) revert ZeroAddress();
+        // The resolver can pay this bounty to anyone before the deadline, so it
+        // may not be a value the sponsor picks freely.
+        if (!allowedResolvers[resolver]) revert ResolverNotAllowed();
         if (repoIdHash == bytes32(0) || issueNumber == 0) revert InvalidParams();
         if (deadline <= block.timestamp) revert InvalidParams();
         if (amount == 0) revert ZeroAmount();
@@ -393,8 +487,10 @@ contract BountyEscrow is
         if (b.status != Status.Open) revert NotOpen();
         if (msg.sender != b.resolver) revert NotResolver();
 
-        // Disallow resolving after the deadline (strictly greater than).
-        if (block.timestamp > b.deadline) revert DeadlinePassed();
+        // Settlement is allowed until the grace window closes. See RESOLVE_GRACE:
+        // this window and `refundExpired`'s are disjoint, so a payout and a
+        // refund can never race for the same funds.
+        if (block.timestamp > uint256(b.deadline) + RESOLVE_GRACE) revert DeadlinePassed();
 
         b.status = Status.Resolved;
 
@@ -423,8 +519,10 @@ contract BountyEscrow is
         if (b.status != Status.Open) revert NotOpen();
         if (msg.sender != b.sponsor) revert NotSponsor();
 
-        // Only allow refund after the deadline has fully passed.
-        if (block.timestamp <= b.deadline) revert DeadlineNotReached();
+        // Only once the resolver's grace window has closed. Refunding at the
+        // deadline itself would let a sponsor take back funds for work that had
+        // already merged but whose payout transaction had not yet landed.
+        if (block.timestamp <= uint256(b.deadline) + RESOLVE_GRACE) revert DeadlineNotReached();
 
         b.status = Status.Refunded;
         uint256 amount_ = b.amount;

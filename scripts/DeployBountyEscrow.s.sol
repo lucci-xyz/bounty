@@ -75,13 +75,20 @@ contract DeployBountyEscrow is Script {
 
         vm.startBroadcast(deployerKey);
 
-        // Deploy implementation (upgradeable, no constructor)
+        // The resolver permitted on new bounties. It holds unilateral power to
+        // pay any open bounty, so it must be the platform's resolver wallet and
+        // is set explicitly rather than defaulting to the owner.
+        address resolver = vm.envOr("RESOLVER_ADDRESS", owner);
+        console2.log("Allowed resolver:", resolver);
+
+        // Deploy implementation. Its constructor calls _disableInitializers(),
+        // so only the proxy is ever initializable.
         BountyEscrow impl = new BountyEscrow();
 
         // Encode initialize data for the proxy
         bytes memory initData = abi.encodeCall(
             BountyEscrow.initialize,
-            (primaryToken, FEE_BPS, owner)
+            (primaryToken, FEE_BPS, owner, resolver)
         );
 
         // Deploy transparent proxy pointing to implementation
@@ -97,6 +104,7 @@ contract DeployBountyEscrow is Script {
         console2.log("BountyEscrow implementation:", address(impl));
         console2.log("BountyEscrow Proxy (use this in app):", address(proxyInstance));
         console2.log("Upgrade admin / owner:", owner);
+        console2.log("Allowed resolver:", resolver);
         console2.log("----------------------------------------");
         console2.log("To withdraw fees later, call:");
         console2.log("  withdrawFees(token,", treasuryEnv, ", amount)");
