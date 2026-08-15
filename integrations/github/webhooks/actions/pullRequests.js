@@ -45,28 +45,43 @@ export async function handlePullRequestOpened(payload) {
       return;
     }
 
-    const closedIssues = extractClosedIssues(pull_request.body);
+    // A claim may only be created from an EXPLICIT closing reference.
+    //
+    // Previously two other paths created claims, and both were payable:
+    //   - a repo with exactly one open bounty auto-claimed it for any PR, so a
+    //     one-line typo fix claimed the whole bounty; and
+    //   - a bare mention ("blocked on #42") claimed the bounty on #42.
+    // Since `handlePullRequestMerged` pays every claim attached to the merged
+    // PR, either path let an unrelated PR drain a funded bounty on merge.
+    const closedIssues = [...new Set(extractClosedIssues(pull_request.body))];
     const mentionedIssues = extractMentionedIssues(pull_request.title, pull_request.body);
 
-    if (allOpenBounties.length === 1 && closedIssues.length === 0 && mentionedIssues.length === 0) {
-      await handlePRWithBounties(octokit, owner, repo, pull_request, repository, allOpenBounties);
-      return;
-    }
-
-    const matchedBounties = [];
-    const issueNumbersToCheck = [...new Set([...closedIssues, ...mentionedIssues])];
-
-    for (const issueNumber of issueNumbersToCheck) {
+    const claimedBounties = [];
+    for (const issueNumber of closedIssues) {
       const issueBounties = await bountyQueries.findByIssue(repository.id, issueNumber);
-      matchedBounties.push(...issueBounties);
+      claimedBounties.push(...issueBounties);
     }
 
-    if (matchedBounties.length > 0) {
-      await handlePRWithBounties(octokit, owner, repo, pull_request, repository, matchedBounties);
+    if (claimedBounties.length > 0) {
+      await handlePRWithBounties(octokit, owner, repo, pull_request, repository, claimedBounties);
       return;
     }
 
-    await suggestBounties(octokit, owner, repo, pull_request, allOpenBounties);
+    // No closing reference: surface the relevant bounties as a non-binding hint
+    // so the author can add "Closes #N" — but record no claim.
+    const mentionedBounties = [];
+    for (const issueNumber of mentionedIssues) {
+      const issueBounties = await bountyQueries.findByIssue(repository.id, issueNumber);
+      mentionedBounties.push(...issueBounties);
+    }
+
+    await suggestBounties(
+      octokit,
+      owner,
+      repo,
+      pull_request,
+      mentionedBounties.length > 0 ? mentionedBounties : allOpenBounties
+    );
   } catch (error) {
     logger.error('Error in handlePullRequestOpened:', error.message);
 
@@ -107,10 +122,29 @@ export async function handlePullRequestMerged(payload) {
     const octokit = await getOctokit(installation.id);
     const [owner, repo] = repository.full_name.split('/');
 
+    // Authoritative payout gate.
+    //
+    // Claims are recorded when a PR is opened, but the PR body can change
+    // afterwards and claims are never withdrawn. Re-derive the closing
+    // references from the MERGE payload and pay only bounties whose issue this
+    // PR actually closes. Without this, any claim recorded at any earlier point
+    // was payable on merge.
+    const closingIssues = new Set(extractClosedIssues(pull_request.body));
+
     for (const claim of claims) {
       const bounty = await bountyQueries.findById(claim.bountyId);
 
       if (!bounty || bounty.status !== 'open') {
+        continue;
+      }
+
+      if (!closingIssues.has(Number(bounty.issueNumber))) {
+        logger.warn('Skipping payout: merged PR does not close the bountied issue', {
+          bountyId: bounty.bountyId,
+          issueNumber: bounty.issueNumber,
+          prNumber: pull_request.number,
+          repo: repository.full_name
+        });
         continue;
       }
 

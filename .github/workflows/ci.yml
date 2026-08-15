@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch supersedes an in-flight run.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Placeholder values only. The build must never require real credentials,
+      # and nothing here touches a live database or chain. Testnet aliases are
+      # used deliberately so a CI misconfiguration cannot resolve to mainnet
+      # contract addresses.
+      - name: Build
+        env:
+          DATABASE_URL: postgresql://user:pass@localhost:5432/placeholder
+          DIRECT_DATABASE_URL: postgresql://user:pass@localhost:5432/placeholder
+          SESSION_SECRET: ci-placeholder-session-secret-32-chars
+          FRONTEND_URL: http://localhost:3000
+          ENV_TARGET: stage
+          BLOCKCHAIN_SUPPORTED_TESTNET_ALIASES: BASE_SEPOLIA,MEZO_TESTNET
+          BLOCKCHAIN_DEFAULT_TESTNET_ALIAS: BASE_SEPOLIA
+        run: npm run build
+
+  schema:
+    name: Prisma schema
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Validate schema
+        env:
+          DATABASE_URL: postgresql://user:pass@localhost:5432/placeholder
+          DIRECT_DATABASE_URL: postgresql://user:pass@localhost:5432/placeholder
+        run: npx prisma validate --schema server/db/schema.prisma
+
+  contracts:
+    name: Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # foundry.toml resolves @openzeppelin/* remappings out of node_modules,
+      # so JS dependencies must be installed before forge runs.
+      - run: npm ci
+
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Build contracts
+        run: forge build --sizes
+
+      - name: Run contract tests
+        run: forge test -vvv
