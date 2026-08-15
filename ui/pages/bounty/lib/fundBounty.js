@@ -79,16 +79,14 @@ export async function fundBounty({
     registry,
     networkGroup,
     selectedAlias,
-    defaultAlias,
-    setSelectedAlias,
-    supportedNetworks
+    defaultAlias
   } = networkContext;
 
   // Use passed token or fall back to network's primary token
   const selectedToken = tokenOverride || network.token;
   const isPrimaryToken = selectedToken.address.toLowerCase() === network.token.address.toLowerCase();
 
-  const { showStatus, showError } = callbacks;
+  const { showStatus } = callbacks;
   const { repoFullName, issueNumber, repoId, installationId } = issueData;
   const issueHref = getLinkHref('github', 'issue', { repoFullName, issueNumber });
 

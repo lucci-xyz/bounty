@@ -40,10 +40,6 @@ const nextConfig = {
             value: 'max-age=63072000; includeSubDomains; preload'
           },
           {
-            key: 'X-Frame-Options',
-            value: 'SAMEORIGIN'
-          },
-          {
             key: 'X-Content-Type-Options',
             value: 'nosniff'
           },
@@ -58,6 +54,29 @@ const nextConfig = {
           {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()'
+          },
+        ],
+      },
+      {
+        // Framing policy, applied everywhere EXCEPT the mini app.
+        //
+        // `X-Frame-Options: SAMEORIGIN` was previously set on /:path*, which
+        // included /base-mini-app — the surface whose entire purpose is to
+        // render inside a Farcaster or Base host client. The header told those
+        // clients to refuse to embed it, so the mini app could not load.
+        //
+        // frame-ancestors is the modern equivalent and supersedes
+        // X-Frame-Options where both are understood; both are sent so older
+        // agents are still covered.
+        source: '/((?!base-mini-app).*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN'
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: "frame-ancestors 'self'"
           },
         ],
       },

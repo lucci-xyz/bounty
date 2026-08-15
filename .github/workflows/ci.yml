@@ -31,6 +31,24 @@ jobs:
       - name: Run tests
         run: npm test
 
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Errors fail the build; warnings (require-await, exhaustive-deps) are
+      # advisory for now so the gate can land without a mass refactor.
+      - name: ESLint
+        run: npm run lint
+
   build:
     name: Production build
     runs-on: ubuntu-latest

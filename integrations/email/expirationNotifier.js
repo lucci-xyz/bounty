@@ -4,7 +4,7 @@
  */
 
 import { logger } from '@/lib/logger';
-import { bountyQueries, userQueries, prisma } from '@/server/db/prisma.js';
+import { bountyQueries, userQueries } from '@/server/db/prisma.js';
 import { sendBountyExpiredEmail } from './email.js';
 import { ethers } from 'ethers';
 
