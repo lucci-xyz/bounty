@@ -1,30 +1,9 @@
 import { mapContractError } from '@/lib/contractErrors';
+import { resolveDeadline } from '@/lib/deadline';
 import { ethers } from 'ethers';
 import { getLinkHref } from '@/config/links';
 import { contractStatusToDb, getStatusLabel } from '@/lib/status';
 
-/**
- * Ensure the bounty deadline is valid.
- * Returns at least an hour from now.
- *
- * @param {string} deadline - The desired deadline (ISO or date string).
- * @param {number} currentTimestamp - Current timestamp in seconds.
- * @returns {number} Valid deadline timestamp in seconds.
- */
-function ensureDeadline(deadline, currentTimestamp) {
-  let deadlineTimestamp = Math.floor(new Date(deadline).getTime() / 1000);
-  const minDeadline = currentTimestamp + 3600;
-
-  if (Number.isNaN(deadlineTimestamp) || deadlineTimestamp <= currentTimestamp) {
-    return minDeadline;
-  }
-
-  if (deadlineTimestamp < minDeadline) {
-    return minDeadline;
-  }
-
-  return deadlineTimestamp;
-}
 
 /**
  * Fetches the resolver contract address for the given network alias.
@@ -138,7 +117,7 @@ export async function fundBounty({
   const signer = await provider.getSigner();
   const currentBlock = await provider.getBlock('latest');
   const blockTimestamp = Number(currentBlock.timestamp);
-  const deadlineTimestamp = ensureDeadline(deadline, blockTimestamp);
+  const deadlineTimestamp = resolveDeadline(deadline, blockTimestamp);
   const amountWei = ethers.parseUnits(amount, selectedToken.decimals);
 
   // Determine platform fee (bps) and total required (amount + fee)
