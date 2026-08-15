@@ -36,8 +36,7 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 ## Refunds
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
-| POST | `/api/refunds/request` | GitHub session | Custodial refund path. Body `{ bountyId }`. Requires the caller to own the bounty (by GitHub ID), checks expiry, and submits `refundExpired` using the configured custody wallet for the bounty’s network. |
-| POST | `/api/refunds/confirm` | GitHub session | Records a sponsor-signed refund after the wallet has broadcast `refundExpired` itself. Body `{ bountyId, txHash }`. |
+| POST | `/api/refunds/confirm` | GitHub session | Records a sponsor-signed refund after the wallet has broadcast `refundExpired` itself. Body `{ bountyId, txHash }`. Verifies on-chain that the bounty really is refunded before writing. **This is the only refund path**: `refundExpired` requires `msg.sender` to be the sponsor, so a refund can only ever be signed by the funding wallet. |
 
 ## Payouts
 | Method | Path | Auth | Notes |
