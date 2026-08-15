@@ -8,7 +8,8 @@
     "build": "cross-env NODE_ENV=production prisma generate --schema server/db/schema.prisma && cross-env NODE_ENV=production next build",
     "start": "next start",
     "postinstall": "prisma generate --schema server/db/schema.prisma",
-    "test": "node --test \"tests/**/*.test.js\""
+    "test": "node --test \"tests/**/*.test.js\"",
+    "test:contracts:compile": "node scripts/compile-check.mjs --with-tests"
   },
   "keywords": [
     "github",
@@ -57,9 +58,13 @@
     "markdownlint-cli": "^0.45.0",
     "postcss": "^8.5.6",
     "prisma": "^6.19.0",
+    "solc": "^0.8.24",
     "tailwindcss": "^4.1.17"
   },
   "overrides": {
     "@walletconnect/logger": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

@@ -93,6 +93,12 @@ jobs:
       # so JS dependencies must be installed before forge runs.
       - run: npm ci
 
+      # Compiles the contracts and their tests with solc-js, pinned to the same
+      # version and remappings as foundry.toml. Runs first so a plain compile
+      # error is still reported if the foundry download fails.
+      - name: Compile contracts (solc)
+        run: npm run test:contracts:compile
+
       - uses: foundry-rs/foundry-toolchain@v1
         with:
           version: stable
@@ -100,12 +106,13 @@ jobs:
       - name: Build contracts
         run: forge build --sizes
 
-      # `forge test` exits 0 when no test files exist, which would render a
-      # green "Contract tests" check over an escrow contract that holds every
-      # user's funds and has no coverage at all. Say so loudly instead.
+      # `forge test` exits 0 when there are no test files, so guard against the
+      # suite silently disappearing and leaving a green check over an escrow
+      # that holds every user's funds.
       - name: Run contract tests
         run: |
-          if [ -z "$(find . -name '*.t.sol' -not -path './node_modules/*' -print -quit)" ]; then
-            echo "::warning title=No contract tests::BountyEscrow.sol holds all escrowed funds and has zero Solidity tests. forge test below is vacuous."
+          if [ -z "$(find test -name '*.t.sol' -print -quit 2>/dev/null)" ]; then
+            echo "::error title=No contract tests::BountyEscrow.sol holds all escrowed funds and has no Solidity tests."
+            exit 1
           fi
           forge test -vvv
