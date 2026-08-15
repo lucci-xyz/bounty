@@ -113,3 +113,33 @@ test('formatDeadlineDate renders a date and guards against bad input', () => {
   assert.equal(formatDeadlineDate(null), '-');
   assert.equal(formatDeadlineDate('not-a-date'), '-');
 });
+
+/**
+ * Money-display regression guards.
+ *
+ * formatAmount previously defaulted maximumFractionDigits to
+ * minimumFractionDigits (0), so a bare call rounded every amount to whole
+ * units: a paid 0.40 USDC bounty rendered as "0" on the Earnings tab.
+ */
+
+test('formatAmount does not round sub-unit amounts to zero', () => {
+  assert.equal(formatAmount('400000', 'USDC'), '0.4');
+  assert.equal(formatAmount('10000', 'USDC'), '0.01');
+});
+
+test('formatAmount does not round half-units up to the next whole unit', () => {
+  assert.equal(formatAmount('2500000', 'USDC'), '2.5');
+});
+
+test('formatAmount keeps whole amounts clean', () => {
+  assert.equal(formatAmount('5000000', 'USDC'), '5');
+  assert.equal(formatAmount('1000000000000000000', 'MUSD'), '1');
+});
+
+test('formatAmount still honours explicit fraction-digit options', () => {
+  assert.equal(
+    formatAmount('5000000', 'USDC', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    '5.00'
+  );
+  assert.equal(formatAmount('2500000', 'USDC', { maximumFractionDigits: 0 }), '3');
+});

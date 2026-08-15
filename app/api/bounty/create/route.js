@@ -131,8 +131,40 @@ export async function POST(request) {
 
     // Derive chainId and token info from network config
     const chainId = networkConfig.chainId;
-    const tokenAddress = token || networkConfig.token.address;
-    const tokenSymbolFinal = tokenSymbol || networkConfig.token.symbol;
+
+    // Resolve the token from the ESCROW's token address, not the request.
+    //
+    // tokenSymbol is the sole source of decimals for every money display in the
+    // app (6 for USDC, 18 for MUSD). Taken from the caller, a 1 MUSD bounty
+    // relabelled "USDC" renders as 1,000,000,000,000 — a fake million-dollar
+    // bounty on a real issue, backed by one dollar of escrow.
+    const knownTokens = [networkConfig.token, ...(networkConfig.additionalTokens || [])];
+    const escrowToken = knownTokens.find(
+      (t) => String(t.address).toLowerCase() === String(onChain.token || '').toLowerCase()
+    );
+
+    if (!escrowToken) {
+      logger.error('Bounty create: escrow token is not in the registry for this network', {
+        bountyId,
+        alias,
+        onChainToken: onChain.token
+      });
+      return Response.json(
+        { error: 'The bounty is funded in a token this network does not recognise.' },
+        { status: 409 }
+      );
+    }
+
+    if (tokenSymbol && tokenSymbol !== escrowToken.symbol) {
+      logger.warn('Bounty create: ignoring client tokenSymbol that disagrees with the escrow', {
+        bountyId,
+        claimed: tokenSymbol,
+        actual: escrowToken.symbol
+      });
+    }
+
+    const tokenAddress = escrowToken.address;
+    const tokenSymbolFinal = escrowToken.symbol;
 
     // Resolve on-chain fee bps and compute breakdown
     let feeBps = 100;
@@ -148,7 +180,7 @@ export async function POST(request) {
       logger.warn('Failed to read feeBps for bounty creation, defaulting to 1%', err);
     }
 
-    const decimals = networkConfig.token.decimals;
+    const decimals = escrowToken.decimals;
     const feeAmount = (BigInt(verifiedAmount) * BigInt(feeBps)) / BigInt(10000);
     const totalPaid = BigInt(verifiedAmount) + feeAmount;
     const formattedAmount = formatAmount(verifiedAmount, tokenSymbolFinal, {
@@ -223,7 +255,7 @@ export async function POST(request) {
       issueDescription,
       sponsorAddress,
       sponsorGithubId: session.githubId,
-      token: onChain.token || tokenAddress,
+      token: tokenAddress,
       amount: verifiedAmount,
       deadline: verifiedDeadline,
       status: 'open',
