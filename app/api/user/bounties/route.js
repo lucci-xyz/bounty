@@ -2,7 +2,7 @@ import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 import { bountyQueries, prClaimQueries } from '@/server/db/prisma';
 import { getBountyFromContract } from '@/server/blockchain/contract';
-import { deriveLifecycle, isRefundEligible, contractStatusToDb } from '@/lib/status';
+import { deriveLifecycle, isRefundEligible } from '@/lib/status';
 
 const DAY_IN_SECONDS = 24 * 60 * 60;
 
@@ -40,7 +40,7 @@ async function reconcileOpenBountyStatuses(bounties = []) {
   return bounties.map((bounty) => reconciledMap.get(bounty.bountyId) || bounty);
 }
 
-export async function GET(request) {
+export async function GET() {
   try {
     const session = await getSession();
     

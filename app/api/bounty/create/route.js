@@ -66,9 +66,8 @@ export async function POST(request) {
       repoId,
       issueNumber,
       sponsorAddress,
-      token,
-      amount,
-      deadline,
+      // token, amount and deadline are deliberately NOT read from the body.
+      // They come from the escrow instead — see the verification block below.
       txHash,
       installationId,
       network,

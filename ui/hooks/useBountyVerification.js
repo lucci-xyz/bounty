@@ -26,7 +26,7 @@ export function useBountyVerification() {
   const { data: walletClient } = useWalletClient();
   const { switchChain } = useSwitchChain();
   const { showError } = useErrorModal();
-  const { currentNetwork: network, registry, selectedAlias, setSelectedAlias } = useNetwork();
+  const { registry, selectedAlias, setSelectedAlias } = useNetwork();
 
   const showStatus = useCallback((message, type) => {
     setStatus({ message, type });

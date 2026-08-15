@@ -1,5 +1,5 @@
 import { logger } from '@/lib/logger';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { CONFIG } from '../config.js';
 import { isValidStatus, BOUNTY_STATUS } from '@/lib/status';
 import { decideAllowlist } from '@/lib/allowlistDecision';

@@ -9,7 +9,8 @@
     "start": "next start",
     "postinstall": "prisma generate --schema server/db/schema.prisma",
     "test": "node --test \"tests/**/*.test.js\"",
-    "test:contracts:compile": "node scripts/compile-check.mjs --with-tests"
+    "test:contracts:compile": "node scripts/compile-check.mjs --with-tests",
+    "lint": "eslint ."
   },
   "keywords": [
     "github",
@@ -48,12 +49,15 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.6",
     "@openzeppelin/contracts": "^5.0.2",
     "@types/node": "^20.11.5",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
     "autoprefixer": "^10.4.22",
     "cross-env": "^10.1.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.23",
     "forge-std": "github:foundry-rs/forge-std#v1.11.0",
     "markdownlint-cli": "^0.45.0",
     "postcss": "^8.5.6",

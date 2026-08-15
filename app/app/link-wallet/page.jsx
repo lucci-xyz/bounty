@@ -460,8 +460,16 @@ function SignInContent() {
               Sign in with GitHub
             </button>
             
+            {/*
+              This previously read "By signing in, you agree to our terms of
+              service" — as plain text, with no link, and with no terms of
+              service existing anywhere in the product. Claiming assent to a
+              document that does not exist is worse than saying nothing.
+              Restore the line, as a real link, once terms are written.
+            */}
             <p className="text-xs text-muted-foreground">
-              By signing in, you agree to our terms of service.
+              BountyPay reads only your public GitHub profile. It never gains access to your
+              wallet&rsquo;s funds.
             </p>
           </div>
         </div>

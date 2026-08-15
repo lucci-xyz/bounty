@@ -41,7 +41,7 @@ export function useWalletManagement({
   const [isAwaitingWallet, setIsAwaitingWallet] = useState(false);
   const [updatedWalletAddress, setUpdatedWalletAddress] = useState(null);
   const [awaitingInitialAddress, setAwaitingInitialAddress] = useState(null);
-  const [awaitingInitialChainId, setAwaitingInitialChainId] = useState(null);
+  const [, setAwaitingInitialChainId] = useState(null);
 
   const clearChangeFlow = useCallback(() => {
     waitingForPayoutChangeRef.current = false;
