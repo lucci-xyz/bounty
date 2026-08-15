@@ -413,6 +413,9 @@ contract BountyEscrow is
         b.sponsor = msg.sender;
         b.resolver = resolver;
         b.token = token;
+        // casting to 'uint96' is safe because `amount > type(uint96).max`
+        // reverts above, before any state is written.
+        // forge-lint: disable-next-line(unsafe-typecast)
         b.amount = uint96(amount);
         b.deadline = deadline;
         b.issueNumber = issueNumber;
@@ -463,6 +466,9 @@ contract BountyEscrow is
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), total);
 
+        // casting to 'uint96' is safe because `newTotal > type(uint96).max`
+        // reverts above, before any state is written.
+        // forge-lint: disable-next-line(unsafe-typecast)
         b.amount = uint96(newTotal);
         totalEscrowedByToken[token] += amount;
         if (fee > 0) {
