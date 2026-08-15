@@ -230,7 +230,32 @@ export async function POST(request) {
         }
 
         const octokit = await getOctokit(installationId);
-        const [owner, repo] = repoFullName.split('/');
+
+        // Bind repoFullName to the repoId that the bountyId was derived from.
+        //
+        // The escrow commits to a repoIdHash, but repoFullName and
+        // installationId arrive as free-form body fields. Without this check a
+        // caller could escrow a bounty on a throwaway repo while naming a
+        // popular one here, and the bot would post a payment promise on that
+        // third party's issue — real contributors working against an escrow
+        // keyed to a different repository.
+        const { data: repoById } = await octokit.request('GET /repositories/{id}', {
+          id: Number(repoId)
+        });
+
+        if (repoById.full_name.toLowerCase() !== String(repoFullName).toLowerCase()) {
+          logger.error('Bounty create: repoFullName does not match repoId', {
+            bountyId,
+            claimed: repoFullName,
+            actual: repoById.full_name
+          });
+          return Response.json(
+            { error: 'Repository does not match the funded bounty.' },
+            { status: 409 }
+          );
+        }
+
+        const [owner, repo] = repoById.full_name.split('/');
 
         const { data: issue } = await octokit.rest.issues.get({
           owner,
@@ -280,10 +305,14 @@ export async function POST(request) {
           repoFullName,
           issueNumber,
           bountyId,
-          amount,
+          // Advertise the ESCROW's terms, not the request body's. The bot
+          // comment is the promise contributors act on, so a body-supplied
+          // deadline let a sponsor publish "30 days left" over an escrow that
+          // expired in an hour, then refund once the work was merged.
+          amount: verifiedAmount,
           platformFee: feeAmount.toString(),
           totalPaid: totalPaid.toString(),
-          deadline,
+          deadline: verifiedDeadline,
           sponsorAddress,
           txHash,
           installationId,
@@ -315,7 +344,7 @@ export async function POST(request) {
         feeBps,
         tokenSymbol: tokenSymbolFinal,
         network: networkConfig.name,
-        deadline: new Date(deadline * 1000).toISOString(),
+        deadline: new Date(verifiedDeadline * 1000).toISOString(),
         createdByGithubUsername: session?.githubUsername || 'Unknown'
       });
       logger.info('Discord notification sent for new bounty');
@@ -329,7 +358,7 @@ export async function POST(request) {
     });
   } catch (error) {
     logger.error('Error creating bounty:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Failed to create bounty' }, { status: 500 });
   }
 }
 
