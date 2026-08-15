@@ -349,7 +349,7 @@ function FeaturesSection() {
             <div className="p-6 bg-card/80 backdrop-blur-sm rounded-xl border border-border h-full">
               <h3 className="text-base font-medium text-foreground mb-2">Secure escrow</h3>
               <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-                Your funds are held in audited smart contracts until work is verified and merged.
+                Your funds are held in on-chain escrow. They are released only when a merged pull request closes the issue, and are refundable to you after the deadline.
               </p>
               {/* Escrow illustration - hidden on mobile */}
               <div className="hidden md:flex flex-1 rounded-lg items-center justify-center p-6">

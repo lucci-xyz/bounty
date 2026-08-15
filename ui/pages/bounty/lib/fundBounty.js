@@ -389,8 +389,11 @@ export async function fundBounty({
   } catch (contractError) {
     console.error('Contract call error:', contractError);
     const msg = mapContractError(contractError);
+    // Name the network the user is actually on. This message hardcoded "Base
+    // Mainnet" and told Mezo users to switch to a chain their bounty is not on.
+    const gasSymbol = network.nativeCurrency?.symbol || 'native currency';
     throw new Error(
-      `Contract call failed: ${msg}. If this persists, ensure you're on Base Mainnet, have ETH for gas, and retry.`
+      `${msg} Check that your wallet is on ${network.name} and holds ${gasSymbol} for gas, then try again.`
     );
   }
 

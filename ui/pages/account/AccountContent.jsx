@@ -235,6 +235,11 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                   allowlists={allowlist.allowlists}
                   allowlistLoading={allowlist.allowlistLoading}
                   openAllowlistModal={allowlist.openAllowlistModal}
+                  // "Request Refund" used to link to /refund, which does not
+                  // exist — the only dashboard route to reclaim escrowed money
+                  // was a 404. Send the sponsor to the Controls tab, where the
+                  // working refund flow lives.
+                  onRequestRefund={() => handleTabChange('controls')}
                 />
               )
             )}

@@ -116,15 +116,22 @@ export function useBountyFeed() {
     const query = searchQuery.trim().toLowerCase();
 
     return bounties.filter((bounty) => {
+      // The title is the headline on every card, and it was the one field the
+      // search did not look at: typing the words visible on screen returned
+      // nothing unless they also appeared in the issue body.
+      const title = bounty.issueTitle?.toLowerCase() ?? '';
       const description = bounty.issueDescription?.toLowerCase() ?? '';
       const repo = bounty.repoFullName?.toLowerCase() ?? '';
+      const issueRef = `#${bounty.issueNumber ?? ''}`;
       const matchesLabels = bounty.labels?.some((label) =>
         label?.toLowerCase().includes(query)
       );
 
       return (
+        title.includes(query) ||
         description.includes(query) ||
         repo.includes(query) ||
+        issueRef.includes(query) ||
         matchesLabels
       );
     });
