@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { formatAmount, formatTimeRemaining, formatStarCount } from '@/lib';
 import { LinkFromCatalog } from '@/ui/components/LinkFromCatalog';
 

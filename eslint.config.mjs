@@ -19,6 +19,12 @@ const compat = new FlatCompat({ baseDirectory: import.meta.dirname });
  * Everything stylistic is left to Prettier.
  */
 export default [
+  {
+    // ESLint 9's flat config lints only .js/.mjs/.cjs by default, which for
+    // this project meant the entire UI — around 10,000 lines of .jsx — was
+    // silently unlinted.
+    files: ['**/*.{js,mjs,cjs,jsx}']
+  },
   ...compat.extends('next/core-web-vitals'),
   {
     ignores: [
@@ -30,6 +36,7 @@ export default [
     ]
   },
   {
+    files: ['**/*.{js,mjs,cjs,jsx}'],
     rules: {
       'no-unused-vars': [
         'error',

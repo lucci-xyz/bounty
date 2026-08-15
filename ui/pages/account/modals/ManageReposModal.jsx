@@ -112,7 +112,7 @@ export function ManageReposModal({
                 <GitHubIcon size={32} color="var(--primary)" />
               </div>
               <p className="text-muted-foreground mb-6" style={{ fontSize: '14px', fontWeight: 300 }}>
-                BountyPay isn't installed on any repositories yet
+                BountyPay isn&rsquo;t installed on any repositories yet
               </p>
               {!betaProgramEnabled || hasBetaAccess ? (
                 <button
