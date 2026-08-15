@@ -67,6 +67,7 @@ async function getBountySelect() {
     createdAt: true,
     updatedAt: true,
     pinnedCommentId: true,
+    expiryNotifiedAt: true,
     ...(includeIssueMetadata
       ? {
           issueTitle: true,
@@ -90,7 +91,8 @@ function normalizeBounty(bounty) {
     deadline: Number(bounty.deadline),
     createdAt: Number(bounty.createdAt),
     updatedAt: Number(bounty.updatedAt),
-    pinnedCommentId: bounty.pinnedCommentId ? Number(bounty.pinnedCommentId) : null
+    pinnedCommentId: bounty.pinnedCommentId ? Number(bounty.pinnedCommentId) : null,
+    expiryNotifiedAt: bounty.expiryNotifiedAt ? Number(bounty.expiryNotifiedAt) : null
   };
 }
 
@@ -250,6 +252,9 @@ export const bountyQueries = {
         // stage deployment's cron read prod bounties (and vice versa) and
         // emailed the wrong sponsors about the wrong money.
         environment: CONFIG.envTarget || 'stage',
+        // Idempotency for the daily expiry mail: a bounty leaves this set for
+        // good once its notification is recorded.
+        expiryNotifiedAt: null,
         deadline: {
           lt: BigInt(now)
         }
@@ -258,6 +263,18 @@ export const bountyQueries = {
     });
 
     return bounties.map(normalizeBounty);
+  },
+
+  /**
+   * Records that the expiry notification for a bounty has been sent.
+   * @param {string} bountyId
+   * @returns {Promise<void>}
+   */
+  markExpiryNotified: async (bountyId) => {
+    await prisma.bounty.update({
+      where: { bountyId },
+      data: { expiryNotifiedAt: BigInt(Date.now()) }
+    });
   },
 
   /**
@@ -420,8 +437,17 @@ export const prClaimQueries = {
    * Creates a PR claim.
    */
   create: async (bountyId, prNumber, prAuthorId, repoFullName) => {
-    const claim = await prisma.prClaim.create({
-      data: {
+    // Idempotent: `pull_request.edited` replays the open handler, so a PR that
+    // is edited three times must still hold exactly one claim per bounty.
+    // Re-running only refreshes the author; it never resets a settled status.
+    const claim = await prisma.prClaim.upsert({
+      where: {
+        uq_pr_claims_bounty_pr: { bountyId, prNumber, repoFullName }
+      },
+      update: {
+        prAuthorGithubId: BigInt(prAuthorId)
+      },
+      create: {
         bountyId,
         prNumber,
         prAuthorGithubId: BigInt(prAuthorId),
@@ -430,7 +456,7 @@ export const prClaimQueries = {
         createdAt: BigInt(Date.now())
       }
     });
-    
+
     return {
       ...claim,
       prAuthorGithubId: Number(claim.prAuthorGithubId),
