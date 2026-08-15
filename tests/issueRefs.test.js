@@ -59,3 +59,45 @@ test('parsed issue numbers are integers, not strings', () => {
   const [mentioned] = extractMentionedIssues('#456', '');
   assert.equal(typeof mentioned, 'number');
 });
+
+/**
+ * Money-path regression guards.
+ *
+ * These parsers decide which bounty a PR claims. Two exploitable behaviours are
+ * pinned here: a cross-repo reference must never resolve to the local issue of
+ * the same number, and a bare mention must never read as a closing reference.
+ */
+
+test('extractClosedIssues ignores cross-repo closing references', () => {
+  // `Closes vendor/lib#42` closes an issue in ANOTHER repo. Treating it as
+  // local #42 would pay this repo's bounty for unrelated work.
+  assert.deepEqual(extractClosedIssues('Closes vendor/lib#42'), []);
+  assert.deepEqual(extractClosedIssues('Fixes owner-name/repo.js#7'), []);
+});
+
+test('extractClosedIssues accepts the colon form', () => {
+  assert.deepEqual(extractClosedIssues('Closes: #42'), [42]);
+});
+
+test('extractClosedIssues still ignores bare mentions', () => {
+  assert.deepEqual(extractClosedIssues('Blocked on #42, landing the bump first'), []);
+  assert.deepEqual(extractClosedIssues('Related to #7 but does not fix it'), []);
+});
+
+test('extractMentionedIssues does not read cross-repo refs as local issues', () => {
+  // The exploit: "Upstream tracking issue: vendor/lib#42" previously returned
+  // [42] and claimed the local 5,000 USDC bounty on issue #42.
+  assert.deepEqual(extractMentionedIssues('chore: pin dep', 'Upstream: vendor/lib#42'), []);
+  assert.deepEqual(extractMentionedIssues('', 'see anthropics/claude-code#123'), []);
+});
+
+test('extractMentionedIssues still matches genuine local references', () => {
+  assert.deepEqual(extractMentionedIssues('Fix for #42', ''), [42]);
+  assert.deepEqual(extractMentionedIssues('', '(#42) and [#43]'), [42, 43]);
+  assert.deepEqual(extractMentionedIssues('#1 at start', ''), [1]);
+});
+
+test('extractMentionedIssues does not match #N glued to a preceding token', () => {
+  assert.deepEqual(extractMentionedIssues('', 'v1.2#42'), []);
+  assert.deepEqual(extractMentionedIssues('', 'abc#42'), []);
+});

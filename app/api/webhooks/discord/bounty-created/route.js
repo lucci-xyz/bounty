@@ -1,5 +1,41 @@
+import { timingSafeEqual } from 'crypto';
 import { logger } from '@/lib/logger';
 import { sendNewBountyNotification, isDiscordConfigured } from '@/integrations/discord';
+
+export const runtime = 'nodejs';
+
+/**
+ * Shared secret gating this relay.
+ *
+ * This endpoint forwards caller-supplied text and links straight into the
+ * project's Discord channel. Unauthenticated, that is an open relay: anyone
+ * could post a fabricated bounty with an attacker-controlled link into an
+ * official channel. It fails CLOSED — with no secret configured, the endpoint
+ * is disabled rather than public.
+ *
+ * NOTE: `POST /api/bounty/create` already calls `sendNewBountyNotification`
+ * directly on the server, so this route is redundant and has no callers.
+ * Deleting it is preferable to maintaining it.
+ */
+const RELAY_SECRET = process.env.DISCORD_RELAY_SECRET;
+
+function isAuthorized(request) {
+  if (!RELAY_SECRET) {
+    return false;
+  }
+
+  const header = request.headers.get('authorization') || '';
+  const provided = header.startsWith('Bearer ') ? header.slice(7) : '';
+
+  const a = Buffer.from(provided);
+  const b = Buffer.from(RELAY_SECRET);
+
+  // Compare padded buffers so length alone is not a timing oracle.
+  if (a.length !== b.length) {
+    return false;
+  }
+  return timingSafeEqual(a, b);
+}
 
 /**
  * Webhook endpoint for posting new bounty notifications to Discord
@@ -20,6 +56,11 @@ import { sendNewBountyNotification, isDiscordConfigured } from '@/integrations/d
  */
 export async function POST(request) {
   try {
+    if (!isAuthorized(request)) {
+      logger.warn('[discord-webhook] Rejected unauthorized relay request');
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // Check if Discord is configured
     if (!isDiscordConfigured()) {
       logger.warn('[discord-webhook] Discord webhook not configured');
@@ -96,10 +137,7 @@ export async function POST(request) {
     return Response.json({ success: true });
   } catch (error) {
     logger.error('[discord-webhook] Error processing request:', error);
-    return Response.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    );
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
