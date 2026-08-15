@@ -3,6 +3,7 @@ import { getOctokit, postIssueComment, ensureLabel, addLabels, removeLabel, getI
 import { bountyQueries } from '@/server/db/prisma.js';
 import { notifyMaintainers } from '../../services/maintainerAlerts.js';
 import { formatAmountByToken, networkMeta } from '../../services/bountyFormatting.js';
+import { TOKEN_DECIMALS } from '@/lib/format/amount';
 import { renderBountyCreatedComment, renderBountyRefundedComment } from '../../templates/bounties';
 import { OG_ICON, FRONTEND_BASE, BRAND_SIGNATURE } from '../../constants.js';
 import { getLinkHref } from '@/config/links';
@@ -67,7 +68,12 @@ export async function handleBountyCreated(bountyData) {
 
     const postedComment = await postIssueComment(octokit, owner, repo, issueNumber, comment);
 
-    const labelName = `bounty:$${Math.floor(parseFloat(amountFormatted))}`;
+    // Derive the label from base units, never from the display string.
+    // `parseFloat('1,500.00')` stops at the comma and yields 1, so every bounty
+    // of 1,000 or more was labelled `bounty:$1` on the issue and in search.
+    const labelDecimals = TOKEN_DECIMALS[tokenSymbol] ?? 6;
+    const labelWhole = BigInt(amount) / 10n ** BigInt(labelDecimals);
+    const labelName = `bounty:$${labelWhole.toString()}`;
     try {
       await ensureLabel(octokit, owner, repo, labelName, '83EEE8', 'Active bounty amount');
       await addLabels(octokit, owner, repo, issueNumber, [labelName]);

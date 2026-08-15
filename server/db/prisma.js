@@ -245,13 +245,17 @@ export const bountyQueries = {
     const bounties = await prisma.bounty.findMany({
       where: {
         status: 'open',
+        // Every sibling query partitions by environment; this one did not, so a
+        // stage deployment's cron read prod bounties (and vice versa) and
+        // emailed the wrong sponsors about the wrong money.
+        environment: CONFIG.envTarget || 'stage',
         deadline: {
           lt: BigInt(now)
         }
       },
       select: bountySelect
     });
-    
+
     return bounties.map(normalizeBounty);
   },
 
