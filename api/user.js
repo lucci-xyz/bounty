@@ -40,18 +40,6 @@ export function getClaimedBounties() {
   return fetchJson('/api/user/claimed-bounties');
 }
 
-/**
- * Get a user's wallet address by their Github user ID.
- * @param {string} githubId - The Github user ID.
- * @returns {Promise<Object|null>} The wallet data or null.
- */
-export function getUserWalletByGithubId(githubId) {
-  if (!githubId) {
-    return Promise.resolve(null);
-  }
-  return fetchJsonOrNull(`/api/wallet/${githubId}`);
-}
-
 export function requestEmailVerification(email) {
   return fetchJson('/api/user/email', {
     method: 'POST',

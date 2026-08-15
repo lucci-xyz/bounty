@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
-import { bountyQueries, prClaimQueries, walletQueries } from '@/server/db/prisma';
+import { bountyQueries, prClaimQueries, walletQueries, allowlistQueries } from '@/server/db/prisma';
 import { resolveBountyOnNetwork } from '@/server/blockchain/contract';
 
 /**
@@ -57,6 +57,22 @@ export async function POST(request) {
       return Response.json({ error: 'Link a wallet before requesting payout' }, { status: 400 });
     }
 
+    // Same sponsor allowlist gate as the webhook payout path.
+    const allowlistCheck = await allowlistQueries.checkAllowed(bounty.bountyId, wallet.walletAddress);
+    if (!allowlistCheck.allowed) {
+      logger.warn('Manual payout blocked: recipient not on sponsor allowlist', {
+        bountyId: bounty.bountyId,
+        claimId
+      });
+      return Response.json(
+        {
+          error:
+            'The sponsor restricted this bounty to specific wallet addresses, and your linked wallet is not one of them.'
+        },
+        { status: 403 }
+      );
+    }
+
     let result;
     try {
       result = await resolveBountyOnNetwork(bounty.bountyId, wallet.walletAddress, bounty.network);
@@ -79,7 +95,7 @@ export async function POST(request) {
     });
   } catch (error) {
     logger.error('Error processing manual payout retry:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Failed to process payout retry' }, { status: 500 });
   }
 }
 
