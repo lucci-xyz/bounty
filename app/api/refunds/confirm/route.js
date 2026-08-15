@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 import { bountyQueries } from '@/server/db/prisma';
+import { getBountyFromContract } from '@/server/blockchain/contract';
 
 /**
  * POST /api/refunds/confirm
@@ -35,7 +36,44 @@ export async function POST(request) {
       return Response.json({ error: 'Not authorized to refund this bounty' }, { status: 403 });
     }
 
-    // Update status to refunded
+    if (!bounty.network) {
+      return Response.json({ error: 'Bounty is missing network configuration' }, { status: 400 });
+    }
+
+    // The chain is the source of truth, not the caller.
+    //
+    // This route used to write 'refunded' on the caller's say-so. Because the
+    // payout path skips any bounty whose status is not 'open', a sponsor could
+    // post a bogus txHash to permanently block a contributor's payout while the
+    // escrow was still funded and Open on-chain — collecting the merged work and
+    // keeping the money.
+    let onChain;
+    try {
+      onChain = await getBountyFromContract(bountyId, bounty.network);
+    } catch (error) {
+      logger.error('Refund confirm: failed to read on-chain state', {
+        bountyId,
+        network: bounty.network,
+        error: error.message
+      });
+      return Response.json(
+        { error: 'Could not verify the refund on-chain. Please try again.' },
+        { status: 503 }
+      );
+    }
+
+    if (onChain.statusString !== 'refunded') {
+      logger.warn('Refund confirm rejected: bounty is not refunded on-chain', {
+        bountyId,
+        onChainStatus: onChain.statusString,
+        githubId: session.githubId
+      });
+      return Response.json(
+        { error: 'This bounty has not been refunded on-chain.' },
+        { status: 409 }
+      );
+    }
+
     await bountyQueries.updateStatus(bountyId, 'refunded', txHash);
 
     logger.info(`Refund confirmed in database: ${bountyId.slice(0, 10)}... -> ${txHash}`);
@@ -46,7 +84,7 @@ export async function POST(request) {
     });
   } catch (error) {
     logger.error('Error confirming refund:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Failed to confirm refund' }, { status: 500 });
   }
 }
 

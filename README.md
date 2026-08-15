@@ -10,10 +10,17 @@ _Automated, trust-minimised bounty payouts for open-source contributions. Fund w
 
 3. **Choose Your Network & Fund**
 
-- **Base Sepolia**: Fund with USDC (EVM standard)
-- **Mezo Testnet**: Fund with MUSD (Bitcoin L2)
+- **Base**: Fund with USDC (EVM standard)
+- **Mezo**: Fund with MUSD (Bitcoin L2)
 
-Funds sit safely in escrow.
+Both mainnet and testnet deployments exist, and which networks an instance
+offers is set by `BLOCKCHAIN_SUPPORTED_MAINNET_ALIASES` /
+`BLOCKCHAIN_SUPPORTED_TESTNET_ALIASES`. **On a mainnet network you are
+committing real funds.** Check the network shown in the funding dialog before
+approving — it is the one your money goes to.
+
+Funds sit in escrow until the bounty is resolved or refunded after its
+deadline.
 
 4. **Merge the winning PR** — BountyPay automatically pays the contributor once the PR closes the issue.
 

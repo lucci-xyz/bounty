@@ -18,8 +18,8 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 ## Wallets
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
-| POST | `/api/wallet/link` | Wallet session | Body `{ githubId, githubUsername, walletAddress }`; requires the session wallet to match. |
-| GET | `/api/wallet/[githubId]` | None | Public lookup of a wallet mapping. |
+| POST | `/api/wallet/link` | GitHub + wallet session | Takes **no body**. Links the SIWE-verified wallet in the session to the OAuth-verified GitHub identity in the session. Any request body is ignored — accepting a caller-supplied `githubId` previously allowed overwriting another user's wallet mapping and stealing their payouts. |
+| GET | `/api/wallet/[githubId]` | GitHub session (own ID only) | Returns the caller's own wallet mapping; 403 for any other `githubId`. Formerly unauthenticated, which made it a public GitHub-ID → wallet-address oracle. Has no callers in the app. |
 | DELETE | `/api/wallet/delete` | GitHub session | Body `{ confirmation: 'i want to remove my wallet' }`; deletes the caller’s mapping. |
 
 ## Bounties & allowlists
@@ -38,6 +38,12 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
 | POST | `/api/refunds/request` | GitHub session | Custodial refund path. Body `{ bountyId }`. Requires the caller to own the bounty (by GitHub ID), checks expiry, and submits `refundExpired` using the configured custody wallet for the bounty’s network. |
+| POST | `/api/refunds/confirm` | GitHub session | Records a sponsor-signed refund after the wallet has broadcast `refundExpired` itself. Body `{ bountyId, txHash }`. |
+
+## Payouts
+| Method | Path | Auth | Notes |
+| --- | --- | --- | --- |
+| POST | `/api/payout/retry` | GitHub session | **Moves funds.** Body `{ claimId }`. Retries a `failed` claim for the authenticated contributor. Requires the claim's `prAuthorGithubId` to equal the session GitHub ID, the claim to be `failed`, and the bounty to be `open` and in the current `ENV_TARGET`. Pays the wallet mapped to the session identity — never an address from the request. |
 
 ## User dashboards
 | Method | Path | Auth | Notes |
@@ -47,6 +53,8 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 | GET | `/api/user/bounties` | GitHub session | Sponsored bounties for the caller. |
 | GET | `/api/user/claimed-bounties` | GitHub session | PR claims created by the caller. |
 | GET | `/api/user/stats` | GitHub session | Counts and aggregates for the caller’s sponsored bounties. |
+| POST | `/api/user/email` | GitHub session | Sets the caller’s notification email and sends a verification link. |
+| GET | `/api/user/email/verify` | Signed token | Confirms an email address from the link sent by `/api/user/email`. Authenticated by the token in the URL, not by session. |
 
 ## Beta program
 | Method | Path | Auth | Notes |
@@ -62,7 +70,8 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 | --- | --- | --- | --- |
 | GET | `/api/github/installations` | GitHub session | Lists repos accessible via the GitHub App for the caller. |
 | POST | `/api/github/callback` | GitHub App | Proxies raw callbacks to the configured upstream URL (keeps headers/body). |
-| POST | `/api/webhooks/github` | GitHub App | Verifies signature and dispatches to webhook handlers. |
+| POST | `/api/webhooks/github` | `X-Hub-Signature-256` | **Triggers payouts.** Verifies the HMAC signature via `integrations/github/webhookAuth.js` and rejects with 401 before parsing the body. Note that Octokit's `webhooks.verify()` *returns* a boolean rather than throwing, so its result must be checked — awaiting it alone accepts every forged request. |
+| POST | `/api/webhooks/discord/bounty-created` | `Bearer $DISCORD_RELAY_SECRET` | Relays a bounty announcement to Discord. **Fails closed** when the secret is unset. Redundant: `/api/bounty/create` already calls `sendNewBountyNotification` server-side, and this route has no callers. |
 | POST | `/api/webhooks/marketplace` | GitHub Marketplace | Receives `marketplace_purchase` events (plan changes). Verifies `X-Hub-Signature-256` using `GITHUB_MARKETPLACE_WEBHOOK_SECRET`. Logs actions: `purchased`, `changed`, `cancelled`, `pending_change`, `pending_change_cancelled`. |
 
 ## Network & config
@@ -80,6 +89,8 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 | --- | --- | --- | --- |
 | GET | `/api/stats` | None | Token-level stats, recent bounties, and overall aggregates. |
 | GET | `/api/health` | None | Simple health probe. |
+| GET | `/api/cron/expiration-notify` | `Bearer $CRON_SECRET` | Emails sponsors of bounties nearing expiry. Invoked by the Vercel cron in `vercel.json`. **Fails closed**: returns 503 when `CRON_SECRET` is unset, so it can never be triggered anonymously as a mailing cannon. |
+| POST | `/api/admin/test-email` | Admin session | Sends a template email to the admin for visual checks. |
 
 ## Errors
 Errors are returned as `{ error: string }` with an appropriate HTTP status. Check the status code for context.
