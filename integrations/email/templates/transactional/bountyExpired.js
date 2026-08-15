@@ -1,3 +1,4 @@
+import { escapeHtml } from '@/lib/escapeHtml';
 /**
  * Email template for when a bounty expires without being closed
  */
@@ -113,7 +114,7 @@ export function renderBountyExpiredEmail({
                       padding-bottom: 4px;
                     "
                   >
-                    Hi <strong>${username}</strong>,
+                    Hi <strong>${escapeHtml(username)}</strong>,
                   </td>
                 </tr>
 
@@ -181,7 +182,7 @@ export function renderBountyExpiredEmail({
                             border-bottom: 1px solid #e5e7eb;
                           "
                         >
-                          ${repoFullName}
+                          ${escapeHtml(repoFullName)}
                         </td>
                       </tr>
                       <tr>
@@ -205,7 +206,7 @@ export function renderBountyExpiredEmail({
                             style="color: #111827; text-decoration: underline;"
                           >
                             #${issueNumber}${
-    issueTitle ? ` — ${issueTitle}` : ""
+    issueTitle ? ` — ${escapeHtml(issueTitle)}` : ""
   }
                           </a>
                         </td>

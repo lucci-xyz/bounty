@@ -1,3 +1,4 @@
+import { escapeHtml } from '@/lib/escapeHtml';
 /**
  * Email template for when a pull request is opened for a bounty
  * (sent to the person who created / funded the bounty)
@@ -116,7 +117,7 @@ export function renderPrOpenedEmail({
                       padding-bottom: 4px;
                     "
                   >
-                    Hi <strong>${username}</strong>,
+                    Hi <strong>${escapeHtml(username)}</strong>,
                   </td>
                 </tr>
 
@@ -184,7 +185,7 @@ export function renderPrOpenedEmail({
                             border-bottom: 1px solid #e5e7eb;
                           "
                         >
-                          ${repoFullName}
+                          ${escapeHtml(repoFullName)}
                         </td>
                       </tr>
                       <tr>
@@ -231,7 +232,7 @@ export function renderPrOpenedEmail({
                             href="${prUrl}"
                             style="color: #111827; text-decoration: underline;"
                           >
-                            #${prNumber}${prTitle ? ` — ${prTitle}` : ""}
+                            #${prNumber}${prTitle ? ` — ${escapeHtml(prTitle)}` : ""}
                           </a>
                         </td>
                       </tr>
