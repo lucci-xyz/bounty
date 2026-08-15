@@ -142,9 +142,9 @@ export default function HomePage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredBounties.map((bounty) => {
+            // Do not force whole-token rounding: it rendered a 0.40 USDC
+            // bounty as "0 USDC" in the public feed.
             const amountNumber = formatAmount(bounty.amount, bounty.tokenSymbol, {
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
               useGrouping: true
             });
             const rawTimeRemaining = formatTimeLeft(bounty.deadline);
