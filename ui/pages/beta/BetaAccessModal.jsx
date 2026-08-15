@@ -36,10 +36,6 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
 
-  if (!betaProgramEnabled) {
-    return null;
-  }
-
   // Ensure portal rendering only after mount (fixes Next.js hydration)
   useEffect(() => {
     setMounted(true);
@@ -92,6 +88,13 @@ export default function BetaAccessModal({ isOpen, onClose, onAccessGranted, onDi
     
     return () => clearInterval(interval);
   }, [isOpen, step, refreshAccess]);
+
+  // Every hook must run before any early return. `betaProgramEnabled` is
+  // resolved at runtime and can change between renders, so returning above the
+  // four useEffect calls changed this component's hook count mid-life.
+  if (!betaProgramEnabled) {
+    return null;
+  }
 
   /**
    * Redirects the user to GitHub sign in.

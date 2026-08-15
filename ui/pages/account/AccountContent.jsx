@@ -33,7 +33,6 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
   const {
     githubUser,
     githubUserLoading,
-    tabs,
     activeTab,
     setActiveTab,
     isAdmin,

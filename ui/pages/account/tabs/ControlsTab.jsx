@@ -42,7 +42,7 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
     status
   } = useBountyVerification();
   const { currentNetwork: network } = useNetwork();
-  const { address, isConnected } = useAccount();
+  const { address } = useAccount();
   const [refundModalOpen, setRefundModalOpen] = useState(false);
   const [payoutStatuses, setPayoutStatuses] = useState({});
   const [lastVerifiedWallet, setLastVerifiedWallet] = useState(null);

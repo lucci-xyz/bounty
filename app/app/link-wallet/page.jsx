@@ -43,12 +43,11 @@ function SignInContent() {
   const [profileCreated, setProfileCreated] = useState(false);
   const [status, setStatus] = useState({ message: '', type: '' });
   const [isProcessing, setIsProcessing] = useState(false);
-  const [profileError, setProfileError] = useState(null);
+  const [, setProfileError] = useState(null);
   
   // Email state
   const [email, setEmail] = useState('');
   const [emailSent, setEmailSent] = useState(false);
-  const [emailStep, setEmailStep] = useState(false);
   
   // Current step tracking
   const [currentStep, setCurrentStep] = useState(1);
@@ -295,9 +294,6 @@ function SignInContent() {
   /**
    * Skip email step and continue
    */
-  const skipEmail = () => {
-    handleContinue();
-  };
   
   /**
    * Navigate to return URL
@@ -496,7 +492,7 @@ function SignInContent() {
               </div>
               <h2 className="text-lg font-medium text-foreground">Connect your wallet</h2>
               <p className="text-sm text-muted-foreground">
-                Link a wallet to receive bounty payments. You'll sign a message to verify ownership—no gas required.
+                Link a wallet to receive bounty payments. You&rsquo;ll sign a message to verify ownership—no gas required.
               </p>
             </div>
             
@@ -527,7 +523,7 @@ function SignInContent() {
             </div>
             
             <div className="space-y-2">
-              <h2 className="text-lg font-medium text-foreground">You're all set!</h2>
+              <h2 className="text-lg font-medium text-foreground">You&rsquo;re all set!</h2>
               <p className="text-sm text-muted-foreground">
                 Your account is ready to receive bounty payments.
               </p>
