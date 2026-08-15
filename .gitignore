@@ -4,16 +4,13 @@ node_modules/
 # what makes dependency resolution reproducible between local, CI, and Vercel.
 
 # Environment
-# Ignore every .env variant by default. The previous list named only .env,
-# .env.local, and .env.production, which left files like .env.stage and
-# .env.vercel committable — both had in fact been committed (with empty values).
+# Ignore every .env variant by default. Naming individual files leaves
+# variants like .env.stage or .env.vercel committable.
 .env*
 !.env.example
 
-# Non-dotfile env dumps. `env.txt` was committed in fdb8ea9 carrying live
-# RESOLVER_PRIVATE_KEY, BASE_SEPOLIA_OWNER_PRIVATE_KEY and
-# MEZO_TESTNET_OWNER_PRIVATE_KEY values; deleting the file in 767c620 did not
-# remove them from history. These names must never be committable again.
+# Non-dotfile env dumps and key material. These patterns are deliberately
+# broad: anything shaped like a secrets file must be uncommittable.
 env.txt
 ENV_EXAMPLE.txt
 *env*.txt
