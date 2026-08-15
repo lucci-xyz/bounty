@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import {
   getOctokit,
   postIssueComment,
@@ -91,7 +92,7 @@ export async function handlePullRequestOpened(payload) {
 
       await notifyMaintainers(octokit, owner, repo, pull_request.number, {
         errorType: 'PR Open Handler Error',
-        errorMessage: error.stack || error.message,
+        errorMessage: publicErrorMessage(logPublicError(error)),
         severity: 'high',
         prNumber: pull_request.number,
         username: pull_request.user.login,
@@ -263,7 +264,11 @@ export async function handlePullRequestMerged(payload) {
           });
         }
       } else {
-        logger.error('Bounty resolution failed:', result.error);
+        // Classify server-side against the raw text, but publish only a
+        // reference. An ethers/provider message carries the configured RPC URL
+        // — commonly with an embedded API key — plus the upstream response
+        // body, and this comment is world-readable and permanent.
+        const resolveErrorRef = logPublicError(new Error(result.error || 'Unknown resolution error'));
 
         let errorHelp = 'Tag a maintainer to investigate and replay the payout.';
         let notifySeverity = 'high';
@@ -290,7 +295,7 @@ export async function handlePullRequestMerged(payload) {
 
         const errorComment = renderPaymentFailedComment({
           iconUrl: OG_ICON,
-          errorSnippet: `${result.error.substring(0, 200)}${result.error.length > 200 ? '...' : ''}`,
+          errorSnippet: publicErrorMessage(resolveErrorRef),
           helpText: errorHelp,
           network: bounty.network,
           recipientAddress: `${walletMapping.walletAddress.slice(0, 10)}...${walletMapping.walletAddress.slice(-8)}`,
@@ -306,7 +311,7 @@ export async function handlePullRequestMerged(payload) {
 
           await notifyMaintainers(octokit, owner, repo, pull_request.number, {
             errorType: 'Bounty Payout Failed',
-            errorMessage: result.error,
+            errorMessage: publicErrorMessage(resolveErrorRef),
             severity: notifySeverity,
             bountyId: bounty.bountyId,
             network: bounty.network || 'UNKNOWN',
@@ -327,7 +332,7 @@ export async function handlePullRequestMerged(payload) {
 
       await notifyMaintainers(octokit, owner, repo, pull_request.number, {
         errorType: 'PR Merge Handler Error',
-        errorMessage: error.stack || error.message,
+        errorMessage: publicErrorMessage(logPublicError(error)),
         severity: 'critical',
         prNumber: pull_request.number,
         username: pull_request.user.login,
@@ -413,7 +418,7 @@ async function handlePRWithBounties(octokit, owner, repo, pull_request, reposito
 
       await notifyMaintainers(octokit, owner, repo, pull_request.number, {
         errorType: 'PR Claim Recording Failed',
-        errorMessage: claimError.message,
+        errorMessage: publicErrorMessage(logPublicError(claimError)),
         severity: 'critical',
         bountyId: bounty.bountyId,
         network: bounty.network,
@@ -461,4 +466,21 @@ async function handlePRWithBounties(octokit, owner, repo, pull_request, reposito
     // Non-blocking - log but don't fail the webhook
     logger.warn('Failed to send PR opened email:', emailError.message);
   }
+}
+
+/**
+ * Log an error server-side and return a reference safe to publish.
+ *
+ * notifyMaintainers writes a comment on a public issue or pull request, so the
+ * raw text must never travel with it: stack traces expose server paths, and
+ * provider errors carry the RPC URL (often with an embedded API key) plus the
+ * upstream response body.
+ *
+ * @param {Error|{message?: string}} error
+ * @returns {string} Correlation reference recorded in the server log.
+ */
+function logPublicError(error) {
+  const ref = newErrorRef();
+  logger.error(`[${ref}]`, error?.stack || error?.message || String(error));
+  return ref;
 }

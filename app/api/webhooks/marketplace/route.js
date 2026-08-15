@@ -20,8 +20,16 @@ function verifySignature(rawBody, signature, secret) {
 
   // GitHub sends signature as "sha256=<hash>"
   const [algorithm, receivedHash] = signature.split('=');
-  
+
   if (algorithm !== 'sha256') {
+    return false;
+  }
+
+  // Reject a malformed hash before Buffer.from. `Buffer.from('zz', 'hex')`
+  // silently yields a short buffer, and an odd-length or non-hex value made the
+  // comparison throw — turning a bad signature into a 500 that echoed internal
+  // error text to an unauthenticated caller.
+  if (!receivedHash || !/^[0-9a-f]{64}$/i.test(receivedHash)) {
     return false;
   }
 
@@ -157,7 +165,7 @@ export async function POST(request) {
     }
 
     return Response.json(
-      { error: 'Webhook processing failed', details: error.message },
+      { error: 'Webhook processing failed' },
       { status: 500 }
     );
   }
