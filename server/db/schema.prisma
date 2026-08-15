@@ -32,6 +32,9 @@ model Bounty {
   createdAt         BigInt    @map("created_at")
   updatedAt         BigInt    @map("updated_at")
   pinnedCommentId   BigInt?   @map("pinned_comment_id")
+  // Set once the expiry email has been sent. Replaces a time-window heuristic
+  // that both re-sent and permanently dropped notifications.
+  expiryNotifiedAt  BigInt?   @map("expiry_notified_at")
 
   @@unique([repoId, issueNumber, sponsorAddress, network, environment])
   @@index([repoId, issueNumber], name: "idx_bounties_repo")
@@ -65,7 +68,15 @@ model PrClaim {
   resolvedAt         BigInt? @map("resolved_at")
   txHash             String? @map("tx_hash")
 
+  // A PR claims a given bounty at most once. `pull_request.edited` re-runs the
+  // open handler, so without this a single PR accumulated a new claim row on
+  // every description edit — each one payable on merge.
+  @@unique([bountyId, prNumber, repoFullName], name: "uq_pr_claims_bounty_pr")
   @@index([bountyId], name: "idx_pr_claims_bounty")
+  // The payout path looks claims up by (repoFullName, prNumber) on every merged
+  // PR; without this it is a sequential scan inside GitHub's webhook timeout.
+  @@index([repoFullName, prNumber], name: "idx_pr_claims_pr")
+  @@index([prAuthorGithubId], name: "idx_pr_claims_author")
   @@map("pr_claims")
 }
 

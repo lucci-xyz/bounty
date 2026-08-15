@@ -27,18 +27,14 @@ export async function notifyExpiredBounties() {
     
     for (const bounty of expiredBounties) {
       try {
-        // Skip if we've already notified (check if there's a way to track this)
-        // For now, we'll check if the bounty was expired recently (within 24 hours)
-        const now = Math.floor(Date.now() / 1000);
-        const expiredAt = Number(bounty.deadline);
-        const hoursSinceExpiry = (now - expiredAt) / 3600;
-        
-        // Only notify for bounties that expired within the last 24 hours
-        // and not more than 25 hours ago (to avoid duplicate notifications on subsequent runs)
-        if (hoursSinceExpiry > 25 || hoursSinceExpiry < 0) {
-          stats.skipped++;
-          continue;
-        }
+        // Idempotency comes from bounty.expiryNotifiedAt, which getExpired()
+        // filters on — not from a time window.
+        //
+        // The previous approach only mailed bounties that had expired between 0
+        // and 25 hours ago, on a cron that runs every 24. The one-hour overlap
+        // guaranteed duplicate mail, and any run that failed or was delayed put
+        // the bounty permanently out of range, so its sponsor was never told at
+        // all. Both failures were silent.
         
         // Get sponsor's user record to find email
         if (!bounty.sponsorGithubId) {
@@ -72,6 +68,18 @@ export async function notifyExpiredBounties() {
         });
         
         if (result.success) {
+          // Record the send so the next run skips this bounty. A failure to
+          // record is logged but not fatal: at worst the sponsor gets one
+          // duplicate, which is far better than dropping the notice entirely.
+          try {
+            await bountyQueries.markExpiryNotified(bounty.bountyId);
+          } catch (markError) {
+            logger.error(
+              `[expirationNotifier] Sent notification for ${bounty.bountyId} but failed to record it:`,
+              markError.message
+            );
+          }
+
           logger.info(`[expirationNotifier] Sent expiry notification for bounty ${bounty.bountyId} to ${user.email}`);
           stats.notified++;
         } else if (result.skipped) {
