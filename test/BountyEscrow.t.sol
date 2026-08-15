@@ -291,9 +291,15 @@ contract BountyEscrowTest is Test {
     }
 
     function test_feeBpsCannotExceedMaximum() public {
+        // Read the constant BEFORE arming the cheatcodes. An external call in
+        // the argument list is made after `expectRevert` is armed, so it is what
+        // the cheatcode matches against — and it consumes the `prank` too, so
+        // setFeeBps would be called by the test contract rather than the owner.
+        uint16 maxFee = escrow.MAX_FEE_BPS();
+
         vm.prank(owner);
         vm.expectRevert(BountyEscrow.InvalidParams.selector);
-        escrow.setFeeBps(escrow.MAX_FEE_BPS() + 1);
+        escrow.setFeeBps(maxFee + 1);
     }
 
     // ---------------- Input validation ----------------
