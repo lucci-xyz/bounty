@@ -100,5 +100,12 @@ jobs:
       - name: Build contracts
         run: forge build --sizes
 
+      # `forge test` exits 0 when no test files exist, which would render a
+      # green "Contract tests" check over an escrow contract that holds every
+      # user's funds and has no coverage at all. Say so loudly instead.
       - name: Run contract tests
-        run: forge test -vvv
+        run: |
+          if [ -z "$(find . -name '*.t.sol' -not -path './node_modules/*' -print -quit)" ]; then
+            echo "::warning title=No contract tests::BountyEscrow.sol holds all escrowed funds and has zero Solidity tests. forge test below is vacuous."
+          fi
+          forge test -vvv

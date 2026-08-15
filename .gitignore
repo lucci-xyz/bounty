@@ -10,6 +10,16 @@ node_modules/
 .env*
 !.env.example
 
+# Non-dotfile env dumps. `env.txt` was committed in fdb8ea9 carrying live
+# RESOLVER_PRIVATE_KEY, BASE_SEPOLIA_OWNER_PRIVATE_KEY and
+# MEZO_TESTNET_OWNER_PRIVATE_KEY values; deleting the file in 767c620 did not
+# remove them from history. These names must never be committable again.
+env.txt
+ENV_EXAMPLE.txt
+*env*.txt
+*.key
+*_PRIVATE_KEY*
+
 # Database
 *.db
 *.db-shm
