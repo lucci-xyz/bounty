@@ -4,18 +4,58 @@ import { ethers } from 'ethers';
 import { getSession } from '@/lib/session';
 import { bountyQueries, userQueries } from '@/server/db/prisma';
 import { handleBountyCreated } from '@/integrations/github/webhooks';
-import { computeBountyIdOnNetwork, createRepoIdHash } from '@/server/blockchain/contract';
+import {
+  computeBountyIdOnNetwork,
+  createRepoIdHash,
+  getBountyFromContract
+} from '@/server/blockchain/contract';
 import { getGitHubApp, getOctokit, initGitHubApp } from '@/integrations/github/client';
 import { getActiveAliasFromCookies } from '@/lib/network';
 import { REGISTRY } from '@/config/chain-registry';
 import { sendNewBountyNotification } from '@/integrations/discord';
 import { formatAmount } from '@/lib/format/amount';
 
+/**
+ * Read a bounty from the escrow, tolerating brief RPC lag.
+ *
+ * The client calls this route immediately after its funding transaction is
+ * mined, so a replica that has not yet caught up can legitimately report the
+ * bounty as non-existent. Retry a few times before concluding it is absent.
+ */
+async function readBountyWithRetry(bountyId, alias, attempts = 3, delayMs = 1500) {
+  let lastError;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const onChain = await getBountyFromContract(bountyId, alias);
+      if (onChain.exists) return onChain;
+      lastError = new Error('Bounty not found on-chain');
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  throw lastError;
+}
+
 export async function POST(request) {
   try {
     const session = await getSession();
+
+    // This route persists a money record and drives a public GitHub comment
+    // promising payment. It previously called getSession() without enforcing
+    // it, so an anonymous caller could POST fabricated bounties — appearing on
+    // the public feed and in bot comments — with no funds ever escrowed.
+    if (!session?.githubId) {
+      return Response.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
     const cookieStore = cookies();
-    
+
     // Get active network alias from cookie (or use provided one)
     const defaultAlias = getActiveAliasFromCookies(cookieStore);
     
@@ -52,6 +92,43 @@ export async function POST(request) {
     const repoIdHash = createRepoIdHash(repoId);
     const bountyId = await computeBountyIdOnNetwork(sponsorAddress, repoIdHash, issueNumber, alias);
 
+    // The escrow is the source of truth for every money field.
+    //
+    // amount, deadline and sponsorAddress arrive in the request body. Trusting
+    // them let a caller advertise terms that did not match the escrow — e.g.
+    // funding a 1-second deadline on-chain while the feed and the GitHub
+    // comment showed 30 days, then refunding once the work was merged. Read the
+    // real values back and persist those.
+    let onChain;
+    try {
+      onChain = await readBountyWithRetry(bountyId, alias);
+    } catch (error) {
+      logger.error('Bounty create: no matching escrow entry on-chain', {
+        bountyId,
+        alias,
+        error: error.message
+      });
+      return Response.json(
+        {
+          error:
+            'No matching bounty found on-chain. If your funding transaction succeeded, wait a moment and retry — your funds are safe in escrow.'
+        },
+        { status: 409 }
+      );
+    }
+
+    if (Number(onChain.issueNumber) !== Number(issueNumber)) {
+      return Response.json({ error: 'Issue number does not match the on-chain bounty' }, { status: 409 });
+    }
+
+    if (String(onChain.sponsor).toLowerCase() !== String(sponsorAddress || '').toLowerCase()) {
+      return Response.json({ error: 'Sponsor does not match the on-chain bounty' }, { status: 409 });
+    }
+
+    // Authoritative values, replacing whatever the body claimed.
+    const verifiedAmount = onChain.amount;
+    const verifiedDeadline = onChain.deadline;
+
     // Derive chainId and token info from network config
     const chainId = networkConfig.chainId;
     const tokenAddress = token || networkConfig.token.address;
@@ -72,9 +149,9 @@ export async function POST(request) {
     }
 
     const decimals = networkConfig.token.decimals;
-    const feeAmount = (BigInt(amount) * BigInt(feeBps)) / BigInt(10000);
-    const totalPaid = BigInt(amount) + feeAmount;
-    const formattedAmount = formatAmount(amount, tokenSymbolFinal, {
+    const feeAmount = (BigInt(verifiedAmount) * BigInt(feeBps)) / BigInt(10000);
+    const totalPaid = BigInt(verifiedAmount) + feeAmount;
+    const formattedAmount = formatAmount(verifiedAmount, tokenSymbolFinal, {
       decimals,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
@@ -145,10 +222,10 @@ export async function POST(request) {
       issueTitle,
       issueDescription,
       sponsorAddress,
-      sponsorGithubId: session.githubId || null,
-      token: tokenAddress,
-      amount,
-      deadline,
+      sponsorGithubId: session.githubId,
+      token: onChain.token || tokenAddress,
+      amount: verifiedAmount,
+      deadline: verifiedDeadline,
       status: 'open',
       txHash,
       network: alias,
