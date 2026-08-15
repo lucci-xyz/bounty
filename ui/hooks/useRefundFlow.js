@@ -9,6 +9,7 @@ import { useErrorModal } from '@/ui/providers/ErrorModalProvider';
 import { ABIS } from '@/config/chain-registry';
 import { getUserBounties } from '@/api/user';
 import { contractStatusToDb, getStatusLabel } from '@/lib/status';
+import { mapContractError } from '@/lib/contractErrors';
 
 export function useRefundFlow() {
   const [bountyId, setBountyId] = useState('');
@@ -153,7 +154,7 @@ export function useRefundFlow() {
       logger.error(error);
       showError({
         title: 'Bounty Verification Failed',
-        message: error.message || 'An error occurred while verifying the bounty',
+        message: mapContractError(error, 'Could not verify this bounty. Please try again.'),
       });
       setBountyInfo(null);
       setCurrentBounty(null);
@@ -220,7 +221,7 @@ export function useRefundFlow() {
       logger.error(error);
       showError({
         title: 'Bounty Check Failed',
-        message: error.message || 'An error occurred while checking the bounty',
+        message: mapContractError(error, 'Could not check this bounty. Please try again.'),
       });
       setBountyInfo(null);
       setCurrentBounty(null);
@@ -284,7 +285,7 @@ export function useRefundFlow() {
       logger.error(error);
       showError({
         title: 'Refund Failed',
-        message: error.message || 'An error occurred while processing the refund',
+        message: mapContractError(error, 'The refund could not be processed. Please try again.'),
         primaryActionLabel: 'Try Again',
         onPrimaryAction: requestRefund,
       });

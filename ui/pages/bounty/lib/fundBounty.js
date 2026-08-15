@@ -1,3 +1,4 @@
+import { mapContractError } from '@/lib/contractErrors';
 import { ethers } from 'ethers';
 import { getLinkHref } from '@/config/links';
 import { contractStatusToDb, getStatusLabel } from '@/lib/status';
@@ -42,49 +43,6 @@ async function fetchResolver(networkAlias) {
   return resolverData.resolver;
 }
 
-/**
- * Parses common smart contract errors and returns a simple message.
- *
- * @param {object} error
- * @returns {string}
- */
-function mapContractError(error) {
-  if (!error) {
-    return 'Unknown error';
-  }
-
-  if (error.code === 'ACTION_REJECTED') {
-    return 'Transaction was rejected in your wallet';
-  }
-
-  if (error.reason) {
-    return error.reason;
-  }
-
-  if (error.message) {
-    if (error.message.includes('insufficient funds')) {
-      return 'Insufficient ETH/BTC for gas fees';
-    }
-    if (error.message.includes('AlreadyExists')) {
-      return 'Bounty already exists for this issue';
-    }
-    if (error.message.includes('InvalidParams')) {
-      return 'Invalid parameters - check deadline and amount';
-    }
-    if (error.message.includes('ZeroAddress')) {
-      return 'Invalid address provided';
-    }
-    if (error.message.includes('execution reverted')) {
-      return 'Contract rejected the transaction - check all parameters are correct';
-    }
-    if (error.message.includes('missing revert data')) {
-      return 'Transaction simulation failed - the contract may not exist or parameters are invalid';
-    }
-    return error.message.substring(0, 150);
-  }
-
-  return 'Unknown error';
-}
 
 /**
  * Creates a bounty on-chain and syncs it to the backend database.

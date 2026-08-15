@@ -7,6 +7,7 @@ import { useNetwork } from '@/ui/providers/NetworkProvider';
 import { useErrorModal } from '@/ui/providers/ErrorModalProvider';
 import { getContractBounty } from '@/api/bounty';
 import { getStatusLabel } from '@/lib/status';
+import { mapContractError } from '@/lib/contractErrors';
 
 const normalizeAddress = (address) => address?.trim?.().toLowerCase?.() || '';
 
@@ -139,7 +140,7 @@ export function useBountyVerification() {
       showStatus('', '');
       showError({
         title: 'Bounty Verification Failed',
-        message: error.message || 'An error occurred while verifying the bounty',
+        message: mapContractError(error, 'Could not verify this bounty. Please try again.'),
       });
       clearBountyState();
       throw error;

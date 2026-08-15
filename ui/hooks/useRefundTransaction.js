@@ -6,6 +6,7 @@ import { ethers } from 'ethers';
 import { useNetwork } from '@/ui/providers/NetworkProvider';
 import { useErrorModal } from '@/ui/providers/ErrorModalProvider';
 import { ABIS } from '@/config/chain-registry';
+import { mapContractError } from '@/lib/contractErrors';
 
 /**
  * Hook for executing refund transactions.
@@ -106,7 +107,7 @@ export function useRefundTransaction({ currentBounty, selectedBounty, onSuccess,
       showStatus('', '');
       showError({
         title: 'Refund Failed',
-        message: error.message || 'An error occurred while processing the refund',
+        message: mapContractError(error, 'The refund could not be processed. Please try again.'),
         primaryActionLabel: 'Try Again',
         onPrimaryAction: requestRefund,
       });
