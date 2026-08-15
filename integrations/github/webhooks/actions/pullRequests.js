@@ -7,7 +7,13 @@ import {
   extractClosedIssues,
   extractMentionedIssues
 } from '../../client.js';
-import { bountyQueries, walletQueries, prClaimQueries, userQueries } from '@/server/db/prisma.js';
+import {
+  bountyQueries,
+  walletQueries,
+  prClaimQueries,
+  userQueries,
+  allowlistQueries
+} from '@/server/db/prisma.js';
 import { resolveBountyOnNetwork } from '@/server/blockchain/contract.js';
 import { ethers } from 'ethers';
 import { notifyMaintainers } from '../../services/maintainerAlerts.js';
@@ -206,6 +212,39 @@ export async function handlePullRequestMerged(payload) {
           username: pull_request.user.login,
           context: 'This bounty was created without a network alias. Manual intervention required to identify the correct network and process payment.'
         });
+        continue;
+      }
+
+      // Honour the sponsor's allowlist. The account UI lets a sponsor restrict
+      // a bounty to specific addresses, but nothing ever consulted that list —
+      // `checkAllowed` had no call sites — so the restriction was decorative.
+      // It binds only when the sponsor actually created entries.
+      const allowlistCheck = await allowlistQueries.checkAllowed(
+        bounty.bountyId,
+        walletMapping.walletAddress
+      );
+
+      if (!allowlistCheck.allowed) {
+        logger.warn('Skipping payout: recipient is not on the sponsor allowlist', {
+          bountyId: bounty.bountyId,
+          prNumber: pull_request.number
+        });
+
+        await prClaimQueries.updateStatus(claim.id, 'failed');
+
+        await notifyMaintainers(octokit, owner, repo, pull_request.number, {
+          errorType: 'Recipient Not On Sponsor Allowlist',
+          errorMessage:
+            'The sponsor restricted this bounty to specific wallet addresses, and the linked wallet is not one of them.',
+          severity: 'medium',
+          bountyId: bounty.bountyId,
+          network: bounty.network,
+          prNumber: pull_request.number,
+          username: pull_request.user.login,
+          context:
+            'No payout was attempted. The sponsor can add this address to the allowlist, or the contributor can link an allowed wallet, and the payout can then be retried.'
+        });
+
         continue;
       }
 

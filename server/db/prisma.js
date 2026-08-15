@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { CONFIG } from '../config.js';
 import { isValidStatus, BOUNTY_STATUS } from '@/lib/status';
+import { decideAllowlist } from '@/lib/allowlistDecision';
 
 // Prisma client instance
 const prisma = new PrismaClient();
@@ -892,43 +893,43 @@ export const allowlistQueries = {
   },
 
   /**
-   * Checks if an address is allowed for a bounty.
+   * Decide whether an address may be paid for a bounty.
+   *
+   * An allowlist restricts a bounty only when the sponsor has actually created
+   * entries for it. With no entries the bounty is unrestricted, which is why
+   * this returns `restricted: false` rather than refusing everyone.
+   *
+   * The previous implementation returned a bare `false` in exactly that case —
+   * meaning "wire me into the payout path and every bounty without an allowlist
+   * stops paying". That is very likely why it was never called from anywhere.
+   *
+   * @param {string} bountyId
+   * @param {string} address Recipient address.
+   * @returns {Promise<{ allowed: boolean, restricted: boolean }>}
    */
   checkAllowed: async (bountyId, address) => {
     const bounty = await prisma.bounty.findUnique({
       where: { bountyId }
     });
-    
-    if (!bounty || !bounty.sponsorGithubId) return true;
-    
+
+    if (!bounty || !bounty.sponsorGithubId) return { allowed: true, restricted: false };
+
     const user = await prisma.user.findUnique({
       where: { githubId: bounty.sponsorGithubId }
     });
-    
-    if (!user) return true;
-    
-    // Check bounty-specific allowlist
-    const bountyAllowlist = await prisma.allowlist.findFirst({
+
+    if (!user) return { allowed: true, restricted: false };
+
+    // Entries the sponsor set for this bounty, plus repo-wide entries.
+    const entries = await prisma.allowlist.findMany({
       where: {
         userId: user.id,
-        bountyId,
-        allowedAddress: address.toLowerCase()
-      }
+        OR: [{ bountyId }, { repoId: bounty.repoId, bountyId: null }]
+      },
+      select: { allowedAddress: true }
     });
-    
-    if (bountyAllowlist) return true;
-    
-    // Check repo-level allowlist
-    const repoAllowlist = await prisma.allowlist.findFirst({
-      where: {
-        userId: user.id,
-        repoId: bounty.repoId,
-        bountyId: null,
-        allowedAddress: address.toLowerCase()
-      }
-    });
-    
-    return !!repoAllowlist;
+
+    return decideAllowlist(entries, address);
   },
 
   /**

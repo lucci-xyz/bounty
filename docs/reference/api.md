@@ -19,13 +19,12 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
 | POST | `/api/wallet/link` | GitHub + wallet session | Takes **no body**. Links the SIWE-verified wallet in the session to the OAuth-verified GitHub identity in the session. Any request body is ignored — accepting a caller-supplied `githubId` previously allowed overwriting another user's wallet mapping and stealing their payouts. |
-| GET | `/api/wallet/[githubId]` | GitHub session (own ID only) | Returns the caller's own wallet mapping; 403 for any other `githubId`. Formerly unauthenticated, which made it a public GitHub-ID → wallet-address oracle. Has no callers in the app. |
 | DELETE | `/api/wallet/delete` | GitHub session | Body `{ confirmation: 'i want to remove my wallet' }`; deletes the caller’s mapping. |
 
 ## Bounties & allowlists
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
-| POST | `/api/bounty/create` | Optional GitHub session | Persists bounty metadata (repo, issue, funding tx, network alias). Also tries to post a GitHub comment. |
+| POST | `/api/bounty/create` | GitHub session | Persists bounty metadata after verifying it against the escrow: the bounty must exist on-chain, and its issue number, sponsor and token must match. Amount, deadline and token symbol are taken from the chain, not the body. `repoFullName` is checked against `repoId` via the installation. Also posts the GitHub comment. |
 | GET | `/api/bounty/[bountyId]` | None | Reads bounty metadata from Postgres. |
 | GET | `/api/bounties/open` | None | Lists all open bounties in the current environment. |
 | GET | `/api/issue/[repoId]/[issueNumber]` | None | Lists open bounties for a GitHub issue. |
@@ -71,7 +70,6 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 | GET | `/api/github/installations` | GitHub session | Lists repos accessible via the GitHub App for the caller. |
 | POST | `/api/github/callback` | GitHub App | Proxies raw callbacks to the configured upstream URL (keeps headers/body). |
 | POST | `/api/webhooks/github` | `X-Hub-Signature-256` | **Triggers payouts.** Verifies the HMAC signature via `integrations/github/webhookAuth.js` and rejects with 401 before parsing the body. Note that Octokit's `webhooks.verify()` *returns* a boolean rather than throwing, so its result must be checked — awaiting it alone accepts every forged request. |
-| POST | `/api/webhooks/discord/bounty-created` | `Bearer $DISCORD_RELAY_SECRET` | Relays a bounty announcement to Discord. **Fails closed** when the secret is unset. Redundant: `/api/bounty/create` already calls `sendNewBountyNotification` server-side, and this route has no callers. |
 | POST | `/api/webhooks/marketplace` | GitHub Marketplace | Receives `marketplace_purchase` events (plan changes). Verifies `X-Hub-Signature-256` using `GITHUB_MARKETPLACE_WEBHOOK_SECRET`. Logs actions: `purchased`, `changed`, `cancelled`, `pending_change`, `pending_change_cancelled`. |
 
 ## Network & config
