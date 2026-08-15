@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { bountyQueries } from '@/server/db/prisma';
+import { toPublicBounty } from '@/lib/publicBounty';
 
 export async function GET(request, { params }) {
   try {
@@ -10,10 +11,11 @@ export async function GET(request, { params }) {
       return Response.json({ error: 'Bounty not found' }, { status: 404 });
     }
 
-    return Response.json(bounty);
+    // Unauthenticated endpoint: never publish the sponsor's GitHub id.
+    return Response.json(toPublicBounty(bounty));
   } catch (error) {
     logger.error('Error fetching bounty:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Failed to fetch bounty' }, { status: 500 });
   }
 }
 

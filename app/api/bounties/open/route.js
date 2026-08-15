@@ -1,13 +1,15 @@
 import { logger } from '@/lib/logger';
 import { bountyQueries } from '@/server/db/prisma';
+import { toPublicBounties } from '@/lib/publicBounty';
 
 export async function GET(request) {
   try {
     const bounties = await bountyQueries.findAllOpen();
-    return Response.json(bounties);
+    // Unauthenticated endpoint: never publish the sponsor's GitHub id.
+    return Response.json(toPublicBounties(bounties));
   } catch (error) {
     logger.error('Error fetching open bounties:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Failed to fetch open bounties' }, { status: 500 });
   }
 }
 
