@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { getOctokit } from '../client.js';
 import { notifyMaintainers } from '../services/maintainerAlerts.js';
 import { handleIssueOpened } from './actions/issues.js';
@@ -37,7 +38,10 @@ export async function handleWebhook(event, payload) {
         break;
     }
   } catch (error) {
-    logger.error('Error handling webhook:', error.message);
+    // The alert below is posted as a PUBLIC GitHub comment. Log the stack
+    // server-side under a reference and publish only the reference.
+    const errorRef = newErrorRef();
+    logger.error(`Error handling webhook [${errorRef}]:`, error.stack || error.message);
 
     try {
       const { repository, installation, issue, pull_request } = payload;
@@ -50,7 +54,7 @@ export async function handleWebhook(event, payload) {
         if (targetNumber) {
           await notifyMaintainers(octokit, owner, repo, targetNumber, {
             errorType: `Webhook Processing Error (${event})`,
-            errorMessage: error.stack || error.message,
+            errorMessage: publicErrorMessage(errorRef),
             severity: 'critical',
             prNumber: pull_request?.number,
             username: pull_request?.user?.login || issue?.user?.login,

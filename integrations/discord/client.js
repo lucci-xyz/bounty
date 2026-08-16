@@ -41,7 +41,6 @@ export function formatBountyEmbed(bounty) {
     amount,
     platformFee,
     total,
-    feeBps,
     tokenSymbol,
     network,
     deadline,
@@ -62,19 +61,27 @@ export function formatBountyEmbed(bounty) {
     // keep original string
   }
 
+  // title, repoName and network were destructured and then dropped, so the
+  // announcement named neither the issue, the repository, nor the chain — the
+  // three things a reader needs to decide whether to pick the bounty up.
+  const feeNote = platformFee && total ? `\n\n🧾 **Sponsor paid:** ${total} ${tokenSymbol} (incl. ${platformFee} fee)` : '';
+
   const descriptionLines = [
-    `💵 **Bounty:** ${amount} ${tokenSymbol}`,
+    title ? `**${title}**` : null,
+    repoName ? `📦 \`${repoName}\`` : null,
+    title || repoName ? '' : null,
+    `💵 **Bounty:** ${amount} ${tokenSymbol}${network ? ` on ${network}` : ''}`,
     '',
     `📅 **Deadline:** ${deadlineDisplay}`,
     '',
     `👤 **Sponsor:** [@${createdByGithubUsername}](https://github.com/${createdByGithubUsername})`
-  ];
+  ].filter((line) => line !== null);
 
   return {
     embeds: [
       {
         title: '💰 New Bounty Posted!',
-        description: descriptionLines.join('\n'),
+        description: descriptionLines.join('\n') + feeNote,
         color: 0x0ea5e9, // calmer blue accent
         url: issueUrl,
         timestamp: new Date().toISOString(),

@@ -11,7 +11,7 @@ import UserAvatar from '@/ui/components/UserAvatar';
 import { useGithubUser } from '@/ui/hooks/useGithubUser';
 import { useErrorModal } from '@/ui/providers/ErrorModalProvider';
 import { cn } from '@/lib';
-import { UserIcon, LogoutIcon, NetworkIcon } from '@/ui/components/Icons';
+import { UserIcon, LogoutIcon } from '@/ui/components/Icons';
 
 export default function Navbar() {
   const pathname = usePathname();

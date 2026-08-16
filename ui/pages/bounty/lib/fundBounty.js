@@ -1,29 +1,9 @@
+import { mapContractError } from '@/lib/contractErrors';
+import { resolveDeadline } from '@/lib/deadline';
 import { ethers } from 'ethers';
 import { getLinkHref } from '@/config/links';
 import { contractStatusToDb, getStatusLabel } from '@/lib/status';
 
-/**
- * Ensure the bounty deadline is valid.
- * Returns at least an hour from now.
- *
- * @param {string} deadline - The desired deadline (ISO or date string).
- * @param {number} currentTimestamp - Current timestamp in seconds.
- * @returns {number} Valid deadline timestamp in seconds.
- */
-function ensureDeadline(deadline, currentTimestamp) {
-  let deadlineTimestamp = Math.floor(new Date(deadline).getTime() / 1000);
-  const minDeadline = currentTimestamp + 3600;
-
-  if (Number.isNaN(deadlineTimestamp) || deadlineTimestamp <= currentTimestamp) {
-    return minDeadline;
-  }
-
-  if (deadlineTimestamp < minDeadline) {
-    return minDeadline;
-  }
-
-  return deadlineTimestamp;
-}
 
 /**
  * Fetches the resolver contract address for the given network alias.
@@ -42,49 +22,6 @@ async function fetchResolver(networkAlias) {
   return resolverData.resolver;
 }
 
-/**
- * Parses common smart contract errors and returns a simple message.
- *
- * @param {object} error
- * @returns {string}
- */
-function mapContractError(error) {
-  if (!error) {
-    return 'Unknown error';
-  }
-
-  if (error.code === 'ACTION_REJECTED') {
-    return 'Transaction was rejected in your wallet';
-  }
-
-  if (error.reason) {
-    return error.reason;
-  }
-
-  if (error.message) {
-    if (error.message.includes('insufficient funds')) {
-      return 'Insufficient ETH/BTC for gas fees';
-    }
-    if (error.message.includes('AlreadyExists')) {
-      return 'Bounty already exists for this issue';
-    }
-    if (error.message.includes('InvalidParams')) {
-      return 'Invalid parameters - check deadline and amount';
-    }
-    if (error.message.includes('ZeroAddress')) {
-      return 'Invalid address provided';
-    }
-    if (error.message.includes('execution reverted')) {
-      return 'Contract rejected the transaction - check all parameters are correct';
-    }
-    if (error.message.includes('missing revert data')) {
-      return 'Transaction simulation failed - the contract may not exist or parameters are invalid';
-    }
-    return error.message.substring(0, 150);
-  }
-
-  return 'Unknown error';
-}
 
 /**
  * Creates a bounty on-chain and syncs it to the backend database.
@@ -121,16 +58,14 @@ export async function fundBounty({
     registry,
     networkGroup,
     selectedAlias,
-    defaultAlias,
-    setSelectedAlias,
-    supportedNetworks
+    defaultAlias
   } = networkContext;
 
   // Use passed token or fall back to network's primary token
   const selectedToken = tokenOverride || network.token;
   const isPrimaryToken = selectedToken.address.toLowerCase() === network.token.address.toLowerCase();
 
-  const { showStatus, showError } = callbacks;
+  const { showStatus } = callbacks;
   const { repoFullName, issueNumber, repoId, installationId } = issueData;
   const issueHref = getLinkHref('github', 'issue', { repoFullName, issueNumber });
 
@@ -182,7 +117,7 @@ export async function fundBounty({
   const signer = await provider.getSigner();
   const currentBlock = await provider.getBlock('latest');
   const blockTimestamp = Number(currentBlock.timestamp);
-  const deadlineTimestamp = ensureDeadline(deadline, blockTimestamp);
+  const deadlineTimestamp = resolveDeadline(deadline, blockTimestamp);
   const amountWei = ethers.parseUnits(amount, selectedToken.decimals);
 
   // Determine platform fee (bps) and total required (amount + fee)
@@ -431,8 +366,11 @@ export async function fundBounty({
   } catch (contractError) {
     console.error('Contract call error:', contractError);
     const msg = mapContractError(contractError);
+    // Name the network the user is actually on. This message hardcoded "Base
+    // Mainnet" and told Mezo users to switch to a chain their bounty is not on.
+    const gasSymbol = network.nativeCurrency?.symbol || 'native currency';
     throw new Error(
-      `Contract call failed: ${msg}. If this persists, ensure you're on Base Mainnet, have ETH for gas, and retry.`
+      `${msg} Check that your wallet is on ${network.name} and holds ${gasSymbol} for gas, then try again.`
     );
   }
 

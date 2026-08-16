@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { formatAmount, formatTimeLeft } from '@/lib';
 
 // Custom hook for intersection observer
 function useInView(options = {}) {
@@ -349,7 +350,7 @@ function FeaturesSection() {
             <div className="p-6 bg-card/80 backdrop-blur-sm rounded-xl border border-border h-full">
               <h3 className="text-base font-medium text-foreground mb-2">Secure escrow</h3>
               <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-                Your funds are held in audited smart contracts until work is verified and merged.
+                Your funds are held in on-chain escrow. They are released only when a merged pull request closes the issue, and are refundable to you after the deadline.
               </p>
               {/* Escrow illustration - hidden on mobile */}
               <div className="hidden md:flex flex-1 rounded-lg items-center justify-center p-6">
@@ -427,47 +428,40 @@ function FeaturesSection() {
 }
 
 // Demo bounties for the landing page - always shown regardless of environment
-const DEMO_BOUNTIES = [
-  {
-    id: 'demo-1',
-    repoFullName: 'facebook/react',
-    issueNumber: 28145,
-    issueTitle: 'Optimize React Server Components streaming',
-    amount: 500,
-    tokenSymbol: 'USDC',
-    timeLeft: '6d',
-  },
-  {
-    id: 'demo-2',
-    repoFullName: 'vercel/next.js',
-    issueNumber: 58234,
-    issueTitle: 'Add partial prerendering segments support',
-    amount: 1000,
-    tokenSymbol: 'USDC',
-    timeLeft: '12d',
-  },
-  {
-    id: 'demo-3',
-    repoFullName: 'ethereum/go-ethereum',
-    issueNumber: 29234,
-    issueTitle: 'Improve state pruning efficiency',
-    amount: 750,
-    tokenSymbol: 'USDC',
-    timeLeft: '3d',
-  },
-  {
-    id: 'demo-4',
-    repoFullName: 'rust-lang/rust',
-    issueNumber: 115678,
-    issueTitle: 'Incremental compilation for async functions',
-    amount: 1500,
-    tokenSymbol: 'USDC',
-    timeLeft: '9d',
-  },
-];
 
 // Bounty Feed Section - Always shows demo bounties
 function BountyFeedSection() {
+  // Previously this section rendered four hardcoded bounties on real
+  // third-party repositories (facebook/react, vercel/next.js and others) under
+  // the heading "Start earning", with plausible issue numbers and dollar
+  // amounts. A visitor could only read that as live inventory. It was not, and
+  // it put words in the mouths of projects that had never heard of BountyPay.
+  //
+  // Show the real open bounties, and an honest empty state when there are none.
+  const [bounties, setBounties] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch('/api/bounties/open')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (cancelled) return;
+        setBounties(Array.isArray(data) ? data.slice(0, 4) : []);
+      })
+      .catch(() => {
+        if (!cancelled) setBounties([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <section id="bounties" className="py-20">
       <div className="max-w-6xl mx-auto px-6">
@@ -487,23 +481,46 @@ function BountyFeedSection() {
           </div>
         </AnimateOnScroll>
 
-        {/* Bounties grid - Always show demo bounties */}
+        {loading ? (
+          <div className="grid md:grid-cols-2 gap-5">
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-44 bg-card/30 border border-border rounded-2xl animate-pulse"
+              />
+            ))}
+          </div>
+        ) : bounties.length === 0 ? (
+          <div className="text-center py-14 border border-border rounded-2xl bg-card/30">
+            <p className="text-foreground text-lg mb-2">No open bounties right now.</p>
+            <p className="text-sm text-muted-foreground mb-6">
+              Fund one on any GitHub issue and it will appear here.
+            </p>
+            <Link
+              href="/app"
+              className="inline-flex items-center gap-2 text-sm text-foreground hover:opacity-80 transition-opacity"
+            >
+              Post a bounty
+              <span>&rarr;</span>
+            </Link>
+          </div>
+        ) : (
         <div className="grid md:grid-cols-2 gap-5">
-          {DEMO_BOUNTIES.map((bounty, index) => (
-            <AnimateOnScroll key={bounty.id} delay={100 + index * 100}>
+          {bounties.map((bounty, index) => (
+            <AnimateOnScroll key={bounty.bountyId} delay={100 + index * 100}>
               <div className="group p-6 bg-card/30 backdrop-blur-sm border border-border rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-foreground/5 h-full">
                 {/* Top row: repo + amount */}
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <p className="text-sm text-muted-foreground font-mono">{bounty.repoFullName}</p>
                   <div className="text-right flex-shrink-0 flex items-baseline gap-1.5">
-                    <span className="font-instrument-serif text-xl font-semibold text-muted-foreground">{bounty.amount.toLocaleString()}</span>
+                    <span className="font-instrument-serif text-xl font-semibold text-muted-foreground">{formatAmount(bounty.amount, bounty.tokenSymbol, { useGrouping: true })}</span>
                     <span className="font-instrument-serif text-xs text-muted-foreground uppercase">{bounty.tokenSymbol}</span>
                   </div>
                 </div>
 
                 {/* Title - larger and can wrap */}
                 <h3 className="text-xl text-foreground font-medium leading-snug mb-8">
-                  {bounty.issueTitle}
+                  {bounty.issueTitle || `Issue #${bounty.issueNumber}`}
                 </h3>
 
                 {/* Footer */}
@@ -512,7 +529,7 @@ function BountyFeedSection() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    {bounty.timeLeft}
+                    {formatTimeLeft(bounty.deadline) || '—'}
                   </div>
                   <a
                     href={`https://github.com/${bounty.repoFullName}/issues/${bounty.issueNumber}`}
@@ -528,6 +545,7 @@ function BountyFeedSection() {
             </AnimateOnScroll>
           ))}
         </div>
+        )}
       </div>
     </section>
   );

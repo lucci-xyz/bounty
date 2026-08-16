@@ -1,5 +1,8 @@
 [profile.default]
 src = "contracts/current"
+# Foundry defaults to `script/`; this repo uses `scripts/`, so the deploy and
+# token-allowlist scripts were never compiled by `forge build`.
+script = "scripts"
 out = "artifacts"
 libs = ["node_modules", "lib"]
 solc_version = "0.8.24"

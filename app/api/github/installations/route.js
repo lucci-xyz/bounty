@@ -2,7 +2,7 @@ import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 import { getGitHubApp } from '@/integrations/github/client';
 
-export async function GET(request) {
+export async function GET() {
   try {
     const session = await getSession();
     

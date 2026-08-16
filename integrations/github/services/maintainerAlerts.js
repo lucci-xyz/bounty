@@ -2,7 +2,7 @@ import { logger } from '@/lib/logger';
 import { postIssueComment } from '../client.js';
 import { sendErrorNotification } from '@/integrations/email/email.js';
 import { ALERT_SEVERITY_STYLES, buildShieldsBadge } from '@/lib';
-import { renderSystemAlertComment, renderAlertEmailHtml } from '@/integrations/github/templates/alerts';
+import { renderSystemAlertComment } from '@/integrations/github/templates/alerts';
 import { BADGE_BASE, BADGE_LABEL_COLOR, BADGE_STYLE, BRAND_SIGNATURE, FRONTEND_BASE } from '../constants.js';
 import { userQueries } from '@/server/db/prisma.js';
 

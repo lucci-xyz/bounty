@@ -8,6 +8,7 @@
  * Shows "create first bounty" prompt if wallet is linked but no bounties exist.
  *
  * @param {Object} props
+ * @param {Function} props.onRequestRefund - Opens the refund surface (Controls tab).
  * @param {boolean} props.showEmptyState - Whether to show the connect wallet prompt (no wallet linked).
  * @param {boolean} props.showNoBountiesState - Whether to show the create bounty prompt (wallet linked, no bounties).
  * @param {Object} props.stats - Stats for sponsored bounties (e.g., totalValueLocked, totalPaid, refundedBounties).
@@ -33,6 +34,26 @@ import { useFlag } from "@/ui/providers/FlagProvider";
 
 const ITEMS_PER_PAGE = 4;
 
+/**
+ * Render a per-token total honestly.
+ *
+ * The stat cards used to print `$${stats.totalValueLocked}` over a figure that
+ * summed USDC and MUSD together, so a sponsor holding one of each saw "$2" —
+ * a number denominated in nothing. Show the token, and when more than one is
+ * in play show the largest with a "+N more" rather than inventing a total.
+ */
+function formatTokenTotal(byToken) {
+  const entries = Object.entries(byToken || {}).filter(([, v]) => v > 0);
+  if (entries.length === 0) return '0';
+
+  entries.sort((a, b) => b[1] - a[1]);
+  const [symbol, value] = entries[0];
+  const head = `${value.toLocaleString()} ${symbol}`;
+
+  return entries.length === 1 ? head : `${head} +${entries.length - 1} more`;
+}
+
+
 const getCountdownLabel = (bounty) => {
   const state = bounty?.lifecycle?.state;
   if (state !== "open") return null;
@@ -51,6 +72,7 @@ export function SponsoredTab({
   allowlists,
   allowlistLoading,
   openAllowlistModal,
+  onRequestRefund,
 }) {
   const allowlistEnabled = useFlag("allowlistFeature", false);
   const refundEnabled = useFlag("refundFeature", false);
@@ -206,7 +228,7 @@ export function SponsoredTab({
         <StatBlock
           className="animate-fade-in-up"
           label="Value Locked"
-          value={`$${stats?.totalValueLocked?.toLocaleString() || "0"}`}
+          value={formatTokenTotal(stats?.valueLockedByToken)}
           hint={`Across ${stats?.openBounties || 0} open bounties`}
           iconBgClass="bg-emerald-50"
           iconTextClass="text-emerald-600"
@@ -214,7 +236,7 @@ export function SponsoredTab({
         <StatBlock
           className="animate-fade-in-up"
           label="Total Paid"
-          value={`$${stats?.totalValuePaid?.toLocaleString() || "0"}`}
+          value={formatTokenTotal(stats?.valuePaidByToken)}
           hint={`${stats?.resolvedBounties || 0} contributors`}
           iconBgClass="bg-blue-50"
           iconTextClass="text-blue-600"
@@ -491,12 +513,13 @@ export function SponsoredTab({
 
                           {/* Refund button if eligible */}
                           {refundEnabled && bounty.refundEligible && (
-                            <Link
-                              href={`/refund?bountyId=${bounty.bountyId}`}
+                            <button
+                              type="button"
+                              onClick={onRequestRefund}
                               className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
                             >
                               Request Refund
-                            </Link>
+                            </button>
                           )}
 
                           {/* Allowlist info and manage button */}

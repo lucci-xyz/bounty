@@ -67,7 +67,6 @@ function AttachBountyContent() {
     selectedToken,
     selectedTokenIndex,
     setSelectedTokenIndex,
-    multiTokenEnabled
   } = useAttachBountyForm({ issueData });
 
   // Navigate back (or push) handler - wrapped in useCallback for stability

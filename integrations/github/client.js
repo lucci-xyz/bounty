@@ -68,20 +68,6 @@ export async function updateComment(octokit, owner, repo, commentId, body) {
 }
 
 /**
- * Pin a comment to an issue
- */
-export async function pinComment(octokit, owner, repo, commentId) {
-  try {
-    // Note: Pinning is done via GraphQL, this is a placeholder
-    // For now, we'll just mark it in our DB
-    return true;
-  } catch (error) {
-    logger.error('Error pinning comment:', error);
-    return false;
-  }
-}
-
-/**
  * Add label to an issue
  */
 export async function addLabels(octokit, owner, repo, issueNumber, labels) {

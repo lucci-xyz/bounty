@@ -1,8 +1,10 @@
 import { logger } from '@/lib/logger';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { getOctokit, postIssueComment, ensureLabel, addLabels, removeLabel, getIssueLabels } from '../../client.js';
 import { bountyQueries } from '@/server/db/prisma.js';
 import { notifyMaintainers } from '../../services/maintainerAlerts.js';
 import { formatAmountByToken, networkMeta } from '../../services/bountyFormatting.js';
+import { TOKEN_DECIMALS } from '@/lib/format/amount';
 import { renderBountyCreatedComment, renderBountyRefundedComment } from '../../templates/bounties';
 import { OG_ICON, FRONTEND_BASE, BRAND_SIGNATURE } from '../../constants.js';
 import { getLinkHref } from '@/config/links';
@@ -67,7 +69,12 @@ export async function handleBountyCreated(bountyData) {
 
     const postedComment = await postIssueComment(octokit, owner, repo, issueNumber, comment);
 
-    const labelName = `bounty:$${Math.floor(parseFloat(amountFormatted))}`;
+    // Derive the label from base units, never from the display string.
+    // `parseFloat('1,500.00')` stops at the comma and yields 1, so every bounty
+    // of 1,000 or more was labelled `bounty:$1` on the issue and in search.
+    const labelDecimals = TOKEN_DECIMALS[tokenSymbol] ?? 6;
+    const labelWhole = BigInt(amount) / 10n ** BigInt(labelDecimals);
+    const labelName = `bounty:$${labelWhole.toString()}`;
     try {
       await ensureLabel(octokit, owner, repo, labelName, '83EEE8', 'Active bounty amount');
       await addLabels(octokit, owner, repo, issueNumber, [labelName]);
@@ -101,7 +108,7 @@ export async function handleBountyCreated(bountyData) {
 
       await notifyMaintainers(octokit, owner, repo, issueNumber, {
         errorType: 'Bounty Notification Error',
-        errorMessage: error.stack || error.message,
+        errorMessage: publicErrorMessage(logPublicError(error)),
         severity: 'high',
         bountyId,
         network,
@@ -170,7 +177,7 @@ export async function handleBountyRefunded(bountyData) {
 
       await notifyMaintainers(octokit, owner, repo, issueNumber, {
         errorType: 'Refund Notification Error',
-        errorMessage: error.stack || error.message,
+        errorMessage: publicErrorMessage(logPublicError(error)),
         severity: 'medium',
         bountyId,
         network,
@@ -183,4 +190,21 @@ export async function handleBountyRefunded(bountyData) {
 
     // Don't throw - refund succeeded, just notification failed
   }
+}
+
+/**
+ * Log an error server-side and return a reference safe to publish.
+ *
+ * notifyMaintainers writes a comment on a public issue or pull request, so the
+ * raw text must never travel with it: stack traces expose server paths, and
+ * provider errors carry the RPC URL (often with an embedded API key) plus the
+ * upstream response body.
+ *
+ * @param {Error|{message?: string}} error
+ * @returns {string} Correlation reference recorded in the server log.
+ */
+function logPublicError(error) {
+  const ref = newErrorRef();
+  logger.error(`[${ref}]`, error?.stack || error?.message || String(error));
+  return ref;
 }

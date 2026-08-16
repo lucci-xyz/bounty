@@ -1,3 +1,4 @@
+import { escapeHtml } from '@/lib/escapeHtml';
 /**
  * Email template for when a contributor's PR is merged and the bounty is paid
  */
@@ -114,7 +115,7 @@ export function renderBountyPaidEmail({
                         padding-bottom: 4px;
                       "
                     >
-                      Hi <strong>${username}</strong>,
+                      Hi <strong>${escapeHtml(username)}</strong>,
                     </td>
                   </tr>
   
@@ -182,7 +183,7 @@ export function renderBountyPaidEmail({
                               border-bottom: 1px solid #e5e7eb;
                             "
                           >
-                            ${repoFullName}
+                            ${escapeHtml(repoFullName)}
                           </td>
                         </tr>
                         <tr>
@@ -205,7 +206,7 @@ export function renderBountyPaidEmail({
                               href="${issueUrl}"
                               style="color: #111827; text-decoration: underline;"
                             >
-                              #${issueNumber}${issueTitle ? ` — ${issueTitle}` : ""}
+                              #${issueNumber}${issueTitle ? ` — ${escapeHtml(issueTitle)}` : ""}
                             </a>
                           </td>
                         </tr>

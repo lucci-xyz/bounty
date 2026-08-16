@@ -17,10 +17,9 @@ import { useFlag } from '@/ui/providers/FlagProvider';
 export default function AllowlistManager({ bountyId, initialAllowlist = [] }) {
   const allowlistEnabled = useFlag('allowlistFeature', false);
 
-  // Hide component if feature flag is disabled
-  if (!allowlistEnabled) {
-    return null;
-  }
+  // Every hook must run before any early return. The flag is resolved at
+  // runtime and can change between renders, so returning above these useState
+  // calls changed the hook count mid-life and corrupted this component's state.
   const [allowlist, setAllowlist] = useState(initialAllowlist);
   const [newAddress, setNewAddress] = useState('');
   const [status, setStatus] = useState({ message: '', type: '' });
@@ -90,6 +89,11 @@ export default function AllowlistManager({ bountyId, initialAllowlist = [] }) {
       setStatus({ message: error.message, type: 'error' });
     }
   };
+
+  // Safe here: every hook above has already run.
+  if (!allowlistEnabled) {
+    return null;
+  }
 
   return (
     <div>

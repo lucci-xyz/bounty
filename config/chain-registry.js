@@ -107,7 +107,7 @@ const CURATED_ALIASES = {
 
 // ABIs used throughout the application
 const ESCROW_ABI_BASE = [
-  'function initialize(address primaryToken_, uint16 _feeBps, address initialOwner) external',
+  'function initialize(address primaryToken_, uint16 _feeBps, address initialOwner, address initialResolver) external',
   'function createBounty(address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) external returns (bytes32)',
   'function createBountyWithToken(address token, address resolver, bytes32 repoIdHash, uint64 issueNumber, uint64 deadline, uint256 amount) external returns (bytes32)',
   'function fund(bytes32 bountyId, uint256 amount) external',
@@ -123,6 +123,9 @@ const ESCROW_ABI_BASE = [
 // Ensure refund flow fragments are always present (was missing in a prior ABI)
 const ESCROW_REFUND_FRAGMENTS = [
   'function refundExpired(bytes32 bountyId) external',
+  'function allowedResolvers(address resolver) view returns (bool)',
+  'function setAllowedResolver(address resolver, bool allowed) external',
+  'function RESOLVE_GRACE() view returns (uint64)',
   'event Refunded(bytes32 indexed bountyId, address indexed sponsor, uint256 amount)'
 ];
 

@@ -1,7 +1,8 @@
 import { logger } from '@/lib/logger';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { CONFIG } from '../config.js';
 import { isValidStatus, BOUNTY_STATUS } from '@/lib/status';
+import { decideAllowlist } from '@/lib/allowlistDecision';
 
 // Prisma client instance
 const prisma = new PrismaClient();
@@ -66,6 +67,7 @@ async function getBountySelect() {
     createdAt: true,
     updatedAt: true,
     pinnedCommentId: true,
+    expiryNotifiedAt: true,
     ...(includeIssueMetadata
       ? {
           issueTitle: true,
@@ -89,7 +91,8 @@ function normalizeBounty(bounty) {
     deadline: Number(bounty.deadline),
     createdAt: Number(bounty.createdAt),
     updatedAt: Number(bounty.updatedAt),
-    pinnedCommentId: bounty.pinnedCommentId ? Number(bounty.pinnedCommentId) : null
+    pinnedCommentId: bounty.pinnedCommentId ? Number(bounty.pinnedCommentId) : null,
+    expiryNotifiedAt: bounty.expiryNotifiedAt ? Number(bounty.expiryNotifiedAt) : null
   };
 }
 
@@ -245,14 +248,33 @@ export const bountyQueries = {
     const bounties = await prisma.bounty.findMany({
       where: {
         status: 'open',
+        // Every sibling query partitions by environment; this one did not, so a
+        // stage deployment's cron read prod bounties (and vice versa) and
+        // emailed the wrong sponsors about the wrong money.
+        environment: CONFIG.envTarget || 'stage',
+        // Idempotency for the daily expiry mail: a bounty leaves this set for
+        // good once its notification is recorded.
+        expiryNotifiedAt: null,
         deadline: {
           lt: BigInt(now)
         }
       },
       select: bountySelect
     });
-    
+
     return bounties.map(normalizeBounty);
+  },
+
+  /**
+   * Records that the expiry notification for a bounty has been sent.
+   * @param {string} bountyId
+   * @returns {Promise<void>}
+   */
+  markExpiryNotified: async (bountyId) => {
+    await prisma.bounty.update({
+      where: { bountyId },
+      data: { expiryNotifiedAt: BigInt(Date.now()) }
+    });
   },
 
   /**
@@ -415,8 +437,17 @@ export const prClaimQueries = {
    * Creates a PR claim.
    */
   create: async (bountyId, prNumber, prAuthorId, repoFullName) => {
-    const claim = await prisma.prClaim.create({
-      data: {
+    // Idempotent: `pull_request.edited` replays the open handler, so a PR that
+    // is edited three times must still hold exactly one claim per bounty.
+    // Re-running only refreshes the author; it never resets a settled status.
+    const claim = await prisma.prClaim.upsert({
+      where: {
+        uq_pr_claims_bounty_pr: { bountyId, prNumber, repoFullName }
+      },
+      update: {
+        prAuthorGithubId: BigInt(prAuthorId)
+      },
+      create: {
         bountyId,
         prNumber,
         prAuthorGithubId: BigInt(prAuthorId),
@@ -425,7 +456,7 @@ export const prClaimQueries = {
         createdAt: BigInt(Date.now())
       }
     });
-    
+
     return {
       ...claim,
       prAuthorGithubId: Number(claim.prAuthorGithubId),
@@ -888,53 +919,67 @@ export const allowlistQueries = {
   },
 
   /**
-   * Checks if an address is allowed for a bounty.
+   * Decide whether an address may be paid for a bounty.
+   *
+   * An allowlist restricts a bounty only when the sponsor has actually created
+   * entries for it. With no entries the bounty is unrestricted, which is why
+   * this returns `restricted: false` rather than refusing everyone.
+   *
+   * The previous implementation returned a bare `false` in exactly that case —
+   * meaning "wire me into the payout path and every bounty without an allowlist
+   * stops paying". That is very likely why it was never called from anywhere.
+   *
+   * @param {string} bountyId
+   * @param {string} address Recipient address.
+   * @returns {Promise<{ allowed: boolean, restricted: boolean }>}
    */
   checkAllowed: async (bountyId, address) => {
     const bounty = await prisma.bounty.findUnique({
       where: { bountyId }
     });
-    
-    if (!bounty || !bounty.sponsorGithubId) return true;
-    
+
+    if (!bounty || !bounty.sponsorGithubId) return { allowed: true, restricted: false };
+
     const user = await prisma.user.findUnique({
       where: { githubId: bounty.sponsorGithubId }
     });
-    
-    if (!user) return true;
-    
-    // Check bounty-specific allowlist
-    const bountyAllowlist = await prisma.allowlist.findFirst({
+
+    if (!user) return { allowed: true, restricted: false };
+
+    // Entries the sponsor set for this bounty, plus repo-wide entries.
+    const entries = await prisma.allowlist.findMany({
       where: {
         userId: user.id,
-        bountyId,
-        allowedAddress: address.toLowerCase()
-      }
+        OR: [{ bountyId }, { repoId: bounty.repoId, bountyId: null }]
+      },
+      select: { allowedAddress: true }
     });
-    
-    if (bountyAllowlist) return true;
-    
-    // Check repo-level allowlist
-    const repoAllowlist = await prisma.allowlist.findFirst({
-      where: {
-        userId: user.id,
-        repoId: bounty.repoId,
-        bountyId: null,
-        allowedAddress: address.toLowerCase()
-      }
-    });
-    
-    return !!repoAllowlist;
+
+    return decideAllowlist(entries, address);
   },
 
   /**
-   * Removes an allowlist entry by ID.
+   * Removes an allowlist entry, scoped to the bounty it belongs to.
+   *
+   * `bountyId` is required: callers authorise against a bounty, so the delete
+   * must be constrained to that same bounty. Deleting by id alone let a sponsor
+   * who owned any one bounty delete allowlist rows belonging to every other
+   * sponsor.
+   *
+   * @param {number} id
+   * @param {string} bountyId
+   * @returns {Promise<{ success: boolean, removed: number }>}
    */
-  remove: async (id) => {
-    await prisma.allowlist.delete({
-      where: { id }
+  remove: async (id, bountyId) => {
+    if (!bountyId) {
+      throw new Error('allowlistQueries.remove requires a bountyId to scope the delete');
+    }
+
+    const { count } = await prisma.allowlist.deleteMany({
+      where: { id, bountyId }
     });
-    return { success: true };
+
+    return { success: count > 0, removed: count };
   }
 };
 

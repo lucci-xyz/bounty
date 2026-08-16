@@ -1,11 +1,21 @@
 # Dependencies
 node_modules/
-package-lock.json
+# package-lock.json is intentionally COMMITTED: `npm ci` requires it, and it is
+# what makes dependency resolution reproducible between local, CI, and Vercel.
 
 # Environment
-.env
-.env.local
-.env.production
+# Ignore every .env variant by default. Naming individual files leaves
+# variants like .env.stage or .env.vercel committable.
+.env*
+!.env.example
+
+# Non-dotfile env dumps and key material. These patterns are deliberately
+# broad: anything shaped like a secrets file must be uncommittable.
+env.txt
+ENV_EXAMPLE.txt
+*env*.txt
+*.key
+*_PRIVATE_KEY*
 
 # Database
 *.db

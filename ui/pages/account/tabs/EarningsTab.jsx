@@ -61,7 +61,7 @@ export function EarningsTab({ claimedBounties, totalEarned }) {
               </svg>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
-              You haven't claimed any bounties yet
+              You haven&rsquo;t claimed any bounties yet
             </p>
             <Link 
               href="/app"

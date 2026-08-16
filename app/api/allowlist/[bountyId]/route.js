@@ -100,12 +100,20 @@ export async function DELETE(request, { params }) {
       return Response.json({ error: 'Unauthorized' }, { status: 403 });
     }
     
-    await allowlistQueries.remove(allowlistId);
-    
+    // Scope the delete to the bounty the caller was authorised against.
+    // Deleting by the body's allowlistId alone was an IDOR: owning any one
+    // bounty let a caller delete every other sponsor's allowlist entries,
+    // silently widening who their bounties could pay.
+    const { success } = await allowlistQueries.remove(Number(allowlistId), bountyId);
+
+    if (!success) {
+      return Response.json({ error: 'Allowlist entry not found for this bounty' }, { status: 404 });
+    }
+
     return Response.json({ success: true });
   } catch (error) {
     logger.error('Error removing from allowlist:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Failed to remove allowlist entry' }, { status: 500 });
   }
 }
 

@@ -5,7 +5,7 @@ import { prClaimQueries, bountyQueries } from '@/server/db/prisma';
 // Bounties in these statuses have no funds left (sponsor refunded after deadline)
 const WITHDRAWN_STATUSES = new Set(['refunded']);
 
-export async function GET(request) {
+export async function GET() {
   try {
     const session = await getSession();
     

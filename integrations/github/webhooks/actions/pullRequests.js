@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import {
   getOctokit,
   postIssueComment,
@@ -6,7 +7,13 @@ import {
   extractClosedIssues,
   extractMentionedIssues
 } from '../../client.js';
-import { bountyQueries, walletQueries, prClaimQueries, userQueries } from '@/server/db/prisma.js';
+import {
+  bountyQueries,
+  walletQueries,
+  prClaimQueries,
+  userQueries,
+  allowlistQueries
+} from '@/server/db/prisma.js';
 import { resolveBountyOnNetwork } from '@/server/blockchain/contract.js';
 import { ethers } from 'ethers';
 import { notifyMaintainers } from '../../services/maintainerAlerts.js';
@@ -45,28 +52,43 @@ export async function handlePullRequestOpened(payload) {
       return;
     }
 
-    const closedIssues = extractClosedIssues(pull_request.body);
+    // A claim may only be created from an EXPLICIT closing reference.
+    //
+    // Previously two other paths created claims, and both were payable:
+    //   - a repo with exactly one open bounty auto-claimed it for any PR, so a
+    //     one-line typo fix claimed the whole bounty; and
+    //   - a bare mention ("blocked on #42") claimed the bounty on #42.
+    // Since `handlePullRequestMerged` pays every claim attached to the merged
+    // PR, either path let an unrelated PR drain a funded bounty on merge.
+    const closedIssues = [...new Set(extractClosedIssues(pull_request.body))];
     const mentionedIssues = extractMentionedIssues(pull_request.title, pull_request.body);
 
-    if (allOpenBounties.length === 1 && closedIssues.length === 0 && mentionedIssues.length === 0) {
-      await handlePRWithBounties(octokit, owner, repo, pull_request, repository, allOpenBounties);
-      return;
-    }
-
-    const matchedBounties = [];
-    const issueNumbersToCheck = [...new Set([...closedIssues, ...mentionedIssues])];
-
-    for (const issueNumber of issueNumbersToCheck) {
+    const claimedBounties = [];
+    for (const issueNumber of closedIssues) {
       const issueBounties = await bountyQueries.findByIssue(repository.id, issueNumber);
-      matchedBounties.push(...issueBounties);
+      claimedBounties.push(...issueBounties);
     }
 
-    if (matchedBounties.length > 0) {
-      await handlePRWithBounties(octokit, owner, repo, pull_request, repository, matchedBounties);
+    if (claimedBounties.length > 0) {
+      await handlePRWithBounties(octokit, owner, repo, pull_request, repository, claimedBounties);
       return;
     }
 
-    await suggestBounties(octokit, owner, repo, pull_request, allOpenBounties);
+    // No closing reference: surface the relevant bounties as a non-binding hint
+    // so the author can add "Closes #N" — but record no claim.
+    const mentionedBounties = [];
+    for (const issueNumber of mentionedIssues) {
+      const issueBounties = await bountyQueries.findByIssue(repository.id, issueNumber);
+      mentionedBounties.push(...issueBounties);
+    }
+
+    await suggestBounties(
+      octokit,
+      owner,
+      repo,
+      pull_request,
+      mentionedBounties.length > 0 ? mentionedBounties : allOpenBounties
+    );
   } catch (error) {
     logger.error('Error in handlePullRequestOpened:', error.message);
 
@@ -76,7 +98,7 @@ export async function handlePullRequestOpened(payload) {
 
       await notifyMaintainers(octokit, owner, repo, pull_request.number, {
         errorType: 'PR Open Handler Error',
-        errorMessage: error.stack || error.message,
+        errorMessage: publicErrorMessage(logPublicError(error)),
         severity: 'high',
         prNumber: pull_request.number,
         username: pull_request.user.login,
@@ -107,10 +129,29 @@ export async function handlePullRequestMerged(payload) {
     const octokit = await getOctokit(installation.id);
     const [owner, repo] = repository.full_name.split('/');
 
+    // Authoritative payout gate.
+    //
+    // Claims are recorded when a PR is opened, but the PR body can change
+    // afterwards and claims are never withdrawn. Re-derive the closing
+    // references from the MERGE payload and pay only bounties whose issue this
+    // PR actually closes. Without this, any claim recorded at any earlier point
+    // was payable on merge.
+    const closingIssues = new Set(extractClosedIssues(pull_request.body));
+
     for (const claim of claims) {
       const bounty = await bountyQueries.findById(claim.bountyId);
 
       if (!bounty || bounty.status !== 'open') {
+        continue;
+      }
+
+      if (!closingIssues.has(Number(bounty.issueNumber))) {
+        logger.warn('Skipping payout: merged PR does not close the bountied issue', {
+          bountyId: bounty.bountyId,
+          issueNumber: bounty.issueNumber,
+          prNumber: pull_request.number,
+          repo: repository.full_name
+        });
         continue;
       }
 
@@ -174,6 +215,39 @@ export async function handlePullRequestMerged(payload) {
         continue;
       }
 
+      // Honour the sponsor's allowlist. The account UI lets a sponsor restrict
+      // a bounty to specific addresses, but nothing ever consulted that list —
+      // `checkAllowed` had no call sites — so the restriction was decorative.
+      // It binds only when the sponsor actually created entries.
+      const allowlistCheck = await allowlistQueries.checkAllowed(
+        bounty.bountyId,
+        walletMapping.walletAddress
+      );
+
+      if (!allowlistCheck.allowed) {
+        logger.warn('Skipping payout: recipient is not on the sponsor allowlist', {
+          bountyId: bounty.bountyId,
+          prNumber: pull_request.number
+        });
+
+        await prClaimQueries.updateStatus(claim.id, 'failed');
+
+        await notifyMaintainers(octokit, owner, repo, pull_request.number, {
+          errorType: 'Recipient Not On Sponsor Allowlist',
+          errorMessage:
+            'The sponsor restricted this bounty to specific wallet addresses, and the linked wallet is not one of them.',
+          severity: 'medium',
+          bountyId: bounty.bountyId,
+          network: bounty.network,
+          prNumber: pull_request.number,
+          username: pull_request.user.login,
+          context:
+            'No payout was attempted. The sponsor can add this address to the allowlist, or the contributor can link an allowed wallet, and the payout can then be retried.'
+        });
+
+        continue;
+      }
+
       let result;
       try {
         result = await resolveBountyOnNetwork(bounty.bountyId, walletMapping.walletAddress, bounty.network);
@@ -229,7 +303,11 @@ export async function handlePullRequestMerged(payload) {
           });
         }
       } else {
-        logger.error('Bounty resolution failed:', result.error);
+        // Classify server-side against the raw text, but publish only a
+        // reference. An ethers/provider message carries the configured RPC URL
+        // — commonly with an embedded API key — plus the upstream response
+        // body, and this comment is world-readable and permanent.
+        const resolveErrorRef = logPublicError(new Error(result.error || 'Unknown resolution error'));
 
         let errorHelp = 'Tag a maintainer to investigate and replay the payout.';
         let notifySeverity = 'high';
@@ -256,7 +334,7 @@ export async function handlePullRequestMerged(payload) {
 
         const errorComment = renderPaymentFailedComment({
           iconUrl: OG_ICON,
-          errorSnippet: `${result.error.substring(0, 200)}${result.error.length > 200 ? '...' : ''}`,
+          errorSnippet: publicErrorMessage(resolveErrorRef),
           helpText: errorHelp,
           network: bounty.network,
           recipientAddress: `${walletMapping.walletAddress.slice(0, 10)}...${walletMapping.walletAddress.slice(-8)}`,
@@ -272,7 +350,7 @@ export async function handlePullRequestMerged(payload) {
 
           await notifyMaintainers(octokit, owner, repo, pull_request.number, {
             errorType: 'Bounty Payout Failed',
-            errorMessage: result.error,
+            errorMessage: publicErrorMessage(resolveErrorRef),
             severity: notifySeverity,
             bountyId: bounty.bountyId,
             network: bounty.network || 'UNKNOWN',
@@ -293,7 +371,7 @@ export async function handlePullRequestMerged(payload) {
 
       await notifyMaintainers(octokit, owner, repo, pull_request.number, {
         errorType: 'PR Merge Handler Error',
-        errorMessage: error.stack || error.message,
+        errorMessage: publicErrorMessage(logPublicError(error)),
         severity: 'critical',
         prNumber: pull_request.number,
         username: pull_request.user.login,
@@ -379,7 +457,7 @@ async function handlePRWithBounties(octokit, owner, repo, pull_request, reposito
 
       await notifyMaintainers(octokit, owner, repo, pull_request.number, {
         errorType: 'PR Claim Recording Failed',
-        errorMessage: claimError.message,
+        errorMessage: publicErrorMessage(logPublicError(claimError)),
         severity: 'critical',
         bountyId: bounty.bountyId,
         network: bounty.network,
@@ -427,4 +505,21 @@ async function handlePRWithBounties(octokit, owner, repo, pull_request, reposito
     // Non-blocking - log but don't fail the webhook
     logger.warn('Failed to send PR opened email:', emailError.message);
   }
+}
+
+/**
+ * Log an error server-side and return a reference safe to publish.
+ *
+ * notifyMaintainers writes a comment on a public issue or pull request, so the
+ * raw text must never travel with it: stack traces expose server paths, and
+ * provider errors carry the RPC URL (often with an embedded API key) plus the
+ * upstream response body.
+ *
+ * @param {Error|{message?: string}} error
+ * @returns {string} Correlation reference recorded in the server log.
+ */
+function logPublicError(error) {
+  const ref = newErrorRef();
+  logger.error(`[${ref}]`, error?.stack || error?.message || String(error));
+  return ref;
 }
