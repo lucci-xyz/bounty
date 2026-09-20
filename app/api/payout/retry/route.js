@@ -1,10 +1,13 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 import { bountyQueries, prClaimQueries, walletQueries, allowlistQueries } from '@/server/db/prisma';
-import { resolveBountyOnNetwork } from '@/server/blockchain/contract';
+import { resolveBountyOnNetwork, readBountyOnchainStatus } from '@/server/blockchain/contract';
+import { settleClaim } from '@/server/payouts/settleClaim';
+import { CLAIM_STATUS } from '@/lib/status';
 
 /**
- * Manually retry a failed bounty payout for the authenticated contributor.
+ * Manually retry a failed or pending-wallet bounty payout for the
+ * authenticated contributor.
  * Expects: { claimId: number }
  */
 export async function POST(request) {
@@ -29,8 +32,8 @@ export async function POST(request) {
       return Response.json({ error: 'Not authorized to retry this payout' }, { status: 403 });
     }
 
-    if (claim.status !== 'failed') {
-      return Response.json({ error: 'Payout can only be retried for failed claims' }, { status: 400 });
+    if (claim.status !== CLAIM_STATUS.FAILED && claim.status !== CLAIM_STATUS.PENDING_WALLET) {
+      return Response.json({ error: 'Payout can only be retried for failed or pending-wallet claims' }, { status: 400 });
     }
 
     const bounty = await bountyQueries.findById(claim.bountyId);
@@ -73,25 +76,32 @@ export async function POST(request) {
       );
     }
 
-    let result;
-    try {
-      result = await resolveBountyOnNetwork(bounty.bountyId, wallet.walletAddress, bounty.network);
-    } catch (error) {
-      logger.error('Manual payout threw', { error: error.message, bountyId: bounty.bountyId, claimId });
-      result = { success: false, error: error.message || 'Unknown error during payout' };
+    const settlement = await settleClaim(
+      {
+        claimId: claim.id,
+        bountyId: bounty.bountyId,
+        recipientAddress: wallet.walletAddress
+      },
+      {
+        bountyQueries,
+        prClaimQueries,
+        resolveBounty: (id, recipient) => resolveBountyOnNetwork(id, recipient, bounty.network),
+        readOnchainStatus: (id) => readBountyOnchainStatus(id, bounty.network),
+        logger
+      }
+    );
+
+    if (settlement.outcome === 'skipped') {
+      return Response.json({ error: 'Payout is already in progress or completed' }, { status: 409 });
     }
 
-    if (!result.success) {
-      await prClaimQueries.updateStatus(claim.id, 'failed');
-      return Response.json({ error: result.error || 'Payout transaction failed' }, { status: 502 });
+    if (settlement.outcome === 'failed') {
+      return Response.json({ error: settlement.error || 'Payout transaction failed' }, { status: 502 });
     }
-
-    await bountyQueries.updateStatus(bounty.bountyId, 'resolved', result.txHash);
-    await prClaimQueries.updateStatus(claim.id, 'paid', result.txHash, Date.now());
 
     return Response.json({
       success: true,
-      txHash: result.txHash
+      txHash: settlement.txHash
     });
   } catch (error) {
     logger.error('Error processing manual payout retry:', error);

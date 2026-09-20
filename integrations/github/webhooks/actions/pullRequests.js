@@ -14,7 +14,9 @@ import {
   userQueries,
   allowlistQueries
 } from '@/server/db/prisma.js';
-import { resolveBountyOnNetwork } from '@/server/blockchain/contract.js';
+import { resolveBountyOnNetwork, readBountyOnchainStatus } from '@/server/blockchain/contract.js';
+import { settleClaim } from '@/server/payouts/settleClaim.js';
+import { CLAIM_STATUS } from '@/lib/status';
 import { ethers } from 'ethers';
 import { notifyMaintainers } from '../../services/maintainerAlerts.js';
 import { formatAmountByToken, networkMeta } from '../../services/bountyFormatting.js';
@@ -139,6 +141,12 @@ export async function handlePullRequestMerged(payload) {
     const closingIssues = new Set(extractClosedIssues(pull_request.body));
 
     for (const claim of claims) {
+      // Paid claims never re-enter. Anything else goes to the settle guard,
+      // which owns the exactly-once decision (including redeliveries).
+      if (claim.status === CLAIM_STATUS.PAID) {
+        continue;
+      }
+
       const bounty = await bountyQueries.findById(claim.bountyId);
 
       if (!bounty || bounty.status !== 'open') {
@@ -248,22 +256,39 @@ export async function handlePullRequestMerged(payload) {
         continue;
       }
 
-      let result;
-      try {
-        result = await resolveBountyOnNetwork(bounty.bountyId, walletMapping.walletAddress, bounty.network);
-      } catch (error) {
-        logger.error('Exception during bounty resolution:', error.message);
-        result = { success: false, error: error.message || 'Unknown error during resolution' };
+      // Exactly-once settlement: acquire, send, settle-or-release. Rows are
+      // already flipped when this returns; this handler only reacts.
+      const settlement = await settleClaim(
+        {
+          claimId: claim.id,
+          bountyId: bounty.bountyId,
+          recipientAddress: walletMapping.walletAddress
+        },
+        {
+          bountyQueries,
+          prClaimQueries,
+          resolveBounty: (id, recipient) => resolveBountyOnNetwork(id, recipient, bounty.network),
+          readOnchainStatus: (id) => readBountyOnchainStatus(id, bounty.network),
+          logger
+        }
+      );
+
+      if (settlement.outcome === 'skipped') {
+        logger.info('Skipping payout: already handled or in flight', {
+          bountyId: bounty.bountyId,
+          claimId: claim.id,
+          reason: settlement.reason
+        });
+        continue;
       }
 
-      if (result.success) {
-        await bountyQueries.updateStatus(bounty.bountyId, 'resolved', result.txHash);
-        await prClaimQueries.updateStatus(claim.id, 'paid', result.txHash, Date.now());
+      if (settlement.outcome === 'paid') {
+        const txHash = settlement.txHash;
 
         const tokenSymbol = bounty.tokenSymbol || 'UNKNOWN';
         const amountFormatted = formatAmountByToken(bounty.amount, tokenSymbol);
         const net = networkMeta(bounty.network);
-        const explorerUrl = net.explorerTx(result.txHash);
+        const explorerUrl = net.explorerTx(txHash);
         const successComment = renderPaymentSentComment({
           iconUrl: OG_ICON,
           username: pull_request.user.login,
@@ -307,12 +332,12 @@ export async function handlePullRequestMerged(payload) {
         // reference. An ethers/provider message carries the configured RPC URL
         // — commonly with an embedded API key — plus the upstream response
         // body, and this comment is world-readable and permanent.
-        const resolveErrorRef = logPublicError(new Error(result.error || 'Unknown resolution error'));
+        const resolveErrorRef = logPublicError(new Error(settlement.error || 'Unknown resolution error'));
 
         let errorHelp = 'Tag a maintainer to investigate and replay the payout.';
         let notifySeverity = 'high';
         let shouldNotify = true;
-        const errorLower = (result.error || '').toLowerCase();
+        const errorLower = (settlement.error || '').toLowerCase();
 
         if (errorLower.includes('batch') || errorLower.includes('drpc')) {
           errorHelp = 'This looks like an RPC provider issue. The team has been notified and will retry the payout.';
@@ -342,7 +367,6 @@ export async function handlePullRequestMerged(payload) {
         });
 
         await postIssueComment(octokit, owner, repo, pull_request.number, errorComment);
-        await prClaimQueries.updateStatus(claim.id, 'failed');
 
         if (shouldNotify) {
           const tokenSymbol = bounty.tokenSymbol || 'UNKNOWN';

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { logger } from '@/lib/logger';
 
 const formatAddress = (address) => {
@@ -47,8 +48,10 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
   const [payoutStatuses, setPayoutStatuses] = useState({});
   const [lastVerifiedWallet, setLastVerifiedWallet] = useState(null);
 
-  const failedPayouts = useMemo(() => {
-    return claimedBounties.filter((bounty) => bounty?.claimStatus === 'failed');
+  const attentionPayouts = useMemo(() => {
+    return claimedBounties.filter(
+      (bounty) => bounty?.claimStatus === 'failed' || bounty?.claimStatus === 'pending_wallet'
+    );
   }, [claimedBounties]);
 
   const { requestRefund } = useRefundTransaction({
@@ -159,14 +162,15 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
 
         <section className="rounded-2xl border border-border bg-card overflow-hidden">
           <header className="px-6 py-4 border-b border-border">
-            <h3 className="text-base font-medium text-foreground">Failed Payouts</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Payouts that need attention</p>
+            <h3 className="text-base font-medium text-foreground">Payouts Needing Attention</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Failed payouts and claims awaiting your wallet</p>
           </header>
           <div className="p-6">
-            <FailedPayoutList
-              payouts={failedPayouts}
+            <AttentionPayoutList
+              payouts={attentionPayouts}
               payoutStatuses={payoutStatuses}
               onRetryPayout={handleManualPayout}
+              hasLinkedWallet={Boolean(linkedWalletAddress)}
             />
           </div>
         </section>
@@ -191,11 +195,11 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
   );
 }
 
-function FailedPayoutList({ payouts = [], onRetryPayout, payoutStatuses = {} }) {
+function AttentionPayoutList({ payouts = [], onRetryPayout, payoutStatuses = {}, hasLinkedWallet = false }) {
   if (payouts.length === 0) {
     return (
       <div className="text-center text-sm font-light text-muted-foreground">
-        No failed payouts detected. Every claim is either pending or resolved.
+        No payouts need attention right now.
       </div>
     );
   }
@@ -225,8 +229,10 @@ function FailedPayoutList({ payouts = [], onRetryPayout, payoutStatuses = {} }) 
               </p>
             </div>
 
-            <div className="text-right text-xs font-medium uppercase tracking-[0.35em] text-destructive">
-              Failed
+            <div className={`text-right text-xs font-medium uppercase tracking-[0.35em] ${
+              payout.claimStatus === 'pending_wallet' ? 'text-amber-600' : 'text-destructive'
+            }`}>
+              {payout.claimStatus === 'pending_wallet' ? 'Wallet needed' : 'Failed'}
             </div>
           </div>
           <div className="mt-3 grid gap-2 text-muted-foreground text-xs md:grid-cols-2">
@@ -247,17 +253,30 @@ function FailedPayoutList({ payouts = [], onRetryPayout, payoutStatuses = {} }) 
 
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-[12px] text-muted-foreground">
-              Payout failed when the PR was merged. Retry below once your wallet is linked.
+              {payout.claimStatus === 'pending_wallet'
+                ? (hasLinkedWallet
+                  ? 'Your wallet is linked. Retry below to receive this payout.'
+                  : 'Link a payout wallet to receive this bounty.')
+                : 'Payout failed when the PR was merged. Retry below once your wallet is linked.'}
             </p>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => onRetryPayout?.(payout)}
-                disabled={!payout.claimId || payoutStatuses[payout.claimId]?.loading}
-                className="rounded-full border border-destructive/50 px-4 py-2 text-xs font-semibold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {payoutStatuses[payout.claimId]?.loading ? 'Retrying...' : 'Retry payout'}
-              </button>
+              {payout.claimStatus === 'pending_wallet' && !hasLinkedWallet ? (
+                <Link
+                  href="/app/link-wallet?type=payout"
+                  className="rounded-full border border-amber-500/50 px-4 py-2 text-xs font-semibold text-amber-700 transition-colors hover:border-amber-500 hover:bg-amber-500/10"
+                >
+                  Link wallet
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onRetryPayout?.(payout)}
+                  disabled={!payout.claimId || payoutStatuses[payout.claimId]?.loading}
+                  className="rounded-full border border-destructive/50 px-4 py-2 text-xs font-semibold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {payoutStatuses[payout.claimId]?.loading ? 'Retrying...' : 'Retry payout'}
+                </button>
+              )}
             </div>
           </div>
           {payout.claimId && payoutStatuses[payout.claimId]?.message && (

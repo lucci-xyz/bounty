@@ -253,8 +253,8 @@ See `docs/reference/database.md` for full schema. Key models:
 
 ### Status Values
 
-**Bounty status:** `'open'`, `'resolved'`, `'refunded'` (no cancel — sponsors can only refund after deadline)
-**PrClaim status:** `'pending'`, `'paid'`, `'failed'`
+**Bounty status:** `'open'`, `'resolving'` (transient payout lease), `'resolved'`, `'refunded'` (no cancel — sponsors can only refund after deadline)
+**PrClaim status:** `'pending'`, `'processing'` (transient payout lease), `'paid'`, `'failed'`, `'pending_wallet'`
 **BetaAccess status:** `'pending'`, `'approved'`, `'rejected'`
 
 ### Error Handling
@@ -380,3 +380,9 @@ Dark mode is supported via the `.dark` class on the html element. All CSS variab
 - Look at test files if they exist
 - Check `server/db/prisma.js` for query examples
 - Review `app/api/*/route.js` for API patterns
+
+## Commands
+
+- `npm test` — run the full test suite
+- `npm run lint` — run the lint task
+- `npm run build` — build the project
