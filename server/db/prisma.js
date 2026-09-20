@@ -1,7 +1,13 @@
 import { logger } from '@/lib/logger';
 import { PrismaClient } from '@prisma/client';
 import { CONFIG } from '../config.js';
-import { isValidStatus, BOUNTY_STATUS } from '@/lib/status';
+import {
+  isValidStatus,
+  BOUNTY_STATUS,
+  CLAIM_STATUS,
+  CLAIM_ACQUIRABLE_STATUSES,
+  RESOLVING_LEASE_MS
+} from '@/lib/status';
 import { decideAllowlist } from '@/lib/allowlistDecision';
 
 // Prisma client instance
@@ -116,7 +122,7 @@ export const bountyQueries = {
     
     const status = bountyData.status || BOUNTY_STATUS.OPEN;
     if (!isValidStatus(status)) {
-      throw new Error(`Invalid bounty status: ${status}. Valid: open, resolved, refunded`);
+      throw new Error(`Invalid bounty status: ${status}. Valid: open, resolving, resolved, refunded`);
     }
     
     const data = {
@@ -194,6 +200,61 @@ export const bountyQueries = {
   },
 
   /**
+   * Atomically acquires a bounty for payout. Wins when the bounty is `open`
+   * (fast path) or `resolving` on a stale lease (crash recovery). Each branch
+   * is a single conditional UPDATE, so at most one overlapping caller wins.
+   */
+  tryAcquireForPayout: async (bountyId, nowMs = Date.now()) => {
+    const stamp = BigInt(nowMs);
+    const opened = await prisma.bounty.updateMany({
+      where: { bountyId, status: BOUNTY_STATUS.OPEN },
+      data: { status: BOUNTY_STATUS.RESOLVING, updatedAt: stamp }
+    });
+    if (opened.count === 1) return { acquired: true, stolen: false };
+    const stolen = await prisma.bounty.updateMany({
+      where: {
+        bountyId,
+        status: BOUNTY_STATUS.RESOLVING,
+        updatedAt: { lt: BigInt(nowMs - RESOLVING_LEASE_MS) }
+      },
+      data: { updatedAt: stamp }
+    });
+    if (stolen.count === 1) {
+      logger.warn('Payout stole a stale resolving lease', { bountyId });
+      return { acquired: true, stolen: true };
+    }
+    return { acquired: false, stolen: false };
+  },
+
+  /**
+   * Releases a held payout lease back to `open` (send failed or skipped).
+   */
+  releasePayout: async (bountyId) => {
+    const released = await prisma.bounty.updateMany({
+      where: { bountyId, status: BOUNTY_STATUS.RESOLVING },
+      data: { status: BOUNTY_STATUS.OPEN, updatedAt: BigInt(Date.now()) }
+    });
+    if (released.count !== 1) {
+      logger.warn('Payout bounty release missed its lease', { bountyId });
+    }
+    return released.count === 1;
+  },
+
+  /**
+   * Settles a held payout lease to `resolved` after the transaction confirms.
+   */
+  settlePayout: async (bountyId, txHash) => {
+    const settled = await prisma.bounty.updateMany({
+      where: { bountyId, status: BOUNTY_STATUS.RESOLVING },
+      data: { status: BOUNTY_STATUS.RESOLVED, txHash, updatedAt: BigInt(Date.now()) }
+    });
+    if (settled.count !== 1) {
+      logger.error('Payout bounty settle missed — funds moved but the row did not flip', { bountyId });
+    }
+    return settled.count === 1;
+  },
+
+  /**
    * Updates the status and txHash of a bounty.
    * @param {string} bountyId 
    * @param {string} status 
@@ -202,7 +263,7 @@ export const bountyQueries = {
    */
   updateStatus: async (bountyId, status, txHash = null) => {
     if (!isValidStatus(status)) {
-      throw new Error(`Invalid bounty status: ${status}. Valid: open, resolved, refunded`);
+      throw new Error(`Invalid bounty status: ${status}. Valid: open, resolving, resolved, refunded`);
     }
     const bountySelect = await getBountySelect();
     const bounty = await prisma.bounty.update({
@@ -482,6 +543,50 @@ export const prClaimQueries = {
       createdAt: Number(c.createdAt),
       resolvedAt: c.resolvedAt ? Number(c.resolvedAt) : null
     }));
+  },
+
+  /**
+   * Atomically acquires a claim for payout by flipping it to `processing`.
+   * `processing` itself is acquirable only during a stale-lease steal, which
+   * is how a worker that died mid-payout recovers instead of sticking.
+   */
+  tryAcquireForPayout: async (id, { includeProcessing = false } = {}) => {
+    const from = includeProcessing
+      ? [...CLAIM_ACQUIRABLE_STATUSES, CLAIM_STATUS.PROCESSING]
+      : CLAIM_ACQUIRABLE_STATUSES;
+    const acquired = await prisma.prClaim.updateMany({
+      where: { id, status: { in: from } },
+      data: { status: CLAIM_STATUS.PROCESSING }
+    });
+    return acquired.count === 1;
+  },
+
+  /**
+   * Settles a held claim to `paid` after the transaction confirms.
+   */
+  settlePayout: async (id, txHash, resolvedAt) => {
+    const settled = await prisma.prClaim.updateMany({
+      where: { id, status: CLAIM_STATUS.PROCESSING },
+      data: { status: CLAIM_STATUS.PAID, txHash, resolvedAt: BigInt(resolvedAt) }
+    });
+    if (settled.count !== 1) {
+      logger.error('Payout claim settle missed — funds moved but the claim did not flip', { claimId: id });
+    }
+    return settled.count === 1;
+  },
+
+  /**
+   * Releases a held claim after a failed send so it can be retried.
+   */
+  releasePayout: async (id, toStatus = CLAIM_STATUS.FAILED) => {
+    const released = await prisma.prClaim.updateMany({
+      where: { id, status: CLAIM_STATUS.PROCESSING },
+      data: { status: toStatus }
+    });
+    if (released.count !== 1) {
+      logger.warn('Payout claim release missed its lease', { claimId: id });
+    }
+    return released.count === 1;
   },
 
   /**

@@ -22,7 +22,7 @@ erDiagram
     string token             "ERC-20 address"
     string amount            "raw units (string)"
     int    deadline          "unix seconds"
-    string status            "open|resolved|refunded"
+    string status            "open|resolving|resolved|refunded"
     string txHash?           "optional"
     string network           "alias"
     int    chainId
@@ -47,7 +47,7 @@ erDiagram
     int    prNumber
     string prAuthorGithubId
     string repoFullName
-    string status          "pending|paid|failed"
+    string status          "pending|processing|paid|failed|pending_wallet"
     string txHash?         "optional"
     DateTime createdAt
     DateTime resolvedAt?   "optional"
@@ -130,6 +130,7 @@ erDiagram
 | Status | Contract Enum | Description |
 |--------|---------------|-------------|
 | `open` | 1 | Bounty is active, awaiting PR merge or expiry |
+| `resolving` | — | Transient payout lease held by a worker (in-flight transaction, never terminal) |
 | `resolved` | 2 | Bounty paid to contributor |
 | `refunded` | 3 | Bounty refunded to sponsor after deadline passed |
 
@@ -145,6 +146,7 @@ The `lifecycle.state` field adds one additional state for open bounties:
 | Status | Description |
 |--------|-------------|
 | `pending` | PR opened, awaiting merge |
+| `processing` | Payout transaction in flight (exactly-once guard, never terminal) |
 | `paid` | PR merged, payout successful |
 | `failed` | Payout failed (retryable) |
 | `pending_wallet` | Awaiting contributor wallet link |

@@ -144,6 +144,19 @@ export async function getBountyFromContract(bountyId, alias) {
 }
 
 /**
+ * Reads a bounty's on-chain status for pre-send verification.
+ * @param {string} bountyId
+ * @param {string} alias
+ * @returns {Promise<string|null>} 'open'|'resolved'|'refunded', or null when
+ *   the bounty does not exist on-chain. Throws on RPC/config errors — the
+ *   payout guard treats a throw as "unknown" and fails open toward liveness.
+ */
+export async function readBountyOnchainStatus(bountyId, alias) {
+  const info = await getBountyFromContract(bountyId, alias);
+  return info.statusString || null;
+}
+
+/**
  * Resolve a bounty (legacy - uses default testnet).
  * @param {string} bountyId
  * @param {string} recipientAddress

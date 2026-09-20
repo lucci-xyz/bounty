@@ -3,26 +3,9 @@ import { logger } from '@/lib/logger';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { dummyBounties } from '@/api/data/bounties';
-import { TERMINAL_STATUSES } from '@/lib/status';
+import { filterActiveBounties } from '@/lib/bountyFilter';
 
 const FETCH_DELAY_MS = 500;
-
-function filterActiveBounties(list) {
-  if (!Array.isArray(list)) return [];
-  const now = Math.floor(Date.now() / 1000);
-  return list.filter((bounty) => {
-    if (!bounty) return false;
-    const status = typeof bounty.status === 'string' ? bounty.status.toLowerCase() : '';
-    if (TERMINAL_STATUSES.has(status)) {
-      return false;
-    }
-    const deadline = Number(bounty.deadline);
-    if (Number.isFinite(deadline)) {
-      return deadline > now;
-    }
-    return true;
-  });
-}
 
 /**
  * Fetches open bounties from the API.
@@ -44,6 +27,9 @@ async function fetchOpenBounties() {
  *
  * Handles data fetching, search filtering, loading and error states.
  *
+ * @param {object} [options]
+ * @param {Array} [options.initialBounties] - Server-rendered seed. Paints
+ *   instantly when provided; a background refresh still runs on mount.
  * @returns {Object} Bounty feed state and helpers:
  *   - bounties: All loaded bounties.
  *   - filteredBounties: Bounties filtered by current search query.
@@ -54,10 +40,13 @@ async function fetchOpenBounties() {
  *   - loading: Loading state.
  *   - error: Error message, if any.
  */
-export function useBountyFeed() {
-  const [bounties, setBounties] = useState([]);
+export function useBountyFeed({ initialBounties } = {}) {
+  // Server-rendered seed: paint instantly when the page already resolved the
+  // list. A background refresh still runs on mount to catch drift.
+  const seeded = Array.isArray(initialBounties) ? initialBounties : null;
+  const [bounties, setBounties] = useState(seeded || []);
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(seeded === null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -67,7 +56,9 @@ export function useBountyFeed() {
      * Loads bounties from either dummy data or the API.
      */
     async function loadBounties() {
-      setLoading(true);
+      if (seeded === null) {
+        setLoading(true);
+      }
       setError(null);
 
       try {
@@ -87,12 +78,14 @@ export function useBountyFeed() {
         }
       } catch (err) {
         logger.error('Error fetching bounties:', err);
-        if (isMounted) {
+        if (isMounted && seeded === null) {
           setBounties([]);
           setError(err.message || 'Unable to load bounties');
         }
+        // Seeded refresh failures keep the server content on screen; the
+        // error is logged, not shown, since the page already has data.
       } finally {
-        if (isMounted) {
+        if (isMounted && seeded === null) {
           setLoading(false);
         }
       }
@@ -103,7 +96,7 @@ export function useBountyFeed() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [seeded]);
 
   /**
    * Returns bounties filtered by search query.
