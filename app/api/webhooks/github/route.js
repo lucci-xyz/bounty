@@ -6,6 +6,11 @@ import { verifyWebhookSignature } from '@/integrations/github/webhookAuth';
 // Disable Next.js body parsing so we can access the raw body
 export const runtime = 'nodejs';
 
+// Merge payouts wait up to PAYOUT_CONFIRMATION_TIMEOUT_MS for a receipt; give
+// the handler room to return an unconfirmed broadcast to the guard instead of
+// being killed mid-wait with the lease still held.
+export const maxDuration = 60;
+
 export async function POST(request) {
   let githubApp;
   try {

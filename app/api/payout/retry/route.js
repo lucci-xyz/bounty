@@ -1,13 +1,23 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 import { bountyQueries, prClaimQueries, walletQueries, allowlistQueries } from '@/server/db/prisma';
-import { resolveBountyOnNetwork, readBountyOnchainStatus } from '@/server/blockchain/contract';
+import { resolveBountyOnNetwork, readBountyOnchainResolution } from '@/server/blockchain/contract';
 import { settleClaim } from '@/server/payouts/settleClaim';
-import { CLAIM_STATUS } from '@/lib/status';
+import {
+  BOUNTY_STATUS,
+  isPayoutCandidateBountyStatus,
+  isRetryableClaimStatus,
+  isResolvingLeaseStale
+} from '@/lib/status';
+
+// The payout waits up to PAYOUT_CONFIRMATION_TIMEOUT_MS for a receipt; give
+// the function room to hand an unconfirmed broadcast back to the guard
+// instead of being killed mid-wait with the lease still held.
+export const maxDuration = 60;
 
 /**
- * Manually retry a failed or pending-wallet bounty payout for the
- * authenticated contributor.
+ * Manually retry a failed, pending-wallet, or stuck-processing bounty payout
+ * for the authenticated contributor.
  * Expects: { claimId: number }
  */
 export async function POST(request) {
@@ -32,8 +42,11 @@ export async function POST(request) {
       return Response.json({ error: 'Not authorized to retry this payout' }, { status: 403 });
     }
 
-    if (claim.status !== CLAIM_STATUS.FAILED && claim.status !== CLAIM_STATUS.PENDING_WALLET) {
-      return Response.json({ error: 'Payout can only be retried for failed or pending-wallet claims' }, { status: 400 });
+    // `processing` is accepted so a payout whose worker died mid-flight can be
+    // recovered from the dashboard: the guard skips it (409) while the lease
+    // is fresh and steals it once stale.
+    if (!isRetryableClaimStatus(claim.status)) {
+      return Response.json({ error: 'Payout can only be retried for failed, pending-wallet, or stuck claims' }, { status: 400 });
     }
 
     const bounty = await bountyQueries.findById(claim.bountyId);
@@ -46,8 +59,12 @@ export async function POST(request) {
       return Response.json({ error: 'Bounty environment mismatch' }, { status: 400 });
     }
 
-    if (bounty.status !== 'open') {
+    if (!isPayoutCandidateBountyStatus(bounty.status)) {
       return Response.json({ error: 'Bounty is not open for payout' }, { status: 400 });
+    }
+
+    if (bounty.status === BOUNTY_STATUS.RESOLVING && !isResolvingLeaseStale(bounty.updatedAt)) {
+      return Response.json({ error: 'Payout is already in progress' }, { status: 409 });
     }
 
     if (!bounty.network) {
@@ -86,13 +103,25 @@ export async function POST(request) {
         bountyQueries,
         prClaimQueries,
         resolveBounty: (id, recipient) => resolveBountyOnNetwork(id, recipient, bounty.network),
-        readOnchainStatus: (id) => readBountyOnchainStatus(id, bounty.network),
+        readOnchainStatus: (id) => readBountyOnchainResolution(id, bounty.network),
         logger
       }
     );
 
     if (settlement.outcome === 'skipped') {
       return Response.json({ error: 'Payout is already in progress or completed' }, { status: 409 });
+    }
+
+    if (settlement.outcome === 'pending') {
+      return Response.json(
+        {
+          success: false,
+          pending: true,
+          txHash: settlement.txHash,
+          error: 'Payout transaction was sent but is not yet confirmed. Check back shortly.'
+        },
+        { status: 202 }
+      );
     }
 
     if (settlement.outcome === 'failed') {

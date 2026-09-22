@@ -14,9 +14,14 @@ import {
   userQueries,
   allowlistQueries
 } from '@/server/db/prisma.js';
-import { resolveBountyOnNetwork, readBountyOnchainStatus } from '@/server/blockchain/contract.js';
+import { resolveBountyOnNetwork, readBountyOnchainResolution } from '@/server/blockchain/contract.js';
 import { settleClaim } from '@/server/payouts/settleClaim.js';
-import { CLAIM_STATUS } from '@/lib/status';
+import {
+  CLAIM_STATUS,
+  BOUNTY_STATUS,
+  isPayoutCandidateBountyStatus,
+  isResolvingLeaseStale
+} from '@/lib/status';
 import { ethers } from 'ethers';
 import { notifyMaintainers } from '../../services/maintainerAlerts.js';
 import { formatAmountByToken, networkMeta } from '../../services/bountyFormatting.js';
@@ -149,7 +154,25 @@ export async function handlePullRequestMerged(payload) {
 
       const bounty = await bountyQueries.findById(claim.bountyId);
 
-      if (!bounty || bounty.status !== 'open') {
+      // `open` and `resolving` both go to the guard. `resolving` is how a
+      // worker that died mid-payout left the row; only the guard can steal
+      // that lease once it is stale, so gating on `open` alone would strand
+      // the payout forever.
+      if (!bounty || !isPayoutCandidateBountyStatus(bounty.status)) {
+        continue;
+      }
+
+      // A live lease belongs to another worker. Skip before the wallet and
+      // allowlist steps below, which write claim status unconditionally and
+      // would clobber that worker's `processing` row.
+      if (
+        bounty.status === BOUNTY_STATUS.RESOLVING &&
+        !isResolvingLeaseStale(bounty.updatedAt)
+      ) {
+        logger.info('Skipping payout: another worker holds a fresh lease', {
+          bountyId: bounty.bountyId,
+          claimId: claim.id
+        });
         continue;
       }
 
@@ -268,7 +291,7 @@ export async function handlePullRequestMerged(payload) {
           bountyQueries,
           prClaimQueries,
           resolveBounty: (id, recipient) => resolveBountyOnNetwork(id, recipient, bounty.network),
-          readOnchainStatus: (id) => readBountyOnchainStatus(id, bounty.network),
+          readOnchainStatus: (id) => readBountyOnchainResolution(id, bounty.network),
           logger
         }
       );
@@ -278,6 +301,19 @@ export async function handlePullRequestMerged(payload) {
           bountyId: bounty.bountyId,
           claimId: claim.id,
           reason: settlement.reason
+        });
+        continue;
+      }
+
+      if (settlement.outcome === 'pending') {
+        // Broadcast without a receipt. Not a failure (no error comment, no
+        // alert) and not a success (no payment comment yet). The leases are
+        // held; the next merged redelivery or manual retry reconciles from
+        // chain and posts the outcome then.
+        logger.warn('Payout broadcast but unconfirmed; awaiting reconciliation', {
+          bountyId: bounty.bountyId,
+          claimId: claim.id,
+          txHash: settlement.txHash
         });
         continue;
       }

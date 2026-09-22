@@ -41,7 +41,7 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 ## Payouts
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
-| POST | `/api/payout/retry` | GitHub session | **Moves funds.** Body `{ claimId }`. Retries a `failed` or `pending_wallet` claim for the authenticated contributor. Requires the claim's `prAuthorGithubId` to equal the session GitHub ID, the claim to be `failed` or `pending_wallet`, and the bounty to be `open` and in the current `ENV_TARGET`. Pays the wallet mapped to the session identity — never an address from the request. Returns 409 when the payout is already in progress or completed. |
+| POST | `/api/payout/retry` | GitHub session | **Moves funds.** Body `{ claimId }`. Retries a `failed`, `pending_wallet`, or stuck `processing` claim for the authenticated contributor. Requires the claim's `prAuthorGithubId` to equal the session GitHub ID, the claim to be in one of those states, and the bounty to be `open` or `resolving` and in the current `ENV_TARGET`. Pays the wallet mapped to the session identity — never an address from the request. Returns 409 while another payout holds a fresh lease (under ten minutes); a stale lease is recovered. Returns 202 with `{ pending: true, txHash }` when the transaction was broadcast but not confirmed within the wait window. |
 
 ## User dashboards
 | Method | Path | Auth | Notes |

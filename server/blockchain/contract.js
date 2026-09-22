@@ -157,6 +157,47 @@ export async function readBountyOnchainStatus(bountyId, alias) {
 }
 
 /**
+ * Reads a bounty's on-chain status and, when resolved, who it was paid to.
+ *
+ * "Resolved on-chain" is not "resolved to this claimant": two PRs can claim
+ * one bounty, and the escrow struct does not keep the recipient. The
+ * `Resolved` event does, so the guard compares it before marking a claim
+ * paid. The event lookup is best-effort: a failed log query yields a null
+ * recipient, which the guard treats as unverified (never as a match).
+ *
+ * @param {string} bountyId
+ * @param {string} alias
+ * @returns {Promise<{status: string|null, recipient: string|null, txHash: string|null}>}
+ *   Throws only when the status read itself fails.
+ */
+export async function readBountyOnchainResolution(bountyId, alias) {
+  const status = await readBountyOnchainStatus(bountyId, alias);
+  if (status !== 'resolved') {
+    return { status, recipient: null, txHash: null };
+  }
+  try {
+    const { escrowContract } = getNetworkClients(alias);
+    const logs = await escrowContract.queryFilter(escrowContract.filters.Resolved(bountyId));
+    const last = logs[logs.length - 1];
+    if (!last) return { status, recipient: null, txHash: null };
+    return {
+      status,
+      recipient: last.args?.recipient ?? null,
+      txHash: last.transactionHash ?? null
+    };
+  } catch (error) {
+    logger.warn(`Resolved event lookup failed on ${alias}:`, error.message);
+    return { status, recipient: null, txHash: null };
+  }
+}
+
+// How long a payout waits for its receipt before handing the (already
+// broadcast) transaction back as unconfirmed. Kept under the route's
+// `maxDuration` so the guard, not the platform, decides what happens to the
+// lease when the chain is slow.
+export const PAYOUT_CONFIRMATION_TIMEOUT_MS = 45 * 1000;
+
+/**
  * Resolve a bounty (legacy - uses default testnet).
  * @param {string} bountyId
  * @param {string} recipientAddress
@@ -208,7 +249,25 @@ export async function resolveBountyOnNetwork(bountyId, recipientAddress, alias) 
     }
 
     const tx = await escrowContract.resolve(bountyId, recipientAddress, txOverrides);
-    const receipt = await tx.wait();
+
+    // The transaction is on the network from here. A receipt that does not
+    // arrive in time is not a failure to retry (that would double-send); it
+    // is a broadcast whose outcome the chain will settle. Report it as such.
+    let receipt;
+    try {
+      receipt = await tx.wait(1, PAYOUT_CONFIRMATION_TIMEOUT_MS);
+    } catch (error) {
+      if (error?.code === 'TIMEOUT') {
+        logger.warn(`Bounty resolve unconfirmed on ${alias}: ${bountyId.slice(0, 10)}... -> ${tx.hash}`);
+        return {
+          success: false,
+          unconfirmed: true,
+          txHash: tx.hash,
+          error: `Transaction ${tx.hash} broadcast but not confirmed within ${PAYOUT_CONFIRMATION_TIMEOUT_MS / 1000}s`
+        };
+      }
+      throw error;
+    }
     logger.info(`Bounty resolved on ${alias}: ${bountyId.slice(0, 10)}... -> ${receipt.hash}`);
     return {
       success: true,

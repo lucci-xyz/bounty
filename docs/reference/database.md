@@ -146,7 +146,7 @@ The `lifecycle.state` field adds one additional state for open bounties:
 | Status | Description |
 |--------|-------------|
 | `pending` | PR opened, awaiting merge |
-| `processing` | Payout transaction in flight (exactly-once guard, never terminal) |
+| `processing` | Payout transaction in flight (exactly-once guard, never terminal). `txHash` is set once broadcast; a stale lease is recovered by the next merge redelivery or manual retry, which reconciles from chain |
 | `paid` | PR merged, payout successful |
 | `failed` | Payout failed (retryable) |
 | `pending_wallet` | Awaiting contributor wallet link |

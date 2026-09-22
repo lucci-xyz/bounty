@@ -10,7 +10,9 @@ import {
   TERMINAL_STATUSES,
   isValidStatus,
   isAcquirableClaimStatus,
-  isResolvingLeaseStale
+  isResolvingLeaseStale,
+  isPayoutCandidateBountyStatus,
+  isRetryableClaimStatus
 } from '../lib/status/index.js';
 
 /**
@@ -28,6 +30,19 @@ import {
  *    `pending_wallet`, which the retry API rejected and the dashboard never
  *    listed — a dead end that needed a maintainer. `pending_wallet` is now an
  *    acquirable state.
+ *
+ * 3. The entry points gated on `bounty.status === 'open'`, so a worker that
+ *    died mid-payout left `resolving`/`processing` rows that nothing could
+ *    ever hand back to the guard: the stale-lease steal was unreachable in
+ *    production. The gate vocabulary now includes `resolving`/`processing`.
+ *
+ * 4. "Resolved on-chain" was treated as "resolved to this claimant". Two PRs
+ *    can claim one bounty; the guard now compares the on-chain recipient
+ *    before marking a claim paid.
+ *
+ * 5. A receipt that never arrived was reported as a failure and released the
+ *    rows, inviting a second send while the first could still mine. It is
+ *    now `pending`: hash pinned to the claim, leases held, reconciled later.
  *
  * Fidelity note: the fake store below reproduces the real helpers'
  * conditional-update contract (match-then-flip, report whether exactly one
@@ -78,6 +93,12 @@ function createPayoutStore({ claims = [], bounties = [] } = {}) {
       const row = claimRows.get(id);
       if (!row || row.status !== CLAIM_STATUS.PROCESSING) return false;
       row.status = toStatus;
+      return true;
+    },
+    recordPayoutTx: (id, txHash) => {
+      const row = claimRows.get(id);
+      if (!row || row.status !== CLAIM_STATUS.PROCESSING) return false;
+      row.txHash = txHash;
       return true;
     }
   };
@@ -391,11 +412,72 @@ test('resolving is valid but never terminal', () => {
   assert.equal(TERMINAL_STATUSES.has(BOUNTY_STATUS.RESOLVING), false);
 });
 
-test('an on-chain resolved bounty reconciles instead of re-sending', async () => {
+test('an on-chain resolved bounty paid to this claimant reconciles instead of re-sending', async () => {
   // A prior send confirmed without being recorded (crash or receipt failure
   // between broadcast and settle). The chain is the authority on whether
-  // funds moved: reconcile the rows, never re-send. The transaction hash is
-  // genuinely unknown here, so it stays null rather than invented.
+  // funds moved: reconcile the rows with the real hash, never re-send.
+  const store = createPayoutStore({
+    claims: [{ id: 1, status: CLAIM_STATUS.FAILED }],
+    bounties: [{ bountyId: '0xb1', status: BOUNTY_STATUS.OPEN, updatedAt: NOW }]
+  });
+  let sends = 0;
+  const deps = depsFor(
+    store,
+    () => {
+      sends += 1;
+      return { success: true, txHash: '0xother' };
+    },
+    () => ({ status: BOUNTY_STATUS.RESOLVED, recipient: ADDR.toUpperCase(), txHash: TX })
+  );
+
+  const result = await settleClaim(
+    { claimId: 1, bountyId: '0xb1', recipientAddress: ADDR, nowMs: NOW },
+    deps
+  );
+
+  assert.deepEqual(result, { outcome: 'skipped', reason: 'already-paid' });
+  assert.equal(sends, 0);
+  assert.equal(store.claimRows.get(1).status, CLAIM_STATUS.PAID);
+  assert.equal(store.claimRows.get(1).txHash, TX);
+  assert.equal(store.bountyRows.get('0xb1').status, BOUNTY_STATUS.RESOLVED);
+  assert.equal(store.bountyRows.get('0xb1').txHash, TX);
+});
+
+test('an on-chain resolved bounty paid to someone else fails this claim, never marks it paid', async () => {
+  // Two PRs claimed one bounty. The chain paid the other author. This claim
+  // must not show a green badge for money it did not receive.
+  const OTHER = '0x2222222222222222222222222222222222222222';
+  const store = createPayoutStore({
+    claims: [{ id: 1, status: CLAIM_STATUS.PENDING }],
+    bounties: [{ bountyId: '0xb1', status: BOUNTY_STATUS.OPEN, updatedAt: NOW }]
+  });
+  let sends = 0;
+  const deps = depsFor(
+    store,
+    () => {
+      sends += 1;
+      return { success: true, txHash: '0xother' };
+    },
+    () => ({ status: BOUNTY_STATUS.RESOLVED, recipient: OTHER, txHash: TX })
+  );
+
+  const result = await settleClaim(
+    { claimId: 1, bountyId: '0xb1', recipientAddress: ADDR, nowMs: NOW },
+    deps
+  );
+
+  assert.equal(result.outcome, 'failed');
+  assert.match(result.error, new RegExp(OTHER));
+  assert.equal(sends, 0);
+  assert.equal(store.claimRows.get(1).status, CLAIM_STATUS.FAILED);
+  assert.equal(store.bountyRows.get('0xb1').status, BOUNTY_STATUS.RESOLVED);
+  assert.equal(store.bountyRows.get('0xb1').txHash, TX);
+});
+
+test('an on-chain resolved bounty with an unverifiable recipient is never attributed to this claim', async () => {
+  // Bare-string readers (and a failed event lookup) carry no recipient.
+  // Unknown is not a match: the bounty closes, the claim fails with a
+  // message a human can act on.
   const store = createPayoutStore({
     claims: [{ id: 1, status: CLAIM_STATUS.FAILED }],
     bounties: [{ bountyId: '0xb1', status: BOUNTY_STATUS.OPEN, updatedAt: NOW }]
@@ -415,12 +497,93 @@ test('an on-chain resolved bounty reconciles instead of re-sending', async () =>
     deps
   );
 
-  assert.deepEqual(result, { outcome: 'skipped', reason: 'already-paid' });
+  assert.equal(result.outcome, 'failed');
+  assert.match(result.error, /recipient could not be verified/);
   assert.equal(sends, 0);
-  assert.equal(store.claimRows.get(1).status, CLAIM_STATUS.PAID);
+  assert.equal(store.claimRows.get(1).status, CLAIM_STATUS.FAILED);
   assert.equal(store.claimRows.get(1).txHash, null);
   assert.equal(store.bountyRows.get('0xb1').status, BOUNTY_STATUS.RESOLVED);
-  assert.equal(store.bountyRows.get('0xb1').txHash, null);
+});
+
+test('entry-point gates admit the states the guard must be able to recover', () => {
+  // Both production entry points hand rows to the guard only when these
+  // say so. If `resolving`/`processing` ever drop out, the stale-lease
+  // steal becomes unreachable again and crashed payouts strand.
+  assert.equal(isPayoutCandidateBountyStatus(BOUNTY_STATUS.OPEN), true);
+  assert.equal(isPayoutCandidateBountyStatus(BOUNTY_STATUS.RESOLVING), true);
+  assert.equal(isPayoutCandidateBountyStatus(BOUNTY_STATUS.RESOLVED), false);
+  assert.equal(isPayoutCandidateBountyStatus(BOUNTY_STATUS.REFUNDED), false);
+
+  assert.equal(isRetryableClaimStatus(CLAIM_STATUS.FAILED), true);
+  assert.equal(isRetryableClaimStatus(CLAIM_STATUS.PENDING_WALLET), true);
+  assert.equal(isRetryableClaimStatus(CLAIM_STATUS.PROCESSING), true);
+  assert.equal(isRetryableClaimStatus(CLAIM_STATUS.PENDING), false);
+  assert.equal(isRetryableClaimStatus(CLAIM_STATUS.PAID), false);
+});
+
+test('an unconfirmed broadcast holds both leases and pins the hash to the claim', async () => {
+  // The receipt did not arrive in time. Releasing would invite a second
+  // send while the first may still mine. Hold, record, report pending.
+  const store = createPayoutStore({
+    claims: [{ id: 1, status: CLAIM_STATUS.PENDING }],
+    bounties: [{ bountyId: '0xb1', status: BOUNTY_STATUS.OPEN, updatedAt: NOW }]
+  });
+  const result = await settleClaim(
+    { claimId: 1, bountyId: '0xb1', recipientAddress: ADDR, nowMs: NOW },
+    depsFor(store, () => ({ success: false, unconfirmed: true, txHash: TX, error: 'timeout' }))
+  );
+
+  assert.deepEqual(result, { outcome: 'pending', txHash: TX });
+  assert.equal(store.claimRows.get(1).status, CLAIM_STATUS.PROCESSING);
+  assert.equal(store.claimRows.get(1).txHash, TX);
+  assert.equal(store.bountyRows.get('0xb1').status, BOUNTY_STATUS.RESOLVING);
+  assert.equal(store.bountyRows.get('0xb1').updatedAt, NOW);
+});
+
+test('a crashed payout recovers end to end: pending, fresh lease skipped, stale lease reconciled from chain', async () => {
+  // Attempt 1 broadcasts and times out. Attempt 2 arrives inside the lease
+  // and must not send. Attempt 3 arrives after the lease expires, finds the
+  // chain resolved to this claimant, and finishes the bookkeeping with the
+  // real hash. Exactly one send across all three.
+  const store = createPayoutStore({
+    claims: [{ id: 1, status: CLAIM_STATUS.PENDING }],
+    bounties: [{ bountyId: '0xb1', status: BOUNTY_STATUS.OPEN, updatedAt: NOW }]
+  });
+  let sends = 0;
+  let chainResolved = false;
+  const sender = () => {
+    sends += 1;
+    chainResolved = true;
+    return { success: false, unconfirmed: true, txHash: TX, error: 'timeout' };
+  };
+  const reader = () =>
+    chainResolved
+      ? { status: BOUNTY_STATUS.RESOLVED, recipient: ADDR, txHash: TX }
+      : { status: BOUNTY_STATUS.OPEN, recipient: null, txHash: null };
+
+  const first = await settleClaim(
+    { claimId: 1, bountyId: '0xb1', recipientAddress: ADDR, nowMs: NOW },
+    depsFor(store, sender, reader)
+  );
+  assert.equal(first.outcome, 'pending');
+
+  const second = await settleClaim(
+    { claimId: 1, bountyId: '0xb1', recipientAddress: ADDR, nowMs: NOW + 1000 },
+    depsFor(store, sender, reader)
+  );
+  assert.deepEqual(second, { outcome: 'skipped', reason: 'bounty-not-acquirable' });
+
+  const third = await settleClaim(
+    { claimId: 1, bountyId: '0xb1', recipientAddress: ADDR, nowMs: NOW + RESOLVING_LEASE_MS + 1 },
+    depsFor(store, sender, reader)
+  );
+  assert.deepEqual(third, { outcome: 'skipped', reason: 'already-paid' });
+
+  assert.equal(sends, 1);
+  assert.equal(store.claimRows.get(1).status, CLAIM_STATUS.PAID);
+  assert.equal(store.claimRows.get(1).txHash, TX);
+  assert.equal(store.bountyRows.get('0xb1').status, BOUNTY_STATUS.RESOLVED);
+  assert.equal(store.bountyRows.get('0xb1').txHash, TX);
 });
 
 test('a stolen lease re-checks the chain before re-sending', async () => {
@@ -440,7 +603,7 @@ test('a stolen lease re-checks the chain before re-sending', async () => {
       sends += 1;
       return { success: true, txHash: '0xother' };
     },
-    () => BOUNTY_STATUS.RESOLVED
+    () => ({ status: BOUNTY_STATUS.RESOLVED, recipient: ADDR, txHash: TX })
   );
 
   const result = await settleClaim(
@@ -451,6 +614,7 @@ test('a stolen lease re-checks the chain before re-sending', async () => {
   assert.deepEqual(result, { outcome: 'skipped', reason: 'already-paid' });
   assert.equal(sends, 0);
   assert.equal(store.claimRows.get(1).status, CLAIM_STATUS.PAID);
+  assert.equal(store.claimRows.get(1).txHash, TX);
   assert.equal(store.bountyRows.get('0xb1').status, BOUNTY_STATUS.RESOLVED);
 });
 

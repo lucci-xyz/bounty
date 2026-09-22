@@ -49,8 +49,14 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
   const [lastVerifiedWallet, setLastVerifiedWallet] = useState(null);
 
   const attentionPayouts = useMemo(() => {
+    // `processing` is listed so a payout whose worker died mid-flight has a
+    // recovery button. The API answers 409 while the lease is fresh (under
+    // ten minutes) and recovers it once stale.
     return claimedBounties.filter(
-      (bounty) => bounty?.claimStatus === 'failed' || bounty?.claimStatus === 'pending_wallet'
+      (bounty) =>
+        bounty?.claimStatus === 'failed' ||
+        bounty?.claimStatus === 'pending_wallet' ||
+        bounty?.claimStatus === 'processing'
     );
   }, [claimedBounties]);
 
@@ -113,7 +119,7 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
         [payout.claimId]: {
           loading: false,
           message: data?.txHash
-            ? `Payout sent. TX: ${data.txHash.slice(0, 10)}...${data.txHash.slice(-6)}`
+            ? `${data?.pending ? 'Payout sent, awaiting confirmation' : 'Payout sent'}. TX: ${data.txHash.slice(0, 10)}...${data.txHash.slice(-6)}`
             : 'Payout sent.',
           type: 'success'
         }
@@ -230,9 +236,13 @@ function AttentionPayoutList({ payouts = [], onRetryPayout, payoutStatuses = {},
             </div>
 
             <div className={`text-right text-xs font-medium uppercase tracking-[0.35em] ${
-              payout.claimStatus === 'pending_wallet' ? 'text-amber-600' : 'text-destructive'
+              payout.claimStatus === 'failed' ? 'text-destructive' : 'text-amber-600'
             }`}>
-              {payout.claimStatus === 'pending_wallet' ? 'Wallet needed' : 'Failed'}
+              {payout.claimStatus === 'pending_wallet'
+                ? 'Wallet needed'
+                : payout.claimStatus === 'processing'
+                  ? 'In progress'
+                  : 'Failed'}
             </div>
           </div>
           <div className="mt-3 grid gap-2 text-muted-foreground text-xs md:grid-cols-2">
@@ -257,7 +267,9 @@ function AttentionPayoutList({ payouts = [], onRetryPayout, payoutStatuses = {},
                 ? (hasLinkedWallet
                   ? 'Your wallet is linked. Retry below to receive this payout.'
                   : 'Link a payout wallet to receive this bounty.')
-                : 'Payout failed when the PR was merged. Retry below once your wallet is linked.'}
+                : payout.claimStatus === 'processing'
+                  ? 'Payout is in progress. If it has been stuck for more than ten minutes, retry below to recover it.'
+                  : 'Payout failed when the PR was merged. Retry below once your wallet is linked.'}
             </p>
             <div className="flex items-center gap-2">
               {payout.claimStatus === 'pending_wallet' && !hasLinkedWallet ? (

@@ -562,6 +562,21 @@ export const prClaimQueries = {
   },
 
   /**
+   * Records the hash of a broadcast-but-unconfirmed payout on a held claim.
+   * The lease stays `processing`; a later attempt reconciles from chain.
+   */
+  recordPayoutTx: async (id, txHash) => {
+    const recorded = await prisma.prClaim.updateMany({
+      where: { id, status: CLAIM_STATUS.PROCESSING },
+      data: { txHash }
+    });
+    if (recorded.count !== 1) {
+      logger.warn('Payout claim tx record missed its lease', { claimId: id });
+    }
+    return recorded.count === 1;
+  },
+
+  /**
    * Settles a held claim to `paid` after the transaction confirms.
    */
   settlePayout: async (id, txHash, resolvedAt) => {
