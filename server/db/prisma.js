@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { CONFIG } from '../config.js';
 import { isValidStatus, BOUNTY_STATUS } from '@/lib/status';
 import { decideAllowlist } from '@/lib/allowlistDecision';
+import { CLAIM_STATUS } from '@/lib/claimStatus';
 
 // Prisma client instance
 const prisma = new PrismaClient();
@@ -488,15 +489,22 @@ export const prClaimQueries = {
    * Updates the status and optionally txHash/resolvedAt of a PR claim.
    */
   updateStatus: async (id, status, txHash = null, resolvedAt = null) => {
-    const claim = await prisma.prClaim.update({
-      where: { id },
+    // A paid claim is terminal. Two settlements racing for one claim (a
+    // double-clicked retry, a wallet link during a redelivered webhook) end
+    // with one transfer and one revert, and the loser must not overwrite
+    // `paid` with `failed`. The condition makes that a no-op in the database.
+    await prisma.prClaim.updateMany({
+      where: { id, status: { notIn: [CLAIM_STATUS.PAID, 'resolved'] } },
       data: {
         status,
         txHash: txHash || undefined,
         resolvedAt: resolvedAt ? BigInt(resolvedAt) : undefined
       }
     });
-    
+
+    const claim = await prisma.prClaim.findUnique({ where: { id } });
+    if (!claim) return null;
+
     return {
       ...claim,
       prAuthorGithubId: Number(claim.prAuthorGithubId),

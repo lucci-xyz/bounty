@@ -17,6 +17,7 @@ import { useNetwork } from '@/ui/providers/NetworkProvider';
 import { formatAmount } from '@/lib';
 import { LinkFromCatalog } from '@/ui/components/LinkFromCatalog';
 import { useAccount } from 'wagmi';
+import { CLAIM_STATUS, describeClaimStatus, isSettleableClaim } from '@/lib/claimStatus';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 /**
@@ -47,8 +48,10 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
   const [payoutStatuses, setPayoutStatuses] = useState({});
   const [lastVerifiedWallet, setLastVerifiedWallet] = useState(null);
 
+  // Merged work that has not been paid: failed transfers, and payouts parked
+  // because no wallet was linked at merge time.
   const failedPayouts = useMemo(() => {
-    return claimedBounties.filter((bounty) => bounty?.claimStatus === 'failed');
+    return claimedBounties.filter((bounty) => isSettleableClaim(bounty?.claimStatus));
   }, [claimedBounties]);
 
   const { requestRefund } = useRefundTransaction({
@@ -159,8 +162,8 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
 
         <section className="rounded-2xl border border-border bg-card overflow-hidden">
           <header className="px-6 py-4 border-b border-border">
-            <h3 className="text-base font-medium text-foreground">Failed Payouts</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Payouts that need attention</p>
+            <h3 className="text-base font-medium text-foreground">Unpaid Payouts</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Merged work that has not been paid yet</p>
           </header>
           <div className="p-6">
             <FailedPayoutList
@@ -195,84 +198,90 @@ function FailedPayoutList({ payouts = [], onRetryPayout, payoutStatuses = {} }) 
   if (payouts.length === 0) {
     return (
       <div className="text-center text-sm font-light text-muted-foreground">
-        No failed payouts detected. Every claim is either pending or resolved.
+        Nothing to collect. Every merged claim has been paid.
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {payouts.map((payout) => (
-        <div
-          key={`${payout.bountyId}-${payout.prNumber || 'claim'}`}
-          className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm"
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <LinkFromCatalog
-                section="github"
-                link="issue"
-                params={{
-                  repoFullName: payout.repoFullName,
-                  issueNumber: payout.issueNumber
-                }}
-                className="text-foreground text-sm font-medium transition-colors hover:text-primary"
-              >
-                {payout.repoFullName}#{payout.issueNumber}
-              </LinkFromCatalog>
-              <p className="text-xs text-muted-foreground">
-                PR #{payout.prNumber || '—'} attempted payout
+      {payouts.map((payout) => {
+        const claimStatus = describeClaimStatus(payout.claimStatus);
+        const awaitingWallet = payout.claimStatus === CLAIM_STATUS.PENDING_WALLET;
+        return (
+          <div
+            key={`${payout.bountyId}-${payout.prNumber || 'claim'}`}
+            className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <LinkFromCatalog
+                  section="github"
+                  link="issue"
+                  params={{
+                    repoFullName: payout.repoFullName,
+                    issueNumber: payout.issueNumber
+                  }}
+                  className="text-foreground text-sm font-medium transition-colors hover:text-primary"
+                >
+                  {payout.repoFullName}#{payout.issueNumber}
+                </LinkFromCatalog>
+                <p className="text-xs text-muted-foreground">
+                  PR #{payout.prNumber || '—'} attempted payout
+                </p>
+              </div>
+
+              <div className="text-right text-xs font-medium uppercase tracking-[0.35em] text-destructive">
+                {claimStatus.label}
+              </div>
+            </div>
+            <div className="mt-3 grid gap-2 text-muted-foreground text-xs md:grid-cols-2">
+              <div className="flex items-center justify-between gap-3 md:justify-start">
+                <span className="text-foreground">
+                  {formatAmount(payout.amount, payout.tokenSymbol)} {payout.tokenSymbol}
+                </span>
+                <span className="rounded-full bg-destructive/10 px-2 py-1 text-[10px] uppercase tracking-wide text-destructive">
+                  {payout.network || 'Unknown network'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3 md:justify-end">
+                <span className="font-mono text-[11px] text-destructive/80">
+                  {payout.txHash ? `${payout.txHash.slice(0, 10)}...` : 'No tx recorded'}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[12px] text-muted-foreground">
+                {awaitingWallet
+                  ? 'Your PR merged before a wallet was linked. Collect the payout to your linked wallet.'
+                  : 'The payout did not go through when the PR was merged. Retry once the cause is fixed.'}
               </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onRetryPayout?.(payout)}
+                  disabled={!payout.claimId || payoutStatuses[payout.claimId]?.loading}
+                  className="rounded-full border border-destructive/50 px-4 py-2 text-xs font-semibold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {payoutStatuses[payout.claimId]?.loading ? 'Sending...' : claimStatus.actionLabel}
+                </button>
+              </div>
             </div>
-
-            <div className="text-right text-xs font-medium uppercase tracking-[0.35em] text-destructive">
-              Failed
-            </div>
-          </div>
-          <div className="mt-3 grid gap-2 text-muted-foreground text-xs md:grid-cols-2">
-            <div className="flex items-center justify-between gap-3 md:justify-start">
-              <span className="text-foreground">
-                {formatAmount(payout.amount, payout.tokenSymbol)} {payout.tokenSymbol}
-              </span>
-              <span className="rounded-full bg-destructive/10 px-2 py-1 text-[10px] uppercase tracking-wide text-destructive">
-                {payout.network || 'Unknown network'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between gap-3 md:justify-end">
-              <span className="font-mono text-[11px] text-destructive/80">
-                {payout.txHash ? `${payout.txHash.slice(0, 10)}...` : 'No tx recorded'}
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[12px] text-muted-foreground">
-              Payout failed when the PR was merged. Retry below once your wallet is linked.
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => onRetryPayout?.(payout)}
-                disabled={!payout.claimId || payoutStatuses[payout.claimId]?.loading}
-                className="rounded-full border border-destructive/50 px-4 py-2 text-xs font-semibold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-60"
+            {payout.claimId && payoutStatuses[payout.claimId]?.message && (
+              <div
+                className={`mt-2 text-[12px] ${
+                  payoutStatuses[payout.claimId]?.type === 'error'
+                    ? 'text-destructive'
+                    : 'text-green-600'
+                }`}
               >
-                {payoutStatuses[payout.claimId]?.loading ? 'Retrying...' : 'Retry payout'}
-              </button>
-            </div>
+                {payoutStatuses[payout.claimId]?.message}
+              </div>
+            )}
           </div>
-          {payout.claimId && payoutStatuses[payout.claimId]?.message && (
-            <div
-              className={`mt-2 text-[12px] ${
-                payoutStatuses[payout.claimId]?.type === 'error'
-                  ? 'text-destructive'
-                  : 'text-green-600'
-              }`}
-            >
-              {payoutStatuses[payout.claimId]?.message}
-            </div>
-          )}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

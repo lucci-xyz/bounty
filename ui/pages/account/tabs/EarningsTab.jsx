@@ -4,6 +4,15 @@ import Link from 'next/link';
 import { StatBlock } from '@/ui/pages/account/StatBlock';
 import { formatAmount } from '@/lib';
 import { LinkFromCatalog } from '@/ui/components/LinkFromCatalog';
+import { CLAIM_STATUS, describeClaimStatus, isPaidClaim } from '@/lib/claimStatus';
+
+const TONE_CLASSES = {
+  success: 'bg-emerald-50 text-emerald-700',
+  pending: 'bg-amber-50 text-amber-700',
+  warning: 'bg-amber-50 text-amber-700',
+  error: 'bg-destructive/10 text-destructive',
+  muted: 'bg-muted text-muted-foreground'
+};
 
 /**
  * EarningsTab shows a summary of user's earned bounties and recent activity.
@@ -13,8 +22,10 @@ import { LinkFromCatalog } from '@/ui/components/LinkFromCatalog';
  * @param {number} props.totalEarned - Total USD earned by the user.
  */
 export function EarningsTab({ claimedBounties, totalEarned }) {
-  const paidBounties = claimedBounties.filter((b) => b.claimStatus === 'resolved' || b.claimStatus === 'paid');
-  const pendingBounties = claimedBounties.filter((b) => b.claimStatus === 'pending');
+  const paidBounties = claimedBounties.filter((b) => isPaidClaim(b.claimStatus));
+  const pendingBounties = claimedBounties.filter(
+    (b) => b.claimStatus === CLAIM_STATUS.PENDING || b.claimStatus === CLAIM_STATUS.PENDING_WALLET
+  );
 
   return (
     <>
@@ -79,10 +90,9 @@ export function EarningsTab({ claimedBounties, totalEarned }) {
                 repoFullName: repoName,
                 issueNumber: bounty.issueNumber
               };
-              const isPending = bounty.claimStatus === 'pending';
-              const isPaid = bounty.claimStatus === 'resolved' || bounty.claimStatus === 'paid';
-              const isFailed = bounty.claimStatus === 'failed';
-              
+              const claimStatus = describeClaimStatus(bounty.claimStatus);
+              const isPaid = isPaidClaim(bounty.claimStatus);
+
               return (
                 <div
                   key={bounty.bountyId}
@@ -98,13 +108,8 @@ export function EarningsTab({ claimedBounties, totalEarned }) {
                       {repoName}#{bounty.issueNumber}
                     </LinkFromCatalog>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                        isPaid ? 'bg-emerald-50 text-emerald-700' :
-                        isPending ? 'bg-amber-50 text-amber-700' :
-                        isFailed ? 'bg-destructive/10 text-destructive' :
-                        'bg-muted text-muted-foreground'
-                      }`}>
-                        {isPending ? 'Pending' : isFailed ? 'Failed' : 'Paid'}
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${TONE_CLASSES[claimStatus.tone]}`}>
+                        {claimStatus.label}
                       </span>
                       {isPaid && bounty.paidAt && (
                         <span className="text-xs text-muted-foreground">

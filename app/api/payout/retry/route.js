@@ -1,10 +1,25 @@
+import { after } from 'next/server';
 import { logger } from '@/lib/logger';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { getSession } from '@/lib/session';
-import { bountyQueries, prClaimQueries, walletQueries, allowlistQueries } from '@/server/db/prisma';
-import { resolveBountyOnNetwork } from '@/server/blockchain/contract';
+import { prClaimQueries } from '@/server/db/prisma';
+import { settleClaim, SETTLEMENT } from '@/server/payouts';
+import { announceSettledClaim } from '@/integrations/github/services/payoutAnnouncements';
+
+// A payout waits for the transaction to confirm.
+export const maxDuration = 60;
+
+const SKIP_RESPONSES = {
+  claim_not_payable: [400, 'This claim has nothing to collect: it is either unmerged or already paid.'],
+  bounty_missing: [404, 'Bounty not found'],
+  wrong_environment: [400, 'Bounty environment mismatch'],
+  bounty_not_open: [400, 'Bounty is not open for payout'],
+  no_network: [400, 'Bounty is missing network configuration']
+};
 
 /**
- * Manually retry a failed bounty payout for the authenticated contributor.
+ * Collect a merged claim's payout for the authenticated contributor: one that
+ * failed, or one parked waiting for a wallet.
  * Expects: { claimId: number }
  */
 export async function POST(request) {
@@ -29,73 +44,86 @@ export async function POST(request) {
       return Response.json({ error: 'Not authorized to retry this payout' }, { status: 403 });
     }
 
-    if (claim.status !== 'failed') {
-      return Response.json({ error: 'Payout can only be retried for failed claims' }, { status: 400 });
+    // Defaults to contributor-settleable statuses only: never `pending`, which
+    // has not been through the merge gate.
+    const settlement = await settleClaim(claim);
+
+    switch (settlement.outcome) {
+      case SETTLEMENT.PAID:
+        if (settlement.recordError) {
+          logger.error('Manual payout sent but not recorded', {
+            claimId,
+            bountyId: claim.bountyId,
+            txHash: settlement.txHash,
+            error: settlement.recordError.message
+          });
+        }
+        after(() =>
+          announceSettledClaim({
+            claim,
+            bounty: settlement.bounty,
+            txHash: settlement.txHash,
+            username: session.githubUsername
+          })
+        );
+        return Response.json({ success: true, txHash: settlement.txHash });
+
+      case SETTLEMENT.NEEDS_WALLET:
+        return Response.json({ error: 'Link a wallet before requesting payout' }, { status: 400 });
+
+      case SETTLEMENT.INVALID_WALLET:
+        return Response.json(
+          { error: 'Your linked wallet address is not valid. Link your wallet again to collect this payout.' },
+          { status: 400 }
+        );
+
+      case SETTLEMENT.NOT_ALLOWLISTED:
+        logger.warn('Manual payout blocked: recipient not on sponsor allowlist', {
+          bountyId: claim.bountyId,
+          claimId
+        });
+        return Response.json(
+          {
+            error:
+              'The sponsor restricted this bounty to specific wallet addresses, and your linked wallet is not one of them.'
+          },
+          { status: 403 }
+        );
+
+      case SETTLEMENT.WINDOW_CLOSED:
+        return Response.json(
+          {
+            error: `The payout window for this bounty closed on ${new Date(settlement.closedAt * 1000).toUTCString()}. The sponsor can now reclaim the funds.`
+          },
+          { status: 409 }
+        );
+
+      case SETTLEMENT.CHAIN_FAILED: {
+        // The raw provider error embeds the RPC URL (often with an API key).
+        // It goes to the log under a reference, never to the browser.
+        const ref = newErrorRef();
+        logger.error(`[${ref}] Manual payout failed`, {
+          claimId,
+          bountyId: claim.bountyId,
+          error: settlement.error
+        });
+        return Response.json({ error: `Payout transaction failed. ${publicErrorMessage(ref)}` }, { status: 502 });
+      }
+
+      case SETTLEMENT.SKIPPED: {
+        const [status, error] = SKIP_RESPONSES[settlement.reason] || [400, 'Payout not possible'];
+        if (settlement.reason === 'no_network') {
+          logger.error('Manual payout failed: bounty missing network', { bountyId: claim.bountyId });
+        }
+        return Response.json({ error }, { status });
+      }
+
+      default:
+        logger.error('Unhandled settlement outcome', { claimId, outcome: settlement.outcome });
+        return Response.json({ error: 'Failed to process payout retry' }, { status: 500 });
     }
-
-    const bounty = await bountyQueries.findById(claim.bountyId);
-    if (!bounty) {
-      return Response.json({ error: 'Bounty not found' }, { status: 404 });
-    }
-
-    const envTarget = process.env.ENV_TARGET || 'stage';
-    if (bounty.environment && bounty.environment !== envTarget) {
-      return Response.json({ error: 'Bounty environment mismatch' }, { status: 400 });
-    }
-
-    if (bounty.status !== 'open') {
-      return Response.json({ error: 'Bounty is not open for payout' }, { status: 400 });
-    }
-
-    if (!bounty.network) {
-      logger.error('Manual payout failed: bounty missing network', { bountyId: bounty.bountyId });
-      return Response.json({ error: 'Bounty is missing network configuration' }, { status: 400 });
-    }
-
-    const wallet = await walletQueries.findByGithubId(session.githubId);
-    if (!wallet?.walletAddress) {
-      return Response.json({ error: 'Link a wallet before requesting payout' }, { status: 400 });
-    }
-
-    // Same sponsor allowlist gate as the webhook payout path.
-    const allowlistCheck = await allowlistQueries.checkAllowed(bounty.bountyId, wallet.walletAddress);
-    if (!allowlistCheck.allowed) {
-      logger.warn('Manual payout blocked: recipient not on sponsor allowlist', {
-        bountyId: bounty.bountyId,
-        claimId
-      });
-      return Response.json(
-        {
-          error:
-            'The sponsor restricted this bounty to specific wallet addresses, and your linked wallet is not one of them.'
-        },
-        { status: 403 }
-      );
-    }
-
-    let result;
-    try {
-      result = await resolveBountyOnNetwork(bounty.bountyId, wallet.walletAddress, bounty.network);
-    } catch (error) {
-      logger.error('Manual payout threw', { error: error.message, bountyId: bounty.bountyId, claimId });
-      result = { success: false, error: error.message || 'Unknown error during payout' };
-    }
-
-    if (!result.success) {
-      await prClaimQueries.updateStatus(claim.id, 'failed');
-      return Response.json({ error: result.error || 'Payout transaction failed' }, { status: 502 });
-    }
-
-    await bountyQueries.updateStatus(bounty.bountyId, 'resolved', result.txHash);
-    await prClaimQueries.updateStatus(claim.id, 'paid', result.txHash, Date.now());
-
-    return Response.json({
-      success: true,
-      txHash: result.txHash
-    });
   } catch (error) {
     logger.error('Error processing manual payout retry:', error);
     return Response.json({ error: 'Failed to process payout retry' }, { status: 500 });
   }
 }
-

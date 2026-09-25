@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 import { prClaimQueries, bountyQueries } from '@/server/db/prisma';
+import { isPaidClaim } from '@/lib/claimStatus';
 
 // Bounties in these statuses have no funds left (sponsor refunded after deadline)
 const WITHDRAWN_STATUSES = new Set(['refunded']);
@@ -43,7 +44,7 @@ export async function GET() {
     // Calculate total earned (only resolved/paid bounties)
     const totalEarned = bountiesWithClaims
       .filter(Boolean)
-      .filter(b => b && (b.claimStatus === 'resolved' || b.claimStatus === 'paid'))
+      .filter(b => b && isPaidClaim(b.claimStatus))
       .reduce((sum, b) => {
         const decimals = b.tokenSymbol === 'MUSD' ? 18 : 6;
         const value = Number(b.amount) / Math.pow(10, decimals);

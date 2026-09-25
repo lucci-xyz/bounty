@@ -13,6 +13,7 @@ import { GitHubIcon, CheckCircleIcon, WalletIcon, MailIcon } from '@/ui/componen
 import { useGithubUser } from '@/ui/hooks/useGithubUser';
 import { getUserProfile, requestEmailVerification } from '@/api/user';
 import { getNonce, verifyWalletSignature, linkWallet, buildSiweMessage } from '@/api/wallet';
+import { describeSettledPayouts } from '@/lib/claimStatus';
 import { useErrorModal } from '@/ui/providers/ErrorModalProvider';
 import StatusNotice from '@/ui/components/StatusNotice';
 
@@ -231,17 +232,22 @@ function SignInContent() {
       await verifyWalletSignature({ message: messageText, signature });
       
       setStatus({ message: 'Setting up your account...', type: 'loading' });
-      await linkWallet({
+      // Linking also sends any payout that was waiting for this wallet.
+      const linkResult = await linkWallet({
         githubId: githubUser.githubId,
         githubUsername: githubUser.githubUsername,
         walletAddress: address
       });
+      const payoutMessage = describeSettledPayouts(linkResult?.payouts);
       
       setProfileCreated(true);
       setHasLinkedWallet(true);
       setLinkedWalletAddress(address);
       setCurrentStep(3);
-      setStatus({ message: 'Wallet linked successfully!', type: 'success' });
+      setStatus({
+        message: payoutMessage ? `Wallet linked. ${payoutMessage}` : 'Wallet linked successfully!',
+        type: 'success'
+      });
       
       // Re-fetch profile to check if user has email - if so, show welcome back
       try {
@@ -257,7 +263,10 @@ function SignInContent() {
         console.error('Error checking email after wallet link:', err);
       }
       
-      setTimeout(() => setStatus({ message: '', type: '' }), 2000);
+      // A payout result stays up: it is the answer to why they came here.
+      if (!payoutMessage) {
+        setTimeout(() => setStatus({ message: '', type: '' }), 2000);
+      }
     } catch (err) {
       if (err?.message?.includes('User rejected') || err?.code === 4001) {
         setStatus({ message: 'Signature cancelled. Please try again.', type: 'error' });

@@ -144,10 +144,12 @@ The `lifecycle.state` field adds one additional state for open bounties:
 
 | Status | Description |
 |--------|-------------|
-| `pending` | PR opened, awaiting merge |
-| `paid` | PR merged, payout successful |
-| `failed` | Payout failed (retryable) |
-| `pending_wallet` | Awaiting contributor wallet link |
+| `pending` | PR opened, awaiting merge. Only the merge webhook may settle it. |
+| `pending_wallet` | PR merged and closes the issue, but no wallet was linked. Paid automatically when the contributor links one, or from the dashboard. |
+| `failed` | PR merged and closes the issue, but the transfer did not happen. The contributor can retry; re-linking a wallet also retries. |
+| `paid` | Funds transferred. Terminal: `prClaimQueries.updateStatus` never moves a claim out of it. |
+
+Every settlement goes through `server/payouts/settleClaim.js`; `lib/claimStatus.js` holds the status sets and dashboard labels.
 
 ---
 

@@ -5,6 +5,7 @@ import { isAddress } from 'viem';
 import { logger } from '@/lib/logger';
 
 import { buildSiweMessage, getNonce, linkWallet, verifyWalletSignature } from '@/api/wallet';
+import { describeSettledPayouts } from '@/lib/claimStatus';
 
 const DELETE_CONFIRMATION_TEXT = 'i want to remove my wallet';
 const DEFAULT_STATUS = { message: '', type: '' };
@@ -268,14 +269,16 @@ export function useWalletManagement({
           });
 
           setChangeWalletStatus({ message: 'Linking wallet...', type: 'info' });
-          await linkWallet({
+          // Linking also sends any payout that was waiting for a wallet.
+          const linkResult = await linkWallet({
             githubId: githubUser.githubId,
             githubUsername: githubUser.githubUsername,
             walletAddress: nextAddress
           });
+          const payoutMessage = describeSettledPayouts(linkResult?.payouts);
 
           setChangeWalletStatus({
-            message: 'Wallet updated successfully!',
+            message: payoutMessage ? `Wallet updated. ${payoutMessage}` : 'Wallet updated successfully!',
             type: 'success'
           });
           setUpdatedWalletAddress(nextAddress);

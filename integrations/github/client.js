@@ -42,6 +42,20 @@ export async function getOctokit(installationId) {
 }
 
 /**
+ * Get an installation Octokit for a repository, for callers that are not
+ * handling a webhook and so have no installation id. Initializes the app on a
+ * cold serverless instance.
+ *
+ * @param {string} repoFullName `owner/repo`
+ */
+export async function getRepoOctokit(repoFullName) {
+  if (!githubApp) initGitHubApp();
+  const [owner, repo] = String(repoFullName).split('/');
+  const { data } = await githubApp.octokit.request('GET /repos/{owner}/{repo}/installation', { owner, repo });
+  return githubApp.getInstallationOctokit(data.id);
+}
+
+/**
  * Post a comment on an issue
  */
 export async function postIssueComment(octokit, owner, repo, issueNumber, body) {
