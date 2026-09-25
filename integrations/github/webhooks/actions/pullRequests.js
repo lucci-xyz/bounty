@@ -156,9 +156,14 @@ export async function handlePullRequestMerged(payload) {
           continue;
         }
 
-        // The merge gate above is what makes a `pending` claim payable, so this
+        // This claim has passed the merge gate. Record that before settling: the
+        // marker is what lets the contributor collect it later (by linking a
+        // wallet or retrying) if this attempt does not pay.
+        const verifiedClaim = (await prClaimQueries.markMergeVerified(claim.id)) || claim;
+
+        // The gate above is also what makes a `pending` claim payable, so this
         // is the one caller allowed to settle from it.
-        const settlement = await settleClaim(claim, { payableStatuses: UNPAID_CLAIM_STATUSES });
+        const settlement = await settleClaim(verifiedClaim, { payableStatuses: UNPAID_CLAIM_STATUSES });
 
         await reportMergeSettlement({ octokit, owner, repo, pull_request, repository, claim, settlement });
       } catch (error) {
@@ -301,9 +306,9 @@ async function reportMergeSettlement({ octokit, owner, repo, pull_request, repos
         pull_request,
         claim,
         bounty,
-        recipient: null,
-        errorRef: logPublicError(new Error(`Settlement window closed at ${settlement.closedAt}`)),
-        helpText: `The payout window for this bounty closed on ${formatPayoutDeadline(bounty)}, so the escrow no longer accepts a payout. The sponsor can reclaim the funds.`,
+        recipient: settlement.recipient,
+        errorRef: logPublicError(new Error(settlement.error || `Settlement window closed at ${settlement.closedAt}`)),
+        helpText: `The payout window for this bounty closed on ${formatUtc(settlement.closedAt)}, so the escrow no longer accepts a payout. The sponsor can reclaim the funds.`,
         severity: 'medium'
       });
       return;
@@ -330,21 +335,21 @@ async function reportMergeSettlement({ octokit, owner, repo, pull_request, repos
       return;
     }
 
-    case SETTLEMENT.SKIPPED: {
-      if (settlement.reason === 'no_network') {
-        logger.error('Bounty has no network configured:', bounty.bountyId);
-        await notifyMaintainers(octokit, owner, repo, prNumber, {
-          errorType: 'Missing Network Configuration',
-          errorMessage: 'Bounty record is missing network alias',
-          severity: 'critical',
-          bountyId: bounty.bountyId,
-          prNumber,
-          username,
-          context: 'This bounty was created without a network alias. Manual intervention required to identify the correct network and process payment.'
-        });
-        return;
-      }
+    case SETTLEMENT.NO_NETWORK: {
+      logger.error('Bounty has no network configured:', bounty.bountyId);
+      await notifyMaintainers(octokit, owner, repo, prNumber, {
+        errorType: 'Missing Network Configuration',
+        errorMessage: 'Bounty record is missing network alias',
+        severity: 'critical',
+        bountyId: bounty.bountyId,
+        prNumber,
+        username,
+        context: `This bounty was created without a network alias. Set the correct network on bounty ${bounty.bountyId}; the contributor can then collect claim ${claim.id} from their dashboard.`
+      });
+      return;
+    }
 
+    case SETTLEMENT.SKIPPED: {
       logger.info('Merge settlement skipped', { claimId: claim.id, reason: settlement.reason });
       return;
     }
@@ -433,11 +438,21 @@ function classifyPayoutError(rawError) {
   return { helpText: 'Tag a maintainer to investigate and replay the payout.', severity: 'high', notify: true };
 }
 
-/** Human-readable last moment the escrow accepts a payout for this bounty. */
+/** A unix time in seconds as `YYYY-MM-DD HH:MM UTC`. */
+function formatUtc(seconds) {
+  return `${new Date(seconds * 1000).toISOString().slice(0, 16).replace('T', ' ')} UTC`;
+}
+
+/**
+ * Last moment the escrow accepts a payout for this bounty, for telling a
+ * contributor how long they have. `null` when unknown or already past.
+ */
 function formatPayoutDeadline(bounty) {
   const deadline = Number(bounty?.deadline);
   if (!Number.isFinite(deadline) || deadline <= 0) return null;
-  return `${new Date((deadline + RESOLVE_GRACE_SECONDS) * 1000).toISOString().slice(0, 16).replace('T', ' ')} UTC`;
+  const closesAt = deadline + RESOLVE_GRACE_SECONDS;
+  if (closesAt * 1000 <= Date.now()) return null;
+  return formatUtc(closesAt);
 }
 
 async function suggestBounties(octokit, owner, repo, pull_request, bounties) {

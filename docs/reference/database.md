@@ -151,6 +151,10 @@ The `lifecycle.state` field adds one additional state for open bounties:
 
 Every settlement goes through `server/payouts/settleClaim.js`; `lib/claimStatus.js` holds the status sets and dashboard labels.
 
+`mergeVerifiedAt` is set only by the merge webhook, after it checks that the merged PR closes the bountied issue. Settlement refuses any claim without it, whatever the status: before commit `164a98f` the webhook wrote `pending_wallet` and `failed` without that check. Rows from before migration `20260925120000_pr_claims_merge_verified` stay unpayable until an operator confirms each one; the migration file has the queries.
+
+Run `npm run test:integration` against a disposable local Postgres (`TEST_DATABASE_URL`, database name containing `test`) to exercise these queries; CI runs it on every push.
+
 ---
 
 ## Usage Notes

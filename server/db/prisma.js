@@ -431,6 +431,21 @@ export const walletQueries = {
 };
 
 /**
+ * Converts PR claim fields from BigInt to Number.
+ * @param {object} claim
+ * @returns {object}
+ */
+function normalizeClaim(claim) {
+  return {
+    ...claim,
+    prAuthorGithubId: Number(claim.prAuthorGithubId),
+    createdAt: Number(claim.createdAt),
+    resolvedAt: claim.resolvedAt ? Number(claim.resolvedAt) : null,
+    mergeVerifiedAt: claim.mergeVerifiedAt ? Number(claim.mergeVerifiedAt) : null
+  };
+}
+
+/**
  * Provides methods for PR claim queries.
  */
 export const prClaimQueries = {
@@ -458,12 +473,7 @@ export const prClaimQueries = {
       }
     });
 
-    return {
-      ...claim,
-      prAuthorGithubId: Number(claim.prAuthorGithubId),
-      createdAt: Number(claim.createdAt),
-      resolvedAt: claim.resolvedAt ? Number(claim.resolvedAt) : null
-    };
+    return normalizeClaim(claim);
   },
 
   /**
@@ -477,12 +487,26 @@ export const prClaimQueries = {
       }
     });
     
-    return claims.map(c => ({
-      ...c,
-      prAuthorGithubId: Number(c.prAuthorGithubId),
-      createdAt: Number(c.createdAt),
-      resolvedAt: c.resolvedAt ? Number(c.resolvedAt) : null
-    }));
+    return claims.map(normalizeClaim);
+  },
+
+  /**
+   * Records that the merge webhook checked this claim's merged PR closes the
+   * bountied issue. Settlement refuses any claim without it, so only the
+   * webhook, after its gate, may make a claim payable. The first verification
+   * time is kept.
+   *
+   * @param {number} id
+   * @returns {Promise<object|null>} The claim, or null if it does not exist.
+   */
+  markMergeVerified: async (id) => {
+    await prisma.prClaim.updateMany({
+      where: { id, mergeVerifiedAt: null },
+      data: { mergeVerifiedAt: BigInt(Date.now()) }
+    });
+
+    const claim = await prisma.prClaim.findUnique({ where: { id } });
+    return claim ? normalizeClaim(claim) : null;
   },
 
   /**
@@ -505,12 +529,7 @@ export const prClaimQueries = {
     const claim = await prisma.prClaim.findUnique({ where: { id } });
     if (!claim) return null;
 
-    return {
-      ...claim,
-      prAuthorGithubId: Number(claim.prAuthorGithubId),
-      createdAt: Number(claim.createdAt),
-      resolvedAt: claim.resolvedAt ? Number(claim.resolvedAt) : null
-    };
+    return normalizeClaim(claim);
   },
 
   /**
@@ -526,12 +545,7 @@ export const prClaimQueries = {
       }
     });
     
-    return claims.map(c => ({
-      ...c,
-      prAuthorGithubId: Number(c.prAuthorGithubId),
-      createdAt: Number(c.createdAt),
-      resolvedAt: c.resolvedAt ? Number(c.resolvedAt) : null
-    }));
+    return claims.map(normalizeClaim);
   },
 
   /**
@@ -544,12 +558,7 @@ export const prClaimQueries = {
 
     if (!claim) return null;
 
-    return {
-      ...claim,
-      prAuthorGithubId: Number(claim.prAuthorGithubId),
-      createdAt: Number(claim.createdAt),
-      resolvedAt: claim.resolvedAt ? Number(claim.resolvedAt) : null
-    };
+    return normalizeClaim(claim);
   },
 
   /**

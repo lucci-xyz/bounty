@@ -1,5 +1,8 @@
+import { after } from 'next/server';
 import { logger } from '@/lib/logger';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { getRepoOctokit, postIssueComment, updateComment } from '../client.js';
+import { notifyMaintainers } from './maintainerAlerts.js';
 import { formatAmountByToken, networkMeta } from './bountyFormatting.js';
 import { renderPaymentSentComment, renderBountyResolvedComment } from '../templates/bounties';
 import { BRAND_SIGNATURE, FRONTEND_BASE, OG_ICON } from '../constants.js';
@@ -88,15 +91,17 @@ export async function announcePayout({ octokit, repoFullName, prNumber, username
 
 /**
  * Announce a payout settled outside a webhook (wallet link, manual retry),
- * where no installation client is at hand.
+ * where no installation client is at hand. If the transfer went through but
+ * recording it failed, alert maintainers on the PR as the webhook does.
  *
  * @param {object} params
- * @param {object} params.claim `{ repoFullName, prNumber, prAuthorGithubId }`
+ * @param {object} params.claim `{ id, repoFullName, prNumber, prAuthorGithubId }`
  * @param {object} params.bounty
  * @param {string} params.txHash
  * @param {string} params.username Contributor's GitHub login.
+ * @param {Error} [params.recordError] From a settlement whose bookkeeping failed.
  */
-export async function announceSettledClaim({ claim, bounty, txHash, username }) {
+export async function announceSettledClaim({ claim, bounty, txHash, username, recordError }) {
   let octokit = null;
   try {
     octokit = await getRepoOctokit(claim.repoFullName);
@@ -116,4 +121,52 @@ export async function announceSettledClaim({ claim, bounty, txHash, username }) 
     bounty,
     txHash
   });
+
+  if (!recordError) return;
+
+  const ref = newErrorRef();
+  logger.error(`[${ref}] Payout sent but not recorded`, {
+    claimId: claim.id,
+    bountyId: bounty.bountyId,
+    txHash,
+    error: recordError.stack || recordError.message
+  });
+
+  if (!octokit) return;
+
+  try {
+    const [owner, repo] = claim.repoFullName.split('/');
+    await notifyMaintainers(octokit, owner, repo, claim.prNumber, {
+      errorType: 'Payout Sent But Not Recorded',
+      errorMessage: publicErrorMessage(ref),
+      severity: 'critical',
+      bountyId: bounty.bountyId,
+      network: bounty.network,
+      txHash,
+      prNumber: claim.prNumber,
+      username,
+      context: `The transfer succeeded on-chain but updating the database failed. Mark bounty ${bounty.bountyId} resolved and claim ${claim.id} paid with this transaction hash. Do not retry the payout.`
+    });
+  } catch (error) {
+    logger.error('Could not alert maintainers of unrecorded payout:', error.message);
+  }
+}
+
+/**
+ * Run `announceSettledClaim` once the response has been sent.
+ *
+ * `after()` throws when the platform offers no way to extend the request. The
+ * payout has already happened by then, so that must not turn into an error
+ * response: announce without waiting instead.
+ *
+ * @param {Parameters<typeof announceSettledClaim>[0]} params
+ */
+export function announceAfterResponse(params) {
+  const run = () => announceSettledClaim(params);
+  try {
+    after(run);
+  } catch (error) {
+    logger.warn('after() unavailable; announcing payout without waiting:', error.message);
+    run().catch((announceError) => logger.error('Payout announcement failed:', announceError.message));
+  }
 }

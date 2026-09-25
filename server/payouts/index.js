@@ -21,8 +21,11 @@ export function payoutDeps() {
     findClaimsByContributor: (githubId) => prClaimQueries.findByContributor(githubId),
     checkAllowed: (bountyId, address) => allowlistQueries.checkAllowed(bountyId, address),
     resolveOnChain: (bountyId, address, network) => resolveBountyOnNetwork(bountyId, address, network),
-    markClaim: (claimId, status, { txHash = null, resolvedAt = null } = {}) =>
-      prClaimQueries.updateStatus(claimId, status, txHash, resolvedAt),
+    markClaim: async (claimId, status, { txHash = null, resolvedAt = null } = {}) => {
+      const claim = await prClaimQueries.updateStatus(claimId, status, txHash, resolvedAt);
+      if (!claim) throw new Error(`Claim ${claimId} not found`);
+      return claim;
+    },
     markBountyResolved: (bountyId, txHash) => bountyQueries.updateStatus(bountyId, 'resolved', txHash)
   };
 }
@@ -33,6 +36,6 @@ export function settleClaim(claim, options) {
 }
 
 /** Settle every contributor-settleable claim against production. See `settleClaim.js`. */
-export function settleContributorClaims(githubId) {
-  return settleContributorClaimsWith(githubId, payoutDeps());
+export function settleContributorClaims(githubId, options) {
+  return settleContributorClaimsWith(githubId, payoutDeps(), options);
 }

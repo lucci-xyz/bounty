@@ -1,12 +1,16 @@
-import { after } from 'next/server';
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 import { walletQueries } from '@/server/db/prisma';
 import { settleContributorClaims, SETTLEMENT, toPublicSettlement } from '@/server/payouts';
-import { announceSettledClaim } from '@/integrations/github/services/payoutAnnouncements';
+import { announceAfterResponse } from '@/integrations/github/services/payoutAnnouncements';
 
 // Linking may settle waiting payouts, each of which waits for confirmation.
 export const maxDuration = 60;
+
+// Start no new transfer after this long, leaving the rest of maxDuration for
+// the last one to confirm and be recorded. Unstarted claims wait for the
+// dashboard's "Collect payout".
+const SETTLEMENT_BUDGET_MS = 20_000;
 
 // Links the SIWE-verified wallet in the session to the OAuth-verified GitHub
 // identity in the session. Inputs are taken exclusively from the session —
@@ -40,25 +44,17 @@ export async function POST() {
     // must not report it as failed.
     let payouts = [];
     try {
-      const results = await settleContributorClaims(session.githubId);
+      const results = await settleContributorClaims(session.githubId, { budgetMs: SETTLEMENT_BUDGET_MS });
 
       for (const result of results) {
         if (result.outcome === SETTLEMENT.PAID) {
-          if (result.recordError) {
-            logger.error('Payout on wallet link sent but not recorded', {
-              claimId: result.claimId,
-              txHash: result.txHash,
-              error: result.recordError.message
-            });
-          }
-          after(() =>
-            announceSettledClaim({
-              claim: result.claim,
-              bounty: result.bounty,
-              txHash: result.txHash,
-              username: session.githubUsername
-            })
-          );
+          announceAfterResponse({
+            claim: result.claim,
+            bounty: result.bounty,
+            txHash: result.txHash,
+            username: session.githubUsername,
+            recordError: result.recordError
+          });
         } else if (result.outcome !== SETTLEMENT.SKIPPED) {
           logger.warn('Payout on wallet link not completed', {
             claimId: result.claimId,

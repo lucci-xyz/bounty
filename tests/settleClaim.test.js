@@ -17,8 +17,9 @@ const DAY = 24 * 60 * 60;
  * An in-memory stand-in for the database and chain, recording every write so
  * each test can assert exactly what moved.
  */
-function fakeWorld({ bounties = [], wallets = {}, claims = [], allowlists = {}, chain } = {}) {
+function fakeWorld({ bounties = [], wallets = {}, claims = [], allowlists = {}, chain, clock } = {}) {
   const state = {
+    nowMs: NOW_SECONDS * 1000,
     bounties: new Map(bounties.map((b) => [b.bountyId, { ...b }])),
     wallets: { ...wallets },
     claims: new Map(claims.map((c) => [c.id, { ...c }])),
@@ -29,7 +30,7 @@ function fakeWorld({ bounties = [], wallets = {}, claims = [], allowlists = {}, 
 
   const deps = {
     environment: 'prod',
-    now: () => NOW_SECONDS * 1000,
+    now: () => state.nowMs,
     isAddress: (value) => /^0x[0-9a-fA-F]{40}$/.test(String(value)),
     findBounty: async (bountyId) => state.bounties.get(bountyId) ?? null,
     findWallet: async (githubId) => state.wallets[githubId] ?? null,
@@ -42,6 +43,7 @@ function fakeWorld({ bounties = [], wallets = {}, claims = [], allowlists = {}, 
     },
     resolveOnChain: async (bountyId, address, network) => {
       state.chainCalls.push({ bountyId, address, network });
+      if (clock) state.nowMs += clock;
       if (chain) return chain(bountyId, address, network);
       return { success: true, txHash: `0xtx_${bountyId}` };
     },
@@ -78,6 +80,7 @@ const claimFor = (overrides = {}) => ({
   prNumber: 12,
   repoFullName: 'acme/widgets',
   status: 'pending_wallet',
+  mergeVerifiedAt: NOW_SECONDS * 1000 - 60_000,
   ...overrides
 });
 
@@ -150,6 +153,72 @@ test('settleContributorClaims ignores a claim belonging to someone else, even if
 
   assert.deepEqual(await settleContributorClaims(42, deps), []);
   assert.deepEqual(state.chainCalls, []);
+});
+
+test('a claim the merge gate never verified is not paid, whatever its status', async () => {
+  // Before the closing-reference gate existed, the merge handler wrote
+  // pending_wallet and failed for any claim on a merged PR, including claims
+  // recorded from a bare mention or a forged webhook. Those rows carry no
+  // verification marker and must not become payable.
+  for (const status of ['pending_wallet', 'failed', 'pending']) {
+    const { state, deps } = fakeWorld({
+      bounties: [openBounty()],
+      wallets: { 42: { walletAddress: WALLET } }
+    });
+
+    const result = await settleClaim(claimFor({ status, mergeVerifiedAt: null }), deps, {
+      payableStatuses: ['pending', 'pending_wallet', 'failed']
+    });
+
+    assert.deepEqual(result, { outcome: SETTLEMENT.SKIPPED, reason: 'merge_unverified' }, status);
+    assert.deepEqual(state.chainCalls, [], status);
+    assert.deepEqual(state.claimWrites, [], status);
+  }
+});
+
+test('linking a wallet does not pay a legacy claim the merge gate never verified', async () => {
+  const { state, deps } = fakeWorld({
+    bounties: [openBounty()],
+    wallets: { 42: { walletAddress: WALLET } },
+    claims: [claimFor({ mergeVerifiedAt: undefined })]
+  });
+
+  const results = await settleContributorClaims(42, deps);
+
+  assert.deepEqual(
+    results.map((r) => [r.outcome, r.reason]),
+    [[SETTLEMENT.SKIPPED, 'merge_unverified']]
+  );
+  assert.deepEqual(state.chainCalls, []);
+});
+
+test('settleContributorClaims stops starting transfers once its time budget is spent', async () => {
+  // Each transfer waits for confirmation. The wallet-link request has a hard
+  // time limit, and being killed between sending a transfer and recording it
+  // leaves the database behind the chain. Later claims wait for the dashboard.
+  const { state, deps } = fakeWorld({
+    bounties: [openBounty(), openBounty({ bountyId: '0xb2' }), openBounty({ bountyId: '0xb3' })],
+    wallets: { 42: { walletAddress: WALLET } },
+    claims: [
+      claimFor({ id: 1, bountyId: '0xb1' }),
+      claimFor({ id: 2, bountyId: '0xb2' }),
+      claimFor({ id: 3, bountyId: '0xb3' })
+    ],
+    clock: 15_000
+  });
+
+  const results = await settleContributorClaims(42, deps, { budgetMs: 20_000 });
+
+  assert.deepEqual(
+    results.map((r) => [r.claimId, r.outcome]),
+    [
+      [1, SETTLEMENT.PAID],
+      [2, SETTLEMENT.PAID],
+      [3, SETTLEMENT.DEFERRED]
+    ]
+  );
+  assert.equal(state.chainCalls.length, 2);
+  assert.equal(state.claims.get(3).status, 'pending_wallet');
 });
 
 test('settleContributorClaims keeps going after one claim fails', async () => {
@@ -295,17 +364,20 @@ test('a bounty from another environment is never settled here', async () => {
   assert.deepEqual(state.chainCalls, []);
 });
 
-test('a bounty with no network is skipped for manual handling', async () => {
+test('a bounty with no network fails the claim so it can be retried once fixed', async () => {
+  // Left `pending`, the claim would be settleable only by a webhook redelivery.
   const { state, deps } = fakeWorld({
     bounties: [openBounty({ network: null })],
     wallets: { 42: { walletAddress: WALLET } }
   });
 
-  const result = await settleClaim(claimFor(), deps);
+  const result = await settleClaim(claimFor({ status: 'pending' }), deps, {
+    payableStatuses: ['pending', 'pending_wallet', 'failed']
+  });
 
-  assert.equal(result.outcome, SETTLEMENT.SKIPPED);
-  assert.equal(result.reason, 'no_network');
+  assert.equal(result.outcome, SETTLEMENT.NO_NETWORK);
   assert.equal(result.bounty.bountyId, '0xb1');
+  assert.deepEqual(state.claimWrites, [{ claimId: 7, status: 'failed' }]);
   assert.deepEqual(state.chainCalls, []);
 });
 
@@ -326,40 +398,53 @@ test('a payout inside the grace period after the deadline still goes through', a
   assert.equal((await settleClaim(claimFor(), deps)).outcome, SETTLEMENT.PAID);
 });
 
-test('a payout after the grace period is not attempted and the claim is marked failed', async () => {
-  // The contract would revert with DeadlinePassed. Report why instead of
-  // sending a transaction that cannot succeed.
+test('past the window the contract is still asked, and its refusal is reported as the window closing', async () => {
+  // The database deadline is not authoritative: before the chain became the
+  // source of truth at creation, it came from the request body. Only the
+  // contract may refuse a payout on timing. The window explains the refusal.
   const deadline = NOW_SECONDS - 2 * DAY;
   const { state, deps } = fakeWorld({
     bounties: [openBounty({ deadline })],
-    wallets: { 42: { walletAddress: WALLET } }
+    wallets: { 42: { walletAddress: WALLET } },
+    chain: () => ({ success: false, error: 'execution reverted (unknown custom error)' })
   });
 
   const result = await settleClaim(claimFor(), deps);
 
+  assert.equal(state.chainCalls.length, 1);
   assert.equal(result.outcome, SETTLEMENT.WINDOW_CLOSED);
   assert.equal(result.closedAt, deadline + DAY);
-  assert.deepEqual(state.chainCalls, []);
   assert.deepEqual(state.claimWrites, [{ claimId: 7, status: 'failed' }]);
 });
 
-test('the window check tolerates a few minutes of clock skew in the contract\'s favour', async () => {
-  // Our clock running slightly ahead of the chain must not refuse a payout the
-  // contract would still accept. Attempting one it would refuse costs nothing:
-  // gas estimation fails before anything is broadcast.
+test('a payout the contract accepts is paid even when the database thinks it is late', async () => {
   const { deps } = fakeWorld({
-    bounties: [openBounty({ deadline: NOW_SECONDS - DAY - 60 })],
+    bounties: [openBounty({ deadline: NOW_SECONDS - 5 * DAY })],
     wallets: { 42: { walletAddress: WALLET } }
   });
 
   assert.equal((await settleClaim(claimFor(), deps)).outcome, SETTLEMENT.PAID);
 });
 
-test('a closed window takes precedence over a missing wallet', async () => {
-  // Telling the contributor to link a wallet would be a lie: it cannot help.
-  const { deps } = fakeWorld({ bounties: [openBounty({ deadline: NOW_SECONDS - 3 * DAY })] });
+test('a refusal within clock skew of the window closing is reported as a chain failure', async () => {
+  // Our clock may run ahead of the chain's. Near the boundary, do not claim the
+  // window closed when the transfer may have failed for another reason.
+  const { deps } = fakeWorld({
+    bounties: [openBounty({ deadline: NOW_SECONDS - DAY - 60 })],
+    wallets: { 42: { walletAddress: WALLET } },
+    chain: () => ({ success: false, error: 'rpc down' })
+  });
 
-  assert.equal((await settleClaim(claimFor(), deps)).outcome, SETTLEMENT.WINDOW_CLOSED);
+  assert.equal((await settleClaim(claimFor(), deps)).outcome, SETTLEMENT.CHAIN_FAILED);
+});
+
+test('a missing wallet is reported even when the database says the window closed', async () => {
+  // Linking may still work if the database deadline is wrong; if it is right,
+  // the contract will say so when the payout is attempted.
+  const { state, deps } = fakeWorld({ bounties: [openBounty({ deadline: NOW_SECONDS - 3 * DAY })] });
+
+  assert.equal((await settleClaim(claimFor({ status: 'failed' }), deps)).outcome, SETTLEMENT.NEEDS_WALLET);
+  assert.deepEqual(state.claimWrites, [{ claimId: 7, status: 'pending_wallet' }]);
 });
 
 test('a bounty without a readable deadline is left to the contract to judge', async () => {
@@ -494,7 +579,7 @@ test('a database failure after the transfer still reports the payout and its tx 
   assert.equal(claimWrites[0].status, 'paid');
 });
 
-test('the claim is recorded even when recording the claim itself fails', async () => {
+test('the bounty is still marked resolved when recording the claim fails', async () => {
   const { state, deps } = fakeWorld({
     bounties: [openBounty()],
     wallets: { 42: { walletAddress: WALLET } }

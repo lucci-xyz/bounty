@@ -67,6 +67,9 @@ model PrClaim {
   createdAt          BigInt  @map("created_at")
   resolvedAt         BigInt? @map("resolved_at")
   txHash             String? @map("tx_hash")
+  // Set only by the merge webhook, after checking the merged PR closes the
+  // bountied issue. Settlement refuses claims without it.
+  mergeVerifiedAt    BigInt? @map("merge_verified_at")
 
   // A PR claims a given bounty at most once. `pull_request.edited` re-runs the
   // open handler, so without this a single PR accumulated a new claim row on

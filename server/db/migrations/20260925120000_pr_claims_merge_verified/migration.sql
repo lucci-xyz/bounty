@@ -1,0 +1,27 @@
+-- Record which claims passed the merge gate.
+--
+-- A contributor can now settle a merged, unpaid claim (`pending_wallet` or
+-- `failed`) by linking a wallet or pressing retry. Status alone does not prove
+-- the claim passed the gate: before 164a98f the merge webhook wrote both
+-- statuses for any claim on a merged PR, including claims recorded from a bare
+-- "#42" mention, from the one-open-bounty auto-claim, or from a forged webhook.
+-- Settlement therefore requires this marker, and only the gated merge handler
+-- writes it.
+--
+-- NOTE: apply this migration before deploying the code that reads the column.
+--
+-- Existing rows are deliberately left NULL: they are not payable by the
+-- contributor until an operator confirms them. For each one, check that the
+-- PR merged and its merge-time body closed the bountied issue, then:
+--
+--   UPDATE "pr_claims"
+--   SET "merge_verified_at" = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
+--   WHERE "id" IN (...);
+--
+-- Candidates (merged, unpaid, bounty still open):
+--
+--   SELECT c."id", c."repo_full_name", c."pr_number", b."issue_number", c."status"
+--   FROM "pr_claims" c JOIN "bounties" b ON b."bounty_id" = c."bounty_id"
+--   WHERE c."status" IN ('pending_wallet', 'failed') AND b."status" = 'open';
+
+ALTER TABLE "pr_claims" ADD COLUMN "merge_verified_at" BIGINT;

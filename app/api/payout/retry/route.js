@@ -1,10 +1,9 @@
-import { after } from 'next/server';
 import { logger } from '@/lib/logger';
 import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { getSession } from '@/lib/session';
 import { prClaimQueries } from '@/server/db/prisma';
 import { settleClaim, SETTLEMENT } from '@/server/payouts';
-import { announceSettledClaim } from '@/integrations/github/services/payoutAnnouncements';
+import { announceAfterResponse } from '@/integrations/github/services/payoutAnnouncements';
 
 // A payout waits for the transaction to confirm.
 export const maxDuration = 60;
@@ -14,7 +13,7 @@ const SKIP_RESPONSES = {
   bounty_missing: [404, 'Bounty not found'],
   wrong_environment: [400, 'Bounty environment mismatch'],
   bounty_not_open: [400, 'Bounty is not open for payout'],
-  no_network: [400, 'Bounty is missing network configuration']
+  merge_unverified: [409, 'A maintainer needs to confirm this merge before the payout can be sent.']
 };
 
 /**
@@ -50,22 +49,13 @@ export async function POST(request) {
 
     switch (settlement.outcome) {
       case SETTLEMENT.PAID:
-        if (settlement.recordError) {
-          logger.error('Manual payout sent but not recorded', {
-            claimId,
-            bountyId: claim.bountyId,
-            txHash: settlement.txHash,
-            error: settlement.recordError.message
-          });
-        }
-        after(() =>
-          announceSettledClaim({
-            claim,
-            bounty: settlement.bounty,
-            txHash: settlement.txHash,
-            username: session.githubUsername
-          })
-        );
+        announceAfterResponse({
+          claim,
+          bounty: settlement.bounty,
+          txHash: settlement.txHash,
+          username: session.githubUsername,
+          recordError: settlement.recordError
+        });
         return Response.json({ success: true, txHash: settlement.txHash });
 
       case SETTLEMENT.NEEDS_WALLET:
@@ -110,11 +100,12 @@ export async function POST(request) {
         return Response.json({ error: `Payout transaction failed. ${publicErrorMessage(ref)}` }, { status: 502 });
       }
 
+      case SETTLEMENT.NO_NETWORK:
+        logger.error('Manual payout failed: bounty missing network', { bountyId: claim.bountyId });
+        return Response.json({ error: 'Bounty is missing network configuration' }, { status: 400 });
+
       case SETTLEMENT.SKIPPED: {
         const [status, error] = SKIP_RESPONSES[settlement.reason] || [400, 'Payout not possible'];
-        if (settlement.reason === 'no_network') {
-          logger.error('Manual payout failed: bounty missing network', { bountyId: claim.bountyId });
-        }
         return Response.json({ error }, { status });
       }
 

@@ -11,9 +11,14 @@
  * unit tested against an in-memory world. `server/payouts/index.js` wires the
  * real database and chain.
  *
- * The caller is responsible for two things this module cannot know:
- * - that the claim belongs to whoever is asking (session or webhook), and
- * - for a `pending` claim, that the PR merged and closes the bountied issue.
+ * No claim is paid without `mergeVerifiedAt`, which only the merge webhook
+ * writes, after checking that the merged PR closes the bountied issue. Status
+ * alone is not proof: before that gate existed, the webhook wrote
+ * `pending_wallet` and `failed` for any claim on a merged PR, including claims
+ * recorded from a bare mention or a forged webhook.
+ *
+ * The caller is responsible for checking that the claim belongs to whoever is
+ * asking (session or webhook).
  */
 
 import { CLAIM_STATUS, SETTLEABLE_CLAIM_STATUSES, isPaidClaim } from '../../lib/claimStatus.js';
@@ -25,8 +30,8 @@ import { CLAIM_STATUS, SETTLEABLE_CLAIM_STATUSES, isPaidClaim } from '../../lib/
 export const RESOLVE_GRACE_SECONDS = 24 * 60 * 60;
 
 /**
- * Slack given to the chain when judging the window. A transaction the contract
- * would refuse fails at gas estimation and costs nothing, so err towards trying.
+ * How far past the window a refusal must be before it is reported as the window
+ * closing rather than as a chain failure. Our clock may run ahead of the chain.
  */
 export const CLOCK_SKEW_SECONDS = 5 * 60;
 
@@ -39,14 +44,18 @@ export const SETTLEMENT = {
   INVALID_WALLET: 'invalid_wallet',
   /** Sponsor's allowlist excludes the recipient; claim failed. */
   NOT_ALLOWLISTED: 'not_allowlisted',
-  /** Past deadline + grace; the contract would refuse. Claim failed. */
+  /** The contract refused, and the database deadline + grace has passed. Claim failed. */
   WINDOW_CLOSED: 'window_closed',
+  /** Bounty has no network alias; nothing attempted. Claim failed, retryable once fixed. */
+  NO_NETWORK: 'no_network',
   /** The transaction did not succeed; claim failed. `error` is raw: never publish it. */
   CHAIN_FAILED: 'chain_failed',
   /** Nothing attempted and the claim left unchanged. See `reason`. */
   SKIPPED: 'skipped',
   /** Settlement threw before reaching a decision (batch callers only). */
-  ERROR: 'error'
+  ERROR: 'error',
+  /** Not started: the batch ran out of time (batch callers only). Claim unchanged. */
+  DEFERRED: 'deferred'
 };
 
 /**
@@ -66,7 +75,7 @@ export const SETTLEMENT = {
 /**
  * Settle one claim: decide whether it can be paid, pay it, and record the result.
  *
- * @param {object} claim `{ id, bountyId, prAuthorGithubId, status }`
+ * @param {object} claim `{ id, bountyId, prAuthorGithubId, status, mergeVerifiedAt }`
  * @param {SettlementDeps} deps
  * @param {object} [options]
  * @param {Iterable<string>} [options.payableStatuses] Claim statuses this caller
@@ -82,6 +91,7 @@ export async function settleClaim(claim, deps, { payableStatuses = SETTLEABLE_CL
   if (isPaidClaim(claim.status) || !payable.has(claim.status)) {
     return skipped('claim_not_payable');
   }
+  if (!claim.mergeVerifiedAt) return skipped('merge_unverified');
 
   const bounty = await deps.findBounty(claim.bountyId);
   if (!bounty) return skipped('bounty_missing');
@@ -89,13 +99,9 @@ export async function settleClaim(claim, deps, { payableStatuses = SETTLEABLE_CL
     return skipped('wrong_environment', bounty);
   }
   if (bounty.status !== 'open') return skipped('bounty_not_open', bounty);
-  if (!bounty.network) return skipped('no_network', bounty);
-
-  const closedAt = settlementWindowClosesAt(bounty);
-  const nowSeconds = Math.floor(deps.now() / 1000);
-  if (closedAt !== null && nowSeconds > closedAt + CLOCK_SKEW_SECONDS) {
+  if (!bounty.network) {
     await deps.markClaim(claim.id, CLAIM_STATUS.FAILED);
-    return { outcome: SETTLEMENT.WINDOW_CLOSED, bounty, closedAt };
+    return { outcome: SETTLEMENT.NO_NETWORK, bounty };
   }
 
   const wallet = await deps.findWallet(claim.prAuthorGithubId);
@@ -125,6 +131,16 @@ export async function settleClaim(claim, deps, { payableStatuses = SETTLEABLE_CL
 
   if (!result?.success || !result.txHash) {
     await deps.markClaim(claim.id, CLAIM_STATUS.FAILED);
+
+    // The contract alone decides whether it is too late; the database deadline
+    // only explains a refusal. Before creation read the deadline from the chain,
+    // the stored one came from the request body and may be earlier.
+    const closedAt = settlementWindowClosesAt(bounty);
+    const nowSeconds = Math.floor(deps.now() / 1000);
+    if (closedAt !== null && nowSeconds > closedAt + CLOCK_SKEW_SECONDS) {
+      return { outcome: SETTLEMENT.WINDOW_CLOSED, bounty, recipient, closedAt, error: result?.error };
+    }
+
     return {
       outcome: SETTLEMENT.CHAIN_FAILED,
       bounty,
@@ -152,14 +168,20 @@ export async function settleClaim(claim, deps, { payableStatuses = SETTLEABLE_CL
  * or change a wallet, so a payout parked for want of one goes out immediately.
  *
  * Claims are settled one at a time so that one failure (or exception) never
- * stops the rest.
+ * stops the rest. Each transfer waits for confirmation, so once `budgetMs` has
+ * elapsed no new transfer is started: being killed by the request's time limit
+ * between sending a transfer and recording it would leave the database behind
+ * the chain. Claims not started are returned as DEFERRED, unchanged.
  *
  * @param {number} githubId The contributor, as authenticated by the caller.
  * @param {SettlementDeps} deps Must include `findClaimsByContributor`.
+ * @param {object} [options]
+ * @param {number} [options.budgetMs] Stop starting settlements after this long.
  * @returns {Promise<Array<{claimId: number, claim: object} & Awaited<ReturnType<typeof settleClaim>>>>}
  *   One entry per settleable claim, in the order found.
  */
-export async function settleContributorClaims(githubId, deps) {
+export async function settleContributorClaims(githubId, deps, { budgetMs = Infinity } = {}) {
+  const startedAt = deps.now();
   const claims = await deps.findClaimsByContributor(githubId);
   const settleable = claims.filter(
     (claim) => SETTLEABLE_CLAIM_STATUSES.has(claim.status) && Number(claim.prAuthorGithubId) === Number(githubId)
@@ -167,6 +189,10 @@ export async function settleContributorClaims(githubId, deps) {
 
   const results = [];
   for (const claim of settleable) {
+    if (deps.now() - startedAt >= budgetMs) {
+      results.push({ claimId: claim.id, claim, outcome: SETTLEMENT.DEFERRED });
+      continue;
+    }
     try {
       results.push({ claimId: claim.id, claim, ...(await settleClaim(claim, deps)) });
     } catch (error) {

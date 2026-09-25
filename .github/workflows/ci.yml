@@ -31,6 +31,45 @@ jobs:
       - name: Run tests
         run: npm test
 
+  integration:
+    name: Integration tests (Postgres)
+    runs-on: ubuntu-latest
+    # Settlement against a real database, chain faked. Covers the Prisma
+    # queries the unit tests stub out, including the conditional update that
+    # keeps a paid claim paid when two settlements race.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bounty_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bounty_test
+      DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bounty_test
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bounty_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Create schema
+        run: npx prisma db push --skip-generate --schema server/db/schema.prisma
+
+      - name: Run integration tests
+        run: npm run test:integration
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

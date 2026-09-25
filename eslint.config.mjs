@@ -59,5 +59,11 @@ export default [
     // Scripts are operator tooling and print to stdout by design.
     files: ['scripts/**/*.mjs', 'scripts/**/*.js'],
     rules: { 'no-console': 'off' }
+  },
+  {
+    // Test fakes implement async interfaces (database, chain) without awaiting
+    // anything; `require-await` is aimed at un-awaited calls in app code.
+    files: ['tests/**/*.{js,mjs}'],
+    rules: { 'require-await': 'off' }
   }
 ];

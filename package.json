@@ -8,7 +8,8 @@
     "build": "cross-env NODE_ENV=production prisma generate --schema server/db/schema.prisma && cross-env NODE_ENV=production next build",
     "start": "next start",
     "postinstall": "prisma generate --schema server/db/schema.prisma",
-    "test": "node --test \"tests/**/*.test.js\"",
+    "test": "node --test \"tests/*.test.js\"",
+    "test:integration": "node --import ./tests/support/register.mjs --test \"tests/integration/*.test.js\"",
     "test:contracts:compile": "node scripts/compile-check.mjs --with-tests",
     "lint": "eslint ."
   },

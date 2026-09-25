@@ -18,7 +18,7 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 ## Wallets
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
-| POST | `/api/wallet/link` | GitHub + wallet session | Takes **no body**. Links the SIWE-verified wallet in the session to the OAuth-verified GitHub identity in the session. Any request body is ignored — accepting a caller-supplied `githubId` previously allowed overwriting another user's wallet mapping and stealing their payouts. **Moves funds:** after linking, settles the session user's merged-but-unpaid claims (`pending_wallet`, `failed`) to the newly linked wallet. Returns `{ success, payouts: [{ claimId, outcome, repoFullName, issueNumber, prNumber, amount, tokenSymbol, txHash? }] }`; raw chain errors are logged, never returned. |
+| POST | `/api/wallet/link` | GitHub + wallet session | Takes **no body**. Links the SIWE-verified wallet in the session to the OAuth-verified GitHub identity in the session. Any request body is ignored — accepting a caller-supplied `githubId` previously allowed overwriting another user's wallet mapping and stealing their payouts. **Moves funds:** after linking, settles the session user's merged-but-unpaid claims (`pending_wallet`, `failed`) to the newly linked wallet. Only claims the merge webhook verified are paid. No new transfer starts after 20 seconds; the rest come back as `deferred` for the dashboard. Returns `{ success, payouts: [{ claimId, outcome, repoFullName, issueNumber, prNumber, amount, tokenSymbol, txHash? }] }`; raw chain errors are logged, never returned. |
 | DELETE | `/api/wallet/delete` | GitHub session | Body `{ confirmation: 'i want to remove my wallet' }`; deletes the caller’s mapping. |
 
 ## Bounties & allowlists
@@ -41,7 +41,7 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 ## Payouts
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
-| POST | `/api/payout/retry` | GitHub session | **Moves funds.** Body `{ claimId }`. Collects a merged, unpaid claim (`failed` or `pending_wallet`) for the authenticated contributor. Requires the claim's `prAuthorGithubId` to equal the session GitHub ID, the bounty to be `open`, in the current `ENV_TARGET`, and inside its payout window (`deadline + RESOLVE_GRACE`; `409` after). A failed transfer returns `502` with an error reference, not the provider message. Pays the wallet mapped to the session identity — never an address from the request. |
+| POST | `/api/payout/retry` | GitHub session | **Moves funds.** Body `{ claimId }`. Collects a merged, unpaid claim (`failed` or `pending_wallet`) for the authenticated contributor. Requires the claim's `prAuthorGithubId` to equal the session GitHub ID, the claim to carry the merge webhook's verification (`409` otherwise), and the bounty to be `open` and in the current `ENV_TARGET`. The contract decides the payout window; a refusal after `deadline + RESOLVE_GRACE` returns `409`. A failed transfer returns `502` with an error reference, not the provider message. Pays the wallet mapped to the session identity — never an address from the request. |
 
 ## User dashboards
 | Method | Path | Auth | Notes |

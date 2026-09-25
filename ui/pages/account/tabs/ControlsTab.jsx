@@ -49,9 +49,12 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
   const [lastVerifiedWallet, setLastVerifiedWallet] = useState(null);
 
   // Merged work that has not been paid: failed transfers, and payouts parked
-  // because no wallet was linked at merge time.
+  // because no wallet was linked at merge time. Only while the bounty is open;
+  // once it is resolved or refunded there is nothing left to collect.
   const failedPayouts = useMemo(() => {
-    return claimedBounties.filter((bounty) => isSettleableClaim(bounty?.claimStatus));
+    return claimedBounties.filter(
+      (bounty) => isSettleableClaim(bounty?.claimStatus) && bounty?.status === 'open'
+    );
   }, [claimedBounties]);
 
   const { requestRefund } = useRefundTransaction({
@@ -208,6 +211,8 @@ function FailedPayoutList({ payouts = [], onRetryPayout, payoutStatuses = {} }) 
       {payouts.map((payout) => {
         const claimStatus = describeClaimStatus(payout.claimStatus);
         const awaitingWallet = payout.claimStatus === CLAIM_STATUS.PENDING_WALLET;
+        // Claims from before the merge gate existed wait for a maintainer.
+        const needsReview = payout.mergeVerified === false;
         return (
           <div
             key={`${payout.bountyId}-${payout.prNumber || 'claim'}`}
@@ -253,19 +258,23 @@ function FailedPayoutList({ payouts = [], onRetryPayout, payoutStatuses = {} }) 
 
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-[12px] text-muted-foreground">
-                {awaitingWallet
-                  ? 'Your PR merged before a wallet was linked. Collect the payout to your linked wallet.'
-                  : 'The payout did not go through when the PR was merged. Retry once the cause is fixed.'}
+                {needsReview
+                  ? 'A maintainer needs to confirm this merge before the payout can be sent.'
+                  : awaitingWallet
+                    ? 'Your PR merged before a wallet was linked. Collect the payout to your linked wallet.'
+                    : 'The payout did not go through when the PR was merged. Retry once the cause is fixed.'}
               </p>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => onRetryPayout?.(payout)}
-                  disabled={!payout.claimId || payoutStatuses[payout.claimId]?.loading}
-                  className="rounded-full border border-destructive/50 px-4 py-2 text-xs font-semibold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {payoutStatuses[payout.claimId]?.loading ? 'Sending...' : claimStatus.actionLabel}
-                </button>
+                {!needsReview && (
+                  <button
+                    type="button"
+                    onClick={() => onRetryPayout?.(payout)}
+                    disabled={!payout.claimId || payoutStatuses[payout.claimId]?.loading}
+                    className="rounded-full border border-destructive/50 px-4 py-2 text-xs font-semibold text-destructive transition-colors hover:border-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {payoutStatuses[payout.claimId]?.loading ? 'Sending...' : claimStatus.actionLabel}
+                  </button>
+                )}
               </div>
             </div>
             {payout.claimId && payoutStatuses[payout.claimId]?.message && (

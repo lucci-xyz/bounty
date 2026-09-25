@@ -33,6 +33,7 @@ export async function GET() {
           claimId: claim.id,
           ...bounty,
           claimStatus: claim.status,
+          mergeVerified: Boolean(claim.mergeVerifiedAt),
           prNumber: claim.prNumber,
           claimCreatedAt: claim.createdAt,
           paidAt: claim.resolvedAt,

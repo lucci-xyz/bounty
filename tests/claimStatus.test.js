@@ -123,6 +123,11 @@ test('describeSettledPayouts points to the dashboard for anything that did not g
     ]),
     '2 payouts could not be sent; retry them from your dashboard.'
   );
+  // Deferred for time: not failed, but the contributor still has to act.
+  assert.equal(
+    describeSettledPayouts([paid(), { claimId: 2, outcome: 'deferred' }]),
+    'Paid 50 USDC for acme/widgets#3. 1 payout could not be sent; retry it from your dashboard.'
+  );
 });
 
 test('describeSettledPayouts reports a closed window rather than inviting a retry', () => {
