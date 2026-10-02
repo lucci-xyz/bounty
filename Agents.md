@@ -254,6 +254,7 @@ See `docs/reference/database.md` for full schema. Key models:
 ### Status Values
 
 **Bounty status:** `'open'`, `'resolving'` (transient payout lease), `'resolved'`, `'refunded'` (no cancel — sponsors can only refund after deadline)
+**Payouts:** every on-chain `resolve` goes through `server/payouts/settleClaim.js`. Never write payout statuses directly, and never return or post a failed settlement's `error` (raw provider text); use its `publicError`.
 **PrClaim status:** `'pending'`, `'processing'` (transient payout lease), `'paid'`, `'failed'`, `'pending_wallet'`
 **BetaAccess status:** `'pending'`, `'approved'`, `'rejected'`
 

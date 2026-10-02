@@ -1,8 +1,10 @@
+import { ethers } from 'ethers';
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { bountyQueries, prClaimQueries, walletQueries, allowlistQueries } from '@/server/db/prisma';
 import { resolveBountyOnNetwork, readBountyOnchainResolution } from '@/server/blockchain/contract';
-import { settleClaim } from '@/server/payouts/settleClaim';
+import { settleClaim, PAYOUT_FAILURE } from '@/server/payouts/settleClaim';
 import {
   BOUNTY_STATUS,
   isPayoutCandidateBountyStatus,
@@ -29,7 +31,7 @@ export async function POST(request) {
 
     const body = await request.json().catch(() => ({}));
     const claimId = Number(body?.claimId);
-    if (!claimId || Number.isNaN(claimId)) {
+    if (!Number.isSafeInteger(claimId) || claimId <= 0) {
       return Response.json({ error: 'claimId is required' }, { status: 400 });
     }
 
@@ -76,6 +78,11 @@ export async function POST(request) {
     if (!wallet?.walletAddress) {
       return Response.json({ error: 'Link a wallet before requesting payout' }, { status: 400 });
     }
+    // Same check as the merge webhook. A malformed stored address would
+    // otherwise reach the chain and fail the claim for a reason a re-link fixes.
+    if (!ethers.isAddress(wallet.walletAddress)) {
+      return Response.json({ error: 'Your linked wallet address is invalid. Re-link your wallet, then retry.' }, { status: 400 });
+    }
 
     // Same sponsor allowlist gate as the webhook payout path.
     const allowlistCheck = await allowlistQueries.checkAllowed(bounty.bountyId, wallet.walletAddress);
@@ -102,8 +109,8 @@ export async function POST(request) {
       {
         bountyQueries,
         prClaimQueries,
-        resolveBounty: (id, recipient) => resolveBountyOnNetwork(id, recipient, bounty.network),
-        readOnchainStatus: (id) => readBountyOnchainResolution(id, bounty.network),
+        resolveBounty: (id, recipient, options) => resolveBountyOnNetwork(id, recipient, bounty.network, options),
+        readOnchainStatus: (id, options) => readBountyOnchainResolution(id, bounty.network, options),
         logger
       }
     );
@@ -113,19 +120,38 @@ export async function POST(request) {
     }
 
     if (settlement.outcome === 'pending') {
+      // Nothing was decided: either a sent transaction has no receipt yet, or
+      // the chain says resolved but the payment could not be located yet.
       return Response.json(
         {
           success: false,
           pending: true,
           txHash: settlement.txHash,
-          error: 'Payout transaction was sent but is not yet confirmed. Check back shortly.'
+          error: settlement.txHash
+            ? 'Payout transaction was sent but is not yet confirmed. Check back shortly.'
+            : 'This bounty is settled on-chain and the payment is still being confirmed. Check back shortly.'
         },
         { status: 202 }
       );
     }
 
     if (settlement.outcome === 'failed') {
-      return Response.json({ error: settlement.error || 'Payout transaction failed' }, { status: 502 });
+      if (settlement.reason !== PAYOUT_FAILURE.SEND_FAILED) {
+        // The chain already settled this bounty another way. Not retryable.
+        return Response.json({ error: settlement.publicError }, { status: 409 });
+      }
+      // Provider errors can carry the RPC URL and its API key. Log the raw
+      // text under a reference; return only the reference or a known revert.
+      const ref = newErrorRef();
+      logger.error(`[${ref}] Manual payout send failed`, {
+        bountyId: bounty.bountyId,
+        claimId,
+        error: settlement.error
+      });
+      return Response.json(
+        { error: settlement.publicError || publicErrorMessage(ref), ref },
+        { status: 502 }
+      );
     }
 
     return Response.json({

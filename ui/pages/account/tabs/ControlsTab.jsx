@@ -120,7 +120,9 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
           loading: false,
           message: data?.txHash
             ? `${data?.pending ? 'Payout sent, awaiting confirmation' : 'Payout sent'}. TX: ${data.txHash.slice(0, 10)}...${data.txHash.slice(-6)}`
-            : 'Payout sent.',
+            : data?.pending
+              ? data?.error || 'Payout is being confirmed. Check back shortly.'
+              : 'Payout sent.',
           type: 'success'
         }
       }));

@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
-import { bountyQueries } from '@/server/db/prisma';
+import { bountyQueries, prClaimQueries } from '@/server/db/prisma';
 import { getBountyFromContract } from '@/server/blockchain/contract';
 
 /**
@@ -75,6 +75,10 @@ export async function POST(request) {
     }
 
     await bountyQueries.updateStatus(bountyId, 'refunded', txHash);
+    // A payout in flight when the refund landed can never succeed now, and
+    // with the bounty no longer `open`/`resolving` its claim can never
+    // re-enter the payout guard. Close it instead of leaving it "Processing".
+    await prClaimQueries.closeStrandedClaims(bountyId);
 
     logger.info(`Refund confirmed in database: ${bountyId.slice(0, 10)}... -> ${txHash}`);
 

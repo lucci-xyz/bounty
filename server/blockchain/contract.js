@@ -4,6 +4,7 @@ import { CONFIG } from '../config.js';
 import { REGISTRY, ABIS, getDefaultAliasForGroup } from '../../config/chain-registry.js';
 import { validateAddress, validateBytes32 } from './validation.js';
 import { contractStatusToDb } from '@/lib/status';
+import { findResolvedEvent, decodeRevert, isDefinitiveBroadcastRejection } from './payoutChain.js';
 
 /**
  * Get the private key for a specific network alias.
@@ -162,32 +163,71 @@ export async function readBountyOnchainStatus(bountyId, alias) {
  * "Resolved on-chain" is not "resolved to this claimant": two PRs can claim
  * one bounty, and the escrow struct does not keep the recipient. The
  * `Resolved` event does, so the guard compares it before marking a claim
- * paid. The event lookup is best-effort: a failed log query yields a null
- * recipient, which the guard treats as unverified (never as a match).
+ * paid.
+ *
+ * When the claim carries a pinned transaction hash (every payout pins its
+ * hash at broadcast), that one receipt is checked first: a bounded, exact
+ * lookup. Only without a usable pin does this fall back to an event scan,
+ * which some RPCs reject for unbounded ranges. Any lookup failure yields a
+ * null recipient, which the guard treats as unverified (never as a match).
  *
  * @param {string} bountyId
  * @param {string} alias
- * @returns {Promise<{status: string|null, recipient: string|null, txHash: string|null}>}
+ * @param {object} [options]
+ * @param {string|null} [options.txHash] - hash pinned to the claim, if any
+ * When the bounty is still open and the claim's pinned transaction is in the
+ * mempool, `pinnedPending` is true so the guard waits rather than queueing a
+ * second send that can only revert.
+ *
+ * @returns {Promise<{status: string|null, recipient: string|null, txHash: string|null, pinnedPending: boolean}>}
  *   Throws only when the status read itself fails.
  */
-export async function readBountyOnchainResolution(bountyId, alias) {
+export async function readBountyOnchainResolution(bountyId, alias, { txHash = null } = {}) {
   const status = await readBountyOnchainStatus(bountyId, alias);
-  if (status !== 'resolved') {
-    return { status, recipient: null, txHash: null };
+  const unverified = { status, recipient: null, txHash: null, pinnedPending: false };
+  const { escrowContract, provider } = getNetworkClients(alias);
+
+  if (status === 'open') {
+    // A pinned send still sitting in the mempool will either resolve this
+    // bounty or revert. A second send from the same resolver queues behind
+    // it on nonce and can only revert, so the guard waits instead.
+    if (!txHash) return unverified;
+    try {
+      const pending = await provider.getTransaction(txHash);
+      return { ...unverified, pinnedPending: Boolean(pending) && pending.blockNumber == null };
+    } catch (error) {
+      logger.warn(`Pinned payout lookup failed on ${alias}:`, error.message);
+      return unverified;
+    }
   }
+  if (status !== 'resolved') return unverified;
+
+  if (txHash) {
+    try {
+      const receipt = await provider.getTransactionReceipt(txHash);
+      const found = findResolvedEvent(receipt, {
+        iface: escrowContract.interface,
+        escrowAddress: escrowContract.target,
+        bountyId
+      });
+      if (found) return { ...unverified, ...found };
+    } catch (error) {
+      logger.warn(`Pinned payout receipt lookup failed on ${alias}:`, error.message);
+    }
+  }
+
   try {
-    const { escrowContract } = getNetworkClients(alias);
     const logs = await escrowContract.queryFilter(escrowContract.filters.Resolved(bountyId));
     const last = logs[logs.length - 1];
-    if (!last) return { status, recipient: null, txHash: null };
+    if (!last) return unverified;
     return {
-      status,
+      ...unverified,
       recipient: last.args?.recipient ?? null,
       txHash: last.transactionHash ?? null
     };
   } catch (error) {
     logger.warn(`Resolved event lookup failed on ${alias}:`, error.message);
-    return { status, recipient: null, txHash: null };
+    return unverified;
   }
 }
 
@@ -228,16 +268,32 @@ export async function resolveBounty(bountyId, recipientAddress) {
 
 /**
  * Resolve a bounty on a specific network.
+ *
+ * The transaction is signed first and broadcast second, mirroring ethers'
+ * own sendTransaction. Its hash is therefore known, and handed to `onTxHash`,
+ * before anything goes on the wire: a lost broadcast response or a process
+ * killed mid-wait cannot take the only record of the send with it.
+ *
+ * After signing, only two outcomes are definitive: the node refusing this
+ * exact transaction (it can never mine), or a mined receipt. Everything else
+ * comes back `unconfirmed` with the hash, never as a failure the caller would
+ * retry into a second send.
+ *
  * @param {string} bountyId
  * @param {string} recipientAddress
  * @param {string} alias
+ * @param {object} [options]
+ * @param {(txHash: string) => Promise<void>} [options.onTxHash] - called with
+ *   the signed transaction's hash, before broadcast
  * @returns {Promise<object>} Transaction result.
  */
-export async function resolveBountyOnNetwork(bountyId, recipientAddress, alias) {
+export async function resolveBountyOnNetwork(bountyId, recipientAddress, alias, { onTxHash } = {}) {
+  let iface = null;
   try {
     bountyId = validateBytes32(bountyId, 'bountyId');
     recipientAddress = validateAddress(recipientAddress, 'recipientAddress');
-    const { escrowContract, provider, network } = getNetworkClients(alias);
+    const { escrowContract, provider, wallet, network } = getNetworkClients(alias);
+    iface = escrowContract.interface;
 
     let txOverrides = {};
     if (!network.supports1559) {
@@ -248,25 +304,47 @@ export async function resolveBountyOnNetwork(bountyId, recipientAddress, alias) 
       };
     }
 
-    const tx = await escrowContract.resolve(bountyId, recipientAddress, txOverrides);
+    // Populate (nonce, gas estimate, fees) and sign. An escrow revert such as
+    // NotOpen surfaces here, during gas estimation, before anything is sent.
+    const request = await escrowContract.resolve.populateTransaction(bountyId, recipientAddress, txOverrides);
+    const populated = await wallet.populateTransaction(request);
+    delete populated.from;
+    const signed = await wallet.signTransaction(ethers.Transaction.from(populated));
+    const txHash = ethers.Transaction.from(signed).hash;
 
-    // The transaction is on the network from here. A receipt that does not
-    // arrive in time is not a failure to retry (that would double-send); it
-    // is a broadcast whose outcome the chain will settle. Report it as such.
+    if (onTxHash) {
+      try {
+        await onTxHash(txHash);
+      } catch (error) {
+        logger.error(`Could not record payout ${txHash} on ${alias}:`, error.message);
+      }
+    }
+
+    const unconfirmed = (reason) => {
+      logger.warn(`Bounty resolve unconfirmed on ${alias}: ${bountyId.slice(0, 10)}... -> ${txHash} (${reason})`);
+      return {
+        success: false,
+        unconfirmed: true,
+        txHash,
+        error: `Transaction ${txHash} sent but not confirmed within ${PAYOUT_CONFIRMATION_TIMEOUT_MS / 1000}s`
+      };
+    };
+
+    let tx;
+    try {
+      tx = await provider.broadcastTransaction(signed);
+    } catch (error) {
+      if (isDefinitiveBroadcastRejection(error)) throw error;
+      return unconfirmed(error?.code || 'broadcast response lost');
+    }
+
     let receipt;
     try {
       receipt = await tx.wait(1, PAYOUT_CONFIRMATION_TIMEOUT_MS);
     } catch (error) {
-      if (error?.code === 'TIMEOUT') {
-        logger.warn(`Bounty resolve unconfirmed on ${alias}: ${bountyId.slice(0, 10)}... -> ${tx.hash}`);
-        return {
-          success: false,
-          unconfirmed: true,
-          txHash: tx.hash,
-          error: `Transaction ${tx.hash} broadcast but not confirmed within ${PAYOUT_CONFIRMATION_TIMEOUT_MS / 1000}s`
-        };
-      }
-      throw error;
+      // Mined and reverted: definitive. Anything else may still mine.
+      if (error?.code === 'CALL_EXCEPTION' && error?.receipt) throw error;
+      return unconfirmed(error?.code || 'unknown');
     }
     logger.info(`Bounty resolved on ${alias}: ${bountyId.slice(0, 10)}... -> ${receipt.hash}`);
     return {
@@ -276,10 +354,12 @@ export async function resolveBountyOnNetwork(bountyId, recipientAddress, alias) 
       gasUsed: receipt.gasUsed.toString(),
     };
   } catch (error) {
-    logger.error(`Error resolving bounty on ${alias}:`, error.message);
+    const revert = decodeRevert(error, iface);
+    const message = revert ? `Escrow reverted: ${revert}` : error.message;
+    logger.error(`Error resolving bounty on ${alias}:`, message);
     return {
       success: false,
-      error: error.message,
+      error: message,
     };
   }
 }
