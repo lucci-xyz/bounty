@@ -62,7 +62,7 @@ export async function sendPrOpenedEmail(params) {
   }
   
   const template = renderPrOpenedEmail(templateParams);
-  return sendTransactionalEmail({
+  return await sendTransactionalEmail({
     to,
     subject: template.subject,
     html: template.html,
@@ -91,7 +91,7 @@ export async function sendBountyExpiredEmail(params) {
   }
   
   const template = renderBountyExpiredEmail(templateParams);
-  return sendTransactionalEmail({
+  return await sendTransactionalEmail({
     to,
     subject: template.subject,
     html: template.html,
@@ -121,7 +121,7 @@ export async function sendBountyPaidEmail(params) {
   }
 
   const template = renderBountyPaidEmail(templateParams);
-  return sendTransactionalEmail({
+  return await sendTransactionalEmail({
     to,
     subject: template.subject,
     html: template.html,
@@ -146,7 +146,7 @@ export async function sendEmailVerificationEmail(params) {
   }
 
   const template = renderEmailVerificationEmail(templateParams);
-  return sendTransactionalEmail({
+  return await sendTransactionalEmail({
     to,
     subject: template.subject,
     html: template.html,
@@ -229,7 +229,7 @@ export async function sendBetaReceivedEmail(params) {
   }
   
   const template = renderBetaReceivedEmail(templateParams);
-  return sendBetaEmail({
+  return await sendBetaEmail({
     to,
     subject: template.subject,
     html: template.html,
@@ -253,7 +253,7 @@ export async function sendBetaApprovedEmail(params) {
   }
   
   const template = renderBetaApprovedEmail(templateParams);
-  return sendBetaEmail({
+  return await sendBetaEmail({
     to,
     subject: template.subject,
     html: template.html,
@@ -277,7 +277,7 @@ export async function sendBetaRejectedEmail(params) {
   }
   
   const template = renderBetaRejectedEmail(templateParams);
-  return sendBetaEmail({
+  return await sendBetaEmail({
     to,
     subject: template.subject,
     html: template.html,
@@ -299,7 +299,7 @@ export async function sendSystemEmail({ subject, html, text }) {
     return { skipped: true };
   }
   
-  return sendOpsAlert({ subject, html, text });
+  return await sendOpsAlert({ subject, html, text });
 }
 
 /**
@@ -317,5 +317,5 @@ export async function sendUserEmail({ to, subject, html, text }) {
     return { skipped: true, reason: 'no_recipient' };
   }
 
-  return sendTransactionalEmail({ to, subject, html, text });
+  return await sendTransactionalEmail({ to, subject, html, text });
 }

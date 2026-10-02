@@ -10,7 +10,7 @@ import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
  * GET /api/resolver?network=ALIAS
  * Returns the resolver wallet address for a specific network
  */
-export async function GET(request) {
+export function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const alias = searchParams.get('network');

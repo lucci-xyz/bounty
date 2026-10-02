@@ -9,6 +9,10 @@
     {
       "path": "/api/cron/expiration-notify",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/reconcile-payouts",
+      "schedule": "30 9 * * *"
     }
   ]
 }

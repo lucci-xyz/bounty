@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { formatAmount, formatTimeLeft } from '@/lib';
 
 // Custom hook for intersection observer
-function useInView(options = {}) {
+function useInView() {
   const ref = useRef(null);
   const [isInView, setIsInView] = useState(false);
 
@@ -21,7 +21,7 @@ function useInView(options = {}) {
           observer.unobserve(element); // Only animate once
         }
       },
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px', ...options }
+      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
     );
 
     observer.observe(element);
@@ -354,9 +354,11 @@ function FeaturesSection() {
               </p>
               {/* Escrow illustration - hidden on mobile */}
               <div className="hidden md:flex flex-1 rounded-lg items-center justify-center p-6">
-                <img 
-                  src="/icons/escrow.svg" 
-                  alt="Secure escrow illustration" 
+                <Image
+                  src="/icons/escrow.svg"
+                  alt="Secure escrow illustration"
+                  width={800}
+                  height={677}
                   className="w-full h-full object-contain opacity-90 max-h-80"
                 />
               </div>
@@ -371,9 +373,11 @@ function FeaturesSection() {
                 When a PR merges and closes the bounty issue, payment is automatically transferred to the contributor.
               </p>
               {/* Pay illustration - hidden on mobile */}
-              <img 
-                src="/icons/pay.svg" 
-                alt="Automatic payouts illustration" 
+              <Image
+                src="/icons/pay.svg"
+                alt="Automatic payouts illustration"
+                width={801}
+                height={334}
                 className="hidden md:block mt-auto pt-4 h-16 w-auto mx-auto opacity-80"
               />
             </div>
@@ -386,9 +390,11 @@ function FeaturesSection() {
                 Works seamlessly with your existing GitHub workflow. No context switching required.
               </p>
               {/* GitHub illustration - hidden on mobile */}
-              <img 
-                src="/icons/github.svg" 
-                alt="GitHub native illustration" 
+              <Image
+                src="/icons/github.svg"
+                alt="GitHub native illustration"
+                width={799}
+                height={552}
                 className="hidden md:block mt-auto pt-4 h-16 w-auto mx-auto opacity-80"
               />
             </div>

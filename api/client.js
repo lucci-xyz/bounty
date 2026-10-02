@@ -50,7 +50,7 @@ async function request(path, { method = 'GET', headers, body, credentials = 'inc
  * @returns {Promise<any>} The JSON response payload.
  */
 export async function fetchJson(path, options) {
-  return request(path, options);
+  return await request(path, options);
 }
 
 /**
@@ -81,7 +81,7 @@ export async function fetchJsonOrNull(path, options = {}, ignoreStatuses = [401,
  * @returns {Promise<any>} The response payload.
  */
 export async function postJson(path, body, options = {}) {
-  return request(
+  return await request(
     path,
     {
       ...options,
@@ -100,7 +100,7 @@ export async function postJson(path, body, options = {}) {
  * @returns {Promise<any>} The response payload.
  */
 export async function deleteJson(path, body, options = {}) {
-  return request(
+  return await request(
     path,
     {
       ...options,

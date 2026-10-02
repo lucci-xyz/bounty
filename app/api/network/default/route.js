@@ -7,7 +7,7 @@ import { getDefaultAliasForGroup } from '@/config/chain-registry';
  * GET /api/network/default?group=testnet|mainnet
  * Returns the default alias for the specified network group
  */
-export async function GET(request) {
+export function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const group = searchParams.get('group') || 'mainnet';

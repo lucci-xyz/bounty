@@ -3,7 +3,6 @@ import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import {
   getOctokit,
   postIssueComment,
-  updateComment,
   extractClosedIssues,
   extractMentionedIssues
 } from '../../client.js';
@@ -14,26 +13,29 @@ import {
   userQueries,
   allowlistQueries
 } from '@/server/db/prisma.js';
-import { resolveBountyOnNetwork } from '@/server/blockchain/contract.js';
+import { resolveBountyOnNetwork, readBountyOnchainResolution } from '@/server/blockchain/contract.js';
+import { settleClaim, PAYOUT_FAILURE } from '@/server/payouts/settleClaim.js';
+import {
+  CLAIM_STATUS,
+  BOUNTY_STATUS,
+  isPayoutCandidateBountyStatus,
+  isResolvingLeaseStale
+} from '@/lib/status';
 import { ethers } from 'ethers';
 import { notifyMaintainers } from '../../services/maintainerAlerts.js';
-import { formatAmountByToken, networkMeta } from '../../services/bountyFormatting.js';
+import { formatAmountByToken } from '../../services/bountyFormatting.js';
+import { announcePayment } from '../../services/paymentAnnouncement.js';
 import {
   renderPrLinkedComment,
   renderPaymentFailedComment,
-  renderPaymentSentComment,
   renderPrReadyComment,
-  renderBountyResolvedComment,
   renderOpenBountiesComment,
   renderWalletRequiredComment,
   renderWalletInvalidComment
 } from '../../templates/bounties';
 import { BRAND_SIGNATURE, FRONTEND_BASE, OG_ICON } from '../../constants.js';
 import { getLinkHref } from '@/config/links';
-import {
-  sendPrOpenedEmail,
-  sendBountyPaidEmail
-} from '@/integrations/email/email.js';
+import { sendPrOpenedEmail } from '@/integrations/email/email.js';
 
 const getIssueUrl = (repoFullName, issueNumber) => getLinkHref('github', 'issue', { repoFullName, issueNumber });
 const getPullUrl = (repoFullName, prNumber) => getLinkHref('github', 'pullRequest', { repoFullName, prNumber });
@@ -139,9 +141,33 @@ export async function handlePullRequestMerged(payload) {
     const closingIssues = new Set(extractClosedIssues(pull_request.body));
 
     for (const claim of claims) {
+      // Paid claims never re-enter. Anything else goes to the settle guard,
+      // which owns the exactly-once decision (including redeliveries).
+      if (claim.status === CLAIM_STATUS.PAID) {
+        continue;
+      }
+
       const bounty = await bountyQueries.findById(claim.bountyId);
 
-      if (!bounty || bounty.status !== 'open') {
+      // `open` and `resolving` both go to the guard. `resolving` is how a
+      // worker that died mid-payout left the row; only the guard can steal
+      // that lease once it is stale, so gating on `open` alone would strand
+      // the payout forever.
+      if (!bounty || !isPayoutCandidateBountyStatus(bounty.status)) {
+        continue;
+      }
+
+      // A live lease belongs to another worker. Skip before the wallet and
+      // allowlist steps below, which write claim status unconditionally and
+      // would clobber that worker's `processing` row.
+      if (
+        bounty.status === BOUNTY_STATUS.RESOLVING &&
+        !isResolvingLeaseStale(bounty.updatedAt)
+      ) {
+        logger.info('Skipping payout: another worker holds a fresh lease', {
+          bountyId: bounty.bountyId,
+          claimId: claim.id
+        });
         continue;
       }
 
@@ -167,7 +193,8 @@ export async function handlePullRequestMerged(payload) {
         });
 
         await postIssueComment(octokit, owner, repo, pull_request.number, comment);
-        await prClaimQueries.updateStatus(claim.id, 'pending_wallet');
+        // Conditional: never overwrite a claim a concurrent payout holds.
+        await prClaimQueries.updateIdleStatus(claim.id, CLAIM_STATUS.PENDING_WALLET);
         continue;
       }
 
@@ -183,7 +210,7 @@ export async function handlePullRequestMerged(payload) {
         });
 
         await postIssueComment(octokit, owner, repo, pull_request.number, comment);
-        await prClaimQueries.updateStatus(claim.id, 'failed');
+        await prClaimQueries.updateIdleStatus(claim.id, CLAIM_STATUS.FAILED);
 
         await notifyMaintainers(octokit, owner, repo, pull_request.number, {
           errorType: 'Invalid Wallet Address in Database',
@@ -230,7 +257,7 @@ export async function handlePullRequestMerged(payload) {
           prNumber: pull_request.number
         });
 
-        await prClaimQueries.updateStatus(claim.id, 'failed');
+        await prClaimQueries.updateIdleStatus(claim.id, CLAIM_STATUS.FAILED);
 
         await notifyMaintainers(octokit, owner, repo, pull_request.number, {
           errorType: 'Recipient Not On Sponsor Allowlist',
@@ -248,73 +275,83 @@ export async function handlePullRequestMerged(payload) {
         continue;
       }
 
-      let result;
-      try {
-        result = await resolveBountyOnNetwork(bounty.bountyId, walletMapping.walletAddress, bounty.network);
-      } catch (error) {
-        logger.error('Exception during bounty resolution:', error.message);
-        result = { success: false, error: error.message || 'Unknown error during resolution' };
+      // Exactly-once settlement: acquire, send, settle-or-release. Rows are
+      // already flipped when this returns; this handler only reacts.
+      const settlement = await settleClaim(
+        {
+          claimId: claim.id,
+          bountyId: bounty.bountyId,
+          recipientAddress: walletMapping.walletAddress
+        },
+        {
+          bountyQueries,
+          prClaimQueries,
+          resolveBounty: (id, recipient, options) =>
+            resolveBountyOnNetwork(id, recipient, bounty.network, options),
+          readOnchainStatus: (id, options) => readBountyOnchainResolution(id, bounty.network, options),
+          logger
+        }
+      );
+
+      if (settlement.outcome === 'skipped') {
+        logger.info('Skipping payout: already handled or in flight', {
+          bountyId: bounty.bountyId,
+          claimId: claim.id,
+          reason: settlement.reason
+        });
+        continue;
       }
 
-      if (result.success) {
-        await bountyQueries.updateStatus(bounty.bountyId, 'resolved', result.txHash);
-        await prClaimQueries.updateStatus(claim.id, 'paid', result.txHash, Date.now());
-
-        const tokenSymbol = bounty.tokenSymbol || 'UNKNOWN';
-        const amountFormatted = formatAmountByToken(bounty.amount, tokenSymbol);
-        const net = networkMeta(bounty.network);
-        const explorerUrl = net.explorerTx(result.txHash);
-        const successComment = renderPaymentSentComment({
-          iconUrl: OG_ICON,
-          username: pull_request.user.login,
-          amountFormatted,
-          tokenSymbol,
-          txUrl: explorerUrl,
-          brandSignature: BRAND_SIGNATURE
+      if (settlement.outcome === 'pending') {
+        // Nothing decided yet (sent without a receipt, or resolved on-chain
+        // but not yet attributed). Not a failure (no error comment, no alert)
+        // and not a success (no payment comment yet). The leases are held;
+        // the next merged redelivery or manual retry reconciles from chain,
+        // and a reconciled payment comes back `paid` and is announced then.
+        logger.warn('Payout pending; awaiting reconciliation', {
+          bountyId: bounty.bountyId,
+          claimId: claim.id,
+          txHash: settlement.txHash,
+          reason: settlement.reason
         });
+        continue;
+      }
 
-        await postIssueComment(octokit, owner, repo, pull_request.number, successComment);
-
-        if (bounty.pinnedCommentId) {
-          const updatedSummary = renderBountyResolvedComment({
-            iconUrl: OG_ICON,
-            username: pull_request.user.login,
-            amountFormatted,
-            tokenSymbol,
-            txUrl: explorerUrl,
-            brandSignature: BRAND_SIGNATURE
-          });
-
-          await updateComment(octokit, owner, repo, bounty.pinnedCommentId, updatedSummary);
-        }
-
-        const contributor = await userQueries.findByGithubId(claim.prAuthorGithubId);
-        if (contributor?.email) {
-          await sendBountyPaidEmail({
-            to: contributor.email,
-            username: contributor.githubUsername,
-            bountyAmount: amountFormatted,
-            tokenSymbol,
-            issueNumber: bounty.issueNumber,
-            issueTitle: bounty.issueTitle || '',
-            repoFullName: bounty.repoFullName,
-            txUrl: explorerUrl,
-            frontendUrl: FRONTEND_BASE
-          });
-        }
+      // `paid` covers a fresh send and a payment reconciled from chain after
+      // an interrupted attempt; either way the contributor has not been told.
+      if (settlement.outcome === 'paid') {
+        await announcePayment({
+          octokit,
+          owner,
+          repo,
+          prNumber: pull_request.number,
+          username: pull_request.user.login,
+          bounty,
+          contributorGithubId: claim.prAuthorGithubId,
+          txHash: settlement.txHash
+        });
       } else {
         // Classify server-side against the raw text, but publish only a
         // reference. An ethers/provider message carries the configured RPC URL
         // — commonly with an embedded API key — plus the upstream response
         // body, and this comment is world-readable and permanent.
-        const resolveErrorRef = logPublicError(new Error(result.error || 'Unknown resolution error'));
+        const resolveErrorRef = logPublicError(new Error(settlement.error || 'Unknown resolution error'));
 
         let errorHelp = 'Tag a maintainer to investigate and replay the payout.';
         let notifySeverity = 'high';
         let shouldNotify = true;
-        const errorLower = (result.error || '').toLowerCase();
+        const errorLower = (settlement.error || '').toLowerCase();
 
-        if (errorLower.includes('batch') || errorLower.includes('drpc')) {
+        if (settlement.reason === PAYOUT_FAILURE.RESOLVED_ELSEWHERE) {
+          // The escrow already paid this bounty out. Nothing to replay.
+          errorHelp = 'This bounty was already paid out on-chain, so this pull request cannot also be paid for it.';
+          notifySeverity = 'low';
+          shouldNotify = false;
+        } else if (settlement.reason === PAYOUT_FAILURE.NOT_PAYABLE_ONCHAIN) {
+          errorHelp = 'The sponsor refunded this bounty after its deadline, so it can no longer be paid out.';
+          notifySeverity = 'low';
+          shouldNotify = false;
+        } else if (errorLower.includes('batch') || errorLower.includes('drpc')) {
           errorHelp = 'This looks like an RPC provider issue. The team has been notified and will retry the payout.';
           notifySeverity = 'critical';
         } else if (errorLower.includes('insufficient') || errorLower.includes('balance')) {
@@ -334,7 +371,9 @@ export async function handlePullRequestMerged(payload) {
 
         const errorComment = renderPaymentFailedComment({
           iconUrl: OG_ICON,
-          errorSnippet: publicErrorMessage(resolveErrorRef),
+          // `publicError` is guard-authored or a known escrow revert; anything
+          // else stays behind the reference.
+          errorSnippet: settlement.publicError || publicErrorMessage(resolveErrorRef),
           helpText: errorHelp,
           network: bounty.network,
           recipientAddress: `${walletMapping.walletAddress.slice(0, 10)}...${walletMapping.walletAddress.slice(-8)}`,
@@ -342,7 +381,6 @@ export async function handlePullRequestMerged(payload) {
         });
 
         await postIssueComment(octokit, owner, repo, pull_request.number, errorComment);
-        await prClaimQueries.updateStatus(claim.id, 'failed');
 
         if (shouldNotify) {
           const tokenSymbol = bounty.tokenSymbol || 'UNKNOWN';

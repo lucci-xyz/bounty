@@ -9,7 +9,8 @@ import {
   contractStatusToDb,
   getStatusLabel,
   deriveLifecycle,
-  isRefundEligible
+  isRefundEligible,
+  RESOLVE_GRACE_SECONDS
 } from '../lib/status/index.js';
 
 test('isValidStatus accepts canonical statuses and rejects others', () => {
@@ -93,16 +94,26 @@ test('deriveLifecycle handles missing/invalid deadlines without throwing', () =>
   assert.equal(lifecycle.deadline, null);
 });
 
-test('isRefundEligible mirrors the contract refundExpired guard (strictly past deadline)', () => {
+test('isRefundEligible mirrors the contract refundExpired guard (strictly past deadline + RESOLVE_GRACE)', () => {
   const deadline = 2_000;
+  const graceEnd = deadline + RESOLVE_GRACE_SECONDS;
   // not open -> never eligible
-  assert.equal(isRefundEligible({ status: 'resolved', deadline }, deadline + 10), false);
+  assert.equal(isRefundEligible({ status: 'resolved', deadline }, graceEnd + 10), false);
   // open but before deadline -> not eligible
   assert.equal(isRefundEligible({ status: 'open', deadline }, deadline - 1), false);
-  // open exactly at deadline -> NOT eligible (on-chain would revert DeadlineNotReached)
+  // open exactly at deadline -> NOT eligible: the resolver can still pay
+  // until deadline + RESOLVE_GRACE, and refundExpired would revert
+  // DeadlineNotReached.
   assert.equal(isRefundEligible({ status: 'open', deadline }, deadline), false);
-  // open strictly past deadline -> eligible
-  assert.equal(isRefundEligible({ status: 'open', deadline }, deadline + 1), true);
+  // open past deadline but still inside the resolver's grace window -> NOT
+  // eligible. This is the case the un-fixed helper got wrong: it read
+  // eligible a full day before the contract would accept refundExpired.
+  assert.equal(isRefundEligible({ status: 'open', deadline }, deadline + 1), false);
+  assert.equal(isRefundEligible({ status: 'open', deadline }, graceEnd - 1), false);
+  // open exactly at the grace boundary -> NOT eligible (contract uses '>').
+  assert.equal(isRefundEligible({ status: 'open', deadline }, graceEnd), false);
+  // open strictly past deadline + RESOLVE_GRACE -> eligible.
+  assert.equal(isRefundEligible({ status: 'open', deadline }, graceEnd + 1), true);
 });
 
 test('isRefundEligible rejects bounties with no usable deadline', () => {

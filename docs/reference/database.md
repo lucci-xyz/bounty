@@ -22,7 +22,7 @@ erDiagram
     string token             "ERC-20 address"
     string amount            "raw units (string)"
     int    deadline          "unix seconds"
-    string status            "open|resolved|refunded"
+    string status            "open|resolving|resolved|refunded"
     string txHash?           "optional"
     string network           "alias"
     int    chainId
@@ -47,7 +47,7 @@ erDiagram
     int    prNumber
     string prAuthorGithubId
     string repoFullName
-    string status          "pending|paid|failed"
+    string status          "pending|processing|paid|failed|pending_wallet"
     string txHash?         "optional"
     DateTime createdAt
     DateTime resolvedAt?   "optional"
@@ -130,6 +130,7 @@ erDiagram
 | Status | Contract Enum | Description |
 |--------|---------------|-------------|
 | `open` | 1 | Bounty is active, awaiting PR merge or expiry |
+| `resolving` | — | Transient payout lease held by a worker (in-flight transaction, never terminal). `updated_at` is the lease's fencing token: release and settle match on it, so a worker whose lease was stolen cannot move the row |
 | `resolved` | 2 | Bounty paid to contributor |
 | `refunded` | 3 | Bounty refunded to sponsor after deadline passed |
 
@@ -145,6 +146,7 @@ The `lifecycle.state` field adds one additional state for open bounties:
 | Status | Description |
 |--------|-------------|
 | `pending` | PR opened, awaiting merge |
+| `processing` | Payout transaction in flight (exactly-once guard, never terminal). `txHash` is pinned once the transaction is signed, before broadcast; a stale lease is recovered by the next merge redelivery, manual retry, or the daily `/api/cron/reconcile-payouts` sweep, each of which verifies that receipt on-chain (and waits while it is still in the mempool). A worker that steals a stale bounty lease, and refund confirmation, close any other `processing` claim on that bounty |
 | `paid` | PR merged, payout successful |
 | `failed` | Payout failed (retryable) |
 | `pending_wallet` | Awaiting contributor wallet link |
@@ -154,6 +156,7 @@ The `lifecycle.state` field adds one additional state for open bounties:
 ## Usage Notes
 
 - `CONFIG.envTarget` is written to `Bounty.environment`; always filter queries by it.  
+- Payout state (`resolving`, `processing`, `paid`, and the bounty's `resolved`) changes only through `server/payouts/settleClaim.js`. Other writers must be conditional so they cannot clobber a held lease: `bountyQueries.syncOpenStatusFromChain` only flips `open` rows, and `prClaimQueries.updateIdleStatus` never overwrites `processing` or `paid`.  
 - Prefer helpers in `server/db/prisma.js` for:
   - BigInt conversions (`repoId`, etc.).
   - Optional issue metadata detection.

@@ -76,7 +76,7 @@ function SignInContent() {
   // Check user's profile when GitHub user is available
   // Runs on mount AND when githubId changes to always get fresh data
   useEffect(() => {
-    if (!githubUser) return;
+    if (!githubUser?.githubId) return;
     
     let cancelled = false;
     
@@ -178,7 +178,7 @@ function SignInContent() {
       !profileCreated &&
       currentStep === 2
     ) {
-      createProfileWithWallet();
+      createProfileWithWalletRef.current();
     }
   }, [githubUser, isConnected, address, walletClient, hasLinkedWallet, isProcessing, profileCreated, currentStep]);
   
@@ -269,6 +269,11 @@ function SignInContent() {
       setIsProcessing(false);
     }
   }, [isConnected, address, walletClient, githubUser, chain, isProcessing, showError]);
+  // The auto-link effect fires on connection state, not on every new
+  // identity of this callback; a ref gives it the latest version without
+  // re-running (and re-attempting a failed link) on unrelated renders.
+  const createProfileWithWalletRef = useRef(createProfileWithWallet);
+  createProfileWithWalletRef.current = createProfileWithWallet;
   
   /**
    * Send email verification

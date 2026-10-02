@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { cn } from '@/lib';
 
 const SIZE_MAP = {
@@ -25,17 +26,20 @@ export default function UserAvatar({
   return (
     <div
       className={cn(
-        'flex items-center justify-center rounded-full overflow-hidden',
+        'relative flex items-center justify-center rounded-full overflow-hidden',
         preset.wrapper,
         appearance,
         className
       )}
     >
       {avatarUrl ? (
-        <img
+        <Image
           src={avatarUrl}
-          alt={username}
-          className="h-full w-full rounded-full object-cover"
+          alt={username || 'User avatar'}
+          fill
+          sizes={`${size}px`}
+          unoptimized
+          className="rounded-full object-cover"
         />
       ) : (
         <span className={cn('font-semibold', preset.initials)}>

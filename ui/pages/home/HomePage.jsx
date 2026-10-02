@@ -8,8 +8,12 @@ import { LinkFromCatalog } from '@/ui/components/LinkFromCatalog';
 /**
  * App home page listing all available bounties.
  * Includes search and handles loading/error states.
+ *
+ * @param {object} [props]
+ * @param {Array|null} [props.initialBounties] - Server-rendered seed list.
+ *   Null (e.g. embedded contexts) preserves pure client fetching.
  */
-export default function HomePage() {
+export default function HomePage({ initialBounties = null }) {
   const {
     filteredBounties,
     hasAnyBounties,
@@ -18,7 +22,7 @@ export default function HomePage() {
     clearSearch,
     loading,
     error
-  } = useBountyFeed();
+  } = useBountyFeed({ initialBounties });
 
   // Show loading indicator while fetching data
   if (loading) {

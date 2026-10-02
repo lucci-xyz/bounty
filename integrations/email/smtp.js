@@ -128,7 +128,7 @@ function stripHtml(html) {
  * Send a transactional email from no-reply@luccilabs.xyz
  */
 export async function sendTransactionalEmail({ to, subject, html, text }) {
-  return sendEmail({
+  return await sendEmail({
     from: EMAIL_SENDERS.noReply,
     to,
     subject,
@@ -141,7 +141,7 @@ export async function sendTransactionalEmail({ to, subject, html, text }) {
  * Send a beta program email from beta@luccilabs.xyz
  */
 export async function sendBetaEmail({ to, subject, html, text }) {
-  return sendEmail({
+  return await sendEmail({
     from: EMAIL_SENDERS.beta,
     to,
     subject,
@@ -154,7 +154,7 @@ export async function sendBetaEmail({ to, subject, html, text }) {
  * Send an ops alert email to ops@luccilabs.xyz
  */
 export async function sendOpsAlert({ subject, html, text }) {
-  return sendEmail({
+  return await sendEmail({
     from: EMAIL_SENDERS.noReply,
     to: EMAIL_SENDERS.ops,
     subject,

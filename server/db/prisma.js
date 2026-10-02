@@ -1,7 +1,13 @@
 import { logger } from '@/lib/logger';
 import { PrismaClient } from '@prisma/client';
 import { CONFIG } from '../config.js';
-import { isValidStatus, BOUNTY_STATUS } from '@/lib/status';
+import {
+  isValidStatus,
+  BOUNTY_STATUS,
+  CLAIM_STATUS,
+  CLAIM_ACQUIRABLE_STATUSES,
+  RESOLVING_LEASE_MS
+} from '@/lib/status';
 import { decideAllowlist } from '@/lib/allowlistDecision';
 
 // Prisma client instance
@@ -116,7 +122,7 @@ export const bountyQueries = {
     
     const status = bountyData.status || BOUNTY_STATUS.OPEN;
     if (!isValidStatus(status)) {
-      throw new Error(`Invalid bounty status: ${status}. Valid: open, resolved, refunded`);
+      throw new Error(`Invalid bounty status: ${status}. Valid: open, resolving, resolved, refunded`);
     }
     
     const data = {
@@ -194,6 +200,105 @@ export const bountyQueries = {
   },
 
   /**
+   * Atomically acquires a bounty for payout. Wins when the bounty is `open`
+   * (fast path) or `resolving` on a stale lease (crash recovery). Each branch
+   * is a single conditional UPDATE, so at most one overlapping caller wins.
+   *
+   * The returned `lease` is the `updatedAt` stamp written on acquire. It is a
+   * fencing token: release and settle match on it, so a worker whose lease was
+   * stolen can no longer move the row out from under the worker that stole it.
+   */
+  tryAcquireForPayout: async (bountyId, nowMs = Date.now()) => {
+    const stamp = BigInt(nowMs);
+    const opened = await prisma.bounty.updateMany({
+      where: { bountyId, status: BOUNTY_STATUS.OPEN },
+      data: { status: BOUNTY_STATUS.RESOLVING, updatedAt: stamp }
+    });
+    if (opened.count === 1) return { acquired: true, stolen: false, lease: nowMs };
+    const stolen = await prisma.bounty.updateMany({
+      where: {
+        bountyId,
+        status: BOUNTY_STATUS.RESOLVING,
+        updatedAt: { lt: BigInt(nowMs - RESOLVING_LEASE_MS) }
+      },
+      data: { updatedAt: stamp }
+    });
+    if (stolen.count === 1) {
+      logger.warn('Payout stole a stale resolving lease', { bountyId });
+      return { acquired: true, stolen: true, lease: nowMs };
+    }
+    return { acquired: false, stolen: false, lease: null };
+  },
+
+  /**
+   * Releases a held payout lease (send failed or skipped). Lands on `open`
+   * by default, or `refunded` when the chain says the sponsor already took
+   * the funds back — reopening that row would advertise money that is gone.
+   */
+  releasePayout: async (bountyId, lease, toStatus = BOUNTY_STATUS.OPEN) => {
+    const released = await prisma.bounty.updateMany({
+      where: { bountyId, status: BOUNTY_STATUS.RESOLVING, updatedAt: BigInt(lease) },
+      data: { status: toStatus, updatedAt: BigInt(Date.now()) }
+    });
+    if (released.count !== 1) {
+      logger.warn('Payout bounty release missed its lease', { bountyId });
+    }
+    return released.count === 1;
+  },
+
+  /**
+   * Settles a held payout lease to `resolved` after the transaction confirms.
+   */
+  settlePayout: async (bountyId, txHash, lease) => {
+    const settled = await prisma.bounty.updateMany({
+      where: { bountyId, status: BOUNTY_STATUS.RESOLVING, updatedAt: BigInt(lease) },
+      data: { status: BOUNTY_STATUS.RESOLVED, txHash, updatedAt: BigInt(Date.now()) }
+    });
+    if (settled.count !== 1) {
+      logger.error('Payout bounty settle missed — funds moved but the row did not flip', { bountyId });
+    }
+    return settled.count === 1;
+  },
+
+  /**
+   * Bounties whose payout lease is stale: a worker took it and never
+   * finished (crash, timeout, unconfirmed send nobody retried). Oldest first,
+   * scoped to this environment, capped so one reconciler run stays bounded.
+   * @returns {Promise<Array>}
+   */
+  findStaleResolving: async (nowMs = Date.now(), limit = 25) => {
+    const bountySelect = await getBountySelect();
+    const bounties = await prisma.bounty.findMany({
+      where: {
+        status: BOUNTY_STATUS.RESOLVING,
+        environment: CONFIG.envTarget || 'stage',
+        updatedAt: { lt: BigInt(nowMs - RESOLVING_LEASE_MS) }
+      },
+      orderBy: { updatedAt: 'asc' },
+      take: limit,
+      select: bountySelect
+    });
+    return bounties.map(normalizeBounty);
+  },
+
+  /**
+   * Mirrors an on-chain status onto a bounty row that is still `open`.
+   * Conditional on purpose: a `resolving` row belongs to a payout worker, and
+   * an unconditional write here would yank the lease out from under it.
+   * @returns {Promise<boolean>} whether the row flipped
+   */
+  syncOpenStatusFromChain: async (bountyId, status) => {
+    if (!isValidStatus(status)) {
+      throw new Error(`Invalid bounty status: ${status}. Valid: open, resolving, resolved, refunded`);
+    }
+    const synced = await prisma.bounty.updateMany({
+      where: { bountyId, status: BOUNTY_STATUS.OPEN },
+      data: { status, updatedAt: BigInt(Date.now()) }
+    });
+    return synced.count === 1;
+  },
+
+  /**
    * Updates the status and txHash of a bounty.
    * @param {string} bountyId 
    * @param {string} status 
@@ -202,7 +307,7 @@ export const bountyQueries = {
    */
   updateStatus: async (bountyId, status, txHash = null) => {
     if (!isValidStatus(status)) {
-      throw new Error(`Invalid bounty status: ${status}. Valid: open, resolved, refunded`);
+      throw new Error(`Invalid bounty status: ${status}. Valid: open, resolving, resolved, refunded`);
     }
     const bountySelect = await getBountySelect();
     const bounty = await prisma.bounty.update({
@@ -485,24 +590,138 @@ export const prClaimQueries = {
   },
 
   /**
-   * Updates the status and optionally txHash/resolvedAt of a PR claim.
+   * Atomically acquires a claim for payout by flipping it to `processing`.
+   * `processing` itself is acquirable only during a stale-lease steal, which
+   * is how a worker that died mid-payout recovers instead of sticking.
    */
-  updateStatus: async (id, status, txHash = null, resolvedAt = null) => {
-    const claim = await prisma.prClaim.update({
-      where: { id },
-      data: {
-        status,
-        txHash: txHash || undefined,
-        resolvedAt: resolvedAt ? BigInt(resolvedAt) : undefined
-      }
+  tryAcquireForPayout: async (id, { includeProcessing = false } = {}) => {
+    const from = includeProcessing
+      ? [...CLAIM_ACQUIRABLE_STATUSES, CLAIM_STATUS.PROCESSING]
+      : CLAIM_ACQUIRABLE_STATUSES;
+    const acquired = await prisma.prClaim.updateMany({
+      where: { id, status: { in: from } },
+      data: { status: CLAIM_STATUS.PROCESSING }
     });
-    
-    return {
+    return acquired.count === 1;
+  },
+
+  /**
+   * Records the hash of a broadcast-but-unconfirmed payout on a held claim.
+   * The lease stays `processing`; a later attempt reconciles from chain.
+   */
+  recordPayoutTx: async (id, txHash) => {
+    const recorded = await prisma.prClaim.updateMany({
+      where: { id, status: CLAIM_STATUS.PROCESSING },
+      data: { txHash }
+    });
+    if (recorded.count !== 1) {
+      logger.warn('Payout claim tx record missed its lease', { claimId: id });
+    }
+    return recorded.count === 1;
+  },
+
+  /**
+   * Settles a held claim to `paid` after the transaction confirms.
+   */
+  settlePayout: async (id, txHash, resolvedAt) => {
+    const settled = await prisma.prClaim.updateMany({
+      where: { id, status: CLAIM_STATUS.PROCESSING },
+      data: { status: CLAIM_STATUS.PAID, txHash, resolvedAt: BigInt(resolvedAt) }
+    });
+    if (settled.count !== 1) {
+      logger.error('Payout claim settle missed — funds moved but the claim did not flip', { claimId: id });
+    }
+    return settled.count === 1;
+  },
+
+  /**
+   * Releases a held claim after a failed send so it can be retried.
+   */
+  releasePayout: async (id, toStatus = CLAIM_STATUS.FAILED) => {
+    const released = await prisma.prClaim.updateMany({
+      where: { id, status: CLAIM_STATUS.PROCESSING },
+      data: { status: toStatus }
+    });
+    if (released.count !== 1) {
+      logger.warn('Payout claim release missed its lease', { claimId: id });
+    }
+    return released.count === 1;
+  },
+
+  /**
+   * Closes claims stranded in `processing` on a bounty that no live worker
+   * can finish. Without this, once the bounty settles, such a claim can
+   * never re-enter the guard and shows "Processing" forever.
+   *
+   * Callers: a payout worker that just stole the bounty lease (claim leases
+   * live under the bounty lease, so any *other* `processing` claim belonged
+   * to the dead worker), and refund confirmation (a refunded bounty can
+   * never pay any claim).
+   *
+   * A claim whose pinned hash is the on-chain resolution was the one paid;
+   * every other one is released to `failed`.
+   *
+   * @returns {Promise<number>} how many claims were attributed the payment
+   */
+  closeStrandedClaims: async (
+    bountyId,
+    { exceptClaimId = null, resolvedTxHash = null, resolvedAt = Date.now() } = {}
+  ) => {
+    const scope = {
+      bountyId,
+      status: CLAIM_STATUS.PROCESSING,
+      ...(exceptClaimId === null ? {} : { id: { not: exceptClaimId } })
+    };
+    let paid = 0;
+    if (resolvedTxHash) {
+      const settled = await prisma.prClaim.updateMany({
+        where: { ...scope, txHash: resolvedTxHash },
+        data: { status: CLAIM_STATUS.PAID, resolvedAt: BigInt(resolvedAt) }
+      });
+      paid = settled.count;
+    }
+    const failed = await prisma.prClaim.updateMany({
+      where: scope,
+      data: { status: CLAIM_STATUS.FAILED }
+    });
+    if (paid + failed.count > 0) {
+      logger.warn('Payout closed stranded processing claims', {
+        bountyId,
+        paid,
+        failed: failed.count
+      });
+    }
+    return paid;
+  },
+
+  /**
+   * All claims on one bounty, newest first.
+   */
+  findByBountyId: async (bountyId) => {
+    const claims = await prisma.prClaim.findMany({
+      where: { bountyId },
+      orderBy: { createdAt: 'desc' }
+    });
+    return claims.map((claim) => ({
       ...claim,
       prAuthorGithubId: Number(claim.prAuthorGithubId),
       createdAt: Number(claim.createdAt),
       resolvedAt: claim.resolvedAt ? Number(claim.resolvedAt) : null
-    };
+    }));
+  },
+
+  /**
+   * Sets the status of a claim that is not in a payout. Never overwrites
+   * `processing` (a worker holds it) or `paid` (funds moved), so the merge
+   * handler's wallet and allowlist checks cannot clobber a concurrent payout.
+   * @returns {Promise<boolean>} whether the row changed
+   */
+  updateIdleStatus: async (id, status) => {
+    const updated = await prisma.prClaim.updateMany({
+      where: { id, status: { in: CLAIM_ACQUIRABLE_STATUSES } },
+      data: { status }
+    });
+    return updated.count === 1;
   },
 
   /**

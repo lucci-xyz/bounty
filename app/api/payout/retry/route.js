@@ -1,11 +1,20 @@
+import { ethers } from 'ethers';
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { bountyQueries, prClaimQueries, walletQueries, allowlistQueries } from '@/server/db/prisma';
-import { resolveBountyOnNetwork } from '@/server/blockchain/contract';
+import { resolveBountyOnNetwork, readBountyOnchainResolution } from '@/server/blockchain/contract';
+import { settleClaim, PAYOUT_FAILURE } from '@/server/payouts/settleClaim';
+import {
+  BOUNTY_STATUS,
+  isPayoutCandidateBountyStatus,
+  isRetryableClaimStatus,
+  isResolvingLeaseStale
+} from '@/lib/status';
 
 /**
- * Manually retry a failed bounty payout for the authenticated contributor.
+ * Manually retry a failed, pending-wallet, or stuck-processing bounty payout
+ * for the authenticated contributor.
  * Expects: { claimId: number }
  */
 export async function POST(request) {
@@ -17,7 +26,7 @@ export async function POST(request) {
 
     const body = await request.json().catch(() => ({}));
     const claimId = Number(body?.claimId);
-    if (!claimId || Number.isNaN(claimId)) {
+    if (!Number.isSafeInteger(claimId) || claimId <= 0) {
       return Response.json({ error: 'claimId is required' }, { status: 400 });
     }
 
@@ -30,8 +39,11 @@ export async function POST(request) {
       return Response.json({ error: 'Not authorized to retry this payout' }, { status: 403 });
     }
 
-    if (claim.status !== 'failed') {
-      return Response.json({ error: 'Payout can only be retried for failed claims' }, { status: 400 });
+    // `processing` is accepted so a payout whose worker died mid-flight can be
+    // recovered from the dashboard: the guard skips it (409) while the lease
+    // is fresh and steals it once stale.
+    if (!isRetryableClaimStatus(claim.status)) {
+      return Response.json({ error: 'Payout can only be retried for failed, pending-wallet, or stuck claims' }, { status: 400 });
     }
 
     const bounty = await bountyQueries.findById(claim.bountyId);
@@ -44,8 +56,12 @@ export async function POST(request) {
       return Response.json({ error: 'Bounty environment mismatch' }, { status: 400 });
     }
 
-    if (bounty.status !== 'open') {
+    if (!isPayoutCandidateBountyStatus(bounty.status)) {
       return Response.json({ error: 'Bounty is not open for payout' }, { status: 400 });
+    }
+
+    if (bounty.status === BOUNTY_STATUS.RESOLVING && !isResolvingLeaseStale(bounty.updatedAt)) {
+      return Response.json({ error: 'Payout is already in progress' }, { status: 409 });
     }
 
     if (!bounty.network) {
@@ -56,6 +72,11 @@ export async function POST(request) {
     const wallet = await walletQueries.findByGithubId(session.githubId);
     if (!wallet?.walletAddress) {
       return Response.json({ error: 'Link a wallet before requesting payout' }, { status: 400 });
+    }
+    // Same check as the merge webhook. A malformed stored address would
+    // otherwise reach the chain and fail the claim for a reason a re-link fixes.
+    if (!ethers.isAddress(wallet.walletAddress)) {
+      return Response.json({ error: 'Your linked wallet address is invalid. Re-link your wallet, then retry.' }, { status: 400 });
     }
 
     // Same sponsor allowlist gate as the webhook payout path.
@@ -74,33 +95,63 @@ export async function POST(request) {
       );
     }
 
-    let result;
-    try {
-      result = await resolveBountyOnNetwork(bounty.bountyId, wallet.walletAddress, bounty.network);
-    } catch (error) {
-      logger.error('Manual payout threw', { error: error.message, bountyId: bounty.bountyId, claimId });
-      result = { success: false, error: error.message || 'Unknown error during payout' };
+    const settlement = await settleClaim(
+      {
+        claimId: claim.id,
+        bountyId: bounty.bountyId,
+        recipientAddress: wallet.walletAddress
+      },
+      {
+        bountyQueries,
+        prClaimQueries,
+        resolveBounty: (id, recipient, options) => resolveBountyOnNetwork(id, recipient, bounty.network, options),
+        readOnchainStatus: (id, options) => readBountyOnchainResolution(id, bounty.network, options),
+        logger
+      }
+    );
+
+    if (settlement.outcome === 'skipped') {
+      return Response.json({ error: 'Payout is already in progress or completed' }, { status: 409 });
     }
 
-    if (!result.success) {
-      await prClaimQueries.updateStatus(claim.id, 'failed');
-      // result.error is raw provider text, which can carry the RPC URL and its
-      // API key. Log it under a reference; return only the reference.
+    if (settlement.outcome === 'pending') {
+      // Nothing was decided: either a sent transaction has no receipt yet, or
+      // the chain says resolved but the payment could not be located yet.
+      return Response.json(
+        {
+          success: false,
+          pending: true,
+          txHash: settlement.txHash,
+          error: settlement.txHash
+            ? 'Payout transaction was sent but is not yet confirmed. Check back shortly.'
+            : 'This bounty is settled on-chain and the payment is still being confirmed. Check back shortly.'
+        },
+        { status: 202 }
+      );
+    }
+
+    if (settlement.outcome === 'failed') {
+      if (settlement.reason !== PAYOUT_FAILURE.SEND_FAILED) {
+        // The chain already settled this bounty another way. Not retryable.
+        return Response.json({ error: settlement.publicError }, { status: 409 });
+      }
+      // Provider errors can carry the RPC URL and its API key. Log the raw
+      // text under a reference; return only the reference or a known revert.
       const ref = newErrorRef();
-      logger.error(`[${ref}] Manual payout failed`, {
+      logger.error(`[${ref}] Manual payout send failed`, {
         bountyId: bounty.bountyId,
         claimId,
-        error: result.error
+        error: settlement.error
       });
-      return Response.json({ error: publicErrorMessage(ref), ref }, { status: 502 });
+      return Response.json(
+        { error: settlement.publicError || publicErrorMessage(ref), ref },
+        { status: 502 }
+      );
     }
-
-    await bountyQueries.updateStatus(bounty.bountyId, 'resolved', result.txHash);
-    await prClaimQueries.updateStatus(claim.id, 'paid', result.txHash, Date.now());
 
     return Response.json({
       success: true,
-      txHash: result.txHash
+      txHash: settlement.txHash
     });
   } catch (error) {
     logger.error('Error processing manual payout retry:', error);

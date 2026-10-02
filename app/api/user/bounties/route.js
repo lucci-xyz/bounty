@@ -26,8 +26,10 @@ async function reconcileOpenBountyStatuses(bounties = []) {
           return bounty;
         }
 
-        const updated = await bountyQueries.updateStatus(bounty.bountyId, onChainStatus);
-        return updated || { ...bounty, status: onChainStatus };
+        // Conditional on the row still being `open`: a payout worker may have
+        // taken the `resolving` lease since the read above.
+        await bountyQueries.syncOpenStatusFromChain(bounty.bountyId, onChainStatus);
+        return { ...bounty, status: onChainStatus };
       } catch (error) {
         logger.warn(
           `Failed to reconcile bounty status for ${bounty.bountyId}: ${error.message}`

@@ -32,6 +32,11 @@ const STATUS = {
   ERROR: 'error'
 };
 
+// Stable fallbacks for missing query data. An inline `[]` or `{}` is a new
+// value every render, which invalidated every memo built on these lists.
+const EMPTY_LIST = [];
+const EMPTY_OBJECT = {};
+
 function getQueryStatus(query, enabled) {
   if (!enabled) return STATUS.IDLE;
   if (query.status === 'error') return STATUS.ERROR;
@@ -57,7 +62,6 @@ export function AccountProvider({ children }) {
   const queryClient = useQueryClient();
 
   if (!AccountProvider.hasWarnedAboutMissingProvider && !queryClient) {
-    // eslint-disable-next-line no-console
     console.warn('AccountProvider must be used within a QueryClientProvider');
     AccountProvider.hasWarnedAboutMissingProvider = true;
   }
@@ -120,13 +124,13 @@ export function AccountProvider({ children }) {
 
   const sponsoredBounties = USE_DUMMY_DATA
     ? dummyUserBounties
-    : sponsorBountiesQuery.data || [];
+    : sponsorBountiesQuery.data || EMPTY_LIST;
   const sponsorStats = USE_DUMMY_DATA
     ? dummyStats
-    : sponsorStatsQuery.data || {};
+    : sponsorStatsQuery.data || EMPTY_OBJECT;
   const claimedBounties = USE_DUMMY_DATA
     ? dummyClaimedBounties
-    : earningsQuery.data?.bounties || [];
+    : earningsQuery.data?.bounties || EMPTY_LIST;
   const totalEarned = USE_DUMMY_DATA
     ? dummyTotalEarned
     : earningsQuery.data?.totalEarned || 0;
