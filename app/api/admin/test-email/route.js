@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import {
   sendPrOpenedEmail,
   sendBountyExpiredEmail,
@@ -136,9 +137,11 @@ export async function POST(request) {
       result
     });
   } catch (error) {
-    logger.error('[test-email] Error:', error);
+    const ref = newErrorRef();
+    logger.error(`[${ref}] [test-email] Error:`, error);
     return Response.json({ 
-      error: error.message,
+      error: publicErrorMessage(ref),
+      ref,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     }, { status: 500 });
   }

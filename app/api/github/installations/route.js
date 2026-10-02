@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { getGitHubApp } from '@/integrations/github/client';
 
 export async function GET() {
@@ -47,8 +48,9 @@ export async function GET() {
 
     return Response.json({ repositories: allRepos });
   } catch (error) {
-    logger.error('Error fetching GitHub installations:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    const ref = newErrorRef();
+    logger.error(`[${ref}] Error fetching GitHub installations:`, error);
+    return Response.json({ error: publicErrorMessage(ref), ref }, { status: 500 });
   }
 }
 

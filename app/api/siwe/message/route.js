@@ -1,25 +1,35 @@
+import { logger } from '@/lib/logger';
+import { newErrorRef } from '@/lib/errorRef';
 import { createSIWEMessageText } from '@/server/auth/siwe';
 
+/**
+ * @returns {string|null} Why the payload is invalid, or null when it is valid.
+ */
 function validatePayload(payload) {
   if (!payload || typeof payload !== 'object') {
-    throw new Error('Invalid request payload');
+    return 'Invalid request payload';
   }
 
   const { address, nonce } = payload;
 
   if (!address || typeof address !== 'string') {
-    throw new Error('Wallet address is required');
+    return 'Wallet address is required';
   }
 
   if (!nonce || typeof nonce !== 'string') {
-    throw new Error('Nonce is required');
+    return 'Nonce is required';
   }
+
+  return null;
 }
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    validatePayload(body);
+    const invalid = validatePayload(body);
+    if (invalid) {
+      return Response.json({ error: invalid }, { status: 400 });
+    }
 
     const {
       address,
@@ -40,11 +50,12 @@ export async function POST(request) {
 
     return Response.json({ message });
   } catch (error) {
+    const ref = newErrorRef();
+    logger.warn(`[${ref}] Failed to build SIWE message:`, error);
     return Response.json(
-      { error: error.message || 'Failed to build SIWE message' },
+      { error: 'Failed to build SIWE message', ref },
       { status: 400 }
     );
   }
 }
-
 

@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { REGISTRY } from '@/config/chain-registry';
 import { getFlagValue } from '@/lib/flags';
 
@@ -28,11 +29,13 @@ export async function GET() {
       registry: registryPayload
     });
   } catch (error) {
-    logger.error('Error fetching registry:', error);
+    const ref = newErrorRef();
+    logger.error(`[${ref}] Error fetching registry:`, error);
     return NextResponse.json(
       { 
         success: false, 
-        error: error.message || 'Failed to load network registry' 
+        error: publicErrorMessage(ref),
+        ref
       },
       { status: 500 }
     );

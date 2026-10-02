@@ -1,5 +1,7 @@
 import { randomBytes } from 'crypto';
+import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { userQueries } from '@/server/db/prisma';
 import { sendEmailVerificationEmail } from '@/integrations/email/email.js';
 import { CONFIG } from '@/server/config';
@@ -48,7 +50,9 @@ export async function POST(request) {
       expiresAt: verification.expiresAt
     });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    const ref = newErrorRef();
+    logger.error(`[${ref}] Error starting email verification:`, error);
+    return Response.json({ error: publicErrorMessage(ref), ref }, { status: 500 });
   }
 }
 

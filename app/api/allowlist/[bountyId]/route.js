@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { allowlistQueries, bountyQueries, userQueries } from '@/server/db/prisma';
 import { ethers } from 'ethers';
 
@@ -27,8 +28,9 @@ export async function GET(request, { params }) {
     
     return Response.json(allowlist);
   } catch (error) {
-    logger.error('Error fetching allowlist:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    const ref = newErrorRef();
+    logger.error(`[${ref}] Error fetching allowlist:`, error);
+    return Response.json({ error: publicErrorMessage(ref), ref }, { status: 500 });
   }
 }
 
@@ -74,8 +76,9 @@ export async function POST(request, { params }) {
     
     return Response.json(entry);
   } catch (error) {
-    logger.error('Error adding to allowlist:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    const ref = newErrorRef();
+    logger.error(`[${ref}] Error adding to allowlist:`, error);
+    return Response.json({ error: publicErrorMessage(ref), ref }, { status: 500 });
   }
 }
 
