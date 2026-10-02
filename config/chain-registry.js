@@ -150,8 +150,36 @@ const ESCROW_FEE_FRAGMENTS = [
   'function sweepNative(address to) external'
 ];
 
+// Custom errors from contracts/current/BountyEscrow.sol. Without these, ethers
+// cannot decode a revert and reports `execution reverted (unknown custom
+// error)`, so nothing downstream (payout classification, mapContractError)
+// ever sees a name like `NotOpen` or `DeadlinePassed`.
+const ESCROW_ERROR_FRAGMENTS = [
+  'error InvalidParams()',
+  'error AlreadyExists()',
+  'error NotOpen()',
+  'error NotSponsor()',
+  'error NotResolver()',
+  'error DeadlineNotReached()',
+  'error DeadlinePassed()',
+  'error ZeroAddress()',
+  'error ZeroAmount()',
+  'error NoFeesAvailable()',
+  'error InsufficientFees()',
+  'error TokenNotAllowed()',
+  'error CannotRescueAllowedToken()',
+  'error ResolverNotAllowed()'
+];
+
 export const ABIS = {
-  escrow: Array.from(new Set([...ESCROW_ABI_BASE, ...ESCROW_REFUND_FRAGMENTS, ...ESCROW_FEE_FRAGMENTS])),
+  escrow: Array.from(
+    new Set([
+      ...ESCROW_ABI_BASE,
+      ...ESCROW_REFUND_FRAGMENTS,
+      ...ESCROW_FEE_FRAGMENTS,
+      ...ESCROW_ERROR_FRAGMENTS
+    ])
+  ),
   erc20: [
     'function approve(address spender, uint256 amount) external returns (bool)',
     'function allowance(address owner, address spender) external view returns (uint256)',
