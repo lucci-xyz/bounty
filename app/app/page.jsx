@@ -5,6 +5,11 @@ import { filterActiveBounties } from '@/lib/bountyFilter';
 import { dummyBounties } from '@/api/data/bounties';
 import { logger } from '@/lib/logger';
 
+// The feed is live data. Today the root layout's flag reads already make this
+// route dynamic; say so here so a layout change can never freeze the feed into
+// a build-time snapshot of whatever bounties existed when CI ran.
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Bounties | BountyPay',
   description: 'Browse open bounties and start earning crypto for your open source contributions.',
