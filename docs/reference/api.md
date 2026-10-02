@@ -36,7 +36,7 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 ## Refunds
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
-| POST | `/api/refunds/confirm` | GitHub session | Records a sponsor-signed refund after the wallet has broadcast `refundExpired` itself. Body `{ bountyId, txHash }`. Verifies on-chain that the bounty really is refunded before writing. **This is the only refund path**: `refundExpired` requires `msg.sender` to be the sponsor, so a refund can only ever be signed by the funding wallet. |
+| POST | `/api/refunds/confirm` | GitHub session | Records a sponsor-signed refund after the wallet has broadcast `refundExpired` itself. Body `{ bountyId, txHash }`. Verifies on-chain that the bounty really is refunded before writing, and stores `txHash` only when its receipt carries this bounty's `Refunded` event (a malformed hash is a 400; an unverifiable one records the refund without a hash). Closes any claim stranded in `processing`. **This is the only refund path**: `refundExpired` requires `msg.sender` to be the sponsor, so a refund can only ever be signed by the funding wallet. |
 
 ## Payouts
 | Method | Path | Auth | Notes |
@@ -86,6 +86,7 @@ Base path: `/api/*`. All routes are in `app/api/`. Responses are JSON with eithe
 | --- | --- | --- | --- |
 | GET | `/api/stats` | None | Token-level stats, recent bounties, and overall aggregates. |
 | GET | `/api/health` | None | Simple health probe. |
+| GET | `/api/cron/reconcile-payouts` | `Bearer $CRON_SECRET` | Settles payout leases nobody came back for (stale `resolving`/`processing`). Reconcile-only: records what the chain already decided, holds when the chain is unreadable or a send is still pending, and hands a never-sent payout back as `failed` for the contributor to retry. **Never sends a transaction.** Announces payments it recovers. Daily in `vercel.json` (Hobby-safe); tighten to every 15 minutes on Pro. Fails closed like the other cron. |
 | GET | `/api/cron/expiration-notify` | `Bearer $CRON_SECRET` | Emails sponsors of bounties nearing expiry. Invoked by the Vercel cron in `vercel.json`. **Fails closed**: returns 503 when `CRON_SECRET` is unset, so it can never be triggered anonymously as a mailing cannon. |
 | POST | `/api/admin/test-email` | Admin session | Sends a template email to the admin for visual checks. |
 

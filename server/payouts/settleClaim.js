@@ -78,16 +78,21 @@ const PUBLISHABLE_REVERTS = ['NotOpen', 'DeadlinePassed', 'NotResolver'];
  * @param {string} params.bountyId
  * @param {string} params.recipientAddress
  * @param {number} [params.nowMs] - clock injection for tests
+ * @param {boolean} [params.allowSend] - false for the reconciler: settle
+ *   only what the chain has already decided, act only on a stolen (stale)
+ *   lease, and release instead of sending
  * @param {object} deps - injected collaborators (real query namespaces,
  *   chain sender, and on-chain reader in production; fakes in tests)
  * @returns {Promise<object>} `{ outcome: 'paid', txHash, reconciled? }`
  *   (`reconciled` when the payment was found on-chain rather than sent now),
  *   `{ outcome: 'pending', txHash, reason }` (leases held, nothing decided),
- *   `{ outcome: 'failed', reason, error, publicError }`, or
+ *   `{ outcome: 'failed', reason, error, publicError }`,
+ *   `{ outcome: 'released', reason }` (reconciler only: nothing reached the
+ *   chain, rows handed back so the contributor can retry), or
  *   `{ outcome: 'skipped', reason }`.
  */
 export async function settleClaim(
-  { claimId, bountyId, recipientAddress, nowMs = Date.now() },
+  { claimId, bountyId, recipientAddress, nowMs = Date.now(), allowSend = true },
   deps
 ) {
   const { bountyQueries, prClaimQueries, resolveBounty, readOnchainStatus, logger } = deps;
@@ -96,6 +101,12 @@ export async function settleClaim(
   if (!acquired) {
     logger.info('Payout skipped: bounty already handled or in flight', { bountyId, claimId });
     return { outcome: 'skipped', reason: 'bounty-not-acquirable' };
+  }
+  if (!allowSend && !stolen) {
+    // The reconciler only recovers dead workers. A bounty it found stale
+    // that is `open` again was already handed back; leave it alone.
+    await bountyQueries.releasePayout(bountyId, lease);
+    return { outcome: 'skipped', reason: 'not-stale' };
   }
 
   const claimAcquired = await prClaimQueries.tryAcquireForPayout(claimId, {
@@ -137,10 +148,28 @@ export async function settleClaim(
     return { outcome: 'pending', txHash: pinnedTxHash, reason: 'earlier-send-pending' };
   }
 
+  if (!allowSend && before.status === null) {
+    // The reconciler cannot tell whether the dead worker's send mined. A
+    // live payout fails open toward liveness because the escrow revert
+    // backs it; a release here would only invite that path blind. Hold.
+    logger.warn('Reconciler could not read the chain; lease held', { bountyId, claimId });
+    return { outcome: 'pending', txHash: pinnedTxHash, reason: 'chain-unreadable' };
+  }
+
   // Nothing has settled on-chain. A claim the dead worker left in
   // `processing` (stolen lease only) sent nothing that mined; free it.
   if (stolen) {
     await prClaimQueries.closeStrandedClaims(bountyId, { exceptClaimId: claimId, resolvedAt: nowMs });
+  }
+
+  if (!allowSend) {
+    // Reconciler: the dead worker's send never reached the chain. Hand both
+    // rows back so the contributor's retry (or a redelivery) pays it through
+    // the normal gated path, instead of moving money from a cron.
+    await prClaimQueries.releasePayout(claimId, CLAIM_STATUS.FAILED);
+    await bountyQueries.releasePayout(bountyId, lease);
+    logger.warn('Reconciler released a stale payout lease for retry', { bountyId, claimId });
+    return { outcome: 'released', reason: 'stale-lease' };
   }
 
   let signedTxHash = null;
@@ -241,6 +270,13 @@ async function settleFromChain(ctx, chain) {
     const isOurs =
       !strandedOwnsTx &&
       (sameHash(pinnedTxHash, chain.txHash) || sameAddress(chain.recipient, recipientAddress));
+
+    if (!isOurs && !strandedOwnsTx && !recipientAddress) {
+      // No wallet to compare (the reconciler, for a contributor who has
+      // since unlinked) and no hash match: still unknown, not a mismatch.
+      logger.warn('Payout attribution unknown: no wallet to compare; leases held', { bountyId, claimId });
+      return { outcome: 'pending', txHash: null, reason: 'attribution-unknown' };
+    }
 
     if (isOurs) {
       await prClaimQueries.settlePayout(claimId, chain.txHash, nowMs);

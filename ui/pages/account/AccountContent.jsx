@@ -274,6 +274,7 @@ export function AccountContent({ initialTab: initialTabOverride } = {}) {
                   claimedBounties={earnings.claimedBounties}
                   githubUser={githubUser}
                   linkedWalletAddress={profile?.data?.wallet?.walletAddress}
+                  onPayoutSettled={accountActions?.refreshEarnings}
                 />
               )
             )}

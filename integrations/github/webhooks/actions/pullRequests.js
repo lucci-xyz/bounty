@@ -3,7 +3,6 @@ import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import {
   getOctokit,
   postIssueComment,
-  updateComment,
   extractClosedIssues,
   extractMentionedIssues
 } from '../../client.js';
@@ -24,23 +23,19 @@ import {
 } from '@/lib/status';
 import { ethers } from 'ethers';
 import { notifyMaintainers } from '../../services/maintainerAlerts.js';
-import { formatAmountByToken, networkMeta } from '../../services/bountyFormatting.js';
+import { formatAmountByToken } from '../../services/bountyFormatting.js';
+import { announcePayment } from '../../services/paymentAnnouncement.js';
 import {
   renderPrLinkedComment,
   renderPaymentFailedComment,
-  renderPaymentSentComment,
   renderPrReadyComment,
-  renderBountyResolvedComment,
   renderOpenBountiesComment,
   renderWalletRequiredComment,
   renderWalletInvalidComment
 } from '../../templates/bounties';
 import { BRAND_SIGNATURE, FRONTEND_BASE, OG_ICON } from '../../constants.js';
 import { getLinkHref } from '@/config/links';
-import {
-  sendPrOpenedEmail,
-  sendBountyPaidEmail
-} from '@/integrations/email/email.js';
+import { sendPrOpenedEmail } from '@/integrations/email/email.js';
 
 const getIssueUrl = (repoFullName, issueNumber) => getLinkHref('github', 'issue', { repoFullName, issueNumber });
 const getPullUrl = (repoFullName, prNumber) => getLinkHref('github', 'pullRequest', { repoFullName, prNumber });
@@ -325,50 +320,16 @@ export async function handlePullRequestMerged(payload) {
       // `paid` covers a fresh send and a payment reconciled from chain after
       // an interrupted attempt; either way the contributor has not been told.
       if (settlement.outcome === 'paid') {
-        const txHash = settlement.txHash;
-
-        const tokenSymbol = bounty.tokenSymbol || 'UNKNOWN';
-        const amountFormatted = formatAmountByToken(bounty.amount, tokenSymbol);
-        const net = networkMeta(bounty.network);
-        const explorerUrl = net.explorerTx(txHash);
-        const successComment = renderPaymentSentComment({
-          iconUrl: OG_ICON,
+        await announcePayment({
+          octokit,
+          owner,
+          repo,
+          prNumber: pull_request.number,
           username: pull_request.user.login,
-          amountFormatted,
-          tokenSymbol,
-          txUrl: explorerUrl,
-          brandSignature: BRAND_SIGNATURE
+          bounty,
+          contributorGithubId: claim.prAuthorGithubId,
+          txHash: settlement.txHash
         });
-
-        await postIssueComment(octokit, owner, repo, pull_request.number, successComment);
-
-        if (bounty.pinnedCommentId) {
-          const updatedSummary = renderBountyResolvedComment({
-            iconUrl: OG_ICON,
-            username: pull_request.user.login,
-            amountFormatted,
-            tokenSymbol,
-            txUrl: explorerUrl,
-            brandSignature: BRAND_SIGNATURE
-          });
-
-          await updateComment(octokit, owner, repo, bounty.pinnedCommentId, updatedSummary);
-        }
-
-        const contributor = await userQueries.findByGithubId(claim.prAuthorGithubId);
-        if (contributor?.email) {
-          await sendBountyPaidEmail({
-            to: contributor.email,
-            username: contributor.githubUsername,
-            bountyAmount: amountFormatted,
-            tokenSymbol,
-            issueNumber: bounty.issueNumber,
-            issueTitle: bounty.issueTitle || '',
-            repoFullName: bounty.repoFullName,
-            txUrl: explorerUrl,
-            frontendUrl: FRONTEND_BASE
-          });
-        }
       } else {
         // Classify server-side against the raw text, but publish only a
         // reference. An ethers/provider message carries the configured RPC URL

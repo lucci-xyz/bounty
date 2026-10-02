@@ -5,6 +5,9 @@ import { AbiCoder, Interface, Transaction, Wallet, keccak256 } from 'ethers';
 
 import {
   findResolvedEvent,
+  findRefundedEvent,
+  isTxHash,
+  isNonceContention,
   decodeRevert,
   isDefinitiveBroadcastRejection
 } from '../server/blockchain/payoutChain.js';
@@ -135,4 +138,38 @@ test('the hash pinned before broadcast is the hash the network will report', asy
     type: 2
   });
   assert.equal(Transaction.from(signed).hash, keccak256(signed));
+});
+
+test('refund verification accepts only this bounty\'s Refunded event from the escrow', () => {
+  const refundIface = new Interface([
+    RESOLVED,
+    'event Refunded(bytes32 indexed bountyId, address indexed sponsor, uint256 amount)'
+  ]);
+  const refunded = (bountyId, address = ESCROW) => ({
+    address,
+    ...refundIface.encodeEventLog('Refunded', [bountyId, RECIPIENT, 1000n])
+  });
+  const p = { iface: refundIface, escrowAddress: ESCROW, bountyId: BOUNTY };
+
+  assert.deepEqual(findRefundedEvent(receipt([refunded(BOUNTY)]), p), { sponsor: RECIPIENT, txHash: HASH });
+  assert.equal(findRefundedEvent(receipt([refunded(OTHER_BOUNTY)]), p), null);
+  assert.equal(findRefundedEvent(receipt([refunded(BOUNTY, '0x00000000000000000000000000000000000000aa')]), p), null);
+  // A payout receipt is not a refund receipt.
+  const payout = { address: ESCROW, ...refundIface.encodeEventLog('Resolved', [BOUNTY, RECIPIENT, 950n, 50n]) };
+  assert.equal(findRefundedEvent(receipt([payout]), p), null);
+});
+
+test('only well-formed 32-byte hashes are accepted as transaction hashes', () => {
+  assert.equal(isTxHash(HASH), true);
+  assert.equal(isTxHash(HASH.toUpperCase().replace('0X', '0x')), true);
+  for (const bad of ['', '0x', HASH.slice(0, -1), HASH + '0', 'ab'.repeat(32), `${HASH} `, null, 42]) {
+    assert.equal(isTxHash(bad), false, String(bad));
+  }
+});
+
+test('only nonce refusals are re-signed; insufficient funds is a real failure', () => {
+  assert.equal(isNonceContention({ code: 'NONCE_EXPIRED' }), true);
+  assert.equal(isNonceContention({ code: 'REPLACEMENT_UNDERPRICED' }), true);
+  assert.equal(isNonceContention({ code: 'INSUFFICIENT_FUNDS' }), false);
+  assert.equal(isNonceContention(null), false);
 });

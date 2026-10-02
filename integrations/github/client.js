@@ -42,6 +42,18 @@ export async function getOctokit(installationId) {
 }
 
 /**
+ * Get an installation Octokit for a repository, for callers that have no
+ * webhook payload carrying the installation id (scheduled jobs).
+ * @param {string} repoFullName - "owner/repo"
+ */
+export async function getOctokitForRepo(repoFullName) {
+  const app = githubApp ?? initGitHubApp();
+  const [owner, repo] = repoFullName.split('/');
+  const { data } = await app.octokit.request('GET /repos/{owner}/{repo}/installation', { owner, repo });
+  return app.getInstallationOctokit(data.id);
+}
+
+/**
  * Post a comment on an issue
  */
 export async function postIssueComment(octokit, owner, repo, issueNumber, body) {

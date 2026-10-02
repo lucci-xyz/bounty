@@ -146,7 +146,7 @@ The `lifecycle.state` field adds one additional state for open bounties:
 | Status | Description |
 |--------|-------------|
 | `pending` | PR opened, awaiting merge |
-| `processing` | Payout transaction in flight (exactly-once guard, never terminal). `txHash` is pinned once the transaction is signed, before broadcast; a stale lease is recovered by the next merge redelivery or manual retry, which verifies that receipt on-chain (and waits while it is still in the mempool). A worker that steals a stale bounty lease, and refund confirmation, close any other `processing` claim on that bounty |
+| `processing` | Payout transaction in flight (exactly-once guard, never terminal). `txHash` is pinned once the transaction is signed, before broadcast; a stale lease is recovered by the next merge redelivery, manual retry, or the daily `/api/cron/reconcile-payouts` sweep, each of which verifies that receipt on-chain (and waits while it is still in the mempool). A worker that steals a stale bounty lease, and refund confirmation, close any other `processing` claim on that bounty |
 | `paid` | PR merged, payout successful |
 | `failed` | Payout failed (retryable) |
 | `pending_wallet` | Awaiting contributor wallet link |

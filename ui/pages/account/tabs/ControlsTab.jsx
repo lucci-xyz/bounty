@@ -27,8 +27,10 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
  *
  * @param {Object} props
  * @param {Array} props.claimedBounties - Claimed bounties returned by the earnings dashboard.
+ * @param {Function} [props.onPayoutSettled] - Refreshes claim data after a retry,
+ *   so a paid or re-failed claim leaves or updates this list.
  */
-export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddress }) {
+export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddress, onPayoutSettled }) {
   const { eligibleBounties, loadingBounties, fetchEligibleBounties } = useEligibleRefundBounties({
     sessionGithubId: githubUser?.githubId,
     linkedWalletAddress
@@ -136,6 +138,10 @@ export function ControlsTab({ claimedBounties = [], githubUser, linkedWalletAddr
           type: 'error'
         }
       }));
+    } finally {
+      // Every outcome can change the claim's status (paid, re-failed, or now
+      // known to be paid elsewhere); show the real state, not the stale list.
+      onPayoutSettled?.();
     }
   };
 

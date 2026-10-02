@@ -1,10 +1,16 @@
 import { logger } from '@/lib/logger';
 import { ethers } from 'ethers';
 import { CONFIG } from '../config.js';
-import { REGISTRY, ABIS, getDefaultAliasForGroup } from '../../config/chain-registry.js';
+import { REGISTRY, ABIS } from '../../config/chain-registry.js';
 import { validateAddress, validateBytes32 } from './validation.js';
 import { contractStatusToDb } from '@/lib/status';
-import { findResolvedEvent, decodeRevert, isDefinitiveBroadcastRejection } from './payoutChain.js';
+import {
+  findResolvedEvent,
+  findRefundedEvent,
+  decodeRevert,
+  isDefinitiveBroadcastRejection,
+  isNonceContention
+} from './payoutChain.js';
 
 /**
  * Get the private key for a specific network alias.
@@ -21,82 +27,33 @@ function getPrivateKeyForAlias(alias) {
   );
 }
 
+// One set of clients per network alias. Building a fresh JsonRpcProvider on
+// every call meant a network-detection round trip (eth_chainId) before each
+// read or send, inside a payout budget measured in seconds. The registry's
+// chainId is authoritative, so the network is pinned rather than detected.
+const clientsByAlias = new Map();
+
 /**
- * Create blockchain clients for a network alias.
+ * Get blockchain clients for a network alias.
  * @param {string} alias
- * @returns {object} { network, provider, wallet, escrowContract, tokenContract }
+ * @returns {object} { network, provider, wallet, escrowContract }
  */
 function getNetworkClients(alias) {
+  const cached = clientsByAlias.get(alias);
+  if (cached) return cached;
+
   const network = REGISTRY[alias];
   if (!network) {
     throw new Error(`Unknown network alias: ${alias}. Available: ${Object.keys(REGISTRY).join(', ')}`);
   }
-  const provider = new ethers.JsonRpcProvider(network.rpcUrl);
+  const provider = new ethers.JsonRpcProvider(network.rpcUrl, network.chainId, { staticNetwork: true });
   const privateKey = getPrivateKeyForAlias(alias);
   const wallet = new ethers.Wallet(privateKey, provider);
   const escrowContract = new ethers.Contract(network.contracts.escrow, ABIS.escrow, wallet);
-  const tokenContract = new ethers.Contract(network.token.address, ABIS.erc20, provider);
 
-  return {
-    network,
-    provider,
-    wallet,
-    escrowContract,
-    tokenContract,
-  };
-}
-
-// Legacy globals for backward compatibility (default: testnet)
-let provider;
-let resolverWallet;
-let escrowContract;
-let tokenContract;
-
-/**
- * Initialize legacy blockchain clients (prefers mainnet, falls back to testnet).
- */
-export function initBlockchain() {
-  try {
-    // Try mainnet first, fall back to testnet
-    let defaultAlias;
-    try {
-      defaultAlias = getDefaultAliasForGroup('mainnet');
-    } catch {
-      defaultAlias = getDefaultAliasForGroup('testnet');
-    }
-    
-    const clients = getNetworkClients(defaultAlias);
-
-    provider = clients.provider;
-    resolverWallet = clients.wallet;
-    escrowContract = clients.escrowContract;
-    tokenContract = clients.tokenContract;
-
-    logger.info(`Blockchain initialized with ${defaultAlias}`);
-  } catch (error) {
-    logger.warn('Could not initialize default blockchain clients:', error.message);
-  }
-}
-
-/**
- * Get the default provider.
- * @returns {ethers.Provider}
- */
-export function getProvider() {
-  if (!provider) throw new Error('Blockchain not initialized');
-  return provider;
-}
-
-/**
- * Compute bounty ID (legacy - uses default testnet).
- * @param {string} sponsorAddress
- * @param {string} repoIdHash
- * @param {number} issueNumber
- * @returns {Promise<string>}
- */
-export async function computeBountyId(sponsorAddress, repoIdHash, issueNumber) {
-  if (!escrowContract) throw new Error('Blockchain not initialized');
-  return await escrowContract.computeBountyId(sponsorAddress, repoIdHash, issueNumber);
+  const clients = { network, provider, wallet, escrowContract };
+  clientsByAlias.set(alias, clients);
+  return clients;
 }
 
 /**
@@ -107,9 +64,9 @@ export async function computeBountyId(sponsorAddress, repoIdHash, issueNumber) {
  * @param {string} alias
  * @returns {Promise<string>}
  */
-export async function computeBountyIdOnNetwork(sponsorAddress, repoIdHash, issueNumber, alias) {
+export function computeBountyIdOnNetwork(sponsorAddress, repoIdHash, issueNumber, alias) {
   const { escrowContract } = getNetworkClients(alias);
-  return await escrowContract.computeBountyId(sponsorAddress, repoIdHash, issueNumber);
+  return escrowContract.computeBountyId(sponsorAddress, repoIdHash, issueNumber);
 }
 
 /**
@@ -231,40 +188,31 @@ export async function readBountyOnchainResolution(bountyId, alias, { txHash = nu
   }
 }
 
+/**
+ * Verifies that a transaction refunded this bounty on-chain.
+ * @param {string} bountyId
+ * @param {string} alias
+ * @param {string} txHash - caller-supplied hash
+ * @returns {Promise<boolean>} true only when the receipt carries the escrow's
+ *   `Refunded` event for this bounty. Throws on RPC failure.
+ */
+export async function isRefundTransaction(bountyId, alias, txHash) {
+  const { escrowContract, provider } = getNetworkClients(alias);
+  const receipt = await provider.getTransactionReceipt(txHash);
+  return Boolean(
+    findRefundedEvent(receipt, {
+      iface: escrowContract.interface,
+      escrowAddress: escrowContract.target,
+      bountyId
+    })
+  );
+}
+
 // How long a payout waits for its receipt before handing the (already
 // broadcast) transaction back as unconfirmed. Kept under the route's
 // `maxDuration` so the guard, not the platform, decides what happens to the
 // lease when the chain is slow.
 export const PAYOUT_CONFIRMATION_TIMEOUT_MS = 45 * 1000;
-
-/**
- * Resolve a bounty (legacy - uses default testnet).
- * @param {string} bountyId
- * @param {string} recipientAddress
- * @returns {Promise<object>} Transaction result.
- */
-export async function resolveBounty(bountyId, recipientAddress) {
-  if (!escrowContract) throw new Error('Blockchain not initialized');
-  try {
-    bountyId = validateBytes32(bountyId, 'bountyId');
-    recipientAddress = validateAddress(recipientAddress, 'recipientAddress');
-    const tx = await escrowContract.resolve(bountyId, recipientAddress);
-    const receipt = await tx.wait();
-    logger.info(`Bounty resolved: ${bountyId.slice(0, 10)}... -> ${receipt.hash}`);
-    return {
-      success: true,
-      txHash: receipt.hash,
-      blockNumber: receipt.blockNumber,
-      gasUsed: receipt.gasUsed.toString(),
-    };
-  } catch (error) {
-    logger.error('Error resolving bounty:', error.message);
-    return {
-      success: false,
-      error: error.message,
-    };
-  }
-}
 
 /**
  * Resolve a bounty on a specific network.
@@ -304,23 +252,7 @@ export async function resolveBountyOnNetwork(bountyId, recipientAddress, alias, 
       };
     }
 
-    // Populate (nonce, gas estimate, fees) and sign. An escrow revert such as
-    // NotOpen surfaces here, during gas estimation, before anything is sent.
-    const request = await escrowContract.resolve.populateTransaction(bountyId, recipientAddress, txOverrides);
-    const populated = await wallet.populateTransaction(request);
-    delete populated.from;
-    const signed = await wallet.signTransaction(ethers.Transaction.from(populated));
-    const txHash = ethers.Transaction.from(signed).hash;
-
-    if (onTxHash) {
-      try {
-        await onTxHash(txHash);
-      } catch (error) {
-        logger.error(`Could not record payout ${txHash} on ${alias}:`, error.message);
-      }
-    }
-
-    const unconfirmed = (reason) => {
+    const unconfirmed = (txHash, reason) => {
       logger.warn(`Bounty resolve unconfirmed on ${alias}: ${bountyId.slice(0, 10)}... -> ${txHash} (${reason})`);
       return {
         success: false,
@@ -330,12 +262,41 @@ export async function resolveBountyOnNetwork(bountyId, recipientAddress, alias, 
       };
     };
 
+    // Concurrent payouts for different bounties share this resolver wallet,
+    // so two can populate the same pending nonce and one is refused. A
+    // refused transaction can never mine, so re-signing with a fresh nonce
+    // cannot double-send. One retry; a second refusal is a real failure.
     let tx;
-    try {
-      tx = await provider.broadcastTransaction(signed);
-    } catch (error) {
-      if (isDefinitiveBroadcastRejection(error)) throw error;
-      return unconfirmed(error?.code || 'broadcast response lost');
+    for (let attempt = 1; ; attempt += 1) {
+      // Populate (nonce, gas estimate, fees) and sign. An escrow revert such
+      // as NotOpen surfaces here, during gas estimation, before any send.
+      const request = await escrowContract.resolve.populateTransaction(bountyId, recipientAddress, txOverrides);
+      const populated = await wallet.populateTransaction(request);
+      delete populated.from;
+      const signed = await wallet.signTransaction(ethers.Transaction.from(populated));
+      const txHash = ethers.Transaction.from(signed).hash;
+
+      if (onTxHash) {
+        try {
+          await onTxHash(txHash);
+        } catch (error) {
+          logger.error(`Could not record payout ${txHash} on ${alias}:`, error.message);
+        }
+      }
+
+      try {
+        tx = await provider.broadcastTransaction(signed);
+        break;
+      } catch (error) {
+        if (!isDefinitiveBroadcastRejection(error)) {
+          return unconfirmed(txHash, error?.code || 'broadcast response lost');
+        }
+        if (attempt === 1 && isNonceContention(error)) {
+          logger.warn(`Payout nonce contention on ${alias}; re-signing ${bountyId.slice(0, 10)}...`);
+          continue;
+        }
+        throw error;
+      }
     }
 
     let receipt;
@@ -344,7 +305,7 @@ export async function resolveBountyOnNetwork(bountyId, recipientAddress, alias, 
     } catch (error) {
       // Mined and reverted: definitive. Anything else may still mine.
       if (error?.code === 'CALL_EXCEPTION' && error?.receipt) throw error;
-      return unconfirmed(error?.code || 'unknown');
+      return unconfirmed(tx.hash, error?.code || 'unknown');
     }
     logger.info(`Bounty resolved on ${alias}: ${bountyId.slice(0, 10)}... -> ${receipt.hash}`);
     return {
@@ -366,40 +327,6 @@ export async function resolveBountyOnNetwork(bountyId, recipientAddress, alias, 
 
 
 /**
- * Format a token amount for display.
- * @param {string|bigint} amount
- * @param {number} decimals
- * @returns {string}
- */
-export function formatTokenAmount(amount, decimals) {
-  return ethers.formatUnits(amount, decimals);
-}
-
-/**
- * Parse a token amount from user input.
- * @param {string} amount
- * @param {number} decimals
- * @returns {bigint}
- */
-export function parseTokenAmount(amount, decimals) {
-  return ethers.parseUnits(amount, decimals);
-}
-
-/**
- * Get token symbol and decimals for a network.
- * @param {string} alias
- * @returns {Promise<object>} { symbol, decimals }
- */
-export async function getTokenInfo(alias) {
-  const { tokenContract } = getNetworkClients(alias);
-  const [symbol, decimals] = await Promise.all([
-    tokenContract.symbol(),
-    tokenContract.decimals(),
-  ]);
-  return { symbol, decimals: Number(decimals) };
-}
-
-/**
  * Create a repo ID hash from a GitHub repo ID.
  * @param {number} repoId
  * @returns {string} bytes32 hex string
@@ -408,11 +335,3 @@ export function createRepoIdHash(repoId) {
   const hex = '0x' + repoId.toString(16).padStart(64, '0');
   return hex;
 }
-
-// Export legacy globals for backward compatibility
-export {
-  provider,
-  resolverWallet,
-  escrowContract,
-  tokenContract,
-};

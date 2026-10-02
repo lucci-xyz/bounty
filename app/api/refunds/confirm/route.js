@@ -1,7 +1,8 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 import { bountyQueries, prClaimQueries } from '@/server/db/prisma';
-import { getBountyFromContract } from '@/server/blockchain/contract';
+import { getBountyFromContract, isRefundTransaction } from '@/server/blockchain/contract';
+import { isTxHash } from '@/server/blockchain/payoutChain';
 
 /**
  * POST /api/refunds/confirm
@@ -24,6 +25,9 @@ export async function POST(request) {
     
     if (!bountyId || !txHash) {
       return Response.json({ error: 'bountyId and txHash are required' }, { status: 400 });
+    }
+    if (!isTxHash(txHash)) {
+      return Response.json({ error: 'txHash must be a 32-byte hex transaction hash' }, { status: 400 });
     }
 
     const bounty = await bountyQueries.findById(bountyId);
@@ -74,17 +78,33 @@ export async function POST(request) {
       );
     }
 
-    await bountyQueries.updateStatus(bountyId, 'refunded', txHash);
+    // The status comes from the chain; the hash came from the caller. Store it
+    // only when its receipt proves it refunded this bounty, so the explorer
+    // link on the dashboard can never point at an arbitrary transaction. An
+    // unverifiable hash (bogus, or a lagging RPC node) still records the
+    // refund the chain already confirmed, just without a link.
+    let verifiedTxHash = null;
+    try {
+      if (await isRefundTransaction(bountyId, bounty.network, txHash)) {
+        verifiedTxHash = txHash;
+      } else {
+        logger.warn('Refund confirm: txHash is not this bounty\'s refund; storing none', { bountyId });
+      }
+    } catch (error) {
+      logger.warn('Refund confirm: could not verify txHash; storing none', { bountyId, error: error.message });
+    }
+
+    await bountyQueries.updateStatus(bountyId, 'refunded', verifiedTxHash);
     // A payout in flight when the refund landed can never succeed now, and
     // with the bounty no longer `open`/`resolving` its claim can never
     // re-enter the payout guard. Close it instead of leaving it "Processing".
     await prClaimQueries.closeStrandedClaims(bountyId);
 
-    logger.info(`Refund confirmed in database: ${bountyId.slice(0, 10)}... -> ${txHash}`);
+    logger.info(`Refund confirmed in database: ${bountyId.slice(0, 10)}... -> ${verifiedTxHash ?? 'unverified tx'}`);
 
     return Response.json({
       success: true,
-      txHash: txHash
+      txHash: verifiedTxHash
     });
   } catch (error) {
     logger.error('Error confirming refund:', error);

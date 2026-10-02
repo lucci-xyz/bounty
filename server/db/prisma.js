@@ -261,6 +261,27 @@ export const bountyQueries = {
   },
 
   /**
+   * Bounties whose payout lease is stale: a worker took it and never
+   * finished (crash, timeout, unconfirmed send nobody retried). Oldest first,
+   * scoped to this environment, capped so one reconciler run stays bounded.
+   * @returns {Promise<Array>}
+   */
+  findStaleResolving: async (nowMs = Date.now(), limit = 25) => {
+    const bountySelect = await getBountySelect();
+    const bounties = await prisma.bounty.findMany({
+      where: {
+        status: BOUNTY_STATUS.RESOLVING,
+        environment: CONFIG.envTarget || 'stage',
+        updatedAt: { lt: BigInt(nowMs - RESOLVING_LEASE_MS) }
+      },
+      orderBy: { updatedAt: 'asc' },
+      take: limit,
+      select: bountySelect
+    });
+    return bounties.map(normalizeBounty);
+  },
+
+  /**
    * Mirrors an on-chain status onto a bounty row that is still `open`.
    * Conditional on purpose: a `resolving` row belongs to a payout worker, and
    * an unconditional write here would yank the lease out from under it.
@@ -671,6 +692,22 @@ export const prClaimQueries = {
       });
     }
     return paid;
+  },
+
+  /**
+   * All claims on one bounty, newest first.
+   */
+  findByBountyId: async (bountyId) => {
+    const claims = await prisma.prClaim.findMany({
+      where: { bountyId },
+      orderBy: { createdAt: 'desc' }
+    });
+    return claims.map((claim) => ({
+      ...claim,
+      prAuthorGithubId: Number(claim.prAuthorGithubId),
+      createdAt: Number(claim.createdAt),
+      resolvedAt: claim.resolvedAt ? Number(claim.resolvedAt) : null
+    }));
   },
 
   /**
