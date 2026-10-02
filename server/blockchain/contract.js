@@ -208,11 +208,14 @@ export async function isRefundTransaction(bountyId, alias, txHash) {
   );
 }
 
-// How long a payout waits for its receipt before handing the (already
-// broadcast) transaction back as unconfirmed. Kept under the route's
-// `maxDuration` so the guard, not the platform, decides what happens to the
-// lease when the chain is slow.
-export const PAYOUT_CONFIRMATION_TIMEOUT_MS = 45 * 1000;
+// How long a payout waits for its receipt before handing the (already sent)
+// transaction back as unconfirmed. The payout routes run inside the
+// platform's default function budget (this project's plan rejected a
+// `maxDuration` override), so the wait stays well inside it and the guard,
+// not the platform, decides what happens to the lease. Base confirms in about
+// two seconds; anything slower comes back `pending` with the hash pinned and
+// is reconciled by the next retry or the reconcile-payouts cron.
+export const PAYOUT_CONFIRMATION_TIMEOUT_MS = 6 * 1000;
 
 /**
  * Resolve a bounty on a specific network.

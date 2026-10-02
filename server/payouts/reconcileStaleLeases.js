@@ -22,16 +22,19 @@ import { CLAIM_STATUS } from '../../lib/status/index.js';
  * @param {object} [params]
  * @param {number} [params.nowMs]
  * @param {number} [params.limit] - max bounties per run
+ * @param {number} [params.deadlineMs] - wall-clock time after which no new
+ *   bounty is started; the rest wait for the next run
  * @param {object} deps - { bountyQueries, prClaimQueries, walletQueries,
  *   readOnchainStatus(bounty, bountyId, options), announcePayment({ bounty,
  *   claim, txHash }), logger }
  * @returns {Promise<Array<{bountyId: string, claimId: number|null, outcome: string, reason?: string}>>}
  */
-export async function reconcileStaleLeases({ nowMs = Date.now(), limit = 25 } = {}, deps) {
+export async function reconcileStaleLeases({ nowMs = Date.now(), limit = 25, deadlineMs = Infinity } = {}, deps) {
   const { bountyQueries, prClaimQueries, walletQueries, readOnchainStatus, announcePayment, logger } = deps;
   const results = [];
 
   for (const bounty of await bountyQueries.findStaleResolving(nowMs, limit)) {
+    if (Date.now() >= deadlineMs) break;
     const { bountyId } = bounty;
     try {
       const claim = pickClaim(await prClaimQueries.findByBountyId(bountyId));

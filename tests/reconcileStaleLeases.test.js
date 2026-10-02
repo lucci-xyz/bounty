@@ -171,3 +171,23 @@ test('with no wallet to compare and no hash match, attribution stays unknown', a
   assert.equal(store.claimRows.get(1).status, CLAIM_STATUS.PROCESSING);
   assert.equal(store.bountyRows.get('0xb1').status, BOUNTY_STATUS.RESOLVING);
 });
+
+test('a sweep past its deadline starts no new rows; they wait for the next run', async () => {
+  const store = createPayoutStore({
+    claims: [{ id: 1, bountyId: '0xb1', status: CLAIM_STATUS.PROCESSING, prAuthorGithubId: 7 }],
+    bounties: [{ bountyId: '0xb1', status: BOUNTY_STATUS.RESOLVING, updatedAt: STALE }]
+  });
+  const results = await reconcileStaleLeases(
+    { nowMs: NOW, deadlineMs: 0 },
+    {
+      bountyQueries: store.bountyQueries,
+      prClaimQueries: store.prClaimQueries,
+      walletQueries: { findByGithubId: () => null },
+      readOnchainStatus: () => ({ status: BOUNTY_STATUS.OPEN }),
+      announcePayment: () => {},
+      logger: silentLogger
+    }
+  );
+  assert.deepEqual(results, []);
+  assert.equal(store.claimRows.get(1).status, CLAIM_STATUS.PROCESSING);
+});

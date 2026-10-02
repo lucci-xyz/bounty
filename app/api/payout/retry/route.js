@@ -12,11 +12,6 @@ import {
   isResolvingLeaseStale
 } from '@/lib/status';
 
-// The payout waits up to PAYOUT_CONFIRMATION_TIMEOUT_MS for a receipt; give
-// the function room to hand an unconfirmed broadcast back to the guard
-// instead of being killed mid-wait with the lease still held.
-export const maxDuration = 60;
-
 /**
  * Manually retry a failed, pending-wallet, or stuck-processing bounty payout
  * for the authenticated contributor.

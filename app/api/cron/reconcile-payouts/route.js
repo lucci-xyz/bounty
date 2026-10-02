@@ -14,8 +14,10 @@ import { announcePayment } from '@/integrations/github/services/paymentAnnouncem
 // state and posts to GitHub, so it must never be publicly invocable.
 const CRON_SECRET = process.env.CRON_SECRET;
 
-// Chain reads per stale bounty, bounded by the per-run limit.
-export const maxDuration = 60;
+// Stop starting new rows well inside the platform's default function budget
+// (this project's plan rejects a `maxDuration` override). Rows left over are
+// picked up, oldest first, on the next run.
+const RUN_BUDGET_MS = 7_000;
 
 export async function GET(request) {
   try {
@@ -29,7 +31,7 @@ export async function GET(request) {
     }
 
     const results = await reconcileStaleLeases(
-      {},
+      { deadlineMs: Date.now() + RUN_BUDGET_MS },
       {
         bountyQueries,
         prClaimQueries,
