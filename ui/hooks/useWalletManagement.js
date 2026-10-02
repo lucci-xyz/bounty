@@ -187,7 +187,7 @@ export function useWalletManagement({
       }
 
       initialAddressRef.current = connectedAddress || null;
-      initialChainRef.current = chain?.id ?? null;
+      initialChainRef.current = chainId ?? null;
       setAwaitingInitialAddress(initialAddressRef.current);
       setAwaitingInitialChainId(initialChainRef.current);
       setUpdatedWalletAddress(null);

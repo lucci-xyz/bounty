@@ -322,7 +322,7 @@ export async function fundBounty({
       // EIP-1559 path
       const sendCreate = async (overrides = {}) => {
         if (isPrimaryToken) {
-          return escrow.createBounty(
+          return await escrow.createBounty(
             resolverAddress,
             repoIdHash,
             parseInt(issueNumber, 10),
@@ -331,7 +331,7 @@ export async function fundBounty({
             overrides
           );
         }
-        return escrow.createBountyWithToken(
+        return await escrow.createBountyWithToken(
           selectedToken.address,
           resolverAddress,
           repoIdHash,

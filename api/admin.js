@@ -17,6 +17,6 @@ export async function checkAdminAccess() {
  * @returns {Promise<Object>} Object containing network fee information.
  */
 export async function getNetworkFees() {
-  return fetchJson('/api/admin/fees');
+  return await fetchJson('/api/admin/fees');
 }
 

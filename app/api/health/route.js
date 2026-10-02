@@ -1,4 +1,4 @@
-export async function GET() {
+export function GET() {
   return Response.json({
     status: 'ok',
     service: 'bountypay-github-app',

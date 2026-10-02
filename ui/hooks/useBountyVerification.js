@@ -45,7 +45,7 @@ export function useBountyVerification() {
   /**
    * Validate bounty eligibility
    */
-  const validateBounty = useCallback(async (bounty, bountyId, network, address) => {
+  const validateBounty = useCallback((bounty, bountyId, network, address) => {
     if (!bounty || !bounty.sponsor) {
       throw new Error('Invalid bounty data');
     }

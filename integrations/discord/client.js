@@ -156,6 +156,6 @@ export async function sendNewBountyNotification(bounty) {
   }
 
   const embed = formatBountyEmbed(bounty);
-  return sendDiscordMessage(embed);
+  return await sendDiscordMessage(embed);
 }
 

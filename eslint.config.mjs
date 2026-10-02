@@ -11,14 +11,17 @@ const compat = new FlatCompat({ baseDirectory: import.meta.dirname });
  * - `no-unused-vars` catches the dead helpers and orphaned imports that
  *   accumulated around removed endpoints.
  * - `no-floating-promises` is not available without type information, so
- *   `require-await` and `no-return-await` stand in for the shape of bug where
- *   an on-chain call is fired without being awaited.
+ *   `require-await` stands in for the shape of bug where an on-chain call is
+ *   fired without being awaited. Wrappers that return another async call use
+ *   `return await`: it keeps the wrapper in async stack traces and inside its
+ *   own try/catch. (`no-return-await` said the opposite; ESLint deprecated it
+ *   in 8.46 because the performance premise no longer holds.)
  * - `eqeqeq` matters where an id from a webhook payload is compared against one
  *   from the database and the two are different types.
  *
  * Everything stylistic is left to Prettier.
  */
-export default [
+const config = [
   {
     // ESLint 9's flat config lints only .js/.mjs/.cjs by default, which for
     // this project meant the entire UI — around 10,000 lines of .jsx — was
@@ -51,7 +54,6 @@ export default [
       eqeqeq: ['error', 'smart'],
       'no-throw-literal': 'error',
       'require-await': 'warn',
-      'no-return-await': 'warn',
       'no-console': ['warn', { allow: ['warn', 'error'] }]
     }
   },
@@ -77,3 +79,5 @@ export default [
     rules: { 'no-console': 'off' }
   }
 ];
+
+export default config;

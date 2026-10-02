@@ -22,7 +22,7 @@ export function useGithubUser({ requireAuth = false, redirectTo = '/', onUnauthe
       if (IS_LOCAL_ENV || USE_DUMMY_DATA) {
         return DUMMY_USER;
       }
-      return getGithubUser();
+      return await getGithubUser();
     },
     staleTime: 60 * 1000,
     retry: 1,

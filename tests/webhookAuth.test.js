@@ -104,7 +104,7 @@ test('rejects a missing signature header without throwing', async () => {
 
 test('fails closed when the verifier throws', async () => {
   const verdict = await verifyWebhookSignature(
-    async () => {
+    () => {
       throw new TypeError('secret, eventPayload & signature required');
     },
     PAYLOAD,
@@ -117,7 +117,7 @@ test('fails closed when the verifier throws', async () => {
 
 test('fails closed on a truthy non-boolean verifier result', async () => {
   const verdict = await verifyWebhookSignature(
-    async () => 'yes',
+    () => 'yes',
     PAYLOAD,
     'sha256=whatever'
   );
@@ -127,7 +127,7 @@ test('fails closed on a truthy non-boolean verifier result', async () => {
 
 test('rejects a non-string body', async () => {
   const verdict = await verifyWebhookSignature(
-    async () => true,
+    () => true,
     { action: 'closed' },
     'sha256=whatever'
   );
