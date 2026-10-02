@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { bountyQueries, prClaimQueries, walletQueries, allowlistQueries } from '@/server/db/prisma';
 import { resolveBountyOnNetwork } from '@/server/blockchain/contract';
 
@@ -83,7 +84,15 @@ export async function POST(request) {
 
     if (!result.success) {
       await prClaimQueries.updateStatus(claim.id, 'failed');
-      return Response.json({ error: result.error || 'Payout transaction failed' }, { status: 502 });
+      // result.error is raw provider text, which can carry the RPC URL and its
+      // API key. Log it under a reference; return only the reference.
+      const ref = newErrorRef();
+      logger.error(`[${ref}] Manual payout failed`, {
+        bountyId: bounty.bountyId,
+        claimId,
+        error: result.error
+      });
+      return Response.json({ error: publicErrorMessage(ref), ref }, { status: 502 });
     }
 
     await bountyQueries.updateStatus(bounty.bountyId, 'resolved', result.txHash);

@@ -56,6 +56,22 @@ export default [
     }
   },
   {
+    // API responses are public. ethers errors carry the configured RPC URL
+    // (often with an API key) and the upstream response body; Prisma errors
+    // carry database detail. Log the error under a ref from lib/errorRef.js
+    // and return publicErrorMessage(ref) instead.
+    files: ['app/api/**/*.js'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.property.name='json'] MemberExpression[property.name='message']",
+          message: 'Do not put error text in an API response. Log it under newErrorRef() and return publicErrorMessage(ref).'
+        }
+      ]
+    }
+  },
+  {
     // Scripts are operator tooling and print to stdout by design.
     files: ['scripts/**/*.mjs', 'scripts/**/*.js'],
     rules: { 'no-console': 'off' }

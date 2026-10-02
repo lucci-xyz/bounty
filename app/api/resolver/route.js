@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { ethers } from 'ethers';
 import { CONFIG } from '@/server/config';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 
 /**
  * GET /api/resolver?network=ALIAS
@@ -53,11 +54,13 @@ export async function GET(request) {
       network: alias
     });
   } catch (error) {
-    logger.error('Error fetching resolver address:', error);
+    const ref = newErrorRef();
+    logger.error(`[${ref}] Error fetching resolver address:`, error);
     return NextResponse.json(
       { 
         success: false, 
-        error: error.message || 'Failed to get resolver address' 
+        error: publicErrorMessage(ref),
+        ref
       },
       { status: 500 }
     );

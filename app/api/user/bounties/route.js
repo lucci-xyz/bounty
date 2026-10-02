@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { bountyQueries, prClaimQueries } from '@/server/db/prisma';
 import { getBountyFromContract } from '@/server/blockchain/contract';
 import { deriveLifecycle, isRefundEligible } from '@/lib/status';
@@ -77,7 +78,8 @@ export async function GET() {
 
     return Response.json(bountiesWithStats);
   } catch (error) {
-    logger.error('Error fetching user bounties:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    const ref = newErrorRef();
+    logger.error(`[${ref}] Error fetching user bounties:`, error);
+    return Response.json({ error: publicErrorMessage(ref), ref }, { status: 500 });
   }
 }

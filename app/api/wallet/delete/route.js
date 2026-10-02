@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { walletQueries } from '@/server/db/prisma';
 
 export async function DELETE(request) {
@@ -28,8 +29,9 @@ export async function DELETE(request) {
     
     return Response.json({ success: true, message: 'Wallet deleted successfully' });
   } catch (error) {
-    logger.error('Error deleting wallet:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    const ref = newErrorRef();
+    logger.error(`[${ref}] Error deleting wallet:`, error);
+    return Response.json({ error: publicErrorMessage(ref), ref }, { status: 500 });
   }
 }
 

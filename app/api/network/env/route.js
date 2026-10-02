@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { cookies } from 'next/headers';
 import { NETWORK_ENV_COOKIE } from '@/lib/network';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { getDefaultAliasForGroup } from '@/config/chain-registry';
 
 export async function POST(request) {
@@ -19,8 +20,9 @@ export async function POST(request) {
     try {
       getDefaultAliasForGroup(env);
     } catch (error) {
+      logger.warn(`No ${env} networks configured:`, error);
       return Response.json(
-        { error: `No ${env} networks configured: ${error.message}` },
+        { error: `No ${env} networks configured` },
         { status: 400 }
       );
     }
@@ -40,9 +42,10 @@ export async function POST(request) {
       env 
     });
   } catch (error) {
-    logger.error('Error setting network env:', error);
+    const ref = newErrorRef();
+    logger.error(`[${ref}] Error setting network env:`, error);
     return Response.json(
-      { error: error.message },
+      { error: publicErrorMessage(ref), ref },
       { status: 500 }
     );
   }
@@ -55,9 +58,10 @@ export async function GET() {
     
     return Response.json({ env });
   } catch (error) {
-    logger.error('Error getting network env:', error);
+    const ref = newErrorRef();
+    logger.error(`[${ref}] Error getting network env:`, error);
     return Response.json(
-      { error: error.message },
+      { error: publicErrorMessage(ref), ref },
       { status: 500 }
     );
   }

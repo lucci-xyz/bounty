@@ -4,6 +4,7 @@ import { CONFIG } from '@/server/config';
 import { NextResponse } from 'next/server';
 import { getLinkHref } from '@/config/links';
 import { safeRedirectOrDefault } from '@/lib/safeRedirect';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 
 export async function GET(request) {
   try {
@@ -78,8 +79,9 @@ export async function GET(request) {
 
     return NextResponse.redirect(destination);
   } catch (error) {
-    logger.error('OAuth error:', error.message);
-    return NextResponse.json({ error: `Authentication failed: ${error.message}` }, { status: 500 });
+    const ref = newErrorRef();
+    logger.error(`[${ref}] OAuth error:`, error);
+    return NextResponse.json({ error: publicErrorMessage(ref), ref }, { status: 500 });
   }
 }
 
