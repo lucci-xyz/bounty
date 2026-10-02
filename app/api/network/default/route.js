@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { getDefaultAliasForGroup } from '@/config/chain-registry';
 
 /**
@@ -26,11 +27,13 @@ export async function GET(request) {
       group
     });
   } catch (error) {
-    logger.error('Error fetching default alias:', error);
+    const ref = newErrorRef();
+    logger.error(`[${ref}] Error fetching default alias:`, error);
     return NextResponse.json(
       { 
         success: false, 
-        error: error.message || 'Failed to get default network alias' 
+        error: publicErrorMessage(ref),
+        ref
       },
       { status: 500 }
     );

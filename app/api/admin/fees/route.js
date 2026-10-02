@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { NextResponse } from 'next/server';
 import { ethers } from 'ethers';
 import { REGISTRY, ABIS } from '@/config/chain-registry';
@@ -53,14 +54,16 @@ export async function GET() {
                 availableFormatted: ethers.formatUnits(availableFees, token.decimals),
               };
             } catch (err) {
-              logger.warn(`Failed to fetch fees for ${token.symbol} on ${alias}:`, err.message);
+              const ref = newErrorRef();
+              logger.warn(`[${ref}] Failed to fetch fees for ${token.symbol} on ${alias}:`, err);
               return {
                 address: token.address,
                 symbol: token.symbol,
                 decimals: token.decimals,
                 available: '0',
                 availableFormatted: '0',
-                error: err.message
+                error: publicErrorMessage(ref),
+                ref
               };
             }
           })
@@ -81,7 +84,8 @@ export async function GET() {
           }
         };
       } catch (error) {
-        logger.error(`Failed to fetch fees for ${alias}:`, error.message);
+        const ref = newErrorRef();
+        logger.error(`[${ref}] Failed to fetch fees for ${alias}:`, error);
         return {
           alias,
           name: network.name,
@@ -89,7 +93,8 @@ export async function GET() {
           escrowAddress: network.contracts.escrow,
           supports1559: network.supports1559,
           fees: null,
-          error: error.message
+          error: publicErrorMessage(ref),
+          ref
         };
       }
     });
@@ -99,7 +104,8 @@ export async function GET() {
 
     return NextResponse.json({ success: true, networks: networkFees });
   } catch (error) {
-    logger.error('Error fetching admin fees:', error);
-    return NextResponse.json({ error: error.message || 'Failed to fetch fees' }, { status: 500 });
+    const ref = newErrorRef();
+    logger.error(`[${ref}] Error fetching admin fees:`, error);
+    return NextResponse.json({ error: publicErrorMessage(ref), ref }, { status: 500 });
   }
 }

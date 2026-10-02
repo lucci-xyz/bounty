@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { prClaimQueries, bountyQueries } from '@/server/db/prisma';
 
 // Bounties in these statuses have no funds left (sponsor refunded after deadline)
@@ -55,7 +56,8 @@ export async function GET() {
       totalEarned: Math.round(totalEarned * 100) / 100
     });
   } catch (error) {
-    logger.error('Error fetching claimed bounties:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    const ref = newErrorRef();
+    logger.error(`[${ref}] Error fetching claimed bounties:`, error);
+    return Response.json({ error: publicErrorMessage(ref), ref }, { status: 500 });
   }
 }

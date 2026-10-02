@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { bountyQueries } from '@/server/db/prisma';
 import { getBountyFromContract } from '@/server/blockchain/contract';
 
@@ -17,8 +18,9 @@ export async function GET(request, { params }) {
     const bounty = await getBountyFromContract(bountyId, network);
     return Response.json(bounty);
   } catch (error) {
-    logger.error('Error fetching contract bounty:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    const ref = newErrorRef();
+    logger.error(`[${ref}] Error fetching contract bounty:`, error);
+    return Response.json({ error: publicErrorMessage(ref), ref }, { status: 500 });
   }
 }
 

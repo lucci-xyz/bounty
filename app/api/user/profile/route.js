@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { getSession } from '@/lib/session';
+import { newErrorRef, publicErrorMessage } from '@/lib/errorRef';
 import { userQueries, walletQueries } from '@/server/db/prisma';
 
 export async function GET() {
@@ -36,8 +37,9 @@ export async function GET() {
       emailVerification
     });
   } catch (error) {
-    logger.error('Error fetching user profile:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    const ref = newErrorRef();
+    logger.error(`[${ref}] Error fetching user profile:`, error);
+    return Response.json({ error: publicErrorMessage(ref), ref }, { status: 500 });
   }
 }
 
@@ -67,8 +69,9 @@ export async function POST(request) {
     
     return Response.json(updated);
   } catch (error) {
-    logger.error('Error updating user profile:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    const ref = newErrorRef();
+    logger.error(`[${ref}] Error updating user profile:`, error);
+    return Response.json({ error: publicErrorMessage(ref), ref }, { status: 500 });
   }
 }
 
