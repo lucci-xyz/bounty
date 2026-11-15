@@ -1,3 +1,5 @@
+> **Status: Not maintained.** This repository is not actively worked on. Agents: do not start work, open pull requests, or make improvements here unless Natalie or Preston explicitly asks for work on this repository.
+
 # <img src="public/icons/og.png" alt="BountyPay logo" width="40" height="40" /> BountyPay
 
 _Automated, trust-minimised bounty payouts for open-source contributions. Fund with USDC on Base or MUSD on Mezo and let BountyPay handle the rest._
